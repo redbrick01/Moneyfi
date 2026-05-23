@@ -2,6 +2,15 @@
 
 프로젝트 문서는 디자인 규칙, 기능 설계, 운영 절차를 빠르게 찾을 수 있도록 이 페이지에서 관리합니다.
 
+## Start Here
+
+| 문서 | 내용 |
+| --- | --- |
+| [Project Overview](project_overview.md) | 앱 목적, 주요 기능, 런타임 구조, 개발 흐름 |
+| [Folder Guide](folder_guide.md) | 루트 및 주요 하위 폴더별 역할 |
+| [Data & Sync Flow](data_and_sync.md) | 로컬 Drift DB, 원장 모델, Supabase 동기화 흐름 |
+| [Supabase Overview](supabase_overview.md) | Supabase 마이그레이션, Edge Functions, secrets, 운영 포인트 |
+
 ## Design & UI
 
 | 문서 | 내용 |
@@ -16,6 +25,8 @@
 
 | 문서 | 내용 |
 | --- | --- |
+| [Data & Sync Flow](data_and_sync.md) | 데이터 모델과 앱/서버 간 동기화 설계 |
+| [Supabase Overview](supabase_overview.md) | Supabase 폴더와 원격 프로젝트 구성 요약 |
 | [Supabase CLI Runbook](supabase_cli_runbook.md) | Supabase CLI, 환경 변수, 마이그레이션 운영 절차 |
 
 ## Maintenance Rules

@@ -6,6 +6,13 @@
 
 MONEYFY는 로컬 DB와 Supabase 동기화를 함께 사용하는 자산 관리 앱입니다. 보유 자산과 거래 내역을 기반으로 총자산 변화, 월별 추이, 자산군 비중, 포트폴리오 진단을 빠르게 확인할 수 있도록 구성되어 있습니다.
 
+처음 프로젝트를 보는 경우 아래 순서로 읽으면 전체 구조를 빠르게 잡을 수 있습니다.
+
+1. [Project Overview](docs/project_overview.md)
+2. [Folder Guide](docs/folder_guide.md)
+3. [Data & Sync Flow](docs/data_and_sync.md)
+4. [Supabase Overview](docs/supabase_overview.md)
+
 ## Features
 
 - 총자산, 손익, 자산군 현황을 보여주는 대시보드
@@ -132,6 +139,10 @@ git push -u origin main
 ## Documentation
 
 - [Docs Index](docs/README.md)
+- [Project Overview](docs/project_overview.md)
+- [Folder Guide](docs/folder_guide.md)
+- [Data & Sync Flow](docs/data_and_sync.md)
+- [Supabase Overview](docs/supabase_overview.md)
 - [Design System](docs/design_system.md)
 - [Supabase CLI Runbook](docs/supabase_cli_runbook.md)
 - [UI Snapshot Targets](docs/ui_snapshot_targets.md)

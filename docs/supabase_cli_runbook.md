@@ -67,11 +67,22 @@ supabase projects list
 supabase migration list
 ```
 
-현재 정상 상태는 아래 두 migration이 local/remote 모두 일치하는 것입니다.
+2026-05-23 확인 기준 정상 상태는 아래 migration이 local/remote 모두 일치하는 것입니다.
 
 ```text
 20260521043000_baseline_remote_schema
 20260521050000_harden_public_permissions
+20260522090000_normalize_transaction_amounts
+20260522093000_create_transaction_ledger_tables
+20260522094500_backfill_transaction_ledger_from_legacy
+20260522120000_add_transaction_line_legacy_sources
+20260522143000_reconcile_state_from_transaction_ledger
+20260522144500_archive_and_drop_legacy_transaction_tables
+20260522150000_reclassify_unpaired_legacy_cash_events
+20260522151500_restore_state_from_latest_snapshots
+20260522153000_rebuild_snapshot_restore_ledger_lines
+20260523001000_restore_history_display_ledger
+20260523120000_add_snapshot_client_references
 ```
 
 원격 DB와 로컬 migration 사이 drift 확인:
@@ -155,7 +166,7 @@ supabase secrets set KEY=value
 supabase functions list
 ```
 
-모든 함수가 `ACTIVE`인지 확인합니다.
+모든 함수가 `ACTIVE`인지 확인합니다. 2026-05-23 확인 기준 아래 함수가 모두 `ACTIVE`입니다.
 
 현재 함수 목록:
 
