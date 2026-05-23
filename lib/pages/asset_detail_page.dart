@@ -101,13 +101,14 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
   }
 
   Future<void> _deleteAsset(AssetItem item) async {
-    if (item.id == null) return;
+    final assetId = await _resolveCurrentAssetId(item);
+    if (assetId == null) return;
     final confirmed = await _confirmDelete(
       title: '자산군 삭제',
       message: '${item.displayName} 자산군을 삭제하시겠습니까?',
     );
     if (confirmed != true) return;
-    await AppDatabase.instance.deleteAssetItem(item.id!);
+    await AppDatabase.instance.deleteAssetItem(assetId);
     if (SyncService.instance.canSync) {
       await SyncService.instance.syncNow(reason: 'delete_asset');
     }
@@ -139,14 +140,18 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
   }
 
   Future<void> _openHoldingForm({
+    int? assetId,
     HoldingItem? item,
     bool isCashAccount = false,
   }) async {
+    final currentAssetId =
+        assetId ?? (await _resolveCurrentAssetId(null)) ?? widget.assetId;
+    if (!mounted) return;
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => isCashAccount
-            ? CashAccountFormPage(assetId: widget.assetId, item: item)
-            : HoldingFormPage(assetId: widget.assetId, item: item),
+            ? CashAccountFormPage(assetId: currentAssetId, item: item)
+            : HoldingFormPage(assetId: currentAssetId, item: item),
       ),
     );
 
@@ -156,13 +161,46 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
   }
 
   Future<void> _toggleHoldingHidden(HoldingItem holding) async {
-    if (holding.id == null) return;
+    final holdingId = await _resolveCurrentHoldingId(holding);
+    if (holdingId == null) return;
     await AppDatabase.instance.updateHoldingHidden(
-      holding.id!,
+      holdingId,
       !holding.isHidden,
     );
     if (!mounted) return;
     _reloadDetail();
+  }
+
+  Future<int?> _resolveCurrentAssetId(AssetItem? item) async {
+    final id = item?.id ?? widget.assetId;
+    final byId = await AppDatabase.instance.fetchAssetById(id);
+    if (byId?.id != null) return byId!.id;
+
+    final clientId = item?.clientId ?? widget.assetClientId;
+    if (clientId != null && clientId.trim().isNotEmpty) {
+      final byClientId = await AppDatabase.instance.fetchAssetByClientId(
+        clientId,
+      );
+      if (byClientId?.id != null) return byClientId!.id;
+    }
+    return null;
+  }
+
+  Future<int?> _resolveCurrentHoldingId(HoldingItem holding) async {
+    final id = holding.id;
+    if (id != null) {
+      final byId = await AppDatabase.instance.fetchHoldingById(id);
+      if (byId?.id != null) return byId!.id;
+    }
+
+    final clientId = holding.clientId;
+    if (clientId != null && clientId.trim().isNotEmpty) {
+      final byClientId = await AppDatabase.instance.fetchHoldingByClientId(
+        clientId,
+      );
+      if (byClientId?.id != null) return byClientId!.id;
+    }
+    return null;
   }
 
   Future<_AssetDetailData?> _loadAssetDetailData() async {
@@ -599,7 +637,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                     ),
                               style: context.typography.heroNumber.copyWith(
                                 fontSize: 32,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                                 height: 1,
                               ),
                             ),
@@ -727,7 +765,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                               surfaceTintColor: Theme.of(
                                 context,
                               ).colorScheme.surfaceTint,
-                              elevation: 10,
+                              elevation: 0,
                               offset: const Offset(0, 10),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
@@ -773,7 +811,8 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                             ),
                             const SizedBox(width: 10),
                             IconButton(
-                              onPressed: () => _openHoldingForm(),
+                              onPressed: () =>
+                                  _openHoldingForm(assetId: item.id),
                               icon: const Icon(Icons.add_rounded),
                               color: _iconTone(context),
                               visualDensity: VisualDensity.compact,
@@ -799,7 +838,10 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                       title: '현금 계좌',
                       wrapBodyWithInnerCard: false,
                       trailing: IconButton(
-                        onPressed: () => _openHoldingForm(isCashAccount: true),
+                        onPressed: () => _openHoldingForm(
+                          assetId: item.id,
+                          isCashAccount: true,
+                        ),
                         icon: const Icon(Icons.add_rounded),
                         color: _iconTone(context),
                       ),
@@ -865,11 +907,16 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     final moved = reordered.removeAt(oldIndex);
     reordered.insert(newIndex, moved);
 
-    final assetId = widget.assetId;
-    final holdingIds = reordered
-        .map((item) => item.id)
-        .whereType<int>()
-        .toList(growable: false);
+    final assetId = await _resolveCurrentAssetId(null);
+    final holdingIds = <int>[];
+    for (final item in reordered) {
+      final holdingId = await _resolveCurrentHoldingId(item);
+      if (holdingId != null) holdingIds.add(holdingId);
+    }
+    if (assetId == null) {
+      _reloadDetail();
+      return;
+    }
     if (holdingIds.length != reordered.length) {
       _reloadDetail();
       return;
@@ -899,11 +946,16 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     final moved = reordered.removeAt(oldIndex);
     reordered.insert(newIndex, moved);
 
-    final assetId = widget.assetId;
-    final cashAccountIds = reordered
-        .map((item) => item.id)
-        .whereType<int>()
-        .toList(growable: false);
+    final assetId = await _resolveCurrentAssetId(null);
+    final cashAccountIds = <int>[];
+    for (final item in reordered) {
+      final cashAccountId = await _resolveCurrentHoldingId(item);
+      if (cashAccountId != null) cashAccountIds.add(cashAccountId);
+    }
+    if (assetId == null) {
+      _reloadDetail();
+      return;
+    }
     if (cashAccountIds.length != reordered.length) {
       _reloadDetail();
       return;
@@ -1257,7 +1309,7 @@ class _HeroMetricRow extends StatelessWidget {
                 value,
                 defaultColor: MoneyfyPalette.secondaryText,
               ),
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(width: 10),
@@ -1449,7 +1501,7 @@ class _HoldingSortMenuRow extends StatelessWidget {
                 option.label,
                 style: context.typography.body.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w600,
                 ),
               ),
             ),
@@ -1616,7 +1668,10 @@ class _CashAccountCard extends StatelessWidget {
         if (holding.id == null) return;
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => CashAccountDetailPage(holdingId: holding.id!),
+            builder: (_) => CashAccountDetailPage(
+              holdingId: holding.id!,
+              holdingClientId: holding.clientId,
+            ),
           ),
         );
         onChanged();

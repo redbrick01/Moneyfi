@@ -71,7 +71,7 @@ class _TransactionHistoryListState extends State<TransactionHistoryList> {
               style: TextButton.styleFrom(
                 foregroundColor: MoneyfyPalette.tertiaryText,
                 textStyle: context.typography.meta.copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

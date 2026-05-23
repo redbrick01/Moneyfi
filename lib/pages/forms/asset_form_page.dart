@@ -131,24 +131,47 @@ class _AssetFormPageState extends State<AssetFormPage> {
         note: noteController.text.trim(),
       );
     } else {
+      final currentItem = item.id == null
+          ? null
+          : await AppDatabase.instance.fetchAssetById(item.id!);
+      final fallbackItem =
+          currentItem ??
+          (item.clientId == null
+              ? null
+              : await AppDatabase.instance.fetchAssetByClientId(
+                  item.clientId!,
+                ));
+      final itemId = fallbackItem?.id ?? item.id;
+      if (itemId == null) {
+        throw StateError('자산군 정보를 찾을 수 없습니다.');
+      }
       await AppDatabase.instance.updateAssetItem(
         AssetItem(
-          id: item.id,
+          id: itemId,
+          clientId: fallbackItem?.clientId ?? item.clientId,
           assetType: selectedType.label,
           title: groupName,
           alias: groupName,
-          isHidden: item.isHidden,
+          isHidden: fallbackItem?.isHidden ?? item.isHidden,
           currencyCode: selectedType.currencyCode,
-          value: item.holdings.isEmpty ? valueText : item.value,
-          change: item.holdings.isEmpty ? changeText : item.change,
+          value: (fallbackItem ?? item).holdings.isEmpty
+              ? valueText
+              : (fallbackItem ?? item).value,
+          change: (fallbackItem ?? item).holdings.isEmpty
+              ? changeText
+              : (fallbackItem ?? item).change,
           icon: selectedType.icon,
           quantityLabel: selectedType.quantityLabel,
-          quantityValue: item.holdings.isEmpty ? '' : item.quantityValue,
+          quantityValue: (fallbackItem ?? item).holdings.isEmpty
+              ? ''
+              : (fallbackItem ?? item).quantityValue,
           averageLabel: selectedType.averageLabel,
-          averageValue: item.holdings.isEmpty ? '' : item.averageValue,
+          averageValue: (fallbackItem ?? item).holdings.isEmpty
+              ? ''
+              : (fallbackItem ?? item).averageValue,
           note: noteController.text.trim(),
-          holdings: item.holdings,
-          transactions: item.transactions,
+          holdings: (fallbackItem ?? item).holdings,
+          transactions: (fallbackItem ?? item).transactions,
         ),
       );
     }

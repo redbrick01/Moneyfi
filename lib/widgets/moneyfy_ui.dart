@@ -8,14 +8,14 @@ import '../theme/moneyfy_theme.dart';
 
 class MoneyfySpacing {
   static const double pageHorizontal = 20;
-  static const double pageTop = 12;
+  static const double pageTop = 24;
   static const double pageBottomInset = 132;
-  static const double headerGap = 24;
-  static const double sectionGap = 24;
-  static const double cardPadding = 16;
-  static const double compactCardPadding = 16;
-  static const double cardRadius = 12;
-  static const double controlRadius = 12;
+  static const double headerGap = 32;
+  static const double sectionGap = 32;
+  static const double cardPadding = 24;
+  static const double compactCardPadding = 24;
+  static const double cardRadius = 18;
+  static const double controlRadius = 9999;
 }
 
 class MoneyfyPage extends StatelessWidget {
@@ -255,8 +255,8 @@ class MoneyfyIconButtonSurface extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(MoneyfySpacing.controlRadius),
       child: Ink(
-        width: 48,
-        height: 48,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           color: MoneyfyPalette.surface,
           borderRadius: BorderRadius.circular(MoneyfySpacing.controlRadius),

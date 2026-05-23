@@ -1177,7 +1177,7 @@ class _CalendarLegendRow extends StatelessWidget {
               '20',
               style: context.typography.caption.copyWith(
                 color: pivotColor,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
             SizedBox(width: context.spacing.xs / 2),
@@ -1250,8 +1250,8 @@ class _CalendarDayCell extends StatelessWidget {
               style: context.typography.meta.copyWith(
                 color: dayColor,
                 fontWeight: hasSnapshot || isSelected || isPivotDay
-                    ? FontWeight.w700
-                    : FontWeight.w500,
+                    ? FontWeight.w600
+                    : FontWeight.w600,
               ),
             ),
             SizedBox(height: context.spacing.xs / 2),
@@ -1295,7 +1295,7 @@ class _LegendTextRow extends StatelessWidget {
                   '●',
                   style: context.typography.meta.copyWith(
                     color: item.color,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 SizedBox(width: context.spacing.xs / 2),

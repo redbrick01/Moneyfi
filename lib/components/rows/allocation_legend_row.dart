@@ -126,7 +126,7 @@ class AllocationLegendRow extends StatelessWidget {
                     child: Text(
                       ratioText,
                       style: context.typography.meta.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: colorScheme.onSurface,
                       ),
                     ),

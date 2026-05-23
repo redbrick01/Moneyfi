@@ -374,9 +374,7 @@ class _PortfolioSectionBasePlate extends StatelessWidget {
 Future<_PortfolioPageData> _loadPortfolioPageData() async {
   final assets = await AppDatabase.instance.fetchAssets();
   final targetRatios = await AppDatabase.instance.fetchAssetAllocationTargets();
-  final diagnosisPayload = _buildPortfolioDiagnosisPayload(
-    assets: assets,
-  );
+  final diagnosisPayload = _buildPortfolioDiagnosisPayload(assets: assets);
   final cachedDiagnosisEntry = diagnosisPayload == null
       ? null
       : await PortfolioDiagnosisService.instance.fetchCachedDiagnosis();
@@ -879,7 +877,7 @@ class _PortfolioDiagnosisSectionCard extends StatelessWidget {
                       child: Text(
                         '포트폴리오 분석 결과',
                         style: context.typography.cardTitle.copyWith(
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -1006,7 +1004,7 @@ class _DiagnosisBlockCard extends StatelessWidget {
             Text(
               title!,
               style: context.typography.cardTitle.copyWith(
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
             SizedBox(height: context.spacing.xs),
@@ -1129,23 +1127,28 @@ Map<String, dynamic>? _buildPortfolioDiagnosisPayload({
 
   if (totalValuation <= 0) return null;
 
-  final assetClassAllocation = visibleAssets
-      .fold<Map<String, double>>(<String, double>{}, (acc, asset) {
-        final amount = asset.totalValuationAmount;
-        final ratio = totalValuation == 0 ? 0.0 : (amount / totalValuation) * 100;
-        final key = _assetClassForPayload(asset.assetType);
-        acc.update(key, (value) => value + ratio, ifAbsent: () => ratio);
-        return acc;
-      })
-      .entries
-      .map(
-        (entry) => {
-          'asset_class': entry.key,
-          'weight': double.parse(entry.value.toStringAsFixed(2)),
-        },
-      )
-      .toList(growable: false)
-    ..sort((a, b) => (b['weight'] as double).compareTo(a['weight'] as double));
+  final assetClassAllocation =
+      visibleAssets
+          .fold<Map<String, double>>(<String, double>{}, (acc, asset) {
+            final amount = asset.totalValuationAmount;
+            final ratio = totalValuation == 0
+                ? 0.0
+                : (amount / totalValuation) * 100;
+            final key = _assetClassForPayload(asset.assetType);
+            acc.update(key, (value) => value + ratio, ifAbsent: () => ratio);
+            return acc;
+          })
+          .entries
+          .map(
+            (entry) => {
+              'asset_class': entry.key,
+              'weight': double.parse(entry.value.toStringAsFixed(2)),
+            },
+          )
+          .toList(growable: false)
+        ..sort(
+          (a, b) => (b['weight'] as double).compareTo(a['weight'] as double),
+        );
 
   final topHoldings = visibleAssets
       .expand((asset) {
@@ -1169,29 +1172,31 @@ Map<String, dynamic>? _buildPortfolioDiagnosisPayload({
       })
       .toList(growable: false);
   topHoldings.sort(
-    (a, b) => (b['market_value'] as double).compareTo(
-      a['market_value'] as double,
-    ),
+    (a, b) =>
+        (b['market_value'] as double).compareTo(a['market_value'] as double),
   );
-  final fallbackTopHoldings = visibleAssets
-      .map((asset) {
-        final marketValue = asset.totalValuationAmount;
-        final weight = totalValuation == 0 ? 0.0 : (marketValue / totalValuation) * 100;
-        return {
-          'symbol': asset.displayName.trim(),
-          'name': asset.displayName,
-          'asset_type': _holdingTypeForPayload(asset.assetType),
-          'market_value': marketValue,
-          'return_rate': asset.totalProfitRate,
-          'weight': weight,
-        };
-      })
-      .toList(growable: false)
-    ..sort(
-      (a, b) => (b['market_value'] as double).compareTo(
-        a['market_value'] as double,
-      ),
-    );
+  final fallbackTopHoldings =
+      visibleAssets
+          .map((asset) {
+            final marketValue = asset.totalValuationAmount;
+            final weight = totalValuation == 0
+                ? 0.0
+                : (marketValue / totalValuation) * 100;
+            return {
+              'symbol': asset.displayName.trim(),
+              'name': asset.displayName,
+              'asset_type': _holdingTypeForPayload(asset.assetType),
+              'market_value': marketValue,
+              'return_rate': asset.totalProfitRate,
+              'weight': weight,
+            };
+          })
+          .toList(growable: false)
+        ..sort(
+          (a, b) => (b['market_value'] as double).compareTo(
+            a['market_value'] as double,
+          ),
+        );
   final holdingsForPayload = topHoldings.isNotEmpty
       ? topHoldings
       : fallbackTopHoldings;
@@ -1263,7 +1268,8 @@ Map<String, dynamic>? _buildPortfolioDiagnosisPayload({
       'worst_holding': worstHolding == null
           ? null
           : {
-              'symbol': '${worstHolding['symbol'] ?? worstHolding['name'] ?? ''}',
+              'symbol':
+                  '${worstHolding['symbol'] ?? worstHolding['name'] ?? ''}',
               'return_rate': worstHolding['return_rate'],
             },
     },

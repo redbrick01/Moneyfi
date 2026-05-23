@@ -58,7 +58,7 @@ class _IncomeSummaryCard extends StatelessWidget {
             _formatCurrency(report.totalIncome),
             style: theme.textTheme.headlineSmall?.copyWith(
               color: MoneyfyPalette.ink,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 18),
@@ -240,7 +240,7 @@ class _MiniMetric extends StatelessWidget {
             value,
             style: theme.textTheme.titleMedium?.copyWith(
               color: MoneyfyPalette.ink,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -277,7 +277,7 @@ class _IncomeBarRow extends StatelessWidget {
             Text(
               _formatCurrency(total),
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -332,7 +332,7 @@ class _IncomePeriodRow extends StatelessWidget {
         Text(
           _formatCurrency(item.total),
           style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -372,7 +372,7 @@ class _IncomeSourceRow extends StatelessWidget {
         Text(
           _formatCurrency(item.total),
           style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -402,7 +402,7 @@ class _IncomeTransactionRow extends StatelessWidget {
             item.type,
             style: theme.textTheme.labelMedium?.copyWith(
               color: const Color(0xFFB56A00),
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -426,7 +426,7 @@ class _IncomeTransactionRow extends StatelessWidget {
         Text(
           _formatCurrency(item.amountKrw),
           style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],

@@ -119,7 +119,7 @@ class _DividendInterestEntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return InkWell(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(18),
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -135,12 +135,12 @@ class _DividendInterestEntryCard extends StatelessWidget {
               height: 44,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF3E0),
+                color: MoneyfyPalette.accentSoft,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 Icons.payments_rounded,
-                color: const Color(0xFFB56A00),
+                color: MoneyfyPalette.accent,
                 size: VisualSpec.icon.sizeDefault,
               ),
             ),
@@ -176,7 +176,7 @@ class _InvestmentPerformanceEntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return InkWell(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(18),
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -384,8 +384,8 @@ class SnapshotCalendarCard extends StatelessWidget {
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: dayColor,
                             fontWeight: hasSnapshot || isPivotDay
-                                ? FontWeight.w700
-                                : FontWeight.w500,
+                                ? FontWeight.w600
+                                : FontWeight.w600,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -433,7 +433,7 @@ class YearlyAssetAnalysisCard extends StatelessWidget {
           ..sort((a, b) => b.compareTo(a));
 
     return InkWell(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(18),
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -759,7 +759,7 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
                   item.totalAsset,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: MoneyfyPalette.ink,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -794,7 +794,7 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
                             item.changeRate,
                             defaultColor: MoneyfyPalette.secondaryText,
                           ),
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),

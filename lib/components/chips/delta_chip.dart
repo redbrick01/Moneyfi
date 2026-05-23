@@ -57,7 +57,7 @@ class DeltaChip extends StatelessWidget {
                     : isNegative
                     ? MoneyfyPalette.negative
                     : MoneyfyPalette.secondaryText,
-                fontWeight: isNeutral ? FontWeight.w600 : FontWeight.w700,
+                fontWeight: isNeutral ? FontWeight.w600 : FontWeight.w600,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),

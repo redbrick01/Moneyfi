@@ -262,7 +262,7 @@ class _AssetSectionBasePlate extends StatelessWidget {
                     onSelected: onSortChanged,
                     color: context.surfaces.surfaceBase,
                     surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
-                    elevation: 10,
+                    elevation: 0,
                     offset: const Offset(0, 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(
@@ -402,7 +402,7 @@ class _AssetSortMenuRow extends StatelessWidget {
                 option.label,
                 style: context.typography.body.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w600,
                 ),
               ),
             ),
@@ -650,7 +650,7 @@ class _SummaryCardState extends State<_SummaryCard> {
                                     style: context.typography.heroNumber
                                         .copyWith(
                                           fontSize: 32,
-                                          fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w600,
                                           height: 1,
                                           color: Theme.of(
                                             context,
@@ -900,7 +900,7 @@ class _SummaryValueRow extends StatelessWidget {
           valueText,
           style: context.typography.caption.copyWith(
             fontSize: context.fontSizes.s16,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             color: valueColor,
           ),
         ),
@@ -1329,7 +1329,16 @@ class _AssetListCardState extends State<_AssetListCard> {
     }
 
     try {
-      await AppDatabase.instance.reorderAssets(assetIds);
+      final currentAssetIds = <int>[];
+      for (final item in optimisticItems) {
+        final currentId = await _resolveCurrentAssetId(item);
+        if (currentId != null) currentAssetIds.add(currentId);
+      }
+      if (currentAssetIds.length != optimisticItems.length) {
+        await _loadItems(showLoading: false);
+        return;
+      }
+      await AppDatabase.instance.reorderAssets(currentAssetIds);
     } catch (_) {
       if (!mounted) return;
       if (previousItems != null) {
@@ -1343,7 +1352,7 @@ class _AssetListCardState extends State<_AssetListCard> {
   }
 
   Future<void> _toggleAssetHidden(AssetItem item) async {
-    final id = item.id;
+    final id = await _resolveCurrentAssetId(item);
     if (id == null) return;
     final previousItems = _items == null
         ? null
@@ -1371,6 +1380,23 @@ class _AssetListCardState extends State<_AssetListCard> {
         await _loadItems(showLoading: false);
       }
     }
+  }
+
+  Future<int?> _resolveCurrentAssetId(AssetItem item) async {
+    final id = item.id;
+    if (id != null) {
+      final byId = await AppDatabase.instance.fetchAssetById(id);
+      if (byId?.id != null) return byId!.id;
+    }
+
+    final clientId = item.clientId;
+    if (clientId != null && clientId.trim().isNotEmpty) {
+      final byClientId = await AppDatabase.instance.fetchAssetByClientId(
+        clientId,
+      );
+      if (byClientId?.id != null) return byClientId!.id;
+    }
+    return null;
   }
 
   @override
@@ -2079,7 +2105,7 @@ class _DiagnosisScoreDonut extends StatelessWidget {
             '$score',
             style: context.typography.cardTitle.copyWith(
               fontSize: context.fontSizes.s16,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

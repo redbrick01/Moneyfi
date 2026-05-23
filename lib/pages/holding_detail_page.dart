@@ -157,18 +157,34 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   }
 
   Future<void> _deleteHolding(HoldingItem holding) async {
-    if (holding.id == null) return;
+    final currentHolding = await _resolveCurrentHolding(holding);
+    final holdingId = currentHolding?.id;
+    if (holdingId == null) return;
     final confirmed = await _confirmDelete(
       title: '보유 종목 삭제',
       message: '${holding.name} 종목을 삭제하시겠습니까?',
     );
     if (confirmed != true) return;
-    await AppDatabase.instance.deleteHoldingItem(holding.id!);
+    await AppDatabase.instance.deleteHoldingItem(holdingId);
     if (SyncService.instance.canSync) {
       await SyncService.instance.syncNow(reason: 'delete_holding');
     }
     if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  Future<HoldingItem?> _resolveCurrentHolding(HoldingItem holding) async {
+    final id = holding.id;
+    if (id != null) {
+      final byId = await AppDatabase.instance.fetchHoldingById(id);
+      if (byId != null) return byId;
+    }
+
+    final clientId = holding.clientId;
+    if (clientId != null && clientId.trim().isNotEmpty) {
+      return AppDatabase.instance.fetchHoldingByClientId(clientId);
+    }
+    return null;
   }
 
   Future<void> _openTransactionForm(
@@ -192,6 +208,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
         builder: (_) => TransactionFormPage(
           assetId: assetId,
           holdingId: holdingId,
+          holdingClientId: holding.clientId,
           item: item,
           defaultName: holding.name,
         ),
@@ -395,7 +412,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                   displayHolding.value,
                                   style: context.typography.heroNumber.copyWith(
                                     fontSize: 32,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w600,
                                     height: 1,
                                   ),
                                   textAlign: TextAlign.right,
@@ -822,7 +839,7 @@ class _HoldingHeroDeltaMetricRow extends StatelessWidget {
           value,
           style: context.typography.caption.copyWith(
             fontSize: context.fontSizes.s16,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             color: moneyfyValueColor(
               value,
               defaultColor: MoneyfyPalette.secondaryText,
@@ -1462,7 +1479,7 @@ class _WeekRangeBar extends StatelessWidget {
                                 softWrap: false,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: MoneyfyPalette.white,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -1496,14 +1513,14 @@ class _WeekRangeBar extends StatelessWidget {
                 lowLabel,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: MoneyfyPalette.secondaryText,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 highLabel,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: MoneyfyPalette.secondaryText,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -1567,7 +1584,7 @@ class _FundComponentRow extends StatelessWidget {
               item.weight,
               style: theme.textTheme.titleMedium?.copyWith(
                 color: MoneyfyPalette.ink,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 4),
@@ -1622,7 +1639,7 @@ class _MetricTile extends StatelessWidget {
             value,
             style: theme.textTheme.titleMedium?.copyWith(
               color: moneyfyValueColor(value),
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -1705,7 +1722,7 @@ class _TransactionRow extends StatelessWidget {
                             transaction.type,
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: typeStyle.textColor,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -1725,7 +1742,7 @@ class _TransactionRow extends StatelessWidget {
                         _holdingAmountSign(transaction, formattedAmount),
                         defaultColor: MoneyfyPalette.ink,
                       ),
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),

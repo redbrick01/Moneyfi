@@ -318,12 +318,28 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
         note: noteController.text.trim(),
       );
     } else {
+      final currentItem = item.id == null
+          ? null
+          : await AppDatabase.instance.fetchHoldingById(item.id!);
+      final fallbackItem =
+          currentItem ??
+          (item.clientId == null
+              ? null
+              : await AppDatabase.instance.fetchHoldingByClientId(
+                  item.clientId!,
+                ));
+      final itemId = fallbackItem?.id ?? item.id;
+      if (itemId == null) {
+        throw StateError('보유 종목 정보를 찾을 수 없습니다.');
+      }
       await AppDatabase.instance.updateHoldingItem(
         HoldingItem(
-          id: item.id,
-          assetId: item.assetId,
-          assetTitle: item.assetTitle,
-          isHidden: item.isHidden,
+          id: itemId,
+          clientId: fallbackItem?.clientId ?? item.clientId,
+          assetId: fallbackItem?.assetId ?? item.assetId,
+          assetTitle: fallbackItem?.assetTitle ?? item.assetTitle,
+          assetType: fallbackItem?.assetType ?? item.assetType,
+          isHidden: fallbackItem?.isHidden ?? item.isHidden,
           currencyCode: selectedCurrencyCode,
           exchangeCode: selectedCurrencyCode == 'USD'
               ? selectedExchangeCode
@@ -334,7 +350,7 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
           averagePrice: averagePrice,
           currentPrice: currentPrice,
           note: noteController.text.trim(),
-          transactions: item.transactions,
+          transactions: fallbackItem?.transactions ?? item.transactions,
         ),
       );
     }
@@ -372,7 +388,7 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
                       '통화',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: MoneyfyPalette.tertiaryText,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -392,7 +408,7 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
                         '거래소',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: MoneyfyPalette.tertiaryText,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -526,7 +542,7 @@ class _MarketItemSearchField extends StatelessWidget {
             '종목 검색',
             style: theme.textTheme.bodySmall?.copyWith(
               color: MoneyfyPalette.tertiaryText,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
@@ -622,7 +638,7 @@ class _MarketItemSearchField extends StatelessWidget {
                 color: message!.startsWith('선택됨')
                     ? MoneyfyPalette.primary
                     : MoneyfyPalette.tertiaryText,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -690,7 +706,7 @@ class _MarketSearchResultTile extends StatelessWidget {
                     result.name,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: MoneyfyPalette.ink,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -698,7 +714,7 @@ class _MarketSearchResultTile extends StatelessWidget {
                     result.subtitle,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: MoneyfyPalette.tertiaryText,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -709,7 +725,7 @@ class _MarketSearchResultTile extends StatelessWidget {
               result.priceLabel,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: MoneyfyPalette.primary,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

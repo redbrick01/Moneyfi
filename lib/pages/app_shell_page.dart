@@ -257,31 +257,14 @@ class _FloatingTabBar extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Material(
-          color: colorScheme.surfaceContainer,
-          elevation: 2,
+          color: colorScheme.surface.withValues(alpha: 0.92),
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(999),
             side: BorderSide(color: colorScheme.outlineVariant),
           ),
           child: Stack(
             children: [
-              Positioned(
-                left: 18,
-                right: 18,
-                top: 0,
-                child: Container(
-                  height: 1,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        colorScheme.surfaceContainer.withValues(alpha: 0),
-                        colorScheme.onSurface.withValues(alpha: 0.1),
-                        colorScheme.surfaceContainer.withValues(alpha: 0),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 child: Row(
@@ -322,8 +305,9 @@ class _FloatingTabBarItem extends StatelessWidget {
     final labelStyle = TextStyle(
       fontSize: 11,
       height: 1.2,
-      color: isSelected ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
-      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+      letterSpacing: -0.12,
+      color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w400,
     );
 
     return Padding(
@@ -334,10 +318,8 @@ class _FloatingTabBarItem extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            color: isSelected
-                ? colorScheme.surfaceContainerHighest
-                : colorScheme.surfaceContainer.withValues(alpha: 0),
+            borderRadius: BorderRadius.circular(999),
+            color: isSelected ? colorScheme.primary : Colors.transparent,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -346,16 +328,14 @@ class _FloatingTabBarItem extends StatelessWidget {
                 width: 34,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? colorScheme.surfaceContainerHigh
-                      : colorScheme.surfaceContainer.withValues(alpha: 0),
+                  color: isSelected ? colorScheme.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
                   isSelected ? item.selectedIcon : item.icon,
                   size: 19,
                   color: isSelected
-                      ? colorScheme.onSurface
+                      ? colorScheme.onPrimary
                       : colorScheme.onSurfaceVariant,
                 ),
               ),

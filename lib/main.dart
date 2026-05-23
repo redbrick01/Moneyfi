@@ -39,7 +39,8 @@ class MoneyfyApp extends StatelessWidget {
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.light,
       scrollBehavior: const _MoneyfyScrollBehavior(),
-      builder: (context, child) => _scaledTextApp(context: context, child: child),
+      builder: (context, child) =>
+          _scaledTextApp(context: context, child: child),
       home: const AppShellPage(),
     );
   }
@@ -59,7 +60,8 @@ class StartupErrorApp extends StatelessWidget {
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.light,
       scrollBehavior: const _MoneyfyScrollBehavior(),
-      builder: (context, child) => _scaledTextApp(context: context, child: child),
+      builder: (context, child) =>
+          _scaledTextApp(context: context, child: child),
       home: Builder(
         builder: (context) {
           return Scaffold(
@@ -106,9 +108,7 @@ class _MoneyfyScrollBehavior extends MaterialScrollBehavior {
 Widget _scaledTextApp({required BuildContext context, required Widget? child}) {
   final mediaQuery = MediaQuery.of(context);
   return MediaQuery(
-    data: mediaQuery.copyWith(
-      textScaler: const TextScaler.linear(0.94),
-    ),
+    data: mediaQuery.copyWith(textScaler: const TextScaler.linear(0.94)),
     child: child ?? const SizedBox.shrink(),
   );
 }

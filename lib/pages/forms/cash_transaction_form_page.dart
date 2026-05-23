@@ -19,12 +19,14 @@ class CashTransactionFormPage extends StatefulWidget {
     super.key,
     required this.assetId,
     required this.holdingId,
+    this.holdingClientId,
     this.item,
     this.defaultName,
   });
 
   final int assetId;
   final int holdingId;
+  final String? holdingClientId;
   final TransactionItem? item;
   final String? defaultName;
 
@@ -108,11 +110,12 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     });
 
     try {
+      final currentHoldingId = await _resolveCurrentHoldingId();
       final item = widget.item;
       if (item == null && transactionType == '이체') {
         await AppDatabase.instance.createCashTransfer(
           assetId: widget.assetId,
-          sourceHoldingId: widget.holdingId,
+          sourceHoldingId: currentHoldingId,
           targetHoldingId: selectedTransferTargetHoldingId!,
           date: dateController.text.trim(),
           name: nameController.text.trim(),
@@ -121,7 +124,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
       } else if (item == null && transactionType == '환전') {
         await AppDatabase.instance.createCashExchange(
           assetId: widget.assetId,
-          sourceHoldingId: widget.holdingId,
+          sourceHoldingId: currentHoldingId,
           date: dateController.text.trim(),
           name: nameController.text.trim(),
           amount: amountController.text.trim(),
@@ -130,7 +133,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
       } else if (item == null) {
         await AppDatabase.instance.createTransaction(
           assetId: widget.assetId,
-          holdingId: widget.holdingId,
+          holdingId: currentHoldingId,
           date: dateController.text.trim(),
           type: transactionType,
           name: nameController.text.trim(),
@@ -141,6 +144,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
         await AppDatabase.instance.updateTransactionItem(
           TransactionItem(
             id: item.id,
+            clientId: item.clientId,
             assetId: item.assetId,
             holdingId: item.holdingId,
             date: dateController.text.trim(),
@@ -189,10 +193,36 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     return value;
   }
 
-  Future<void> _loadCashAccountOptions() async {
-    final loadedSourceHolding = await AppDatabase.instance.fetchHoldingById(
+  Future<int> _resolveCurrentHoldingId() async {
+    final holdingById = await AppDatabase.instance.fetchHoldingById(
       widget.holdingId,
     );
+    if (holdingById?.id != null) return holdingById!.id!;
+
+    final clientId = widget.holdingClientId;
+    if (clientId != null && clientId.trim().isNotEmpty) {
+      final holdingByClientId = await AppDatabase.instance
+          .fetchHoldingByClientId(clientId);
+      if (holdingByClientId?.id != null) return holdingByClientId!.id!;
+    }
+
+    throw StateError('현금 계좌를 찾을 수 없습니다.');
+  }
+
+  Future<void> _loadCashAccountOptions() async {
+    HoldingItem? loadedSourceHolding;
+    final clientId = widget.holdingClientId;
+    loadedSourceHolding = await AppDatabase.instance.fetchHoldingById(
+      widget.holdingId,
+    );
+    if (loadedSourceHolding == null &&
+        clientId != null &&
+        clientId.trim().isNotEmpty) {
+      loadedSourceHolding = await AppDatabase.instance.fetchHoldingByClientId(
+        clientId,
+      );
+    }
+    final sourceHoldingId = loadedSourceHolding?.id ?? widget.holdingId;
     final sourceCurrencyCode = loadedSourceHolding?.currencyCode;
     final assets = await AppDatabase.instance.fetchAssets();
     final options = assets
@@ -201,7 +231,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
               .where(
                 (holding) =>
                     (holding.id ?? 0) < 0 &&
-                    holding.id != widget.holdingId &&
+                    holding.id != sourceHoldingId &&
                     (sourceCurrencyCode == null ||
                         holding.currencyCode == sourceCurrencyCode),
               )
@@ -267,7 +297,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
                 '거래 유형',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: MoneyfyPalette.tertiaryText,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 10),
@@ -354,12 +384,12 @@ class _TransferTargetField extends StatelessWidget {
             '이체 계좌',
             style: theme.textTheme.bodySmall?.copyWith(
               color: MoneyfyPalette.tertiaryText,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
           InkWell(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(9999),
             onTap: () async {
               final selected = await showModalBottomSheet<int>(
                 context: context,
@@ -376,8 +406,8 @@ class _TransferTargetField extends StatelessWidget {
             child: Ink(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               decoration: BoxDecoration(
-                color: MoneyfyPalette.surfaceMuted,
-                borderRadius: BorderRadius.circular(22),
+                color: MoneyfyPalette.surface,
+                borderRadius: BorderRadius.circular(9999),
                 border: Border.all(color: MoneyfyPalette.border),
               ),
               child: Row(
@@ -422,7 +452,7 @@ class _TransferTargetSheet extends StatelessWidget {
       child: Container(
         decoration: const BoxDecoration(
           color: MoneyfyPalette.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -476,7 +506,7 @@ class _TransferTargetOptionTile extends StatelessWidget {
     final theme = Theme.of(context);
 
     return InkWell(
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       onTap: onTap,
       child: Ink(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -484,7 +514,7 @@ class _TransferTargetOptionTile extends StatelessWidget {
           color: isSelected
               ? MoneyfyPalette.accentSoft
               : MoneyfyPalette.surface,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isSelected ? MoneyfyPalette.accent : MoneyfyPalette.border,
           ),

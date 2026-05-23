@@ -418,7 +418,7 @@ class _AnnualGrowthSummaryCard extends StatelessWidget {
                 _formatSignedCurrency(bundle.annualGrowthAmount),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: growthColor,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -438,7 +438,7 @@ class _AnnualGrowthSummaryCard extends StatelessWidget {
                 _formatSignedPercent(bundle.annualGrowthRate),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: growthColor,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -558,7 +558,8 @@ _YearBundle _buildYearBundle({
   final assetSeries = assetKeys.map((assetKey) {
     final values = trendSnapshots.map((snapshot) {
       final totalForAsset =
-          (snapshotAssetTotals[snapshot.id] ?? const <String, double>{})[assetKey] ??
+          (snapshotAssetTotals[snapshot.id] ??
+              const <String, double>{})[assetKey] ??
           0;
       return totalForAsset / 1000000;
     }).toList();
@@ -676,7 +677,7 @@ class _SelectedValueRow extends StatelessWidget {
             month,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: MoneyfyPalette.ink,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
@@ -695,7 +696,7 @@ class _SelectedValueRow extends StatelessWidget {
                         text: '${item.label} ',
                         style: TextStyle(
                           color: item.color,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       TextSpan(
@@ -745,7 +746,7 @@ class _LegendTextItem extends StatelessWidget {
           '●',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: color,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(width: 4),

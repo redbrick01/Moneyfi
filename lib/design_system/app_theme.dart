@@ -42,6 +42,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: '.SF Pro Text',
       colorScheme: colorScheme,
       scaffoldBackgroundColor: _appBackgroundFor(brightness),
       textTheme: typography.toTextTheme(),
@@ -72,14 +73,14 @@ class AppTheme {
         ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: colorScheme.surfaceContainer,
+        backgroundColor: colorScheme.surface,
         selectedItemColor: colorScheme.primary,
         unselectedItemColor: colorScheme.onSurfaceVariant,
         selectedLabelStyle: typography.meta.copyWith(
           fontWeight: FontWeight.w600,
         ),
         unselectedLabelStyle: typography.caption,
-        elevation: elevation.emphasis,
+        elevation: 0,
       ),
       iconTheme: IconThemeData(
         color: colorScheme.onSurfaceVariant,
@@ -92,9 +93,7 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         floatingLabelBehavior: FloatingLabelBehavior.always,
         filled: true,
-        fillColor: brightness == Brightness.dark
-            ? colorScheme.surfaceContainerHigh
-            : colorScheme.surfaceContainerLowest,
+        fillColor: colorScheme.surface,
         labelStyle: typography.meta.copyWith(
           color: brightness == Brightness.dark
               ? colorScheme.onSurface
@@ -107,7 +106,7 @@ class AppTheme {
         ),
         errorStyle: typography.caption.copyWith(color: colorScheme.error),
         contentPadding: EdgeInsets.symmetric(
-          horizontal: spacing.md,
+          horizontal: 20,
           vertical: spacing.sm,
         ),
         border: outlineInputBorder,
@@ -126,8 +125,8 @@ class AppTheme {
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         side: BorderSide(color: colorScheme.outlineVariant),
-        selectedColor: colorScheme.secondaryContainer,
-        backgroundColor: colorScheme.surfaceContainer,
+        selectedColor: colorScheme.surface,
+        backgroundColor: colorScheme.surface,
         labelStyle: typography.meta,
         secondaryLabelStyle: typography.meta.copyWith(
           color: colorScheme.onSecondaryContainer,
@@ -137,7 +136,7 @@ class AppTheme {
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: VisualSpec.surface.overlay(brightness),
-        elevation: 2,
+        elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(VisualSpec.surface.radiusSheet),
         ),
@@ -147,7 +146,7 @@ class AppTheme {
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: VisualSpec.surface.overlay(brightness),
         surfaceTintColor: colorScheme.surfaceTint,
-        elevation: 2,
+        elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(VisualSpec.surface.radiusSheet),
@@ -161,19 +160,19 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: Size.fromHeight(48),
+          minimumSize: Size.fromHeight(44),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radius.rMd),
+            borderRadius: BorderRadius.circular(radius.rPill),
           ),
           textStyle: typography.button,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: Size.fromHeight(48),
+          minimumSize: Size.fromHeight(44),
           side: BorderSide(color: colorScheme.outlineVariant),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radius.rMd),
+            borderRadius: BorderRadius.circular(radius.rPill),
           ),
           textStyle: typography.button,
         ),
@@ -200,7 +199,7 @@ class AppTheme {
           }),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(radius.rMd),
+              borderRadius: BorderRadius.circular(radius.rPill),
             ),
           ),
         ),
@@ -218,15 +217,15 @@ class AppTheme {
         primary: VisualSpec.brand.seed,
         onPrimary: const Color(0xFFFFFFFF),
         primaryContainer: const Color(0xFFEAF2FF),
-        onPrimaryContainer: const Color(0xFF0A84FF),
-        secondary: const Color(0xFF5E5CE6),
+        onPrimaryContainer: const Color(0xFF0066CC),
+        secondary: const Color(0xFF0066CC),
         onSecondary: const Color(0xFFFFFFFF),
-        secondaryContainer: const Color(0xFFF0EEFF),
-        onSecondaryContainer: const Color(0xFF5E5CE6),
-        tertiary: const Color(0xFFFF9F0A),
-        onTertiary: const Color(0xFF111111),
-        tertiaryContainer: const Color(0xFFFFF3E0),
-        onTertiaryContainer: const Color(0xFFFF9F0A),
+        secondaryContainer: const Color(0xFFFAFAFC),
+        onSecondaryContainer: const Color(0xFF333333),
+        tertiary: const Color(0xFF0066CC),
+        onTertiary: const Color(0xFFFFFFFF),
+        tertiaryContainer: const Color(0xFFF0F0F0),
+        onTertiaryContainer: const Color(0xFF333333),
         surface: VisualSpec.brand.lightSurface,
         surfaceContainerLowest: const Color(0xFFFFFFFF),
         surfaceContainerLow: VisualSpec.brand.lightSurfaceLow,
@@ -235,7 +234,7 @@ class AppTheme {
         surfaceContainerHighest: VisualSpec.brand.lightSurfaceHighest,
         onSurface: VisualSpec.brand.lightTextPrimary,
         onSurfaceVariant: VisualSpec.brand.lightTextSecondary,
-        outline: const Color(0xFFE5E5EA),
+        outline: const Color(0xFFE0E0E0),
         outlineVariant: VisualSpec.brand.lightOutlineVariant,
         error: VisualSpec.brand.lightNegative,
         onError: const Color(0xFFFFFFFF),
@@ -245,7 +244,7 @@ class AppTheme {
     }
 
     return base.copyWith(
-      primary: VisualSpec.brand.seed,
+      primary: const Color(0xFF2997FF),
       onPrimary: const Color(0xFFFFFFFF),
       primaryContainer: const Color(0xFF0E355C),
       onPrimaryContainer: const Color(0xFFD9EAFF),

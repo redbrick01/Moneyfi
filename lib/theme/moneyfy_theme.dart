@@ -35,33 +35,36 @@ class MoneyfyTheme {
           ),
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.w700,
+          fontFamily: '.SF Pro Display',
+          fontSize: 34,
+          fontWeight: FontWeight.w600,
           color: MoneyfyPalette.ink,
-          letterSpacing: -0.7,
+          letterSpacing: -0.28,
         ),
         headlineSmall: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
+          fontFamily: '.SF Pro Display',
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
           color: MoneyfyPalette.ink,
-          letterSpacing: -0.5,
+          letterSpacing: 0.196,
         ),
         titleLarge: TextStyle(
-          fontSize: 18,
+          fontSize: 21,
           fontWeight: FontWeight.w600,
           color: MoneyfyPalette.ink,
-          letterSpacing: -0.2,
+          letterSpacing: 0.231,
         ),
         titleMedium: TextStyle(
-          fontSize: 15,
+          fontSize: 17,
           fontWeight: FontWeight.w600,
           color: MoneyfyPalette.ink,
-          letterSpacing: -0.1,
+          letterSpacing: -0.374,
         ),
         bodyMedium: TextStyle(
-          fontSize: 14,
+          fontSize: 17,
           color: MoneyfyPalette.secondaryText,
-          height: 1.5,
+          height: 1.47,
+          letterSpacing: -0.374,
         ),
         bodySmall: TextStyle(
           fontSize: 12,
@@ -70,7 +73,7 @@ class MoneyfyTheme {
         ),
         labelMedium: TextStyle(
           fontSize: 13,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w400,
           color: MoneyfyPalette.secondaryText,
         ),
       ),
@@ -108,21 +111,21 @@ class MoneyfyTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: MoneyfyPalette.surfaceMuted,
+        fillColor: MoneyfyPalette.surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(9999),
           borderSide: const BorderSide(color: MoneyfyPalette.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(9999),
           borderSide: const BorderSide(color: MoneyfyPalette.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(9999),
           borderSide: const BorderSide(
             color: MoneyfyPalette.accent,
             width: 1.4,
@@ -131,11 +134,11 @@ class MoneyfyTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: MoneyfyPalette.ink,
+          foregroundColor: MoneyfyPalette.primary,
           side: const BorderSide(color: MoneyfyPalette.border),
-          backgroundColor: MoneyfyPalette.surfaceMuted,
+          backgroundColor: MoneyfyPalette.surface,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(9999),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),

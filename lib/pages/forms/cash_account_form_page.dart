@@ -62,22 +62,37 @@ class _CashAccountFormPageState extends State<CashAccountFormPage> {
           balance: balance,
         );
       } else {
+        final currentItem = item.id == null
+            ? null
+            : await AppDatabase.instance.fetchHoldingById(item.id!);
+        final fallbackItem =
+            currentItem ??
+            (item.clientId == null
+                ? null
+                : await AppDatabase.instance.fetchHoldingByClientId(
+                    item.clientId!,
+                  ));
+        final itemId = fallbackItem?.id ?? item.id;
+        if (itemId == null) {
+          throw StateError('현금 계좌를 찾을 수 없습니다.');
+        }
         await AppDatabase.instance.updateHoldingItem(
           HoldingItem(
-            id: item.id,
-            assetId: item.assetId,
-            assetTitle: item.assetTitle,
-            assetType: item.assetType,
+            id: itemId,
+            clientId: fallbackItem?.clientId ?? item.clientId,
+            assetId: fallbackItem?.assetId ?? item.assetId,
+            assetTitle: fallbackItem?.assetTitle ?? item.assetTitle,
+            assetType: fallbackItem?.assetType ?? item.assetType,
             currencyCode: selectedCurrencyCode,
-            exchangeCode: item.exchangeCode,
+            exchangeCode: fallbackItem?.exchangeCode ?? item.exchangeCode,
             name: nameController.text.trim(),
-            symbol: item.symbol,
+            symbol: fallbackItem?.symbol ?? item.symbol,
             quantity: balance,
             averagePrice: balance,
             currentPrice: balance,
             note: noteController.text.trim(),
-            transactions: item.transactions,
-            isHidden: item.isHidden,
+            transactions: fallbackItem?.transactions ?? item.transactions,
+            isHidden: fallbackItem?.isHidden ?? item.isHidden,
           ),
         );
       }

@@ -243,7 +243,7 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
                     item.symbol,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: MoneyfyPalette.ink,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -256,7 +256,7 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: MoneyfyPalette.ink,
                       fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -361,7 +361,7 @@ class _CompanyIssueRow extends StatelessWidget {
                     title,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: MoneyfyPalette.ink,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -378,7 +378,7 @@ class _CompanyIssueRow extends StatelessWidget {
                     importanceStyle.label,
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: importanceStyle.color,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -472,7 +472,7 @@ class _CompanyOutlookRow extends StatelessWidget {
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: MoneyfyPalette.tertiaryText,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),

@@ -70,7 +70,7 @@ class TransactionRow extends StatelessWidget {
                     child: Text(
                       typeLabel,
                       style: context.typography.meta.copyWith(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),

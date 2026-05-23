@@ -58,30 +58,14 @@ class SectionCard extends StatelessWidget {
         alpha: brightness == Brightness.dark ? 0.44 : 0.20,
       ),
     };
-    final shadowColor = switch (variant) {
-      SectionCardVariant.raised => Colors.black.withValues(alpha: 0.10),
-      _ => Colors.black.withValues(alpha: 0.06),
-    };
-
     return Container(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            color.withValues(alpha: 0.98),
-            color,
-          ],
+        color: color,
+        border: Border.all(
+          color: borderColor,
+          width: VisualSpec.surface.borderWidth,
         ),
-        border: Border.all(color: borderColor, width: VisualSpec.surface.borderWidth),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor,
-            blurRadius: variant == SectionCardVariant.raised ? 18 : 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: ClipRRect(
         borderRadius: borderRadius,

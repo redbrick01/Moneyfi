@@ -38,7 +38,10 @@ class ImpactChips extends StatelessWidget {
         for (final item in visible) _ImpactChip(item: item),
         if (hiddenCount > 0)
           _ImpactChip(
-            item: ImpactChipData(label: '+$hiddenCount', icon: VisualSpec.icon.more),
+            item: ImpactChipData(
+              label: '+$hiddenCount',
+              icon: VisualSpec.icon.more,
+            ),
           ),
       ],
     );
@@ -80,7 +83,7 @@ class _ImpactChip extends StatelessWidget {
             item.label,
             style: context.typography.meta.copyWith(
               color: foreground,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

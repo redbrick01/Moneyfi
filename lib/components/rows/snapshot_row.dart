@@ -124,7 +124,9 @@ class SnapshotRow extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: MoneyfyPalette.surface,
                                 borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: MoneyfyPalette.border),
+                                border: Border.all(
+                                  color: MoneyfyPalette.border,
+                                ),
                               ),
                               child: Text(
                                 _formatPercent(deltaPercent!),
@@ -137,7 +139,7 @@ class SnapshotRow extends StatelessWidget {
                                         defaultColor:
                                             MoneyfyPalette.secondaryText,
                                       ),
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight: FontWeight.w600,
                                     ),
                               ),
                             ),

@@ -17,9 +17,14 @@ import 'forms/cash_account_form_page.dart';
 import 'forms/cash_transaction_form_page.dart';
 
 class CashAccountDetailPage extends StatefulWidget {
-  const CashAccountDetailPage({super.key, required this.holdingId});
+  const CashAccountDetailPage({
+    super.key,
+    required this.holdingId,
+    this.holdingClientId,
+  });
 
   final int holdingId;
+  final String? holdingClientId;
 
   @override
   State<CashAccountDetailPage> createState() => _CashAccountDetailPageState();
@@ -40,10 +45,17 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
 
   Future<HoldingItem?> _loadHoldingWithRetry() async {
     for (var attempt = 0; attempt < 3; attempt++) {
-      final holding = await AppDatabase.instance.fetchHoldingById(
+      final holdingById = await AppDatabase.instance.fetchHoldingById(
         widget.holdingId,
       );
-      if (holding != null) return holding;
+      if (holdingById != null) return holdingById;
+
+      final clientId = widget.holdingClientId;
+      if (clientId != null && clientId.trim().isNotEmpty) {
+        final holdingByClientId = await AppDatabase.instance
+            .fetchHoldingByClientId(clientId);
+        if (holdingByClientId != null) return holdingByClientId;
+      }
       if (attempt < 2) {
         await Future<void>.delayed(const Duration(milliseconds: 120));
       }
@@ -87,18 +99,34 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
   }
 
   Future<void> _deleteHolding(HoldingItem holding) async {
-    if (holding.id == null) return;
+    final currentHolding = await _resolveCurrentHolding(holding);
+    final holdingId = currentHolding?.id;
+    if (holdingId == null) return;
     final confirmed = await _confirmDelete(
       title: '현금 계좌 삭제',
       message: '${holding.name} 계좌를 삭제하시겠습니까?',
     );
     if (confirmed != true) return;
-    await AppDatabase.instance.deleteHoldingItem(holding.id!);
+    await AppDatabase.instance.deleteHoldingItem(holdingId);
     if (SyncService.instance.canSync) {
       await SyncService.instance.syncNow(reason: 'delete_cash_account');
     }
     if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  Future<HoldingItem?> _resolveCurrentHolding(HoldingItem holding) async {
+    final id = holding.id;
+    if (id != null) {
+      final byId = await AppDatabase.instance.fetchHoldingById(id);
+      if (byId != null) return byId;
+    }
+
+    final clientId = holding.clientId;
+    if (clientId != null && clientId.trim().isNotEmpty) {
+      return AppDatabase.instance.fetchHoldingByClientId(clientId);
+    }
+    return null;
   }
 
   Future<void> _openTransactionForm(
@@ -122,6 +150,7 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
         builder: (_) => CashTransactionFormPage(
           assetId: assetId,
           holdingId: holdingId,
+          holdingClientId: holding.clientId,
           item: item,
           defaultName: holding.name,
         ),
@@ -273,7 +302,7 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                             holding.value,
                             style: context.typography.heroNumber.copyWith(
                               fontSize: 32,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               height: 1,
                             ),
                             textAlign: TextAlign.right,
@@ -607,7 +636,7 @@ class _CashHeroDeltaMetricRow extends StatelessWidget {
           value,
           style: context.typography.caption.copyWith(
             fontSize: context.fontSizes.s16,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             color: moneyfyValueColor(
               value,
               defaultColor: MoneyfyPalette.secondaryText,

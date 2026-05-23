@@ -713,7 +713,7 @@ class _SnapshotEmbeddedCashAccountRow extends StatelessWidget {
               Text(
                 _formatSnapshotMoney(account.balance, account.currencyCode),
                 style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -745,7 +745,7 @@ class _SnapshotSectionLabel extends StatelessWidget {
         title,
         style: theme.textTheme.bodyMedium?.copyWith(
           color: MoneyfyPalette.secondaryText,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -1104,7 +1104,7 @@ class _SnapshotItemRow extends StatelessWidget {
               _formatCurrency(item.totalValuationAmount),
               style: theme.textTheme.titleMedium?.copyWith(
                 color: MoneyfyPalette.ink,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 4),
@@ -1299,7 +1299,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
                             holding.holdingSymbol,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: MoneyfyPalette.secondaryText,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -1321,7 +1321,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
                   _formatCurrency(holding.totalValuationAmount),
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: MoneyfyPalette.ink,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),

@@ -22,15 +22,11 @@ class KeyValueRow extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: context.spacing.xs / 2),
       child: Row(
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: context.typography.meta,
-            ),
-          ),
+          Expanded(child: Text(label, style: context.typography.meta)),
           SizedBox(width: context.spacing.sm),
           Flexible(
-            child: valueWidget ??
+            child:
+                valueWidget ??
                 Text(
                   value,
                   textAlign: TextAlign.right,

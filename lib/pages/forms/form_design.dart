@@ -64,9 +64,9 @@ class MoneyfyFormScaffold extends StatelessWidget {
                   }
                 : null,
             style: FilledButton.styleFrom(
-              backgroundColor: MoneyfyPalette.ink,
-              foregroundColor: MoneyfyPalette.background,
-              minimumSize: const Size.fromHeight(56),
+              backgroundColor: MoneyfyPalette.primary,
+              foregroundColor: MoneyfyPalette.onPrimary,
+              minimumSize: const Size.fromHeight(44),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(
                   MoneyfySpacing.controlRadius,
@@ -74,7 +74,7 @@ class MoneyfyFormScaffold extends StatelessWidget {
               ),
               textStyle: Theme.of(
                 context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w400),
             ),
             child: Text(isSaving ? '저장 중...' : actionLabel),
           ),
@@ -108,7 +108,7 @@ class MoneyfyFormSection extends StatelessWidget {
           Text(
             title,
             style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 12),
@@ -156,7 +156,7 @@ class MoneyfyFormInfoPanel extends StatelessWidget {
                   title,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: MoneyfyPalette.ink,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -230,7 +230,7 @@ class _MoneyfyLedgerPreviewRowView extends StatelessWidget {
             row.label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: MoneyfyPalette.tertiaryText,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -242,7 +242,7 @@ class _MoneyfyLedgerPreviewRowView extends StatelessWidget {
             textAlign: TextAlign.right,
             style: theme.textTheme.bodySmall?.copyWith(
               color: MoneyfyPalette.ink,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -280,7 +280,7 @@ class MoneyfyFormField extends StatelessWidget {
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: MoneyfyPalette.tertiaryText,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
@@ -296,21 +296,21 @@ class MoneyfyFormField extends StatelessWidget {
             decoration: InputDecoration(
               hintText: label,
               filled: true,
-              fillColor: MoneyfyPalette.surfaceMuted,
+              fillColor: MoneyfyPalette.surface,
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: maxLines == 1 ? 14 : 16,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(9999),
                 borderSide: const BorderSide(color: MoneyfyPalette.border),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(9999),
                 borderSide: const BorderSide(color: MoneyfyPalette.border),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(9999),
                 borderSide: const BorderSide(
                   color: MoneyfyPalette.accent,
                   width: 1.4,
@@ -356,12 +356,12 @@ class MoneyfyChoiceWrap<T> extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: option == value
-                    ? MoneyfyPalette.ink
-                    : MoneyfyPalette.surfaceMuted,
+                    ? MoneyfyPalette.primary
+                    : MoneyfyPalette.surface,
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
                   color: option == value
-                      ? MoneyfyPalette.ink
+                      ? MoneyfyPalette.primary
                       : MoneyfyPalette.border,
                 ),
               ),
@@ -376,9 +376,9 @@ class MoneyfyChoiceWrap<T> extends StatelessWidget {
                     labelBuilder(option),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: option == value
-                          ? MoneyfyPalette.background
+                          ? MoneyfyPalette.onPrimary
                           : MoneyfyPalette.secondaryText,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ],

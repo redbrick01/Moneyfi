@@ -163,118 +163,121 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '종합 뉴스',
-                      style: theme.textTheme.titleMedium?.copyWith(fontSize: 22),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '종합 뉴스',
+                    style: theme.textTheme.titleMedium?.copyWith(fontSize: 22),
+                  ),
+                ),
+                if (summary?.newsCount != null)
+                  Text(
+                    '${summary!.newsCount}건',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: MoneyfyPalette.tertiaryText,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (summary?.newsCount != null)
+              ],
+            ),
+            if (summary?.updatedAt != null ||
+                (summary?.model ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (summary?.updatedAt != null)
                     Text(
-                      '${summary!.newsCount}건',
+                      '업데이트 ${_formatSummaryDate(summary!.updatedAt!)}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontSize: 11,
                         color: MoneyfyPalette.tertiaryText,
-                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  if ((summary?.model ?? '').trim().isNotEmpty)
+                    Text(
+                      '(${summary!.model})',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: MoneyfyPalette.tertiaryText,
                       ),
                     ),
                 ],
               ),
-              if (summary?.updatedAt != null ||
-                  (summary?.model ?? '').trim().isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    if (summary?.updatedAt != null)
-                      Text(
-                        '업데이트 ${_formatSummaryDate(summary!.updatedAt!)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 11,
-                          color: MoneyfyPalette.tertiaryText,
-                        ),
-                      ),
-                    if ((summary?.model ?? '').trim().isNotEmpty)
-                      Text(
-                        '(${summary!.model})',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 11,
-                          color: MoneyfyPalette.tertiaryText,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 16),
-              if (summary == null)
-                SizedBox(
-                  width: double.infinity,
-                  child: Text(
-                    '표시할 마켓 뉴스 요약이 없습니다.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
-                    ),
-                  ),
-                )
-              else ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
-              decoration: _innerNewsCardDecoration(context),
-              child: Text(
-                summary.marketSummary,
-                style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 15,
-                      color: MoneyfyPalette.ink,
-                      fontWeight: FontWeight.w700,
-                      height: 1.4,
-                    ),
+            ],
+            const SizedBox(height: 16),
+            if (summary == null)
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  '표시할 마켓 뉴스 요약이 없습니다.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: MoneyfyPalette.tertiaryText,
                   ),
                 ),
-                if (hasDetails) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Center(
-                      child: SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: IconButton(
-                          onPressed: () =>
-                              setState(() => _isExpanded = !_isExpanded),
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          splashRadius: 16,
-                          iconSize: 20,
-                          icon: AnimatedRotation(
-                            turns: _isExpanded ? 0.5 : 0,
-                            duration: const Duration(milliseconds: 200),
-                            child: const Icon(Icons.keyboard_arrow_down_rounded),
-                          ),
-                          tooltip: _isExpanded ? '세부 기사 요약 접기' : '세부 기사 요약 펼치기',
-                          color: MoneyfyPalette.tertiaryText,
+              )
+            else ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 18,
+                ),
+                decoration: _innerNewsCardDecoration(context),
+                child: Text(
+                  summary.marketSummary,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontSize: 15,
+                    color: MoneyfyPalette.ink,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              if (hasDetails) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Center(
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: IconButton(
+                        onPressed: () =>
+                            setState(() => _isExpanded = !_isExpanded),
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        splashRadius: 16,
+                        iconSize: 20,
+                        icon: AnimatedRotation(
+                          turns: _isExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(Icons.keyboard_arrow_down_rounded),
                         ),
+                        tooltip: _isExpanded ? '세부 기사 요약 접기' : '세부 기사 요약 펼치기',
+                        color: MoneyfyPalette.tertiaryText,
                       ),
                     ),
                   ),
-                ],
-                if (_isExpanded && summary.issues.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  for (var index = 0; index < summary.issues.length; index++) ...[
-                    _MarketIssueTile(item: summary.issues[index]),
-                    if (index != summary.issues.length - 1)
-                      const SizedBox(height: 12),
-                  ],
-                ],
-                if (_isExpanded && _hasOverallAssessment(summary)) ...[
-                  const SizedBox(height: 16),
-                  _OverallAssessmentCard(summary: summary),
+                ),
+              ],
+              if (_isExpanded && summary.issues.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                for (var index = 0; index < summary.issues.length; index++) ...[
+                  _MarketIssueTile(item: summary.issues[index]),
+                  if (index != summary.issues.length - 1)
+                    const SizedBox(height: 12),
                 ],
               ],
+              if (_isExpanded && _hasOverallAssessment(summary)) ...[
+                const SizedBox(height: 16),
+                _OverallAssessmentCard(summary: summary),
+              ],
+            ],
           ],
         ),
       ),
@@ -329,7 +332,7 @@ class _MarketIssueTile extends StatelessWidget {
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontSize: 15,
                     color: MoneyfyPalette.ink,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -344,7 +347,7 @@ class _MarketIssueTile extends StatelessWidget {
                   importanceStyle.label,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: importanceStyle.color,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -409,7 +412,7 @@ class _ImpactRow extends StatelessWidget {
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontSize: 11,
                   color: MoneyfyPalette.ink,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -452,7 +455,7 @@ class _OverallAssessmentCard extends StatelessWidget {
             style: theme.textTheme.titleMedium?.copyWith(
               fontSize: 16,
               color: MoneyfyPalette.ink,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           if (summary.keyRisk.trim().isNotEmpty) ...[
@@ -500,7 +503,7 @@ class _AssessmentBlock extends StatelessWidget {
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontSize: 11,
                   color: MoneyfyPalette.ink,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

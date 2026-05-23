@@ -14,29 +14,29 @@ class _BrandSpec {
   const _BrandSpec();
 
   // Seed
-  final Color seedColor = const Color(0xFF0A84FF);
+  final Color seedColor = const Color(0xFF0066CC);
   Color get seed => seedColor;
 
   // Light neutrals
-  final Color lightBg = const Color(0xFFF2F2F7);
+  final Color lightBg = const Color(0xFFF5F5F7);
   final Color lightSurface = const Color(0xFFFFFFFF);
   final Color lightSurfaceLow = const Color(0xFFFFFFFF);
-  final Color lightSurfaceContainer = const Color(0xFFF7F7F8);
-  final Color lightSurfaceHigh = const Color(0xFFF2F2F7);
-  final Color lightSurfaceHighest = const Color(0xFFF2F2F7);
-  final Color lightTextPrimary = const Color(0xFF1C1C1E);
-  final Color lightTextSecondary = const Color(0xFF3A3A3C);
-  final Color lightOutlineVariant = const Color(0xFFE5E5EA);
+  final Color lightSurfaceContainer = const Color(0xFFFAFAFC);
+  final Color lightSurfaceHigh = const Color(0xFFF5F5F7);
+  final Color lightSurfaceHighest = const Color(0xFFF0F0F0);
+  final Color lightTextPrimary = const Color(0xFF1D1D1F);
+  final Color lightTextSecondary = const Color(0xFF333333);
+  final Color lightOutlineVariant = const Color(0xFFE0E0E0);
 
   // Dark neutrals
-  final Color darkBg = const Color(0xFF0B0B0C);
-  final Color darkSurface = const Color(0xFF111113);
-  final Color darkSurfaceLow = const Color(0xFF141417);
-  final Color darkSurfaceContainer = const Color(0xFF1A1A1E);
-  final Color darkSurfaceHigh = const Color(0xFF232329);
-  final Color darkSurfaceHighest = const Color(0xFF2C2C34);
-  final Color darkTextPrimary = const Color(0xFFF5F5F7);
-  final Color darkTextSecondary = const Color(0xFFC3C7D1);
+  final Color darkBg = const Color(0xFF000000);
+  final Color darkSurface = const Color(0xFF252527);
+  final Color darkSurfaceLow = const Color(0xFF272729);
+  final Color darkSurfaceContainer = const Color(0xFF2A2A2C);
+  final Color darkSurfaceHigh = const Color(0xFF333333);
+  final Color darkSurfaceHighest = const Color(0xFF3A3A3C);
+  final Color darkTextPrimary = const Color(0xFFFFFFFF);
+  final Color darkTextSecondary = const Color(0xFFCCCCCC);
   final Color darkOutlineVariant = const Color(0xFF454B57);
 
   // Status - Positive
@@ -68,14 +68,14 @@ class _BrandSpec {
   final double darkOverlayPressedAlpha = 0.16;
 
   // Chart palette (8)
-  final Color chart01 = const Color(0xFF0A84FF);
-  final Color chart02 = const Color(0xFF5E5CE6);
-  final Color chart03 = const Color(0xFF30B0C7);
-  final Color chart04 = const Color(0xFF34C759);
-  final Color chart05 = const Color(0xFFFF9F0A);
-  final Color chart06 = const Color(0xFFFF375F);
-  final Color chart07 = const Color(0xFF8E8E93);
-  final Color chart08 = const Color(0xFFBF5AF2);
+  final Color chart01 = const Color(0xFF0066CC);
+  final Color chart02 = const Color(0xFF2997FF);
+  final Color chart03 = const Color(0xFF1D1D1F);
+  final Color chart04 = const Color(0xFF333333);
+  final Color chart05 = const Color(0xFF7A7A7A);
+  final Color chart06 = const Color(0xFFD2D2D7);
+  final Color chart07 = const Color(0xFFE0E0E0);
+  final Color chart08 = const Color(0xFFF0F0F0);
 
   List<Color> get chartPalette => <Color>[
     chart01,
@@ -145,15 +145,15 @@ class _BrandSpec {
 class _SurfaceSpec {
   const _SurfaceSpec();
 
-  final double radiusCard = 24;
-  final double radiusSheet = 16;
+  final double radiusCard = 18;
+  final double radiusSheet = 18;
   final double borderWidth = 1;
   final double elevationBase = 0;
   final double elevationHero = 1;
   final double shadowBlurMax = 10;
-  final double paddingCard = 16;
+  final double paddingCard = 24;
   final double paddingDense = 12;
-  final double sectionGap = 24;
+  final double sectionGap = 32;
   final double rowHeight = 56;
   final double rowHeightDense = 64;
   final double dividerThickness = 1;
@@ -166,20 +166,20 @@ class _SurfaceSpec {
 
   Color cardBase(Brightness brightness) {
     return brightness == Brightness.dark
-        ? const Color(0xFF111113)
+        ? const Color(0xFF272729)
         : const Color(0xFFFFFFFF);
   }
 
   Color cardRaised(Brightness brightness) {
     return brightness == Brightness.dark
-        ? const Color(0xFF1A1A1E)
-        : const Color(0xFFF7F7FA);
+        ? const Color(0xFF2A2A2C)
+        : const Color(0xFFFAFAFC);
   }
 
   Color overlay(Brightness brightness) {
     return brightness == Brightness.dark
-        ? const Color(0xFF232329)
-        : const Color(0xFFF3F4F6);
+        ? const Color(0xFF252527)
+        : const Color(0xFFF5F5F7);
   }
 }
 

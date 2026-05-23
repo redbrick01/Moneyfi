@@ -19,11 +19,11 @@ class AppSpacing extends ThemeExtension<AppSpacing> {
     : xs = 8,
       sm = 12,
       md = VisualSpec.surface.paddingCard,
-      lg = 20,
+      lg = 24,
       xl = VisualSpec.surface.sectionGap,
-      xxl = 28,
-      xxxl = 32,
-      pageTop = 12,
+      xxl = 48,
+      xxxl = 80,
+      pageTop = 24,
       pageBottomInset = 132;
 
   final double xs;
@@ -95,14 +95,14 @@ class AppFontSizes extends ThemeExtension<AppFontSizes> {
   });
 
   const AppFontSizes.standard()
-      : s10 = 10,
-        s12 = 12,
-        s14 = 14,
-        s16 = 16,
-        s18 = 18,
-        s20 = 20,
-        s22 = 22,
-        s24 = 24;
+    : s10 = 10,
+      s12 = 12,
+      s14 = 14,
+      s16 = 16,
+      s18 = 18,
+      s20 = 20,
+      s22 = 22,
+      s24 = 24;
 
   final double s10;
   final double s12;
@@ -160,14 +160,14 @@ class AppCardWidths extends ThemeExtension<AppCardWidths> {
   });
 
   const AppCardWidths.standard()
-      : level1Factor = 1.0,
-        level2Factor = 1.0,
-        level3Factor = 1.0;
+    : level1Factor = 1.0,
+      level2Factor = 1.0,
+      level3Factor = 1.0;
 
   const AppCardWidths.level1Only()
-      : level1Factor = 1.0,
-        level2Factor = 1.0,
-        level3Factor = 1.0;
+    : level1Factor = 1.0,
+      level2Factor = 1.0,
+      level3Factor = 1.0;
 
   final double level1Factor;
   final double level2Factor;
@@ -215,7 +215,7 @@ class AppRadius extends ThemeExtension<AppRadius> {
     required this.rPill,
   });
 
-  const AppRadius.standard() : rSm = 8, rMd = 12, rLg = 16, rPill = 999;
+  const AppRadius.standard() : rSm = 8, rMd = 11, rLg = 18, rPill = 9999;
 
   final double rSm;
   final double rMd;
@@ -251,7 +251,7 @@ class AppElevation extends ThemeExtension<AppElevation> {
     required this.hero,
   });
 
-  const AppElevation.standard() : base = 0, emphasis = 1, hero = 2;
+  const AppElevation.standard() : base = 0, emphasis = 0, hero = 0;
 
   final double base;
   final double emphasis;
@@ -285,32 +285,10 @@ class AppShadows extends ThemeExtension<AppShadows> {
   });
 
   factory AppShadows.standard(ColorScheme colorScheme) {
-    final base = colorScheme.onSurface;
-    return AppShadows(
-      level1: <BoxShadow>[
-        BoxShadow(
-          color: base.withValues(alpha: 0.05),
-          blurRadius: 8,
-          spreadRadius: 0,
-          offset: const Offset(0, 2),
-        ),
-      ],
-      level2: <BoxShadow>[
-        BoxShadow(
-          color: base.withValues(alpha: 0.08),
-          blurRadius: 16,
-          spreadRadius: 0,
-          offset: const Offset(0, 4),
-        ),
-      ],
-      level3: <BoxShadow>[
-        BoxShadow(
-          color: base.withValues(alpha: 0.14),
-          blurRadius: 22,
-          spreadRadius: 0,
-          offset: const Offset(0, 2),
-        ),
-      ],
+    return const AppShadows(
+      level1: <BoxShadow>[],
+      level2: <BoxShadow>[],
+      level3: <BoxShadow>[],
     );
   }
 

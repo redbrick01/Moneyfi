@@ -23,12 +23,14 @@ class TransactionFormPage extends StatefulWidget {
     super.key,
     required this.assetId,
     required this.holdingId,
+    this.holdingClientId,
     this.item,
     this.defaultName,
   });
 
   final int assetId;
   final int holdingId;
+  final String? holdingClientId;
   final TransactionItem? item;
   final String? defaultName;
 
@@ -102,10 +104,13 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
 
     try {
       final item = widget.item;
+      final currentHoldingId = item == null
+          ? await _resolveCurrentHoldingId()
+          : widget.holdingId;
       if (item == null) {
         await AppDatabase.instance.createTransaction(
           assetId: widget.assetId,
-          holdingId: widget.holdingId,
+          holdingId: currentHoldingId,
           date: dateController.text.trim(),
           type: transactionType,
           name: nameController.text.trim(),
@@ -116,6 +121,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
         await AppDatabase.instance.updateTransactionItem(
           TransactionItem(
             id: item.id,
+            clientId: item.clientId,
             assetId: item.assetId,
             holdingId: item.holdingId,
             date: dateController.text.trim(),
@@ -187,6 +193,22 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     return value;
   }
 
+  Future<int> _resolveCurrentHoldingId() async {
+    final holdingById = await AppDatabase.instance.fetchHoldingById(
+      widget.holdingId,
+    );
+    if (holdingById?.id != null) return holdingById!.id!;
+
+    final clientId = widget.holdingClientId;
+    if (clientId != null && clientId.trim().isNotEmpty) {
+      final holdingByClientId = await AppDatabase.instance
+          .fetchHoldingByClientId(clientId);
+      if (holdingByClientId?.id != null) return holdingByClientId!.id!;
+    }
+
+    throw StateError('보유 종목 정보를 찾을 수 없습니다.');
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<AssetItem?>(
@@ -213,7 +235,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                     '거래 유형',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: MoneyfyPalette.tertiaryText,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 10),

@@ -169,14 +169,14 @@ ButtonStyle _buttonStyle(
   final isDestructive = variant == _ButtonVariant.destructive;
   final background = switch (variant) {
     _ButtonVariant.primary => colorScheme.primary,
-    _ButtonVariant.secondary => colorScheme.secondaryContainer,
+    _ButtonVariant.secondary => colorScheme.surface,
     _ButtonVariant.ghost => Colors.transparent,
     _ButtonVariant.destructive => Colors.transparent,
   };
   final foreground = switch (variant) {
     _ButtonVariant.primary => colorScheme.onPrimary,
-    _ButtonVariant.secondary => colorScheme.onSecondaryContainer,
-    _ButtonVariant.ghost => colorScheme.onSurface,
+    _ButtonVariant.secondary => colorScheme.primary,
+    _ButtonVariant.ghost => colorScheme.primary,
     _ButtonVariant.destructive => colorScheme.error,
   };
   final disabledForeground = isGhost || isDestructive
@@ -191,19 +191,23 @@ ButtonStyle _buttonStyle(
       : VisualSpec.brand.lightOverlayPressedAlpha;
 
   return ButtonStyle(
-    minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
+    minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
     padding: WidgetStatePropertyAll(
-      EdgeInsets.symmetric(
-        horizontal: context.spacing.md,
-        vertical: context.spacing.sm,
-      ),
+      EdgeInsets.symmetric(horizontal: 22, vertical: 11),
     ),
     textStyle: WidgetStatePropertyAll(context.typography.button),
     shape: WidgetStatePropertyAll(
       RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(context.radius.rMd),
+        borderRadius: BorderRadius.circular(context.radius.rPill),
       ),
     ),
+    side: WidgetStateProperty.resolveWith((states) {
+      if (variant != _ButtonVariant.secondary) return BorderSide.none;
+      if (states.contains(WidgetState.disabled)) {
+        return BorderSide(color: colorScheme.outlineVariant);
+      }
+      return BorderSide(color: colorScheme.primary);
+    }),
     elevation: const WidgetStatePropertyAll(0),
     backgroundColor: WidgetStateProperty.resolveWith((states) {
       if (states.contains(WidgetState.disabled)) return disabledBackground;

@@ -4,9 +4,9 @@ import '../design_system/spec.dart';
 
 class MoneyfyPalette {
   // Core
-  static const Color primary = Color(0xFF0A84FF);
+  static const Color primary = Color(0xFF0066CC);
   static const Color primarySoft = Color(0xFFEAF2FF);
-  static const Color link = Color(0xFF0A84FF);
+  static const Color link = Color(0xFF0066CC);
   static const Color onPrimary = Color(0xFFFFFFFF);
 
   // Semantic
@@ -19,26 +19,26 @@ class MoneyfyPalette {
   static const Color errorStrong = Color(0xFFC83C3C);
   static const Color errorSoft = Color(0xFFD05A3A);
   static const Color errorBg = Color(0xFFFDECEC);
-  static const Color info = Color(0xFF0A84FF);
+  static const Color info = Color(0xFF0066CC);
   static const Color infoBg = Color(0xFFEAF2FF);
   static const Color accentPurple = Color(0xFF5E5CE6);
   static const Color accentPurpleBg = Color(0xFFF0EEFF);
 
   // Text
-  static const Color textPrimary = Color(0xFF1C1C1E);
-  static const Color textSecondary = Color(0xFF3A3A3C);
-  static const Color textTertiary = Color(0xFF8E8E93);
-  static const Color textMuted = Color(0xFF7C8B9A);
-  static const Color textOnDark = Color(0xFFF8FAFC);
-  static const Color textBlack = Color(0xFF111111);
+  static const Color textPrimary = Color(0xFF1D1D1F);
+  static const Color textSecondary = Color(0xFF333333);
+  static const Color textTertiary = Color(0xFF7A7A7A);
+  static const Color textMuted = Color(0xFF7A7A7A);
+  static const Color textOnDark = Color(0xFFFFFFFF);
+  static const Color textBlack = Color(0xFF1D1D1F);
 
   // Surface / Border
-  static const Color bgApp = Color(0xFFF2F2F7);
+  static const Color bgApp = Color(0xFFF5F5F7);
   static const Color bgSurface = Color(0xFFFFFFFF);
-  static const Color bgSurfaceMuted = Color(0xFFF7F7F8);
-  static const Color bgNeutralSoft = Color(0xFFF2F2F7);
-  static const Color border = Color(0xFFE5E5EA);
-  static const Color borderNeutral = Color(0xFFE5E5EA);
+  static const Color bgSurfaceMuted = Color(0xFFFAFAFC);
+  static const Color bgNeutralSoft = Color(0xFFF5F5F7);
+  static const Color border = Color(0xFFE0E0E0);
+  static const Color borderNeutral = Color(0xFFF0F0F0);
   static const Color borderSuccess = Color(0xFFB7E4C7);
   static const Color borderError = Color(0xFFF3C4C4);
   static const Color borderInfo = Color(0xFFC6D9FF);
@@ -48,11 +48,11 @@ class MoneyfyPalette {
   static const Color transparent = Color(0x00000000);
   static const Color black28 = Color(0x47000000);
   static const Color shadowMenu = Color(0x14000000);
-  static const Color shadowCard = Color(0x0A000000);
-  static const Color shadowFloating = Color(0x12000000);
+  static const Color shadowCard = Color(0x00000000);
+  static const Color shadowFloating = Color(0x00000000);
   static const Color glowFloating = Color(0x33FFFFFF);
-  static const Color glassTop = Color(0xF2FFFFFF);
-  static const Color glassBottom = Color(0xE6F2F2F7);
+  static const Color glassTop = Color(0xCCF5F5F7);
+  static const Color glassBottom = Color(0xCCF5F5F7);
   static const Color glassBorder = Color(0x80FFFFFF);
   static const Color glassHighlight = Color(0xCCFFFFFF);
   static const Color glassSelected = Color(0x33FFFFFF);
