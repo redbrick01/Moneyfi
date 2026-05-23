@@ -11,6 +11,7 @@ import '../components/transaction_history_list.dart';
 import '../design_system/spec.dart';
 import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
+import '../models/asset_item.dart';
 import '../services/market_data_service.dart';
 import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
@@ -92,11 +93,6 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
         .map(_normalizeSnapshotAssetTitle)
         .where((value) => value.isNotEmpty)
         .toSet();
-    final visibleHoldingIds = visibleAssets
-        .expand((asset) => asset.visibleHoldings)
-        .map((holding) => holding.id)
-        .whereType<int>()
-        .toSet();
     bool isVisibleSnapshotAsset(int? assetId, String assetTitle) {
       if (assetId != null && visibleAssetIds.contains(assetId)) {
         return true;
@@ -107,31 +103,29 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
     }
 
     final currentItems =
-        (await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates([
+        (await AppDatabase.instance.fetchDisplayPortfolioSnapshotItemsByDates([
               snapshotDate,
             ]))
             .where((item) {
               return isVisibleSnapshotAsset(item.assetId, item.assetTitle);
             })
             .toList(growable: false);
-    final currentHoldingItems =
+    final storedHoldingItems =
         (await AppDatabase.instance.fetchPortfolioSnapshotHoldingItemsByDates([
               snapshotDate,
             ]))
             .where((holding) {
-              if (!isVisibleSnapshotAsset(
+              return isVisibleSnapshotAsset(
                 holding.assetId,
                 holding.assetTitle,
-              )) {
-                return false;
-              }
-              if (holding.holdingSymbol.trim().isEmpty) return false;
-              final holdingId = holding.holdingId;
-              if (holdingId == null) return true;
-              return visibleHoldingIds.contains(holdingId) ||
-                  holding.holdingName.trim().isNotEmpty;
+              );
             })
             .toList(growable: false);
+    final currentHoldingItems = _withFallbackSnapshotHoldingItems(
+      storedHoldingItems: storedHoldingItems,
+      currentItems: currentItems,
+      visibleAssets: visibleAssets,
+    );
     final currentCashAccounts =
         (await AppDatabase.instance.fetchPortfolioSnapshotCashAccountsByDates([
               snapshotDate,
@@ -162,9 +156,9 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
         .fetchPortfolioSnapshotByDate(previousSnapshotDate);
     final previousItems = previousSnapshot == null
         ? const <DailyPortfolioSnapshotItem>[]
-        : (await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates([
-                previousSnapshotDate,
-              ]))
+        : (await AppDatabase.instance.fetchDisplayPortfolioSnapshotItemsByDates(
+                [previousSnapshotDate],
+              ))
               .where((item) {
                 return isVisibleSnapshotAsset(item.assetId, item.assetTitle);
               })
@@ -174,9 +168,9 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
         .fetchPortfolioSnapshotByDate(previousDaySnapshotDate);
     final previousDayItems = previousDaySnapshot == null
         ? const <DailyPortfolioSnapshotItem>[]
-        : (await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates([
-                previousDaySnapshotDate,
-              ]))
+        : (await AppDatabase.instance.fetchDisplayPortfolioSnapshotItemsByDates(
+                [previousDaySnapshotDate],
+              ))
               .where((item) {
                 return isVisibleSnapshotAsset(item.assetId, item.assetTitle);
               })
@@ -363,15 +357,20 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
     final holdingItemsByAssetKey =
         <String, List<DailyPortfolioSnapshotHoldingItem>>{};
     for (final holding in _currentHoldingItems) {
-      final key = _snapshotHoldingAssetKey(holding);
-      holdingItemsByAssetKey.putIfAbsent(key, () => []).add(holding);
+      for (final key in _snapshotHoldingAssetKeys(holding)) {
+        holdingItemsByAssetKey.putIfAbsent(key, () => []).add(holding);
+      }
     }
     final cashAccountsByAssetKey = <String, List<SnapshotCashAccountRecord>>{};
     for (final account in _currentCashAccounts) {
       final assetId = account.assetId;
-      if (assetId == null) continue;
-      final key = 'asset:$assetId';
-      cashAccountsByAssetKey.putIfAbsent(key, () => []).add(account);
+      final keys = {
+        if (assetId != null) 'asset:$assetId',
+        _snapshotAssetTitleKey(account.assetTitle),
+      };
+      for (final key in keys) {
+        cashAccountsByAssetKey.putIfAbsent(key, () => []).add(account);
+      }
     }
     final filteredTotalValue = filteredItems.fold<double>(
       0,
@@ -509,16 +508,14 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
                                       item,
                                     )],
                                 totalValue: filteredTotalValue,
-                                holdings:
-                                    holdingItemsByAssetKey[_snapshotAssetKey(
-                                      item,
-                                    )] ??
-                                    const [],
-                                cashAccounts:
-                                    cashAccountsByAssetKey[_snapshotAssetKey(
-                                      item,
-                                    )] ??
-                                    const [],
+                                holdings: _snapshotRowsForAsset(
+                                  holdingItemsByAssetKey,
+                                  item,
+                                ),
+                                cashAccounts: _snapshotRowsForAsset(
+                                  cashAccountsByAssetKey,
+                                  item,
+                                ),
                                 renderCashAccountsAsPrimaryList:
                                     item.assetTitle == '현금',
                                 isExpanded: _expandedAssetKeys.contains(
@@ -593,10 +590,94 @@ String _snapshotAssetKey(DailyPortfolioSnapshotItem item) {
   return 'asset:${item.assetId}';
 }
 
-String _snapshotHoldingAssetKey(DailyPortfolioSnapshotHoldingItem item) {
+Set<String> _snapshotAssetKeys(DailyPortfolioSnapshotItem item) {
+  return {_snapshotAssetKey(item), _snapshotAssetTitleKey(item.assetTitle)};
+}
+
+List<T> _snapshotRowsForAsset<T>(
+  Map<String, List<T>> rowsByAssetKey,
+  DailyPortfolioSnapshotItem item,
+) {
+  final seen = <T>{};
+  final rows = <T>[];
+  for (final key in _snapshotAssetKeys(item)) {
+    for (final row in rowsByAssetKey[key] ?? <T>[]) {
+      if (seen.add(row)) rows.add(row);
+    }
+  }
+  return rows;
+}
+
+List<DailyPortfolioSnapshotHoldingItem> _withFallbackSnapshotHoldingItems({
+  required List<DailyPortfolioSnapshotHoldingItem> storedHoldingItems,
+  required List<DailyPortfolioSnapshotItem> currentItems,
+  required List<AssetItem> visibleAssets,
+}) {
+  final results = [...storedHoldingItems];
+  final assetsById = {
+    for (final asset in visibleAssets)
+      if (asset.id != null) asset.id!: asset,
+  };
+  final assetsByTitle = {
+    for (final asset in visibleAssets)
+      _snapshotAssetTitleKey(asset.displayName): asset,
+  };
+  var syntheticId = -1;
+
+  for (final item in currentItems) {
+    if (_hasSnapshotHoldingRowsForAsset(results, item)) continue;
+
+    final asset =
+        assetsById[item.assetId] ??
+        assetsByTitle[_snapshotAssetTitleKey(item.assetTitle)];
+    if (asset == null) continue;
+
+    for (final holding in asset.visibleHoldings.where(
+      (holding) => !holding.isCashLike,
+    )) {
+      results.add(
+        DailyPortfolioSnapshotHoldingItem(
+          id: syntheticId--,
+          snapshotId: item.snapshotId,
+          assetId: asset.id ?? item.assetId,
+          assetTitle: item.assetTitle,
+          holdingId: holding.id,
+          holdingName: holding.name,
+          holdingSymbol: holding.symbol,
+          currencyCode: holding.currencyCode,
+          quantity: holding.quantity,
+          totalPurchaseAmount: holding.purchaseAmount,
+          totalValuationAmount: holding.valuationAmount,
+          profitAmount: holding.profitAmount,
+          profitRate: holding.profitRate,
+        ),
+      );
+    }
+  }
+
+  return results;
+}
+
+bool _hasSnapshotHoldingRowsForAsset(
+  List<DailyPortfolioSnapshotHoldingItem> rows,
+  DailyPortfolioSnapshotItem item,
+) {
+  final itemKeys = _snapshotAssetKeys(item);
+  return rows.any(
+    (row) => _snapshotHoldingAssetKeys(row).any(itemKeys.contains),
+  );
+}
+
+Set<String> _snapshotHoldingAssetKeys(DailyPortfolioSnapshotHoldingItem item) {
   final assetId = item.assetId;
-  if (assetId != null) return 'asset:$assetId';
-  return 'title:${item.assetTitle}';
+  return {
+    if (assetId != null) 'asset:$assetId',
+    _snapshotAssetTitleKey(item.assetTitle),
+  };
+}
+
+String _snapshotAssetTitleKey(String assetTitle) {
+  return 'title:${_normalizeSnapshotAssetTitle(assetTitle)}';
 }
 
 String _normalizeSnapshotAssetTitle(String value) {
