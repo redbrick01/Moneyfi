@@ -61,6 +61,9 @@
 | [Optional Local Config Plan](features/optional_local_config/plan.md) | `assets/config.json` 누락에도 앱이 시작되도록 하는 설정 구조 개선 계획 |
 | [Optional Local Config Verification Plan](features/optional_local_config/verification_test_plan.md) | 로컬 설정 파일 optional 처리 검증 절차 |
 | [Optional Local Config Test Report 2026-05-24](features/optional_local_config/test_report_20260524.md) | 로컬 설정 파일 optional 처리 검증 결과 |
+| [Ledger Numeric Regression Plan](features/ledger_numeric_regression/plan.md) | 원장/현금/환전/스냅샷 핵심 수치 계산 회귀 테스트 추가 계획 |
+| [Ledger Numeric Regression Verification Plan](features/ledger_numeric_regression/verification_test_plan.md) | 원장/현금/환전/스냅샷 계산 회귀 검증 절차 |
+| [Ledger Numeric Regression Test Report 2026-05-24](features/ledger_numeric_regression/test_report_20260524.md) | 원장/현금/환전/스냅샷 계산 회귀 테스트 추가 검증 결과 |
 | [Implementation Report 2026-05-24](implementation_report_20260524.md) | 디자인 시스템 적용, 스냅샷 계산 보정, 배포/검증 전체 보고서 |
 | [Cash Snapshot Profit Fix Report](cash_snapshot_profit_fix_report.md) | 현금 평가손익 0원 규칙 적용과 보정 검증 보고서 |
 

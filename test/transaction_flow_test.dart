@@ -1503,6 +1503,144 @@ void main() {
   );
 
   test(
+    'mixed ledger cash fx and trades keep core numeric totals stable',
+    () async {
+      final assetId = await createAsset('주식');
+      final holdingId = await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '복합 주식',
+        symbol: 'MIX',
+        quantity: 0,
+        averagePrice: 0,
+        currentPrice: 140,
+        note: '',
+      );
+      final settlementCashId = await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '결제 현금',
+        note: '',
+        balance: 3000,
+      );
+      final savingsCashId = await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '저축 현금',
+        note: '',
+        balance: 100,
+      );
+
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.21',
+        type: '매수',
+        name: '복합 매수',
+        amount: '100',
+        quantity: '5',
+      );
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.22',
+        type: '매도',
+        name: '복합 매도',
+        amount: '130',
+        quantity: '2',
+      );
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: settlementCashId,
+        date: '2026.05.23',
+        type: '입금',
+        name: '외부 입금',
+        amount: '200',
+        quantity: '',
+      );
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: settlementCashId,
+        date: '2026.05.24',
+        type: '출금',
+        name: '외부 출금',
+        amount: '50',
+        quantity: '',
+      );
+      await db.createCashTransfer(
+        assetId: assetId,
+        sourceHoldingId: settlementCashId,
+        targetHoldingId: savingsCashId,
+        date: '2026.05.25',
+        name: '내부 이체',
+        amount: '25',
+      );
+      await db.createCashExchange(
+        assetId: assetId,
+        sourceHoldingId: settlementCashId,
+        date: '2026.05.26',
+        name: '달러 환전',
+        amount: '1300',
+        exchangeRate: 1300,
+      );
+
+      final usdCash = (await db.fetchAssetById(
+        assetId,
+      ))!.holdings.singleWhere((holding) => holding.currencyCode == 'USD');
+      final holdingPerformance = await db
+          .fetchLedgerHoldingPerformanceByHoldingId();
+      final portfolioPerformance = await db.fetchLedgerPortfolioPerformance();
+      final byCurrency = await db.fetchLedgerPortfolioPerformanceByCurrency();
+      final activeLineSummary = await db.customSelect('''
+        SELECT
+          SUM(CASE WHEN action = 'buy' THEN quantity_delta ELSE 0 END) AS bought_quantity,
+          SUM(CASE WHEN action = 'sell' THEN quantity_delta ELSE 0 END) AS sold_quantity,
+          SUM(CASE WHEN action = 'settlement' THEN cash_delta ELSE 0 END) AS settlement_cash,
+          SUM(CASE WHEN action IN ('deposit', 'withdrawal') THEN cash_delta ELSE 0 END) AS external_cash,
+          SUM(CASE WHEN action IN ('transfer_out', 'transfer_in', 'fx_out', 'fx_in') THEN ABS(cash_delta) ELSE 0 END) AS internal_activity
+        FROM transaction_lines
+        WHERE deleted_at IS NULL
+      ''').getSingle();
+
+      expect((await findHolding(holdingId)).quantity, 3);
+      expect((await findHolding(holdingId)).averagePrice, 100);
+      expect((await findHolding(settlementCashId)).quantity, 1585);
+      expect((await findHolding(savingsCashId)).quantity, 125);
+      expect(usdCash.quantity, 1);
+      expect(await db.fetchLedgerStateParityIssues(), isEmpty);
+
+      expect(holdingPerformance[holdingId]?.quantity, 3);
+      expect(holdingPerformance[holdingId]?.remainingCost, 300);
+      expect(holdingPerformance[holdingId]?.realizedPnl, 60);
+      expect(holdingPerformance[holdingId]?.buyAmount, 500);
+      expect(holdingPerformance[holdingId]?.sellAmount, 260);
+
+      expect(portfolioPerformance.realizedPnl, 60);
+      expect(portfolioPerformance.pureRealizedPerformance, 60);
+      expect(portfolioPerformance.externalCashFlowAmount, 150);
+      expect(portfolioPerformance.externalDepositAmount, 200);
+      expect(portfolioPerformance.externalWithdrawalAmount, 50);
+      expect(portfolioPerformance.tradeSettlementCashFlowAmount, -240);
+      expect(portfolioPerformance.internalCashMovementAmount, 1351);
+      expect(portfolioPerformance.buyAmount, 500);
+      expect(portfolioPerformance.sellAmount, 260);
+
+      expect(byCurrency['KRW']?.realizedPnl, 60);
+      expect(byCurrency['KRW']?.externalCashFlowAmount, 150);
+      expect(byCurrency['KRW']?.tradeSettlementCashFlowAmount, -240);
+      expect(byCurrency['KRW']?.internalCashMovementAmount, 1350);
+      expect(byCurrency['USD']?.internalCashMovementAmount, 1);
+
+      expect(activeLineSummary.read<double>('bought_quantity'), 5);
+      expect(activeLineSummary.read<double>('sold_quantity'), -2);
+      expect(activeLineSummary.read<double>('settlement_cash'), -240);
+      expect(activeLineSummary.read<double>('external_cash'), 150);
+      expect(activeLineSummary.read<double>('internal_activity'), 1351);
+    },
+  );
+
+  test(
     'ledger performance subtracts fees and taxes from pure profit',
     () async {
       await db.customStatement('''
@@ -2171,6 +2309,113 @@ void main() {
     expect(items.single.holdingCount, 1);
     expect(items.single.totalValuationAmount, 600);
   });
+
+  test(
+    'imported snapshots preserve cash account balances and exchange rate',
+    () async {
+      final assetId = await createAsset('현금');
+      final asset = await db.fetchAssetById(assetId);
+      final krwCashId = await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '원화 현금',
+        note: '생활비',
+        balance: 1585,
+      );
+      final usdCashId = await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'USD',
+        name: '달러 현금',
+        note: '환전',
+        balance: 1,
+      );
+      final cashRows =
+          await (db.select(db.cashAccounts)..where(
+                (table) => table.id.isIn([krwCashId.abs(), usdCashId.abs()]),
+              ))
+              .get();
+      final cashClientIdById = {
+        for (final row in cashRows) row.id: row.clientId,
+      };
+
+      await db.importRemotePortfolioSnapshots([
+        {
+          'snapshot_date': '2026-05-26T23:59:59Z',
+          'total_purchase_amount': 300,
+          'total_valuation_amount': 2885,
+          'profit_amount': 2585,
+          'profit_rate': 861.6667,
+          'exchange_rate': 1300,
+          'items': [
+            {
+              'asset_id': 999,
+              'asset_client_id': asset!.clientId,
+              'asset_title': '현금',
+              'total_purchase_amount': 300,
+              'total_valuation_amount': 2885,
+              'profit_amount': 2585,
+              'profit_rate': 861.6667,
+              'holding_count': 2,
+            },
+          ],
+          'holding_items': const [],
+          'cash_accounts': [
+            {
+              'asset_id': 999,
+              'asset_client_id': asset.clientId,
+              'asset_title': '현금',
+              'cash_account_id': 9991,
+              'cash_account_client_id': cashClientIdById[krwCashId.abs()],
+              'cash_account_name': '원화 현금',
+              'currency_code': 'KRW',
+              'balance': 1585,
+              'note': '생활비',
+            },
+            {
+              'asset_id': 999,
+              'asset_client_id': asset.clientId,
+              'asset_title': '현금',
+              'cash_account_id': 9992,
+              'cash_account_client_id': cashClientIdById[usdCashId.abs()],
+              'cash_account_name': '달러 현금',
+              'currency_code': 'USD',
+              'balance': 1,
+              'note': '환전',
+            },
+          ],
+        },
+      ]);
+
+      final snapshot = await db.fetchPortfolioSnapshotByDate('2026-05-26');
+      final items = await db.fetchPortfolioSnapshotItemsByDates(['2026-05-26']);
+      final cashAccounts = await db.fetchPortfolioSnapshotCashAccountsByDates([
+        '2026-05-26',
+      ]);
+      final krwSnapshotCash = cashAccounts.singleWhere(
+        (row) => row.cashAccountName == '원화 현금',
+      );
+      final usdSnapshotCash = cashAccounts.singleWhere(
+        (row) => row.cashAccountName == '달러 현금',
+      );
+
+      expect(snapshot, isNotNull);
+      expect(snapshot!.exchangeRate, 1300);
+      expect(snapshot.totalValuationAmount, 2885);
+      expect(items, hasLength(1));
+      expect(items.single.assetId, assetId);
+      expect(items.single.totalValuationAmount, 2885);
+      expect(items.single.holdingCount, 2);
+      expect(cashAccounts, hasLength(2));
+      expect(krwSnapshotCash.assetId, assetId);
+      expect(krwSnapshotCash.cashAccountId, krwCashId.abs());
+      expect(krwSnapshotCash.currencyCode, 'KRW');
+      expect(krwSnapshotCash.balance, 1585);
+      expect(usdSnapshotCash.assetId, assetId);
+      expect(usdSnapshotCash.cashAccountId, usdCashId.abs());
+      expect(usdSnapshotCash.currencyCode, 'USD');
+      expect(usdSnapshotCash.balance, 1);
+    },
+  );
 
   test(
     'display snapshots keep asset summary rows with partial holding details',
