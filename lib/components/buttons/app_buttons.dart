@@ -191,9 +191,9 @@ ButtonStyle _buttonStyle(
       : VisualSpec.brand.lightOverlayPressedAlpha;
 
   return ButtonStyle(
-    minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
+    minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
     padding: WidgetStatePropertyAll(
-      EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+      EdgeInsets.symmetric(horizontal: context.spacing.md, vertical: 12),
     ),
     textStyle: WidgetStatePropertyAll(context.typography.button),
     shape: WidgetStatePropertyAll(

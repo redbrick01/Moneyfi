@@ -130,6 +130,16 @@ Use Linear as a density and state-control reference for operational screens.
 
 ## 4. Application Strategy
 
+### Implementation Status
+
+2026-05-24 implementation pass:
+
+- Locked the active primary seed to `#0066CC` in `docs/design_system.md`.
+- Aligned documented spacing, radius, typography, card, chip, and app-button specs with current Flutter tokens.
+- Added financial numeric typography rules for tabular figures, right-aligned values, and stable trailing slots.
+- Updated `DeltaChip` to use `BrandColors` semantic text/container roles instead of legacy palette constants.
+- Kept Apple-like pill actions while raising app button height to 48dp for the documented accessibility baseline.
+
 ### Phase 1. Token And Documentation Lock
 
 Goal: make local design truth unambiguous before new styling work.
@@ -236,4 +246,3 @@ Use this blend:
 - Dense controls/status: Linear, sparingly.
 
 The best design outcome is not a new imported theme. It is MONEYFY's existing calm Apple-like shell, upgraded with Coinbase-grade financial data discipline.
-

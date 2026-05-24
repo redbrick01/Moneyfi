@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../design_system/context_extensions.dart';
-import '../../theme/moneyfy_theme.dart';
 import '../formatters/number_format.dart';
 
 enum DeltaChipMode { currency, percent, both }
@@ -29,6 +28,23 @@ class DeltaChip extends StatelessWidget {
     final isPositive = value > 0;
     final isNegative = value < 0;
     final isNeutral = !isPositive && !isNegative;
+    final colors = context.colors;
+    final statusColor = isPositive
+        ? colors.positiveOn
+        : isNegative
+        ? colors.negativeOn
+        : colors.neutralTextMuted;
+    final statusContainer = isPositive
+        ? colors.positiveContainer
+        : isNegative
+        ? colors.negativeContainer
+        : colors.neutralSurfaceBase;
+    final backgroundColor = vivid && !isNeutral
+        ? statusContainer
+        : colors.neutralSurfaceBase;
+    final borderColor = vivid && !isNeutral
+        ? statusContainer
+        : colors.neutralOutline.withValues(alpha: 0.72);
 
     final label = switch (mode) {
       DeltaChipMode.currency => formatSigned(value),
@@ -44,8 +60,8 @@ class DeltaChip extends StatelessWidget {
         vertical: compact ? 2 : 4,
       ),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surface,
-        border: Border.all(color: MoneyfyPalette.border),
+        color: backgroundColor,
+        border: Border.all(color: borderColor),
         borderRadius: BorderRadius.circular(context.radius.rPill),
       ),
       child: Row(
@@ -61,14 +77,8 @@ class DeltaChip extends StatelessWidget {
                           ? context.typography.caption
                           : context.typography.meta)
                       .copyWith(
-                        color: isPositive
-                            ? MoneyfyPalette.positive
-                            : isNegative
-                            ? MoneyfyPalette.negative
-                            : MoneyfyPalette.secondaryText,
-                        fontWeight: isNeutral
-                            ? FontWeight.w600
-                            : FontWeight.w600,
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
             ),

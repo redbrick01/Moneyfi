@@ -328,6 +328,7 @@ async function loadAssets(supabase: SupabaseClient<any>, userId: string) {
         "id, client_id, asset_type, title, alias, hidden, currency_code, value, user_id",
       )
       .eq("user_id", userId)
+      .eq("hidden", false)
       .is("deleted_at", null)
       .order("sort_order", { ascending: true }),
     "loadAssets",
@@ -568,16 +569,21 @@ async function createSnapshotForUser(
 
   const assetSummaries = assets.map((asset) => {
     const assetTitle = asset.alias.trim() ? asset.alias : asset.title;
-    const assetHoldingSummaries = (holdingsByAssetId.get(asset.id) ?? []).map((
-      holding,
-    ) => buildHoldingSummary(holding, asset, assetTitle, usdKrwRate));
-    const assetCashAccountSummaries =
-      (cashAccountsByAssetId.get(asset.id) ?? []).map((account) =>
-        buildCashAccountSummary(account, asset, assetTitle)
+    const allAssetHoldings = holdingsByAssetId.get(asset.id) ?? [];
+    const allAssetCashAccounts = cashAccountsByAssetId.get(asset.id) ?? [];
+    const assetHoldingSummaries = allAssetHoldings
+      .filter((holding) => !holding.hidden && holding.quantity > 0)
+      .map((holding) =>
+        buildHoldingSummary(holding, asset, assetTitle, usdKrwRate)
       );
+    const assetCashAccountSummaries = allAssetCashAccounts
+      .filter((account) => !account.hidden)
+      .map((account) => buildCashAccountSummary(account, asset, assetTitle));
 
     let purchaseAmount = 0;
     let valuationAmount = 0;
+    const hasAnyChildRows = allAssetHoldings.length > 0 ||
+      allAssetCashAccounts.length > 0;
 
     if (
       assetHoldingSummaries.length > 0 || assetCashAccountSummaries.length > 0
@@ -592,13 +598,17 @@ async function createSnapshotForUser(
       );
 
       for (const account of assetCashAccountSummaries) {
-        purchaseAmount += account.balance;
-        valuationAmount += convertQuotedAmountToKrw(
+        const accountValue = convertQuotedAmountToKrw(
           account.balance,
           account.currencyCode,
           usdKrwRate,
         );
+        purchaseAmount += accountValue;
+        valuationAmount += accountValue;
       }
+    } else if (hasAnyChildRows) {
+      purchaseAmount = 0;
+      valuationAmount = 0;
     } else {
       const fallbackValue = parseDisplayAmount(asset.value);
       purchaseAmount = fallbackValue;

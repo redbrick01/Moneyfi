@@ -29,6 +29,8 @@
 | [Data & Sync Flow](data_and_sync.md) | 데이터 모델과 앱/서버 간 동기화 설계 |
 | [Supabase Overview](supabase_overview.md) | Supabase 폴더와 원격 프로젝트 구성 요약 |
 | [Supabase CLI Runbook](supabase_cli_runbook.md) | Supabase CLI, 환경 변수, 마이그레이션 운영 절차 |
+| [Implementation Report 2026-05-24](implementation_report_20260524.md) | 디자인 시스템 적용, 스냅샷 계산 보정, 배포/검증 전체 보고서 |
+| [Cash Snapshot Profit Fix Report](cash_snapshot_profit_fix_report.md) | 현금 평가손익 0원 규칙 적용과 보정 검증 보고서 |
 
 ## Maintenance Rules
 

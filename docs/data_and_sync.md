@@ -131,6 +131,106 @@ sequenceDiagram
 
 최근 migration `20260523120000_add_snapshot_client_references.sql`는 스냅샷 상세 row에 `asset_client_id`, `holding_client_id`, `cash_account_client_id`를 추가해 서버 id가 달라도 클라이언트 참조를 복원할 수 있게 합니다.
 
+### Snapshot Calculation Rules
+
+스냅샷과 메인 대시보드는 같은 평가손익 기준을 사용해야 합니다. 스냅샷은 특정 시점의 표시 대상 포트폴리오를 저장하는 값이며, 서버/로컬/프론트 표시 로직은 아래 규칙을 기준으로 맞춥니다.
+
+#### 1. Snapshot Scope
+
+스냅샷 생성 대상은 사용자의 현재 표시 대상 자산입니다.
+
+| row | 포함 조건 | 제외 조건 |
+| --- | --- | --- |
+| 자산 | `deleted_at is null`, `hidden = false` | 숨김 자산, 삭제 자산 |
+| 보유 종목 | 자산이 포함 대상이고 `hidden = false`, `quantity > 0` | 숨김 종목, 수량 0 종목 |
+| 현금 계좌 | 자산이 포함 대상이고 `hidden = false` | 숨김 현금 계좌 |
+
+자식 row가 있는 자산에서 모든 자식 row가 제외되면 해당 자산의 평가금액과 매입금액은 `0`으로 둡니다. 이 경우 `asset.value`로 fallback하지 않습니다. 자식 row가 전혀 없는 자산만 `asset.value`를 fallback 값으로 사용합니다.
+
+#### 2. Currency Rules
+
+모든 스냅샷 금액은 KRW 기준으로 저장합니다.
+
+| 통화 | 처리 |
+| --- | --- |
+| `KRW` | 금액 그대로 사용 |
+| `USD` 등 외화 | 스냅샷 생성 시점의 `exchange_rate`로 KRW 환산 |
+
+보유 종목의 `average_price`는 KRW 원가로 저장되어 있으므로 매입금액에는 환율을 다시 적용하지 않습니다. 외화 종목의 현재가는 외화 기준이므로 평가금액 계산 때만 스냅샷 환율을 적용합니다.
+
+#### 3. Row-Level Formulas
+
+| 대상 | 평가금액 | 매입금액 | 평가손익 |
+| --- | --- | --- | --- |
+| 보유 종목 | `quantity x current_price`의 KRW 환산액 | `quantity x average_price` | 평가금액 - 매입금액 |
+| 현금 계좌 | 잔액의 원화 환산액 | 잔액의 원화 환산액 | `0` |
+| 자식 row 없는 자산 | `asset.value` 파싱값 | `asset.value` 파싱값 | `0` |
+
+보유 종목 규칙은 다음과 같습니다.
+
+```text
+holding purchaseAmount = quantity * averagePrice
+holding valuationAmount = KRW-converted(quantity * currentPrice)
+holding profitAmount = valuationAmount - purchaseAmount
+holding profitRate = purchaseAmount == 0 ? 0 : profitAmount / purchaseAmount * 100
+```
+
+현금 계좌 규칙은 다음과 같이 고정합니다.
+
+```text
+cash valuationAmount = KRW-converted balance
+cash purchaseAmount = KRW-converted balance
+cash profitAmount = 0
+cash profitRate = 0
+```
+
+외화 현금의 원화 환산액은 환율에 따라 변할 수 있지만, 그 차이는 투자 평가손익으로 보지 않습니다. 따라서 스냅샷 생성, 스냅샷 상세, 메인 대시보드, 분석 차트는 현금 평가손익을 항상 `0`으로 다루어야 합니다.
+
+#### 4. Asset-Level Formulas
+
+자산군 snapshot item은 포함된 보유 종목과 현금 계좌의 합계입니다.
+
+```text
+asset totalPurchaseAmount = sum(holding purchaseAmount) + sum(cash purchaseAmount)
+asset totalValuationAmount = sum(holding valuationAmount) + sum(cash valuationAmount)
+asset profitAmount = totalValuationAmount - totalPurchaseAmount
+asset profitRate = totalPurchaseAmount == 0 ? 0 : profitAmount / totalPurchaseAmount * 100
+asset holdingCount = included holding count + included cash account count
+```
+
+자산의 alias가 비어 있지 않으면 snapshot 표시명은 alias를 사용하고, 비어 있으면 title을 사용합니다.
+
+#### 5. Snapshot Header Formulas
+
+스냅샷 header는 저장된 자산군 item의 합계로만 계산합니다. header를 직접 별도 로직으로 계산하지 않습니다.
+
+```text
+snapshot totalPurchaseAmount = sum(snapshot item totalPurchaseAmount)
+snapshot totalValuationAmount = sum(snapshot item totalValuationAmount)
+snapshot profitAmount = totalValuationAmount - totalPurchaseAmount
+snapshot profitRate = totalPurchaseAmount == 0 ? 0 : profitAmount / totalPurchaseAmount * 100
+```
+
+DB 보정이나 import 이후에도 header와 item 합계는 항상 일치해야 합니다.
+
+```text
+snapshot.total_purchase_amount == sum(items.total_purchase_amount)
+snapshot.total_valuation_amount == sum(items.total_valuation_amount)
+snapshot.profit_amount == snapshot.total_valuation_amount - snapshot.total_purchase_amount
+```
+
+#### 6. Display Consistency Rules
+
+메인 대시보드, 스냅샷 상세, 분석 차트는 같은 계산 원칙을 사용합니다.
+
+- 총자산은 표시 대상 자산의 평가금액 합계입니다.
+- 평가손익은 `총 평가금액 - 총 매입금액`입니다.
+- 현금은 총자산에 포함하지만 평가손익에는 영향을 주지 않습니다.
+- 숨김 자산/숨김 종목/숨김 현금 계좌는 표시 기준 합계에서 제외합니다.
+- 기간 비교 수익은 평가손익이 아니라 snapshot 간 총자산 변화입니다.
+
+관련 보정 내역은 [Cash Snapshot Profit Fix Report](cash_snapshot_profit_fix_report.md)에 기록합니다.
+
 ### Snapshot Client Reference Rules
 
 스냅샷 상세 row는 서버 DB id와 함께 stable `client_id` 참조를 저장합니다. 멀티 디바이스 sync나 로컬 DB 재생성 뒤에는 같은 자산/보유/현금 계좌라도 local integer id가 달라질 수 있으므로, 앱은 원격 스냅샷을 import할 때 client reference를 우선 사용합니다.

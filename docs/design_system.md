@@ -1,27 +1,29 @@
 # MONEYFY UI Release Rules
 
-## 0) Brand Mood Lock (Apple-like Minimal)
+## 0) Brand Mood Lock (Apple-like Minimal + Financial Calm)
 - Mood keywords: calm, minimal, trust, whitespace, restrained accent, iOS feeling.
-- Accent policy: one accent only (`primary`), generated from fixed seed `#0A84FF`.
+- Accent policy: one accent only (`primary`), generated from fixed seed `#0066CC`.
 - Neutral policy: use `surface` + `surfaceContainerLow/High/Highest`, avoid ad-hoc gray values.
 - Status policy: use toned-down container roles (`secondary/error/tertiary container`) instead of vivid neon colors.
 - Hierarchy policy: prioritize typography + spacing + surface levels over color noise.
 
 ## 1) Tokens
-- Spacing: `context.spacing` only (`xs=8, sm=12, md=16, lg=20, xl=24, xxl=28, xxxl=32`)
-- Radius: `context.radius` only (`rSm=8, rMd=12, rLg=16, rPill=999`)
+- Spacing: `context.spacing` only (`xs=8, sm=12, md=24, lg=24, xl=32, xxl=48, xxxl=80`)
+- Responsive horizontal inset: `<=360dp` uses `14`, `361~430dp` uses `16`, wider screens use `24`
+- Card padding: default `24`, dense `12`, mobile `<=430dp` uses `16`
+- Radius: `context.radius` only (`rSm=8, rMd=11, rLg=18, rPill=9999`)
 - Typography: `context.typography` roles only
 - Motion: `context.motion` (`150~220ms`)
 
 ### Typography Scale (Fixed 8 Roles)
-- `pageTitle`: 28 / w600 / h1.20
-- `heroNumber`: 32 / w600 / h1.10
-- `sectionTitle`: 18 / w600 / h1.25
-- `cardTitle`: 16 / w500 / h1.25
-- `body`: 16 / w400 / h1.35
-- `meta`: 13 / w400 / h1.30
+- `pageTitle`: 34 / w600 / h1.10 / -0.28
+- `heroNumber`: 40 / w600 / h1.10 / -0.28 / tabular figures
+- `sectionTitle`: 21 / w600 / h1.19 / 0.231
+- `cardTitle`: 17 / w600 / h1.24 / -0.374 / tabular figures
+- `body`: 17 / w400 / h1.47 / -0.374
+- `meta`: 14 / w400 / h1.43 / -0.224 / tabular figures
 - `caption`: 12 / w400 / h1.30
-- `button`: 15 / w600 / h1.00
+- `button`: 17 / w400 / h1.00 / -0.224
 
 ### Typography Role Mapping
 - Page top title: `pageTitle`
@@ -37,12 +39,18 @@
   - trailing amount: `cardTitle` (or stronger only when required)
   - trailing delta: `meta` + `DeltaChip`
 
+### Financial Numeric Typography
+- Currency, quantity, rate, percentage, and count values use tabular figures.
+- Amount/rate columns are right-aligned.
+- Long financial values scale down inside their own trailing slot instead of resizing the parent row.
+- Positive/negative movement uses semantic text/container roles, never a second brand accent.
+
 ## 2) Surface / Card Rules
 - Default content card: `SectionCard`
-  - padding `16` (`dense` uses `12`)
-  - radius `rMd`
+  - padding `24` (`dense` uses `12`, mobile card padding may resolve to `16`)
+  - radius `18`
   - low elevation (0~1)
-  - color: `surfaceContainerLow`
+  - color: `VisualSpec.surface.cardBase`
 - Hero / header emphasis: `DetailHeaderCard` or high container tone (`surfaceContainerHigh`)
 - Border default: none. If needed: `outlineVariant` 1px only.
 - Divider usage: `AppDivider` for in-card grouping only.
@@ -68,14 +76,14 @@
 
 ## 6) Component Finish Specs
 - Buttons (`AppPrimaryButton` / `AppSecondaryButton` / `AppGhostButton` / `AppDestructiveButton`)
-  - height `48`, radius `rMd`, horizontal padding `md(16)`, text `typography.button`
+  - height `48`, radius `rPill`, horizontal padding `md(24)`, vertical padding `12`, text `typography.button`
   - loading spinner `16`, label width fixed (`Stack + Opacity`) to avoid layout shift
   - secondary uses tonal style (`FilledButton.tonal`), destructive uses text/error tone
   - pressed/hover/focus overlays are unified with low-alpha state color
 - Chips (`DeltaChip` / `ImpactChips`)
-  - height `28`, pill radius `rPill`, horizontal padding `10`, typography `meta`
+  - min height `24`, pill radius `rPill`, horizontal padding `8`, vertical padding `4`, typography `meta`
   - `DeltaChip.compact` may be used in dense financial rows: min height `20`, horizontal padding `6`, vertical padding `2`, typography `caption`
-  - delta sign (`+/-`) must exist in text, colors use scheme containers only
+  - delta sign (`+/-`) must exist in text, colors use `BrandColors` semantic text/container roles only
 - Rows (`Asset` / `Rebalance` / `Transaction` / `Snapshot` / `Settings`)
   - min row height `56~72`, right-aligned trailing values, subtitle uses `meta`
   - icon badge size `36`, icon size `24` (20 allowed for tiny supporting icon only)
