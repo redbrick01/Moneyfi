@@ -8,6 +8,9 @@ class AuthService {
   AuthService._();
 
   static const String _configAssetPath = 'assets/config.json';
+  static const String configSetupMessage =
+      'Supabase 설정 파일이 없습니다. assets/config.example.json을 복사해 '
+      'assets/config.json을 만들거나 Supabase URL/Anon Key를 설정해 주세요.';
 
   static String _supabaseUrl = '';
   static String _supabaseAnonKey = '';
@@ -120,6 +123,7 @@ class AuthService {
       );
     } catch (error, stackTrace) {
       debugPrint('[auth] failed to load $_configAssetPath: $error');
+      debugPrint('[auth] $configSetupMessage');
       debugPrintStack(stackTrace: stackTrace);
       return const _SupabaseConfig.empty();
     }

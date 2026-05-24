@@ -7,13 +7,15 @@
 | 경로 | 역할 |
 | --- | --- |
 | `config.example.json` | Supabase client 설정 예시 |
-| `config.json` | 로컬 실행용 실제 Supabase client 설정. git에 올리지 않습니다. |
+| `config.json` | 로컬 실행용 실제 Supabase client 설정. 없으면 로그인/동기화 없이 앱이 시작됩니다. git에 올리지 않습니다. |
 | `icon/` | 원본 또는 생성된 앱 아이콘 |
 | `app_icon_flat.svg` | 앱 아이콘 작업용 SVG |
 
 ## Config
 
-`pubspec.yaml`은 `assets/config.json`을 Flutter asset으로 등록합니다. 로컬 실행 전 예시 파일을 복사해 실제 값을 채웁니다.
+`pubspec.yaml`은 `assets/` 디렉터리를 Flutter asset으로 등록합니다. 그래서 `assets/config.json`이 없어도 빌드와 앱 시작은 실패하지 않고, 로그인/동기화 화면에서 설정 안내를 표시합니다.
+
+로컬에서 Supabase 로그인을 사용하려면 예시 파일을 복사해 실제 값을 채웁니다.
 
 ```bash
 cp assets/config.example.json assets/config.json

@@ -71,7 +71,9 @@ flutter pub get
 
 ### 2. Create local config files
 
-실제 키가 들어가는 파일은 git에 올리지 않습니다. 샘플 파일을 복사해서 로컬에서만 사용하세요.
+실제 키가 들어가는 파일은 git에 올리지 않습니다. Supabase 로그인/동기화를 사용하려면 샘플 파일을 복사해서 로컬에서만 사용하세요.
+
+`assets/config.json`이 없어도 앱은 시작되며, My 화면에서 설정 안내를 표시합니다.
 
 ```bash
 cp assets/config.example.json assets/config.json

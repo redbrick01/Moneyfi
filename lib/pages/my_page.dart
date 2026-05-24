@@ -53,7 +53,8 @@ class _MyPageBody extends StatelessWidget {
           StatusCard(
             icon: AppIconName.settings,
             title: '동기화 설정이 필요해요',
-            description: 'Supabase 설정을 완료하면 계정 동기화를 사용할 수 있어요.',
+            description:
+                'assets/config.json이 없거나 비어 있어요. 샘플 설정 파일을 복사해 Supabase URL과 Anon Key를 채워 주세요.',
             iconBackgroundColor: context.colors.primaryContainer,
             iconColor: context.colors.primary,
             primaryLabel: '설정하기',
@@ -67,7 +68,8 @@ class _MyPageBody extends StatelessWidget {
                 builder: (context) => Padding(
                   padding: EdgeInsets.all(context.spacing.md),
                   child: Text(
-                    '프로젝트의 Supabase URL/Anon Key를 설정하면 동기화 기능을 사용할 수 있어요.',
+                    '${AuthService.configSetupMessage}\n\n'
+                    '설정이 없어도 앱은 시작되지만 로그인과 기기 간 동기화는 비활성화됩니다.',
                     style: context.typography.body,
                   ),
                 ),
