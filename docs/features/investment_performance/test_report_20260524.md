@@ -4,11 +4,11 @@
 
 검증 기준 문서:
 
-- `docs/investment_performance_verification_test_plan.md`
+- `docs/features/investment_performance/verification_test_plan.md`
 
 관련 개발 리포트:
 
-- `docs/tmp_investment_performance_development_report.md`
+- `docs/features/investment_performance/tmp_development_report.md`
 
 ## Summary
 
@@ -276,4 +276,3 @@ returned: 5월 매도 / sell / amount 40
 자동 테스트 기준으로는 이번 투자성과 리포트 고도화 변경이 통과 상태입니다.
 
 릴리스 전에는 수동 QA와 반응형 레이아웃 확인을 추가로 수행하는 것이 좋습니다.
-
