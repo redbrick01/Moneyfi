@@ -1376,6 +1376,8 @@ void main() {
 
       final performance = await db.fetchLedgerPortfolioPerformance();
       expect(performance.externalCashFlowAmount, 150);
+      expect(performance.externalDepositAmount, 200);
+      expect(performance.externalWithdrawalAmount, 50);
       expect(performance.internalCashMovementAmount, 50);
       expect(performance.tradeSettlementCashFlowAmount, 0);
       expect(performance.pureRealizedPerformance, 0);
@@ -1533,6 +1535,111 @@ void main() {
     expect(june.realizedPnl, -10);
     expect(june.taxAmount, 2);
     expect(june.pureRealizedPerformance, -12);
+  });
+
+  test(
+    'ledger performance filters by event date range across date formats',
+    () async {
+      await db.customStatement('''
+        INSERT INTO transaction_events (occurred_at, kind, title, source)
+        VALUES
+          ('2026.04.30', 'income', '기간 이전', 'test'),
+          ('2026-05-01', 'income', '기간 시작', 'test'),
+          ('2026.05.15', 'income', '기간 중간', 'test'),
+          ('2026-06-01', 'income', '기간 이후', 'test')
+      ''');
+      final rows = await db
+          .customSelect('SELECT id, title FROM transaction_events')
+          .get();
+      final eventIdByTitle = {
+        for (final row in rows) row.read<String>('title'): row.read<int>('id'),
+      };
+
+      await db.customStatement(
+        '''
+        INSERT INTO transaction_lines
+          (event_id, action, holding_id, currency_code, realized_pnl, cash_delta, gross_amount)
+        VALUES
+          (?, 'sell', 10, 'KRW', 100, 0, 100),
+          (?, 'sell', 10, 'KRW', 10, 0, 10),
+          (?, 'dividend', 10, 'KRW', 0, 5, 5),
+          (?, 'sell', 10, 'KRW', 999, 0, 999)
+      ''',
+        [
+          eventIdByTitle['기간 이전'],
+          eventIdByTitle['기간 시작'],
+          eventIdByTitle['기간 중간'],
+          eventIdByTitle['기간 이후'],
+        ],
+      );
+
+      final from = DateTime(2026, 5);
+      final to = DateTime(2026, 5, 31);
+      final portfolio = await db.fetchLedgerPortfolioPerformance(
+        from: from,
+        to: to,
+      );
+      final byCurrency = await db.fetchLedgerPortfolioPerformanceByCurrency(
+        from: from,
+        to: to,
+      );
+      final byHolding = await db.fetchLedgerHoldingPerformanceByHoldingId(
+        from: from,
+        to: to,
+      );
+      final monthly = await db.fetchLedgerMonthlyPerformanceByCurrency(
+        from: from,
+        to: to,
+      );
+
+      expect(portfolio.realizedPnl, 10);
+      expect(portfolio.incomeAmount, 5);
+      expect(portfolio.pureRealizedPerformance, 15);
+      expect(byCurrency['KRW']?.pureRealizedPerformance, 15);
+      expect(byHolding[10]?.realizedPnl, 10);
+      expect(byHolding[10]?.incomeAmount, 5);
+      expect(monthly, hasLength(1));
+      expect(monthly.single.month, '2026-05');
+      expect(monthly.single.pureRealizedPerformance, 15);
+    },
+  );
+
+  test('ledger performance events support drill-down filters', () async {
+    await db.customStatement('''
+      INSERT INTO transaction_events (occurred_at, kind, title, source)
+      VALUES
+        ('2026-05-10', 'trade', '5월 매도', 'test'),
+        ('2026-06-10', 'income', '6월 배당', 'test')
+    ''');
+    final rows = await db
+        .customSelect('SELECT id, title FROM transaction_events')
+        .get();
+    final eventIdByTitle = {
+      for (final row in rows) row.read<String>('title'): row.read<int>('id'),
+    };
+
+    await db.customStatement(
+      '''
+      INSERT INTO transaction_lines
+        (event_id, action, holding_id, currency_code, realized_pnl, cash_delta, gross_amount)
+      VALUES
+        (?, 'sell', 11, 'KRW', 40, 0, 100),
+        (?, 'dividend', 11, 'KRW', 0, 20, 20)
+    ''',
+      [eventIdByTitle['5월 매도'], eventIdByTitle['6월 배당']],
+    );
+
+    final rowsForMay = await db.fetchLedgerPerformanceEvents(
+      from: DateTime(2026, 5),
+      to: DateTime(2026, 5, 31),
+      action: 'sell',
+      holdingId: 11,
+    );
+
+    expect(rowsForMay, hasLength(1));
+    expect(rowsForMay.single.title, '5월 매도');
+    expect(rowsForMay.single.action, 'sell');
+    expect(rowsForMay.single.amount, 40);
   });
 
   test(

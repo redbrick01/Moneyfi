@@ -8,6 +8,7 @@
 | --- | --- |
 | [Project Overview](project_overview.md) | 앱 목적, 주요 기능, 런타임 구조, 개발 흐름 |
 | [Folder Guide](folder_guide.md) | 루트 및 주요 하위 폴더별 역할 |
+| [Development Process Guidelines](development_process_guidelines.md) | 기능 설계, 구현, 검증, 보고서 작성 개발 규칙 |
 | [Data & Sync Flow](data_and_sync.md) | 로컬 Drift DB, 원장 모델, Supabase 동기화 흐름 |
 | [Supabase Overview](supabase_overview.md) | Supabase 마이그레이션, Edge Functions, secrets, 운영 포인트 |
 
@@ -19,6 +20,9 @@
 | [getdesign Application Plan](getdesign_application_plan.md) | getdesign.md 기반 디자인 레퍼런스 적용 계획 |
 | [Main Asset Card Format](main_asset_card_format.md) | 메인 자산 카드 표시 포맷 |
 | [Transaction Ledger Redesign](transaction_ledger_redesign.md) | 거래 내역 화면 개편 방향 |
+| [Investment Performance Report Plan](investment_performance_report_plan.md) | 원장 기반 투자성과 리포트 고도화 개발 계획 |
+| [Investment Performance Verification Test Plan](investment_performance_verification_test_plan.md) | 투자성과 리포트 검증 및 테스트 계획 |
+| [Investment Performance Test Report 2026-05-24](investment_performance_test_report_20260524.md) | 투자성과 리포트 자동 검증 결과 보고서 |
 | [UI Snapshot Targets](ui_snapshot_targets.md) | UI 회귀 확인용 주요 화면 목록 |
 | [Final Polish Pass](final_polish_pass.md) | 최종 UI 다듬기 체크리스트 |
 

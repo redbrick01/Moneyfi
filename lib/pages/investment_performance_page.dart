@@ -8,22 +8,54 @@ import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
 
-class InvestmentPerformancePage extends StatelessWidget {
+class InvestmentPerformancePage extends StatefulWidget {
   const InvestmentPerformancePage({super.key});
+
+  @override
+  State<InvestmentPerformancePage> createState() =>
+      _InvestmentPerformancePageState();
+}
+
+class _InvestmentPerformancePageState extends State<InvestmentPerformancePage> {
+  late _PerformanceDateRange _selectedRange;
+  late Future<_InvestmentPerformanceReport> _reportFuture;
+  _HoldingSortMode _holdingSortMode = _HoldingSortMode.totalDesc;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedRange = _PerformanceDateRange.yearToDate(DateTime.now());
+    _reportFuture = _loadInvestmentPerformanceReport(_selectedRange);
+  }
+
+  void _selectRange(_PerformanceDateRange range) {
+    setState(() {
+      _selectedRange = range;
+      _reportFuture = _loadInvestmentPerformanceReport(range);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MoneyfyPage(
       title: '투자성과 분석',
       children: [
+        _DateRangeSelector(
+          selectedRange: _selectedRange,
+          onSelected: _selectRange,
+        ),
+        SizedBox(height: context.spacing.sectionGap),
         FutureBuilder<_InvestmentPerformanceReport>(
-          future: _loadInvestmentPerformanceReport(),
+          future: _reportFuture,
           builder: (context, snapshot) {
             final report =
                 snapshot.data ?? const _InvestmentPerformanceReport.empty();
             return Column(
               children: [
-                _PerformanceSummaryCard(report: report),
+                _PerformanceSummaryCard(
+                  report: report,
+                  rangeLabel: _selectedRange.label,
+                ),
                 SizedBox(height: context.spacing.sectionGap),
                 _PerformanceBreakdownCard(report: report),
                 SizedBox(height: context.spacing.sectionGap),
@@ -33,7 +65,14 @@ class InvestmentPerformancePage extends StatelessWidget {
                 SizedBox(height: context.spacing.sectionGap),
                 _RealizedProfitRankingCard(items: report.realizedRankings),
                 SizedBox(height: context.spacing.sectionGap),
-                _HoldingPerformanceCard(items: report.holdings),
+                _HoldingPerformanceCard(
+                  items: report.holdings,
+                  totalPerformanceBasis: report.pureInvestmentPerformance,
+                  sortMode: _holdingSortMode,
+                  onSortModeChanged: (mode) {
+                    setState(() => _holdingSortMode = mode);
+                  },
+                ),
               ],
             );
           },
@@ -43,35 +82,129 @@ class InvestmentPerformancePage extends StatelessWidget {
   }
 }
 
-class _PerformanceSummaryCard extends StatelessWidget {
-  const _PerformanceSummaryCard({required this.report});
+class _DateRangeSelector extends StatelessWidget {
+  const _DateRangeSelector({
+    required this.selectedRange,
+    required this.onSelected,
+  });
 
-  final _InvestmentPerformanceReport report;
+  final _PerformanceDateRange selectedRange;
+  final ValueChanged<_PerformanceDateRange> onSelected;
 
   @override
   Widget build(BuildContext context) {
+    final ranges = _PerformanceDateRange.presets(DateTime.now());
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (var index = 0; index < ranges.length; index++) ...[
+            ChoiceChip(
+              label: Text(ranges[index].label),
+              selected: ranges[index].preset == selectedRange.preset,
+              onSelected: (_) => onSelected(ranges[index]),
+            ),
+            if (index != ranges.length - 1) SizedBox(width: context.spacing.xs),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PerformanceSummaryCard extends StatelessWidget {
+  const _PerformanceSummaryCard({
+    required this.report,
+    required this.rangeLabel,
+  });
+
+  final _InvestmentPerformanceReport report;
+  final String rangeLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final performanceText = _formatSignedCurrency(
+      report.pureInvestmentPerformance,
+    );
     return SectionCard(
-      title: '순수 투자성과',
+      title: '순 투자성과',
+      headerTrailing: Text(
+        rangeLabel,
+        style: context.typography.meta.copyWith(
+          color: MoneyfyPalette.tertiaryText,
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _formatSignedCurrency(report.pureInvestmentPerformance),
+            performanceText,
             style: context.typography.pageTitle.copyWith(
               color: moneyfyValueColor(
-                _formatSignedCurrency(report.pureInvestmentPerformance),
+                performanceText,
                 defaultColor: MoneyfyPalette.ink,
               ),
             ),
           ),
           SizedBox(height: context.spacing.xs),
           Text(
-            '현금 이동 제외 · 손익과 투자수입 반영',
+            '입출금과 내부 이동 제외 기준',
             style: context.typography.meta.copyWith(
               color: MoneyfyPalette.tertiaryText,
             ),
           ),
+          SizedBox(height: context.spacing.md),
+          Wrap(
+            spacing: context.spacing.sm,
+            runSpacing: context.spacing.xs,
+            children: [
+              _SummaryMetricChip(
+                label: '실현',
+                value: _formatSignedCurrency(report.pureRealizedPerformance),
+              ),
+              _SummaryMetricChip(
+                label: '미실현',
+                value: _formatSignedCurrency(report.unrealizedProfit),
+              ),
+              _SummaryMetricChip(
+                label: '배당/이자',
+                value: _formatSignedCurrency(report.incomeAmount),
+              ),
+              _SummaryMetricChip(
+                label: '비용',
+                value: _formatSignedCurrency(-report.totalExpenseAmount),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _SummaryMetricChip extends StatelessWidget {
+  const _SummaryMetricChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.sm,
+        vertical: context.spacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.52),
+        borderRadius: BorderRadius.circular(context.radius.rSm),
+      ),
+      child: Text(
+        '$label $value',
+        style: context.typography.meta.copyWith(
+          color: moneyfyValueColor(value, defaultColor: colorScheme.onSurface),
+        ),
       ),
     );
   }
@@ -113,6 +246,16 @@ class _PerformanceBreakdownCard extends StatelessWidget {
             value: _formatSignedCurrency(-report.taxAmount),
           ),
           const Divider(height: 20),
+          _MetricRow(
+            label: '순 실현성과',
+            value: _formatSignedCurrency(report.pureRealizedPerformance),
+          ),
+          const Divider(height: 20),
+          _MetricRow(
+            label: '순 투자성과',
+            value: _formatSignedCurrency(report.pureInvestmentPerformance),
+          ),
+          const Divider(height: 20),
           _MetricRow(label: '매수 원금', value: _formatCurrency(report.buyAmount)),
           const Divider(height: 20),
           _MetricRow(
@@ -137,7 +280,17 @@ class _CashFlowExclusionCard extends StatelessWidget {
       child: Column(
         children: [
           _MetricRow(
-            label: '외부 입출금',
+            label: '외부 입금',
+            value: _formatCurrency(report.externalDepositAmount),
+          ),
+          const Divider(height: 20),
+          _MetricRow(
+            label: '외부 출금',
+            value: _formatSignedCurrency(-report.externalWithdrawalAmount),
+          ),
+          const Divider(height: 20),
+          _MetricRow(
+            label: '외부 입출금 합계',
             value: _formatSignedCurrency(report.externalCashFlowAmount),
           ),
           const Divider(height: 20),
@@ -157,9 +310,17 @@ class _CashFlowExclusionCard extends StatelessWidget {
 }
 
 class _HoldingPerformanceCard extends StatelessWidget {
-  const _HoldingPerformanceCard({required this.items});
+  const _HoldingPerformanceCard({
+    required this.items,
+    required this.totalPerformanceBasis,
+    required this.sortMode,
+    required this.onSortModeChanged,
+  });
 
   final List<_HoldingPerformance> items;
+  final double totalPerformanceBasis;
+  final _HoldingSortMode sortMode;
+  final ValueChanged<_HoldingSortMode> onSortModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -176,13 +337,30 @@ class _HoldingPerformanceCard extends StatelessWidget {
       );
     }
 
+    final sortedItems = _sortHoldingPerformance(items, sortMode);
     return SectionCard(
       title: '보유 항목별 성과',
+      headerTrailing: DropdownButtonHideUnderline(
+        child: DropdownButton<_HoldingSortMode>(
+          value: sortMode,
+          isDense: true,
+          items: [
+            for (final mode in _HoldingSortMode.values)
+              DropdownMenuItem(value: mode, child: Text(mode.label)),
+          ],
+          onChanged: (mode) {
+            if (mode != null) onSortModeChanged(mode);
+          },
+        ),
+      ),
       child: Column(
         children: [
-          for (var index = 0; index < items.length; index++) ...[
-            _HoldingPerformanceRow(item: items[index]),
-            if (index != items.length - 1) const Divider(height: 24),
+          for (var index = 0; index < sortedItems.length; index++) ...[
+            _HoldingPerformanceRow(
+              item: sortedItems[index],
+              totalPerformanceBasis: totalPerformanceBasis,
+            ),
+            if (index != sortedItems.length - 1) const Divider(height: 24),
           ],
         ],
       ),
@@ -342,7 +520,7 @@ class _MonthlyPerformanceRow extends StatelessWidget {
               Text(item.month, style: theme.textTheme.titleMedium),
               const SizedBox(height: 4),
               Text(
-                '실현 ${_formatSignedCurrency(item.realizedProfit)} · 수입 ${_formatSignedCurrency(item.incomeAmount)}',
+                '실현 ${_formatSignedCurrency(item.realizedProfit)} · 수입 ${_formatSignedCurrency(item.incomeAmount)} · 비용 ${_formatSignedCurrency(-item.totalExpenseAmount)}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: MoneyfyPalette.secondaryText,
                 ),
@@ -368,14 +546,22 @@ class _MonthlyPerformanceRow extends StatelessWidget {
 }
 
 class _HoldingPerformanceRow extends StatelessWidget {
-  const _HoldingPerformanceRow({required this.item});
+  const _HoldingPerformanceRow({
+    required this.item,
+    required this.totalPerformanceBasis,
+  });
 
   final _HoldingPerformance item;
+  final double totalPerformanceBasis;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final resultText = _formatSignedCurrency(item.totalPerformance);
+    final contributionText = _formatContribution(
+      item.totalPerformance,
+      totalPerformanceBasis,
+    );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -397,7 +583,7 @@ class _HoldingPerformanceRow extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '실현 ${_formatSignedCurrency(item.realizedProfit)} · 미실현 ${_formatSignedCurrency(item.unrealizedProfit)}',
+                '실현 ${_formatSignedCurrency(item.realizedProfit)} · 미실현 ${_formatSignedCurrency(item.unrealizedProfit)} · 수입 ${_formatSignedCurrency(item.incomeAmount)}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: MoneyfyPalette.secondaryText,
                 ),
@@ -406,15 +592,30 @@ class _HoldingPerformanceRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Text(
-          resultText,
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: moneyfyValueColor(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
               resultText,
-              defaultColor: MoneyfyPalette.ink,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: moneyfyValueColor(
+                  resultText,
+                  defaultColor: MoneyfyPalette.ink,
+                ),
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            fontWeight: FontWeight.w600,
-          ),
+            if (contributionText != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                contributionText,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: MoneyfyPalette.tertiaryText,
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );
@@ -453,15 +654,20 @@ class _MetricRow extends StatelessWidget {
   }
 }
 
-Future<_InvestmentPerformanceReport> _loadInvestmentPerformanceReport() async {
+Future<_InvestmentPerformanceReport> _loadInvestmentPerformanceReport(
+  _PerformanceDateRange range,
+) async {
   final db = AppDatabase.instance;
   final assets = await db.fetchAssets();
   final ledgerPerformanceByHoldingId = await db
-      .fetchLedgerHoldingPerformanceByHoldingId();
+      .fetchLedgerHoldingPerformanceByHoldingId(from: range.from, to: range.to);
   final ledgerPortfolioPerformanceByCurrency = await db
-      .fetchLedgerPortfolioPerformanceByCurrency();
+      .fetchLedgerPortfolioPerformanceByCurrency(
+        from: range.from,
+        to: range.to,
+      );
   final ledgerMonthlyPerformanceByCurrency = await db
-      .fetchLedgerMonthlyPerformanceByCurrency();
+      .fetchLedgerMonthlyPerformanceByCurrency(from: range.from, to: range.to);
   final usdKrwRate = await db.fetchLatestExchangeRate() ?? 1.0;
   final holdings = assets
       .where((asset) => !asset.isHidden && asset.assetType != '현금')
@@ -522,6 +728,16 @@ Future<_InvestmentPerformanceReport> _loadInvestmentPerformanceReport() async {
       ledgerPortfolioPerformanceByCurrency,
       usdKrwRate,
       (record) => record.externalCashFlowAmount,
+    ),
+    externalDepositAmount: _sumLedgerPortfolioFieldAsKrw(
+      ledgerPortfolioPerformanceByCurrency,
+      usdKrwRate,
+      (record) => record.externalDepositAmount,
+    ),
+    externalWithdrawalAmount: _sumLedgerPortfolioFieldAsKrw(
+      ledgerPortfolioPerformanceByCurrency,
+      usdKrwRate,
+      (record) => record.externalWithdrawalAmount,
     ),
     tradeSettlementCashFlowAmount: _sumLedgerPortfolioFieldAsKrw(
       ledgerPortfolioPerformanceByCurrency,
@@ -595,6 +811,8 @@ class _InvestmentPerformanceReport {
     required this.feeAmount,
     required this.taxAmount,
     required this.externalCashFlowAmount,
+    required this.externalDepositAmount,
+    required this.externalWithdrawalAmount,
     required this.tradeSettlementCashFlowAmount,
     required this.internalCashMovementAmount,
     required this.buyAmount,
@@ -610,6 +828,8 @@ class _InvestmentPerformanceReport {
       feeAmount = 0,
       taxAmount = 0,
       externalCashFlowAmount = 0,
+      externalDepositAmount = 0,
+      externalWithdrawalAmount = 0,
       tradeSettlementCashFlowAmount = 0,
       internalCashMovementAmount = 0,
       buyAmount = 0,
@@ -623,6 +843,8 @@ class _InvestmentPerformanceReport {
   final double feeAmount;
   final double taxAmount;
   final double externalCashFlowAmount;
+  final double externalDepositAmount;
+  final double externalWithdrawalAmount;
   final double tradeSettlementCashFlowAmount;
   final double internalCashMovementAmount;
   final double buyAmount;
@@ -633,6 +855,8 @@ class _InvestmentPerformanceReport {
 
   double get pureInvestmentPerformance =>
       pureRealizedPerformance + unrealizedProfit;
+
+  double get totalExpenseAmount => feeAmount + taxAmount;
 
   List<_HoldingPerformance> get realizedRankings {
     final items = holdings
@@ -659,6 +883,8 @@ class _MonthlyPerformance {
 
   double get pureRealizedPerformance =>
       realizedProfit + incomeAmount - feeAmount - taxAmount;
+
+  double get totalExpenseAmount => feeAmount + taxAmount;
 }
 
 class _HoldingPerformance {
@@ -686,6 +912,89 @@ class _HoldingPerformance {
 
   double get totalPerformance =>
       realizedProfit + unrealizedProfit + incomeAmount;
+}
+
+enum _PerformanceDatePreset { oneMonth, threeMonths, sixMonths, year, all }
+
+class _PerformanceDateRange {
+  const _PerformanceDateRange({
+    required this.preset,
+    required this.label,
+    required this.from,
+    required this.to,
+  });
+
+  factory _PerformanceDateRange.yearToDate(DateTime today) {
+    final normalizedToday = DateUtils.dateOnly(today);
+    return _PerformanceDateRange(
+      preset: _PerformanceDatePreset.year,
+      label: '올해',
+      from: DateTime(normalizedToday.year),
+      to: normalizedToday,
+    );
+  }
+
+  final _PerformanceDatePreset preset;
+  final String label;
+  final DateTime? from;
+  final DateTime? to;
+
+  static List<_PerformanceDateRange> presets(DateTime today) {
+    final normalizedToday = DateUtils.dateOnly(today);
+    return [
+      _monthsBack(
+        preset: _PerformanceDatePreset.oneMonth,
+        label: '1개월',
+        today: normalizedToday,
+        months: 1,
+      ),
+      _monthsBack(
+        preset: _PerformanceDatePreset.threeMonths,
+        label: '3개월',
+        today: normalizedToday,
+        months: 3,
+      ),
+      _monthsBack(
+        preset: _PerformanceDatePreset.sixMonths,
+        label: '6개월',
+        today: normalizedToday,
+        months: 6,
+      ),
+      _PerformanceDateRange.yearToDate(normalizedToday),
+      _PerformanceDateRange(
+        preset: _PerformanceDatePreset.all,
+        label: '전체',
+        from: null,
+        to: null,
+      ),
+    ];
+  }
+
+  static _PerformanceDateRange _monthsBack({
+    required _PerformanceDatePreset preset,
+    required String label,
+    required DateTime today,
+    required int months,
+  }) {
+    return _PerformanceDateRange(
+      preset: preset,
+      label: label,
+      from: DateTime(today.year, today.month - months, today.day),
+      to: today,
+    );
+  }
+}
+
+enum _HoldingSortMode {
+  totalDesc('총 성과'),
+  totalAsc('손실'),
+  realizedDesc('실현'),
+  unrealizedDesc('미실현'),
+  incomeDesc('배당/이자');
+
+  const _HoldingSortMode(this.label);
+
+  final String label;
 }
 
 double _toKrw(double amount, String currencyCode, double exchangeRate) {
@@ -746,6 +1055,37 @@ List<_MonthlyPerformance> _mergeMonthlyPerformanceAsKrw(
       )
       .toList(growable: false);
   return items..sort((a, b) => b.month.compareTo(a.month));
+}
+
+List<_HoldingPerformance> _sortHoldingPerformance(
+  List<_HoldingPerformance> items,
+  _HoldingSortMode sortMode,
+) {
+  final sorted = items.toList(growable: false);
+  switch (sortMode) {
+    case _HoldingSortMode.totalDesc:
+      sorted.sort((a, b) => b.totalPerformance.compareTo(a.totalPerformance));
+      break;
+    case _HoldingSortMode.totalAsc:
+      sorted.sort((a, b) => a.totalPerformance.compareTo(b.totalPerformance));
+      break;
+    case _HoldingSortMode.realizedDesc:
+      sorted.sort((a, b) => b.realizedProfit.compareTo(a.realizedProfit));
+      break;
+    case _HoldingSortMode.unrealizedDesc:
+      sorted.sort((a, b) => b.unrealizedProfit.compareTo(a.unrealizedProfit));
+      break;
+    case _HoldingSortMode.incomeDesc:
+      sorted.sort((a, b) => b.incomeAmount.compareTo(a.incomeAmount));
+      break;
+  }
+  return sorted;
+}
+
+String? _formatContribution(double amount, double basis) {
+  if (basis.abs() < 0.000001) return null;
+  final percent = amount / basis * 100;
+  return '${percent.toStringAsFixed(1)}%';
 }
 
 class _MutableMonthlyPerformance {

@@ -150,6 +150,8 @@ class LedgerPortfolioPerformanceRecord {
     required this.feeAmount,
     required this.taxAmount,
     required this.externalCashFlowAmount,
+    this.externalDepositAmount = 0,
+    this.externalWithdrawalAmount = 0,
     required this.tradeSettlementCashFlowAmount,
     required this.internalCashMovementAmount,
     required this.buyAmount,
@@ -162,6 +164,8 @@ class LedgerPortfolioPerformanceRecord {
   final double feeAmount;
   final double taxAmount;
   final double externalCashFlowAmount;
+  final double externalDepositAmount;
+  final double externalWithdrawalAmount;
   final double tradeSettlementCashFlowAmount;
   final double internalCashMovementAmount;
   final double buyAmount;
@@ -230,6 +234,70 @@ class LedgerIncomeTransactionRecord {
   final String symbol;
   final String currencyCode;
   final double amount;
+}
+
+class LedgerPerformanceEventRecord {
+  const LedgerPerformanceEventRecord({
+    required this.eventId,
+    required this.lineId,
+    required this.date,
+    required this.kind,
+    required this.action,
+    required this.title,
+    required this.assetName,
+    required this.holdingName,
+    required this.cashAccountName,
+    required this.currencyCode,
+    required this.amount,
+  });
+
+  final int eventId;
+  final int lineId;
+  final String date;
+  final String kind;
+  final String action;
+  final String title;
+  final String assetName;
+  final String holdingName;
+  final String cashAccountName;
+  final String currencyCode;
+  final double amount;
+}
+
+String? _ledgerDateText(DateTime? date) {
+  if (date == null) return null;
+  final year = date.year.toString().padLeft(4, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '$year-$month-$day';
+}
+
+String _ledgerDateWhereClause({
+  String eventAlias = 'te',
+  DateTime? from,
+  DateTime? to,
+}) {
+  final conditions = <String>[];
+  if (from != null) {
+    conditions.add(
+      "SUBSTR(REPLACE($eventAlias.occurred_at, '.', '-'), 1, 10) >= ?",
+    );
+  }
+  if (to != null) {
+    conditions.add(
+      "SUBSTR(REPLACE($eventAlias.occurred_at, '.', '-'), 1, 10) <= ?",
+    );
+  }
+  if (conditions.isEmpty) return '';
+  return ' AND ${conditions.join(' AND ')}';
+}
+
+List<Variable<String>> _ledgerDateVariables({DateTime? from, DateTime? to}) {
+  return [
+    if (_ledgerDateText(from) case final fromText?)
+      Variable.withString(fromText),
+    if (_ledgerDateText(to) case final toText?) Variable.withString(toText),
+  ];
 }
 
 class Assets extends Table {
@@ -1096,7 +1164,11 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<Map<int, LedgerHoldingPerformanceRecord>>
-  fetchLedgerHoldingPerformanceByHoldingId() async {
+  fetchLedgerHoldingPerformanceByHoldingId({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final dateWhere = _ledgerDateWhereClause(from: from, to: to);
     final rows = await customSelect(
       '''
         SELECT
@@ -1123,8 +1195,10 @@ class AppDatabase extends _$AppDatabase {
           AND te.source NOT IN ('snapshot_restore', 'history_display')
         WHERE tl.deleted_at IS NULL
           AND holding_id IS NOT NULL
+          $dateWhere
         GROUP BY holding_id
       ''',
+      variables: _ledgerDateVariables(from: from, to: to),
       readsFrom: {transactionEvents, transactionLines},
     ).get();
 
@@ -1142,8 +1216,11 @@ class AppDatabase extends _$AppDatabase {
     };
   }
 
-  Future<LedgerPortfolioPerformanceRecord>
-  fetchLedgerPortfolioPerformance() async {
+  Future<LedgerPortfolioPerformanceRecord> fetchLedgerPortfolioPerformance({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final dateWhere = _ledgerDateWhereClause(from: from, to: to);
     final row = await customSelect(
       '''
         SELECT
@@ -1179,6 +1256,8 @@ class AppDatabase extends _$AppDatabase {
             END
           ), 0) AS tax_amount,
           COALESCE(SUM(CASE WHEN action IN ('deposit', 'withdrawal', 'opening_cash') THEN cash_delta ELSE 0 END), 0) AS external_cash_flow_amount,
+          COALESCE(SUM(CASE WHEN action IN ('deposit', 'opening_cash') THEN ABS(cash_delta) ELSE 0 END), 0) AS external_deposit_amount,
+          COALESCE(SUM(CASE WHEN action = 'withdrawal' THEN ABS(cash_delta) ELSE 0 END), 0) AS external_withdrawal_amount,
           COALESCE(SUM(CASE WHEN action = 'settlement' THEN cash_delta ELSE 0 END), 0) AS trade_settlement_cash_flow_amount,
           COALESCE(SUM(CASE WHEN action IN ('transfer_out', 'transfer_in', 'fx_out', 'fx_in') THEN ABS(cash_delta) ELSE 0 END), 0) AS internal_cash_movement_amount,
           COALESCE(SUM(CASE WHEN action = 'buy' THEN gross_amount ELSE 0 END), 0) AS buy_amount,
@@ -1189,7 +1268,9 @@ class AppDatabase extends _$AppDatabase {
           AND te.deleted_at IS NULL
           AND te.source NOT IN ('snapshot_restore', 'history_display')
         WHERE tl.deleted_at IS NULL
+          $dateWhere
       ''',
+      variables: _ledgerDateVariables(from: from, to: to),
       readsFrom: {transactionEvents, transactionLines},
     ).getSingle();
 
@@ -1199,6 +1280,8 @@ class AppDatabase extends _$AppDatabase {
       feeAmount: row.read<double>('fee_amount'),
       taxAmount: row.read<double>('tax_amount'),
       externalCashFlowAmount: row.read<double>('external_cash_flow_amount'),
+      externalDepositAmount: row.read<double>('external_deposit_amount'),
+      externalWithdrawalAmount: row.read<double>('external_withdrawal_amount'),
       tradeSettlementCashFlowAmount: row.read<double>(
         'trade_settlement_cash_flow_amount',
       ),
@@ -1211,7 +1294,11 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<Map<String, LedgerPortfolioPerformanceRecord>>
-  fetchLedgerPortfolioPerformanceByCurrency() async {
+  fetchLedgerPortfolioPerformanceByCurrency({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final dateWhere = _ledgerDateWhereClause(from: from, to: to);
     final rows = await customSelect(
       '''
         SELECT
@@ -1248,6 +1335,8 @@ class AppDatabase extends _$AppDatabase {
             END
           ), 0) AS tax_amount,
           COALESCE(SUM(CASE WHEN action IN ('deposit', 'withdrawal', 'opening_cash') THEN cash_delta ELSE 0 END), 0) AS external_cash_flow_amount,
+          COALESCE(SUM(CASE WHEN action IN ('deposit', 'opening_cash') THEN ABS(cash_delta) ELSE 0 END), 0) AS external_deposit_amount,
+          COALESCE(SUM(CASE WHEN action = 'withdrawal' THEN ABS(cash_delta) ELSE 0 END), 0) AS external_withdrawal_amount,
           COALESCE(SUM(CASE WHEN action = 'settlement' THEN cash_delta ELSE 0 END), 0) AS trade_settlement_cash_flow_amount,
           COALESCE(SUM(CASE WHEN action IN ('transfer_out', 'transfer_in', 'fx_out', 'fx_in') THEN ABS(cash_delta) ELSE 0 END), 0) AS internal_cash_movement_amount,
           COALESCE(SUM(CASE WHEN action = 'buy' THEN gross_amount ELSE 0 END), 0) AS buy_amount,
@@ -1258,8 +1347,10 @@ class AppDatabase extends _$AppDatabase {
           AND te.deleted_at IS NULL
           AND te.source NOT IN ('snapshot_restore', 'history_display')
         WHERE tl.deleted_at IS NULL
+          $dateWhere
         GROUP BY COALESCE(NULLIF(currency_code, ''), 'KRW')
       ''',
+      variables: _ledgerDateVariables(from: from, to: to),
       readsFrom: {transactionEvents, transactionLines},
     ).get();
 
@@ -1272,6 +1363,10 @@ class AppDatabase extends _$AppDatabase {
           feeAmount: row.read<double>('fee_amount'),
           taxAmount: row.read<double>('tax_amount'),
           externalCashFlowAmount: row.read<double>('external_cash_flow_amount'),
+          externalDepositAmount: row.read<double>('external_deposit_amount'),
+          externalWithdrawalAmount: row.read<double>(
+            'external_withdrawal_amount',
+          ),
           tradeSettlementCashFlowAmount: row.read<double>(
             'trade_settlement_cash_flow_amount',
           ),
@@ -1285,7 +1380,11 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<List<LedgerMonthlyPerformanceRecord>>
-  fetchLedgerMonthlyPerformanceByCurrency() async {
+  fetchLedgerMonthlyPerformanceByCurrency({
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final dateWhere = _ledgerDateWhereClause(from: from, to: to);
     final rows = await customSelect(
       '''
         SELECT
@@ -1329,6 +1428,7 @@ class AppDatabase extends _$AppDatabase {
         WHERE tl.deleted_at IS NULL
           AND te.deleted_at IS NULL
           AND te.source NOT IN ('snapshot_restore', 'history_display')
+          $dateWhere
           AND tl.action IN (
             'sell',
             'dividend',
@@ -1341,6 +1441,7 @@ class AppDatabase extends _$AppDatabase {
           COALESCE(NULLIF(tl.currency_code, ''), 'KRW')
         ORDER BY month DESC, currency_code ASC
       ''',
+      variables: _ledgerDateVariables(from: from, to: to),
       readsFrom: {transactionEvents, transactionLines},
     ).get();
 
@@ -1485,6 +1586,90 @@ class AppDatabase extends _$AppDatabase {
             assetName: row.read<String>('asset_name'),
             holdingName: row.read<String>('holding_name'),
             symbol: row.read<String>('symbol'),
+            currencyCode: row.read<String>('currency_code'),
+            amount: row.read<double>('amount'),
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<List<LedgerPerformanceEventRecord>> fetchLedgerPerformanceEvents({
+    DateTime? from,
+    DateTime? to,
+    String? action,
+    int? holdingId,
+  }) async {
+    final dateWhere = _ledgerDateWhereClause(from: from, to: to);
+    final actionWhere = action == null ? '' : ' AND tl.action = ?';
+    final holdingWhere = holdingId == null ? '' : ' AND tl.holding_id = ?';
+    final rows = await customSelect(
+      '''
+        SELECT
+          te.id AS event_id,
+          tl.id AS line_id,
+          te.occurred_at AS date,
+          te.kind AS kind,
+          tl.action AS action,
+          te.title AS title,
+          CASE
+            WHEN COALESCE(a.alias, '') != '' THEN a.alias
+            ELSE COALESCE(a.title, '')
+          END AS asset_name,
+          COALESCE(h.name, '') AS holding_name,
+          COALESCE(ca.name, '') AS cash_account_name,
+          COALESCE(NULLIF(tl.currency_code, ''), h.currency_code, ca.currency_code, 'KRW') AS currency_code,
+          CASE
+            WHEN ABS(COALESCE(tl.realized_pnl, 0)) > 0 THEN tl.realized_pnl
+            WHEN ABS(COALESCE(tl.gross_amount, 0)) > 0 THEN tl.gross_amount
+            ELSE COALESCE(tl.cash_delta, 0)
+          END AS amount
+        FROM transaction_lines tl
+        INNER JOIN transaction_events te
+          ON te.id = tl.event_id
+          AND te.deleted_at IS NULL
+          AND te.source NOT IN ('snapshot_restore', 'history_display')
+        LEFT JOIN holdings h
+          ON h.id = tl.holding_id
+        LEFT JOIN cash_accounts ca
+          ON ca.id = tl.cash_account_id
+        LEFT JOIN assets a
+          ON a.id = COALESCE(tl.asset_id, h.asset_id, ca.asset_id)
+        WHERE tl.deleted_at IS NULL
+          $dateWhere
+          $actionWhere
+          $holdingWhere
+        ORDER BY
+          SUBSTR(REPLACE(te.occurred_at, '.', '-'), 1, 10) DESC,
+          te.id DESC,
+          tl.sort_order ASC,
+          tl.id ASC
+      ''',
+      variables: [
+        ..._ledgerDateVariables(from: from, to: to),
+        if (action != null) Variable.withString(action),
+        if (holdingId != null) Variable.withInt(holdingId),
+      ],
+      readsFrom: {
+        transactionEvents,
+        transactionLines,
+        holdings,
+        cashAccounts,
+        assets,
+      },
+    ).get();
+
+    return rows
+        .map(
+          (row) => LedgerPerformanceEventRecord(
+            eventId: row.read<int>('event_id'),
+            lineId: row.read<int>('line_id'),
+            date: row.read<String>('date'),
+            kind: row.read<String>('kind'),
+            action: row.read<String>('action'),
+            title: row.read<String>('title'),
+            assetName: row.read<String>('asset_name'),
+            holdingName: row.read<String>('holding_name'),
+            cashAccountName: row.read<String>('cash_account_name'),
             currencyCode: row.read<String>('currency_code'),
             amount: row.read<double>('amount'),
           ),

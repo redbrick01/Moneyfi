@@ -74,7 +74,7 @@ void main() {
     );
     await tester.tap(find.text('투자성과 분석').first);
     await settlePage(tester);
-    expect(find.text('순수 투자성과'), findsOneWidget);
+    expect(find.text('순 투자성과'), findsWidgets);
 
     Navigator.of(tester.element(find.byType(InvestmentPerformancePage))).pop();
     await settlePage(tester);
