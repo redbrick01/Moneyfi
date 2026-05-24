@@ -23,8 +23,8 @@
 
 | File | Change |
 | --- | --- |
-| `docs/features/portfolio_diagnosis/plan.md` | 리디자인 계획서 작성 |
-| `docs/features/portfolio_diagnosis/tmp_execution_plan.md` | 임시 실행 계획 작성 후 검증 완료 단계에서 삭제 |
+| `docs/features/new_feature_development/portfolio_diagnosis/plan.md` | 리디자인 계획서 작성 |
+| `docs/features/new_feature_development/portfolio_diagnosis/tmp_execution_plan.md` | 임시 실행 계획 작성 후 검증 완료 단계에서 삭제 |
 | `docs/README.md` | 영구 계획서 링크 추가 |
 | `lib/pages/analysis_page.dart` | 분석 탭 진입 카드 문구 변경 |
 | `lib/pages/portfolio_analysis_mvp_page.dart` | 진단 요약, 주의 항목, 조정 제안 UX 추가 |

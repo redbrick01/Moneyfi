@@ -137,7 +137,7 @@ MDD와 HHI 설명은 상세 영역으로 이동합니다. 첫 화면에서는 �
 
 완료 기준:
 
-- `docs/features/portfolio_diagnosis/plan.md`가 존재합니다.
+- `docs/features/new_feature_development/portfolio_diagnosis/plan.md`가 존재합니다.
 - `docs/README.md`에 영구 문서 링크가 추가됩니다.
 
 ### Phase 2. IA And Entry Rename

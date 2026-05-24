@@ -4,11 +4,11 @@
 
 기준 리포트:
 
-- `docs/features/investment_performance/tmp_development_report.md`
+- `docs/features/new_feature_development/investment_performance/tmp_development_report.md`
 
 관련 계획:
 
-- `docs/features/investment_performance/plan.md`
+- `docs/features/new_feature_development/investment_performance/plan.md`
 - `docs/transaction_ledger_redesign.md`
 - `docs/data_and_sync.md`
 

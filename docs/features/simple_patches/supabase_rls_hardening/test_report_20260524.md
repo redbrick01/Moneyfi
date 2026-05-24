@@ -16,9 +16,9 @@
 ## Changed Files
 
 - `supabase/migrations/20260524195000_harden_client_grants_and_rls.sql`
-- `docs/features/supabase_rls_hardening/plan.md`
-- `docs/features/supabase_rls_hardening/verification_test_plan.md`
-- `docs/features/supabase_rls_hardening/test_report_20260524.md`
+- `docs/features/simple_patches/supabase_rls_hardening/plan.md`
+- `docs/features/simple_patches/supabase_rls_hardening/verification_test_plan.md`
+- `docs/features/simple_patches/supabase_rls_hardening/test_report_20260524.md`
 - `docs/README.md`
 - `docs/supabase_overview.md`
 

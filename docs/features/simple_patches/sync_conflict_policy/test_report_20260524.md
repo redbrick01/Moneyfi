@@ -12,9 +12,9 @@ Core sync 충돌 정책을 `last_modified_at` 기반 last-writer-wins로 고정�
 - `lib/db/app_database.dart`
 - `lib/services/sync_service.dart`
 - `docs/data_and_sync.md`
-- `docs/features/sync_conflict_policy/plan.md`
-- `docs/features/sync_conflict_policy/verification_test_plan.md`
-- `docs/features/sync_conflict_policy/test_report_20260524.md`
+- `docs/features/simple_patches/sync_conflict_policy/plan.md`
+- `docs/features/simple_patches/sync_conflict_policy/verification_test_plan.md`
+- `docs/features/simple_patches/sync_conflict_policy/test_report_20260524.md`
 
 ## Verification Results
 

@@ -4,11 +4,11 @@
 
 검증 기준 문서:
 
-- `docs/features/investment_performance/verification_test_plan.md`
+- `docs/features/new_feature_development/investment_performance/verification_test_plan.md`
 
 관련 개발 리포트:
 
-- `docs/features/investment_performance/tmp_development_report.md`
+- `docs/features/new_feature_development/investment_performance/tmp_development_report.md`
 
 ## Summary
 

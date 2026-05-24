@@ -4,10 +4,10 @@
 
 기준 사례:
 
-- `docs/features/investment_performance/plan.md`
-- `docs/features/investment_performance/tmp_development_report.md`
-- `docs/features/investment_performance/verification_test_plan.md`
-- `docs/features/investment_performance/test_report_20260524.md`
+- `docs/features/new_feature_development/investment_performance/plan.md`
+- `docs/features/new_feature_development/investment_performance/tmp_development_report.md`
+- `docs/features/new_feature_development/investment_performance/verification_test_plan.md`
+- `docs/features/new_feature_development/investment_performance/test_report_20260524.md`
 
 ## Goals
 
@@ -39,10 +39,10 @@
 
 | 문서 유형 | 파일명 예시 | 목적 |
 | --- | --- | --- |
-| Feature plan | `docs/features/<feature>/plan.md` | 목표, 범위, UX, 데이터/API, 단계별 개발 계획 |
-| Verification test plan | `docs/features/<feature>/verification_test_plan.md` | 자동 테스트, 수동 QA, acceptance criteria |
-| Test report | `docs/features/<feature>/test_report_YYYYMMDD.md` | 실제 실행한 테스트와 결과 |
-| Implementation report | `docs/features/<feature>/implementation_report_YYYYMMDD.md` | 배포/운영/데이터 보정까지 포함한 최종 보고 |
+| Feature plan | `docs/features/<category>/<work>/plan.md` | 목표, 범위, UX, 데이터/API, 단계별 개발 계획 |
+| Verification test plan | `docs/features/<category>/<work>/verification_test_plan.md` | 자동 테스트, 수동 QA, acceptance criteria |
+| Test report | `docs/features/<category>/<work>/test_report_YYYYMMDD.md` | 실제 실행한 테스트와 결과 |
+| Implementation report | `docs/features/<category>/<work>/implementation_report_YYYYMMDD.md` | 배포/운영/데이터 보정까지 포함한 최종 보고 |
 
 영구 문서를 추가하면 `docs/README.md`에 링크를 추가합니다.
 
@@ -52,11 +52,23 @@
 
 | 문서 유형 | 파일명 예시 | 삭제 시점 |
 | --- | --- | --- |
-| Execution plan | `docs/features/<feature>/tmp_execution_plan.md` | 구현 완료 후 |
-| Development report | `docs/features/<feature>/tmp_development_report.md` | 최종 implementation report로 승격하거나 릴리스 후 정리 |
-| Investigation notes | `docs/features/<feature>/tmp_investigation.md` | 결론이 영구 문서에 반영된 후 |
+| Execution plan | `docs/features/<category>/<work>/tmp_execution_plan.md` | 구현 완료 후 |
+| Development report | `docs/features/<category>/<work>/tmp_development_report.md` | 최종 implementation report로 승격하거나 릴리스 후 정리 |
+| Investigation notes | `docs/features/<category>/<work>/tmp_investigation.md` | 결론이 영구 문서에 반영된 후 |
 
 임시 문서는 `tmp_` prefix를 붙입니다. `docs/README.md`에는 연결하지 않습니다.
+
+### Feature Work Categories
+
+기능 작업 문서는 성격에 따라 아래 세 경로 중 하나에 둡니다.
+
+| 분류 | 경로 | 기준 |
+| --- | --- | --- |
+| 새로운 기능 개발 | `docs/features/new_feature_development/<work>/` | 새 화면, 새 사용자 기능, 주요 제품 경험 확장 |
+| 단순 패치 | `docs/features/simple_patches/<work>/` | 구조 개선, 보안/품질 강화, 테스트/CI 보강, 정책 정리 |
+| 버그 픽스 | `docs/features/bug_fixes/<work>/` | 실행 실패, 깨진 화면, 잘못된 안내, 누락 파일 등 사용자 문제 수정 |
+
+분류가 애매하면 사용자-facing 새 기능인지 먼저 판단합니다. 새 기능이 아니고 기존 문제를 바로잡는 성격이 강하면 버그 픽스로, 그 외 품질/운영/구조 개선은 단순 패치로 분류합니다.
 
 ## Required Process
 
@@ -103,7 +115,7 @@
 파일명:
 
 ```text
-docs/features/<feature>/plan.md
+docs/features/<category>/<work>/plan.md
 ```
 
 완료 기준:
@@ -143,7 +155,7 @@ docs/features/<feature>/plan.md
 파일명:
 
 ```text
-docs/features/<feature>/tmp_execution_plan.md
+docs/features/<category>/<work>/tmp_execution_plan.md
 ```
 
 필수 내용:
@@ -203,7 +215,7 @@ docs/features/<feature>/tmp_execution_plan.md
 파일명:
 
 ```text
-docs/features/<feature>/tmp_development_report.md
+docs/features/<category>/<work>/tmp_development_report.md
 ```
 
 필수 내용:
@@ -236,7 +248,7 @@ docs/features/<feature>/tmp_development_report.md
 파일명:
 
 ```text
-docs/features/<feature>/verification_test_plan.md
+docs/features/<category>/<work>/verification_test_plan.md
 ```
 
 필수 내용:
@@ -330,7 +342,7 @@ Supabase 원격 DB, Edge Function 배포 상태, 운영 권한을 확인할 때�
 파일명:
 
 ```text
-docs/features/<feature>/test_report_YYYYMMDD.md
+docs/features/<category>/<work>/test_report_YYYYMMDD.md
 ```
 
 필수 내용:
@@ -422,14 +434,14 @@ Flutter/Dart 명령은 SDK cache와 startup lock을 공유하므로 아래 순�
 
 | 목적 | 파일명 |
 | --- | --- |
-| 기능 계획 | `docs/features/<feature>/plan.md` |
-| 임시 실행 계획 | `docs/features/<feature>/tmp_execution_plan.md` |
-| 임시 개발 리포트 | `docs/features/<feature>/tmp_development_report.md` |
-| 검증/테스트 계획 | `docs/features/<feature>/verification_test_plan.md` |
-| 테스트 보고서 | `docs/features/<feature>/test_report_YYYYMMDD.md` |
-| 구현 보고서 | `docs/features/<feature>/implementation_report_YYYYMMDD.md` |
+| 기능 계획 | `docs/features/<category>/<work>/plan.md` |
+| 임시 실행 계획 | `docs/features/<category>/<work>/tmp_execution_plan.md` |
+| 임시 개발 리포트 | `docs/features/<category>/<work>/tmp_development_report.md` |
+| 검증/테스트 계획 | `docs/features/<category>/<work>/verification_test_plan.md` |
+| 테스트 보고서 | `docs/features/<category>/<work>/test_report_YYYYMMDD.md` |
+| 구현 보고서 | `docs/features/<category>/<work>/implementation_report_YYYYMMDD.md` |
 
-`<feature>`는 snake_case를 사용합니다.
+`<category>`는 `new_feature_development`, `simple_patches`, `bug_fixes` 중 하나를 사용합니다. `<work>`는 snake_case를 사용합니다.
 
 ## Final Response Rules
 

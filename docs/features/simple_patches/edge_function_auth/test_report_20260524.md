@@ -14,9 +14,9 @@ Edge Function 인증을 `decodeJwtSub` 기반 payload read에서 `supabase.auth.
 - `supabase/functions/fetch-company-news/index.ts`
 - `supabase/functions/get-user-company-news-summaries/index.ts`
 - `docs/supabase_overview.md`
-- `docs/features/edge_function_auth/plan.md`
-- `docs/features/edge_function_auth/verification_test_plan.md`
-- `docs/features/edge_function_auth/test_report_20260524.md`
+- `docs/features/simple_patches/edge_function_auth/plan.md`
+- `docs/features/simple_patches/edge_function_auth/verification_test_plan.md`
+- `docs/features/simple_patches/edge_function_auth/test_report_20260524.md`
 
 ## Verification Results
 

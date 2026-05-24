@@ -6,11 +6,11 @@
 
 영구 계획 문서:
 
-- `docs/features/investment_performance/plan.md`
+- `docs/features/new_feature_development/investment_performance/plan.md`
 
 후속 검증 문서:
 
-- `docs/features/investment_performance/verification_test_plan.md`
+- `docs/features/new_feature_development/investment_performance/verification_test_plan.md`
 
 ## Summary
 
@@ -43,7 +43,7 @@
 | Stage 7. Holding Contribution And Sorting | 완료 | 종목별 기여도와 정렬 옵션 추가 |
 | Stage 8. Minimal Drill-Down Preparation | 완료 | `fetchLedgerPerformanceEvents()` 추가 |
 | Stage 9. Verification | 완료 | `flutter analyze`, `flutter test` 통과 |
-| Stage 10. Cleanup | 완료 | `docs/features/investment_performance/tmp_execution_plan.md` 삭제 |
+| Stage 10. Cleanup | 완료 | `docs/features/new_feature_development/investment_performance/tmp_execution_plan.md` 삭제 |
 
 ## Changed Files
 
@@ -53,7 +53,7 @@
 | `lib/pages/investment_performance_page.dart` | stateful 기간 preset, summary header, breakdown, cash-flow card, 월별 row, 종목별 기여도/정렬 개선 |
 | `test/transaction_flow_test.dart` | 기간 필터, 현금흐름 분리, drill-down API 테스트 추가 |
 | `test/page_walkthrough_test.dart` | 변경된 `순 투자성과` 화면 문구에 맞춰 walkthrough 기대값 수정 |
-| `docs/features/investment_performance/plan.md` | 원장 기반 성과 리포트 계획과 타당성 피드백 |
+| `docs/features/new_feature_development/investment_performance/plan.md` | 원장 기반 성과 리포트 계획과 타당성 피드백 |
 | `docs/README.md` | 투자성과 리포트 계획 문서와 검증/테스트 계획 문서 링크 추가 |
 
 ## Data Layer Changes
