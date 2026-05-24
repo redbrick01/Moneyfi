@@ -1196,8 +1196,11 @@ String _formatTimestamp(DateTime dateTime) {
 }
 
 class _AssetListCard extends StatefulWidget {
-  static const double _kAssetRowHeight = 80;
+  static const double _kAssetRowHeight = 72;
   static const double _kAssetDividerHeight = 1;
+  static const double _kAssetIconBoxSize = 34;
+  static const double _kAssetIconSize = 20;
+  static const double _kAssetLeadingSlotWidth = 46;
   static const String _kSlidableGroupTag = 'dashboard_asset_slidable_group';
 
   const _AssetListCard({
@@ -1421,7 +1424,7 @@ class _AssetListCardState extends State<_AssetListCard> {
           padding: EdgeInsets.all(context.cardPadding()),
           child: const SkeletonList(
             rows: 4,
-            rowHeight: 80,
+            rowHeight: _AssetListCard._kAssetRowHeight,
             hasLeading: true,
             trailingLines: 2,
           ),
@@ -1743,16 +1746,17 @@ class _AssetRow extends StatelessWidget {
     final showSecondaryValue = item.assetType != '현금';
     final rowChild = AssetRow(
       minHeight: _AssetListCard._kAssetRowHeight,
+      leadingSlotWidth: _AssetListCard._kAssetLeadingSlotWidth,
       leading: Container(
-        width: context.spacing.xl + context.spacing.xs + 4,
-        height: context.spacing.xl + context.spacing.xs + 4,
+        width: _AssetListCard._kAssetIconBoxSize,
+        height: _AssetListCard._kAssetIconBoxSize,
         decoration: BoxDecoration(
           color: context.surfaces.surfaceRaised,
           borderRadius: BorderRadius.circular(context.radius.rMd),
         ),
         child: AppIcon.raw(
           item.icon,
-          size: context.spacing.md + 4,
+          size: _AssetListCard._kAssetIconSize,
           color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
@@ -1873,7 +1877,7 @@ class _AssetProfitLine extends StatelessWidget {
                 profitText,
                 maxLines: 1,
                 textAlign: TextAlign.right,
-                style: context.typography.body.copyWith(
+                style: context.typography.caption.copyWith(
                   color: amountColor,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1887,6 +1891,7 @@ class _AssetProfitLine extends StatelessWidget {
           percent: profitRate,
           mode: DeltaChipMode.percent,
           vivid: true,
+          compact: true,
         ),
       ],
     );

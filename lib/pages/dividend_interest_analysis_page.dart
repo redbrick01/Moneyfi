@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../components/section_card.dart';
 import '../components/transaction_history_list.dart';
 import '../db/app_database.dart';
+import '../design_system/context_extensions.dart';
 import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
@@ -21,13 +23,13 @@ class DividendInterestAnalysisPage extends StatelessWidget {
             return Column(
               children: [
                 _IncomeSummaryCard(report: report),
-                const SizedBox(height: MoneyfySpacing.sectionGap),
+                SizedBox(height: context.spacing.sectionGap),
                 _MonthlyIncomeTrendCard(months: report.months),
-                const SizedBox(height: MoneyfySpacing.sectionGap),
+                SizedBox(height: context.spacing.sectionGap),
                 _YearlyIncomeTotalCard(years: report.years),
-                const SizedBox(height: MoneyfySpacing.sectionGap),
+                SizedBox(height: context.spacing.sectionGap),
                 _IncomeSourceCard(sources: report.sources),
-                const SizedBox(height: MoneyfySpacing.sectionGap),
+                SizedBox(height: context.spacing.sectionGap),
                 _IncomeTransactionCard(items: report.transactions),
               ],
             );
@@ -45,8 +47,7 @@ class _IncomeSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return MoneyfySectionCard(
+    return _IncomeSectionCard(
       title: '배당/이자 총합',
       subtitle: report.transactions.isEmpty
           ? '기록된 배당/이자 거래가 없습니다.'
@@ -56,12 +57,11 @@ class _IncomeSummaryCard extends StatelessWidget {
         children: [
           Text(
             _formatCurrency(report.totalIncome),
-            style: theme.textTheme.headlineSmall?.copyWith(
+            style: context.typography.pageTitle.copyWith(
               color: MoneyfyPalette.ink,
-              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 18),
+          SizedBox(height: context.spacing.md),
           Row(
             children: [
               Expanded(
@@ -70,7 +70,7 @@ class _IncomeSummaryCard extends StatelessWidget {
                   value: _formatCurrency(report.dividendIncome),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.sm),
               Expanded(
                 child: _MiniMetric(
                   label: '이자',
@@ -79,7 +79,7 @@ class _IncomeSummaryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: context.spacing.sm),
           Row(
             children: [
               Expanded(
@@ -88,7 +88,7 @@ class _IncomeSummaryCard extends StatelessWidget {
                   value: _formatCurrency(report.averageMonthlyIncome),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.sm),
               Expanded(
                 child: _MiniMetric(
                   label: '기록 수',
@@ -111,7 +111,7 @@ class _MonthlyIncomeTrendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recentMonths = months.take(12).toList(growable: false);
-    return MoneyfySectionCard(
+    return _IncomeSectionCard(
       title: '월별 배당/이자',
       subtitle: '최근 12개월 기준',
       child: recentMonths.isEmpty
@@ -147,7 +147,7 @@ class _YearlyIncomeTotalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MoneyfySectionCard(
+    return _IncomeSectionCard(
       title: '연 총합',
       subtitle: '연도별 배당/이자 합계',
       child: years.isEmpty
@@ -171,7 +171,7 @@ class _IncomeSourceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MoneyfySectionCard(
+    return _IncomeSectionCard(
       title: '종목별 배당/이자',
       subtitle: '수입이 큰 순서',
       child: sources.isEmpty
@@ -196,7 +196,7 @@ class _IncomeTransactionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final visibleItems = items.take(30).toList(growable: false);
-    return MoneyfySectionCard(
+    return _IncomeSectionCard(
       title: '최근 배당/이자 내역',
       child: visibleItems.isEmpty
           ? const _EmptyIncomeText()
@@ -210,6 +210,40 @@ class _IncomeTransactionCard extends StatelessWidget {
   }
 }
 
+class _IncomeSectionCard extends StatelessWidget {
+  const _IncomeSectionCard({
+    required this.title,
+    required this.child,
+    this.subtitle,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      title: title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (subtitle != null) ...[
+            Text(
+              subtitle!,
+              style: context.typography.meta.copyWith(
+                color: MoneyfyPalette.tertiaryText,
+              ),
+            ),
+            SizedBox(height: context.spacing.md),
+          ],
+          child,
+        ],
+      ),
+    );
+  }
+}
+
 class _MiniMetric extends StatelessWidget {
   const _MiniMetric({required this.label, required this.value});
 
@@ -218,12 +252,14 @@ class _MiniMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.sm,
+        vertical: context.spacing.sm,
+      ),
       decoration: BoxDecoration(
         color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(context.radius.rMd),
         border: Border.all(color: MoneyfyPalette.border),
       ),
       child: Column(
@@ -231,16 +267,15 @@ class _MiniMetric extends StatelessWidget {
         children: [
           Text(
             label,
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: context.typography.meta.copyWith(
               color: MoneyfyPalette.tertiaryText,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: context.spacing.xs),
           Text(
             value,
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: context.typography.cardTitle.copyWith(
               color: MoneyfyPalette.ink,
-              fontWeight: FontWeight.w600,
             ),
           ),
         ],

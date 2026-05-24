@@ -16,6 +16,7 @@
 | 문서 | 내용 |
 | --- | --- |
 | [Design System](design_system.md) | MONEYFY UI 원칙, 색상, 컴포넌트 사용 규칙 |
+| [getdesign Application Plan](getdesign_application_plan.md) | getdesign.md 기반 디자인 레퍼런스 적용 계획 |
 | [Main Asset Card Format](main_asset_card_format.md) | 메인 자산 카드 표시 포맷 |
 | [Transaction Ledger Redesign](transaction_ledger_redesign.md) | 거래 내역 화면 개편 방향 |
 | [UI Snapshot Targets](ui_snapshot_targets.md) | UI 회귀 확인용 주요 화면 목록 |

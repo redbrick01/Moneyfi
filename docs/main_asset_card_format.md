@@ -29,15 +29,19 @@
   - 앞 카드: 표시 자산 목록
   - 뒤 카드: 숨김 자산 목록
   - 숨김 카드 첫 행: 항상 빈 슬롯(`_HiddenAssetEmptySlot`)
-  - 겹침 오프셋: `rowHeight(80)` 기준
+  - 겹침 오프셋: `rowHeight(72)` 기준
 
 ## 4) 카드 행(Row) 포맷
 - 공통 행 컴포넌트: `AssetRow`
-- 행 높이: `80`
-- 아이콘 슬롯: `context.spacing.xl + context.spacing.xs + 4`
+- 행 높이: `72`
+- 아이콘 슬롯: `46`
+- 아이콘 박스: `34 x 34`
+- 아이콘 크기: `20`
 - 우측 값
   - 금액 텍스트
   - (현금 제외) 손익 금액 + `DeltaChip(%)`
+  - 손익 금액 텍스트: `typography.caption`
+  - 수익률 칩: `DeltaChip(compact: true)` (`minHeight=20`, `horizontal=6`, `vertical=2`, `typography.caption`)
 - 숨김 행 표현
   - opacity: `0.6`
   - blur: `ImageFilter.blur(sigmaX: 3.6, sigmaY: 3.6)`
@@ -53,7 +57,7 @@
   - `AppDatabase.updateAssetHidden(id, !isHidden)`
 
 ## 6) empty / loading / error 상태
-- Loading: `SkeletonList(rows: 4, rowHeight: 80, hasLeading: true, trailingLines: 2)`
+- Loading: `SkeletonList(rows: 4, rowHeight: 72, hasLeading: true, trailingLines: 2)`
 - Error: `InlineError + RetryRow`
 - Empty(로그인 후 기본): `EmptyStateCard('자산이 아직 없어요')`
 - Empty(로그아웃 전용): 레벨1 폭 + 중앙 정렬 + CTA 버튼
@@ -68,4 +72,3 @@
 - 슬라이드 액션 + 외부 탭 시 닫힘 동작
 - 드래그 재정렬 낙관적 업데이트 + 실패 롤백
 - 표시/숨김 분리 렌더링 규칙
-

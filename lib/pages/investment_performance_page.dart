@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../components/section_card.dart';
 import '../db/app_database.dart';
+import '../design_system/context_extensions.dart';
 import '../models/asset_item.dart';
 import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
@@ -9,8 +10,6 @@ import '../widgets/moneyfy_ui.dart';
 
 class InvestmentPerformancePage extends StatelessWidget {
   const InvestmentPerformancePage({super.key});
-
-  static const double _sectionGap = 16;
 
   @override
   Widget build(BuildContext context) {
@@ -25,15 +24,15 @@ class InvestmentPerformancePage extends StatelessWidget {
             return Column(
               children: [
                 _PerformanceSummaryCard(report: report),
-                const SizedBox(height: _sectionGap),
+                SizedBox(height: context.spacing.sectionGap),
                 _PerformanceBreakdownCard(report: report),
-                const SizedBox(height: _sectionGap),
+                SizedBox(height: context.spacing.sectionGap),
                 _CashFlowExclusionCard(report: report),
-                const SizedBox(height: _sectionGap),
+                SizedBox(height: context.spacing.sectionGap),
                 _MonthlyPerformanceCard(items: report.monthlyPerformance),
-                const SizedBox(height: _sectionGap),
+                SizedBox(height: context.spacing.sectionGap),
                 _RealizedProfitRankingCard(items: report.realizedRankings),
-                const SizedBox(height: _sectionGap),
+                SizedBox(height: context.spacing.sectionGap),
                 _HoldingPerformanceCard(items: report.holdings),
               ],
             );
@@ -51,7 +50,6 @@ class _PerformanceSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return SectionCard(
       title: '순수 투자성과',
       child: Column(
@@ -59,18 +57,17 @@ class _PerformanceSummaryCard extends StatelessWidget {
         children: [
           Text(
             _formatSignedCurrency(report.pureInvestmentPerformance),
-            style: theme.textTheme.headlineSmall?.copyWith(
+            style: context.typography.pageTitle.copyWith(
               color: moneyfyValueColor(
                 _formatSignedCurrency(report.pureInvestmentPerformance),
                 defaultColor: MoneyfyPalette.ink,
               ),
-              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: context.spacing.xs),
           Text(
             '현금 이동 제외 · 손익과 투자수입 반영',
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: context.typography.meta.copyWith(
               color: MoneyfyPalette.tertiaryText,
             ),
           ),

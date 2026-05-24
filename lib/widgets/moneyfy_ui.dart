@@ -209,7 +209,7 @@ class MoneyfySectionCard extends StatelessWidget {
     required this.child,
     this.subtitle,
     this.trailing,
-    this.padding = const EdgeInsets.all(MoneyfySpacing.cardPadding),
+    this.padding,
     this.headerBottomSpacing = 16,
     this.variant = MoneyfySurfaceCardVariant.base,
   });
@@ -218,7 +218,7 @@ class MoneyfySectionCard extends StatelessWidget {
   final String? subtitle;
   final Widget? trailing;
   final Widget child;
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
   final double headerBottomSpacing;
   final MoneyfySurfaceCardVariant variant;
 
@@ -226,7 +226,7 @@ class MoneyfySectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return MoneyfySurfaceCard(
       variant: variant,
-      padding: padding,
+      padding: padding ?? EdgeInsets.all(context.cardPadding()),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

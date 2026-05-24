@@ -36,9 +36,18 @@ class AppSpacing extends ThemeExtension<AppSpacing> {
   final double pageTop;
   final double pageBottomInset;
 
-  double responsiveHorizontal(double widthDp) => widthDp <= 360 ? md : lg;
+  double responsiveHorizontal(double widthDp) {
+    if (widthDp <= 360) return 14;
+    if (widthDp <= 430) return 16;
+    return lg;
+  }
+
   double get sectionGap => xl;
-  double cardPadding({bool dense = false}) => VisualSpec.surface.paddingCard;
+  double cardPadding({bool dense = false, double? widthDp}) {
+    if (dense) return VisualSpec.surface.paddingCardDense;
+    if (widthDp != null && widthDp <= 430) return 16;
+    return VisualSpec.surface.paddingCard;
+  }
 
   @override
   AppSpacing copyWith({

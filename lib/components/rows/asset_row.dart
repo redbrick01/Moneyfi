@@ -18,6 +18,7 @@ class AssetRow extends StatelessWidget {
     this.showLeading = true,
     this.trailingAccessory,
     this.minHeight = 76,
+    this.leadingSlotWidth,
   });
 
   final Widget leading;
@@ -31,6 +32,7 @@ class AssetRow extends StatelessWidget {
   final bool showLeading;
   final Widget? trailingAccessory;
   final double minHeight;
+  final double? leadingSlotWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -38,8 +40,8 @@ class AssetRow extends StatelessWidget {
     final content = LayoutBuilder(
       builder: (context, constraints) {
         final horizontalPadding = context.spacing.md * 2;
-        final leadingSlotWidth = showLeading
-            ? context.spacing.xxxl + context.spacing.md
+        final resolvedLeadingSlotWidth = showLeading
+            ? leadingSlotWidth ?? context.spacing.xxxl + context.spacing.md
             : 0.0;
         final gapLeadingToTitle = showLeading ? context.spacing.sm : 0.0;
         final gapTitleToTrailing = context.spacing.sm;
@@ -51,7 +53,7 @@ class AssetRow extends StatelessWidget {
           0.0,
           constraints.maxWidth -
               horizontalPadding -
-              leadingSlotWidth -
+              resolvedLeadingSlotWidth -
               gapLeadingToTitle -
               gapTitleToTrailing -
               chevronReserve -
@@ -79,7 +81,7 @@ class AssetRow extends StatelessWidget {
               children: [
                 if (showLeading) ...[
                   SizedBox(
-                    width: leadingSlotWidth,
+                    width: resolvedLeadingSlotWidth,
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: leading,

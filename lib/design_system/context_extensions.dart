@@ -99,5 +99,10 @@ extension AppBuildContextX on BuildContext {
     return spacing.responsiveHorizontal(MediaQuery.sizeOf(this).width);
   }
 
-  double cardPadding({bool dense = false}) => spacing.cardPadding(dense: dense);
+  double cardPadding({bool dense = false}) {
+    return spacing.cardPadding(
+      dense: dense,
+      widthDp: MediaQuery.sizeOf(this).width,
+    );
+  }
 }

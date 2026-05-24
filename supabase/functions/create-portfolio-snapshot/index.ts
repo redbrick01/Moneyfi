@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 type AssetRow = {
   id: number;
+  client_id: string;
   asset_type: string;
   title: string;
   alias: string;
@@ -13,6 +14,7 @@ type AssetRow = {
 
 type HoldingRow = {
   id: number;
+  client_id: string;
   asset_id: number;
   hidden: boolean;
   currency_code: string;
@@ -27,6 +29,7 @@ type HoldingRow = {
 
 type CashAccountRow = {
   id: number;
+  client_id: string;
   asset_id: number;
   hidden: boolean;
   currency_code: string;
@@ -38,8 +41,10 @@ type CashAccountRow = {
 
 type SnapshotHoldingSummary = {
   assetId: number;
+  assetClientId: string;
   assetTitle: string;
   holdingId: number | null;
+  holdingClientId: string;
   holdingName: string;
   holdingSymbol: string;
   currencyCode: string;
@@ -52,8 +57,10 @@ type SnapshotHoldingSummary = {
 
 type SnapshotCashAccountSummary = {
   assetId: number;
+  assetClientId: string;
   assetTitle: string;
   cashAccountId: number;
+  cashAccountClientId: string;
   cashAccountName: string;
   currencyCode: string;
   balance: number;
@@ -318,7 +325,7 @@ async function loadAssets(supabase: SupabaseClient<any>, userId: string) {
     await supabase
       .from("assets")
       .select(
-        "id, asset_type, title, alias, hidden, currency_code, value, user_id",
+        "id, client_id, asset_type, title, alias, hidden, currency_code, value, user_id",
       )
       .eq("user_id", userId)
       .is("deleted_at", null)
@@ -333,6 +340,7 @@ async function loadAssets(supabase: SupabaseClient<any>, userId: string) {
 
   return (data ?? []).map((row) => ({
     id: Number(row.id),
+    client_id: String(row.client_id ?? ""),
     asset_type: String(row.asset_type ?? ""),
     title: String(row.title ?? ""),
     alias: String(row.alias ?? ""),
@@ -348,7 +356,7 @@ async function loadHoldings(supabase: SupabaseClient<any>, userId: string) {
     await supabase
       .from("holdings")
       .select(
-        "id, asset_id, hidden, currency_code, name, symbol, quantity, average_price, current_price, note, user_id",
+        "id, client_id, asset_id, hidden, currency_code, name, symbol, quantity, average_price, current_price, note, user_id",
       )
       .eq("user_id", userId)
       .is("deleted_at", null)
@@ -363,6 +371,7 @@ async function loadHoldings(supabase: SupabaseClient<any>, userId: string) {
 
   return (data ?? []).map((row) => ({
     id: Number(row.id),
+    client_id: String(row.client_id ?? ""),
     asset_id: Number(row.asset_id),
     hidden: Boolean(row.hidden),
     currency_code: String(row.currency_code ?? "KRW"),
@@ -381,7 +390,7 @@ async function loadCashAccounts(supabase: SupabaseClient<any>, userId: string) {
     await supabase
       .from("cash_accounts")
       .select(
-        "id, asset_id, hidden, currency_code, name, balance, note, user_id",
+        "id, client_id, asset_id, hidden, currency_code, name, balance, note, user_id",
       )
       .eq("user_id", userId)
       .is("deleted_at", null)
@@ -396,6 +405,7 @@ async function loadCashAccounts(supabase: SupabaseClient<any>, userId: string) {
 
   return (data ?? []).map((row) => ({
     id: Number(row.id),
+    client_id: String(row.client_id ?? ""),
     asset_id: Number(row.asset_id),
     hidden: Boolean(row.hidden),
     currency_code: String(row.currency_code ?? "KRW"),
@@ -408,6 +418,7 @@ async function loadCashAccounts(supabase: SupabaseClient<any>, userId: string) {
 
 function buildHoldingSummary(
   holding: HoldingRow,
+  asset: AssetRow,
   assetTitle: string,
   snapshotExchangeRate: number,
 ): SnapshotHoldingSummary {
@@ -426,8 +437,10 @@ function buildHoldingSummary(
 
   return {
     assetId: holding.asset_id,
+    assetClientId: asset.client_id,
     assetTitle,
     holdingId: holding.id,
+    holdingClientId: holding.client_id,
     holdingName: holding.name,
     holdingSymbol: holding.symbol,
     currencyCode: holding.currency_code,
@@ -441,12 +454,15 @@ function buildHoldingSummary(
 
 function buildCashAccountSummary(
   account: CashAccountRow,
+  asset: AssetRow,
   assetTitle: string,
 ): SnapshotCashAccountSummary {
   return {
     assetId: account.asset_id,
+    assetClientId: asset.client_id,
     assetTitle,
     cashAccountId: account.id,
+    cashAccountClientId: account.client_id,
     cashAccountName: account.name,
     currencyCode: account.currency_code,
     balance: account.balance,
@@ -554,10 +570,10 @@ async function createSnapshotForUser(
     const assetTitle = asset.alias.trim() ? asset.alias : asset.title;
     const assetHoldingSummaries = (holdingsByAssetId.get(asset.id) ?? []).map((
       holding,
-    ) => buildHoldingSummary(holding, assetTitle, usdKrwRate));
+    ) => buildHoldingSummary(holding, asset, assetTitle, usdKrwRate));
     const assetCashAccountSummaries =
       (cashAccountsByAssetId.get(asset.id) ?? []).map((account) =>
-        buildCashAccountSummary(account, assetTitle)
+        buildCashAccountSummary(account, asset, assetTitle)
       );
 
     let purchaseAmount = 0;
@@ -655,6 +671,7 @@ async function createSnapshotForUser(
   const snapshotItems = assetSummaries.map((summary) => ({
     snapshot_id: snapshotId,
     asset_id: summary.asset.id,
+    asset_client_id: summary.asset.client_id,
     asset_title: summary.assetTitle,
     total_purchase_amount: summary.purchaseAmount,
     total_valuation_amount: summary.valuationAmount,
@@ -681,8 +698,10 @@ async function createSnapshotForUser(
     summary.holdingItems.map((holding) => ({
       snapshot_id: snapshotId,
       asset_id: holding.assetId,
+      asset_client_id: holding.assetClientId,
       asset_title: holding.assetTitle,
       holding_id: holding.holdingId,
+      holding_client_id: holding.holdingClientId,
       holding_name: holding.holdingName,
       holding_symbol: holding.holdingSymbol,
       currency_code: holding.currencyCode,
@@ -714,8 +733,10 @@ async function createSnapshotForUser(
     summary.cashAccountItems.map((account) => ({
       snapshot_id: snapshotId,
       asset_id: account.assetId,
+      asset_client_id: account.assetClientId,
       asset_title: account.assetTitle,
       cash_account_id: account.cashAccountId,
+      cash_account_client_id: account.cashAccountClientId,
       cash_account_name: account.cashAccountName,
       currency_code: account.currencyCode,
       balance: account.balance,

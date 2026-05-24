@@ -131,6 +131,25 @@ sequenceDiagram
 
 최근 migration `20260523120000_add_snapshot_client_references.sql`는 스냅샷 상세 row에 `asset_client_id`, `holding_client_id`, `cash_account_client_id`를 추가해 서버 id가 달라도 클라이언트 참조를 복원할 수 있게 합니다.
 
+### Snapshot Client Reference Rules
+
+스냅샷 상세 row는 서버 DB id와 함께 stable `client_id` 참조를 저장합니다. 멀티 디바이스 sync나 로컬 DB 재생성 뒤에는 같은 자산/보유/현금 계좌라도 local integer id가 달라질 수 있으므로, 앱은 원격 스냅샷을 import할 때 client reference를 우선 사용합니다.
+
+| 상세 row | server id | stable reference |
+| --- | --- | --- |
+| `daily_portfolio_snapshot_items` | `asset_id` | `asset_client_id` |
+| `daily_portfolio_snapshot_holding_items` | `asset_id`, `holding_id` | `asset_client_id`, `holding_client_id` |
+| `daily_portfolio_snapshot_cash_accounts` | `asset_id`, `cash_account_id` | `asset_client_id`, `cash_account_client_id` |
+
+처리 순서는 다음과 같습니다.
+
+1. `create-portfolio-snapshot`는 asset, holding, cash account를 조회할 때 `client_id`도 함께 읽고 snapshot detail payload에 저장합니다.
+2. `get-portfolio-snapshots`는 위 client reference 필드를 앱에 반환합니다.
+3. `AppDatabase.importRemotePortfolioSnapshots()`는 local table의 `client_id -> id` map을 먼저 만들고, 원격 detail row의 client reference가 있으면 local id로 remap합니다.
+4. client reference가 비어 있거나 local 매칭이 없으면 기존 server id 필드를 fallback으로 사용합니다.
+
+이 규칙 덕분에 원격 snapshot detail이 오래된 server id를 들고 있거나, 로컬에서 더미 row 생성 뒤 sync restore가 일어나도 표시용 스냅샷/보유 종목 상세가 현재 local row와 다시 연결됩니다.
+
 ## Market Data And Caches
 
 `MarketDataService`는 다음 정보를 갱신합니다.

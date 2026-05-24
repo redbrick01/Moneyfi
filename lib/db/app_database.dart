@@ -2278,6 +2278,7 @@ class AppDatabase extends _$AppDatabase {
         SELECT
           tl.id AS line_id,
           te.id AS event_id,
+          te.client_id AS event_client_id,
           tl.id AS ledger_line_id,
           te.kind AS ledger_kind,
           te.legacy_source_id AS legacy_source_id,
@@ -2332,6 +2333,7 @@ class AppDatabase extends _$AppDatabase {
       final quantityValue = row.read<double>('quantity_value');
       final item = TransactionItem(
         id: row.read<int?>('legacy_source_id') ?? row.read<int>('event_id'),
+        clientId: row.read<String?>('event_client_id'),
         assetId: row.read<int?>('asset_id'),
         holdingId: holdingId,
         date: row.read<String>('date'),
@@ -2377,6 +2379,7 @@ class AppDatabase extends _$AppDatabase {
         SELECT
           tl.id AS line_id,
           te.id AS event_id,
+          te.client_id AS event_client_id,
           tl.id AS ledger_line_id,
           te.kind AS ledger_kind,
           te.legacy_source_table AS event_legacy_source_table,
@@ -2427,6 +2430,7 @@ class AppDatabase extends _$AppDatabase {
       final legacySourceId = row.read<int?>('legacy_source_id');
       final item = TransactionItem(
         id: -(legacySourceId ?? row.read<int>('event_id')),
+        clientId: row.read<String?>('event_client_id'),
         assetId: row.read<int?>('asset_id'),
         holdingId: -cashAccountId,
         date: row.read<String>('date'),
@@ -4381,8 +4385,38 @@ class AppDatabase extends _$AppDatabase {
     return replacement?.id;
   }
 
+  Future<int?> _activeLedgerEventIdForItem(TransactionItem item) async {
+    final explicitEventId = item.ledgerEventId;
+    if (explicitEventId != null) {
+      final row =
+          await (select(transactionEvents)..where(
+                (table) =>
+                    table.id.equals(explicitEventId) & table.deletedAt.isNull(),
+              ))
+              .getSingleOrNull();
+      if (row != null) return row.id;
+    }
+
+    final clientId = item.clientId?.trim() ?? '';
+    if (clientId.isNotEmpty) {
+      final row =
+          await (select(transactionEvents)..where(
+                (table) =>
+                    table.clientId.equals(clientId) & table.deletedAt.isNull(),
+              ))
+              .getSingleOrNull();
+      if (row != null) return row.id;
+    }
+
+    final externalId = item.id;
+    if (externalId != null) {
+      return _activeLedgerEventIdForExternalId(externalId);
+    }
+    return null;
+  }
+
   Future<void> _replaceLedgerTransactionItem(TransactionItem item) async {
-    final eventId = item.ledgerEventId;
+    final eventId = await _activeLedgerEventIdForItem(item);
     if (eventId == null) return;
 
     final lineRows = await customSelect(
@@ -4601,7 +4635,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> deleteLedgerTransactionItem(TransactionItem item) async {
-    final eventId = item.ledgerEventId;
+    final eventId = await _activeLedgerEventIdForItem(item);
     if (eventId == null) {
       final transactionId = item.id;
       if (transactionId != null) {
@@ -5067,6 +5101,56 @@ class AppDatabase extends _$AppDatabase {
 
     await _createCurrentTablesIfNeeded();
 
+    final assetIdByClientId = {
+      for (final row in await select(assets).get())
+        if ((row.clientId ?? '').trim().isNotEmpty)
+          row.clientId!.trim(): row.id,
+    };
+    final holdingIdByClientId = {
+      for (final row in await select(holdings).get())
+        if ((row.clientId ?? '').trim().isNotEmpty)
+          row.clientId!.trim(): row.id,
+    };
+    final cashAccountIdByClientId = {
+      for (final row in await select(cashAccounts).get())
+        if ((row.clientId ?? '').trim().isNotEmpty)
+          row.clientId!.trim(): row.id,
+    };
+
+    int snapshotAssetId(Map<String, dynamic> row) {
+      final assetClientId = _nullableString(row['asset_client_id']);
+      if (assetClientId != null) {
+        return assetIdByClientId[assetClientId] ?? -1;
+      }
+      return _readInt(row['asset_id']);
+    }
+
+    int? snapshotNullableAssetId(Map<String, dynamic> row) {
+      final assetClientId = _nullableString(row['asset_client_id']);
+      if (assetClientId != null) {
+        return assetIdByClientId[assetClientId];
+      }
+      return _readNullableInt(row['asset_id']);
+    }
+
+    int? snapshotHoldingId(Map<String, dynamic> row) {
+      final holdingClientId = _nullableString(row['holding_client_id']);
+      if (holdingClientId != null) {
+        return holdingIdByClientId[holdingClientId];
+      }
+      return _readNullableInt(row['holding_id']);
+    }
+
+    int? snapshotCashAccountId(Map<String, dynamic> row) {
+      final cashAccountClientId = _nullableString(
+        row['cash_account_client_id'],
+      );
+      if (cashAccountClientId != null) {
+        return cashAccountIdByClientId[cashAccountClientId];
+      }
+      return _readNullableInt(row['cash_account_id']);
+    }
+
     var importedCount = 0;
     await transaction(() async {
       for (final snapshot in snapshots) {
@@ -5110,7 +5194,7 @@ class AppDatabase extends _$AppDatabase {
               dailyPortfolioSnapshotItems,
               DailyPortfolioSnapshotItemsCompanion.insert(
                 snapshotId: snapshotId,
-                assetId: _readInt(item['asset_id']),
+                assetId: snapshotAssetId(item),
                 assetTitle: assetTitle,
                 totalPurchaseAmount: _readDouble(item['total_purchase_amount']),
                 totalValuationAmount: _readDouble(
@@ -5149,12 +5233,8 @@ class AppDatabase extends _$AppDatabase {
                 ),
                 profitAmount: _readDouble(holding['profit_amount']),
                 profitRate: _readDouble(holding['profit_rate']),
-                assetId: Value.absentIfNull(
-                  _readNullableInt(holding['asset_id']),
-                ),
-                holdingId: Value.absentIfNull(
-                  _readNullableInt(holding['holding_id']),
-                ),
+                assetId: Value.absentIfNull(snapshotNullableAssetId(holding)),
+                holdingId: Value.absentIfNull(snapshotHoldingId(holding)),
               ),
             );
           }
@@ -5171,9 +5251,9 @@ class AppDatabase extends _$AppDatabase {
               'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
               [
                 snapshotId,
-                _readNullableInt(account['asset_id']),
+                snapshotNullableAssetId(account),
                 assetTitle,
-                _readNullableInt(account['cash_account_id']),
+                snapshotCashAccountId(account),
                 cashAccountName,
                 _readString(account['currency_code'], fallback: 'KRW'),
                 _readDouble(account['balance']),
@@ -5722,6 +5802,14 @@ class AppDatabase extends _$AppDatabase {
         )
         .where((key) => key != '|')
         .toSet();
+    final visibleHoldingNames = visibleAssets
+        .expand(
+          (asset) => asset.visibleHoldings.map(
+            (holding) => _normalizeSnapshotLookupText(holding.name),
+          ),
+        )
+        .where((name) => name.isNotEmpty)
+        .toSet();
 
     final rows = await fetchPortfolioSnapshotHoldingItemsByDates(snapshotDates);
     return rows
@@ -5740,7 +5828,10 @@ class AppDatabase extends _$AppDatabase {
           }
           final holdingKey =
               '${_normalizeSnapshotLookupText(row.holdingName)}|${_normalizeSnapshotLookupText(row.holdingSymbol)}';
-          return holdingKey != '|' && visibleHoldingKeys.contains(holdingKey);
+          final holdingName = _normalizeSnapshotLookupText(row.holdingName);
+          return holdingKey != '|' && visibleHoldingKeys.contains(holdingKey) ||
+              holdingName.isNotEmpty &&
+                  visibleHoldingNames.contains(holdingName);
         })
         .toList(growable: false);
   }
@@ -5779,6 +5870,14 @@ class AppDatabase extends _$AppDatabase {
         )
         .where((key) => key != '|')
         .toSet();
+    final visibleHoldingNames = visibleAssets
+        .expand(
+          (asset) => asset.visibleHoldings.map(
+            (holding) => _normalizeSnapshotLookupText(holding.name),
+          ),
+        )
+        .where((name) => name.isNotEmpty)
+        .toSet();
     final assetById = {
       for (final asset in assets)
         if (asset.id != null) asset.id!: asset,
@@ -5800,10 +5899,6 @@ class AppDatabase extends _$AppDatabase {
     final holdingRows = await fetchPortfolioSnapshotHoldingItemsByDates(
       snapshotDates,
     );
-    final snapshotIdsWithHoldingRows = holdingRows
-        .map((row) => row.snapshotId)
-        .toSet();
-
     final groupedRows = <String, DailyPortfolioSnapshotItem>{};
     var syntheticId = -1;
 
@@ -5819,7 +5914,11 @@ class AppDatabase extends _$AppDatabase {
               visibleAssetTitles.contains(assetTitleKey);
       final holdingMatches =
           holdingId != null && visibleHoldingIds.contains(holdingId) ||
-          holdingKey != '|' && visibleHoldingKeys.contains(holdingKey);
+          holdingKey != '|' && visibleHoldingKeys.contains(holdingKey) ||
+          _normalizeSnapshotLookupText(holding.holdingName).isNotEmpty &&
+              visibleHoldingNames.contains(
+                _normalizeSnapshotLookupText(holding.holdingName),
+              );
       if (!assetMatches || !holdingMatches) {
         continue;
       }
@@ -5850,28 +5949,41 @@ class AppDatabase extends _$AppDatabase {
       );
     }
 
-    final results = <DailyPortfolioSnapshotItem>[...groupedRows.values];
+    final results = <DailyPortfolioSnapshotItem>[];
+    final representedAssetKeys = {
+      for (final row in results) '${row.snapshotId}:${row.assetId}',
+    };
 
     for (final row in assetRows) {
       final assetTitleKey = _normalizeSnapshotLookupText(row.assetTitle);
       final asset = assetById[row.assetId];
       final matchedAsset = asset ?? assetByTitle[assetTitleKey];
       if (matchedAsset == null || matchedAsset.isHidden) continue;
+      final resolvedAssetId = matchedAsset.id ?? row.assetId;
+      final representedKey = '${row.snapshotId}:$resolvedAssetId';
       final isVisibleManualAsset =
           visibleManualAssetIds.contains(row.assetId) ||
           assetTitleKey.isNotEmpty &&
               visibleAssetTitles.contains(assetTitleKey) &&
               matchedAsset.holdings.isEmpty;
-      final isLegacySnapshot = !snapshotIdsWithHoldingRows.contains(
-        row.snapshotId,
+      final isMissingFromDisplayedHoldings = !representedAssetKeys.contains(
+        representedKey,
       );
-      if (!isVisibleManualAsset && !isLegacySnapshot) continue;
+      if (!isVisibleManualAsset && !isMissingFromDisplayedHoldings) continue;
       results.add(
         row.copyWith(
-          assetId: matchedAsset.id ?? row.assetId,
+          assetId: resolvedAssetId,
           assetTitle: matchedAsset.displayName,
         ),
       );
+      representedAssetKeys.add(representedKey);
+    }
+
+    for (final row in groupedRows.values) {
+      final key = '${row.snapshotId}:${row.assetId}';
+      if (representedAssetKeys.contains(key)) continue;
+      results.add(row);
+      representedAssetKeys.add(key);
     }
 
     final deduplicated = <String, DailyPortfolioSnapshotItem>{};

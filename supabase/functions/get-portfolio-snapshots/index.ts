@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
         supabase
           .from("daily_portfolio_snapshot_items")
           .select(
-            "id, snapshot_id, asset_id, asset_title, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, holding_count, user_id",
+            "id, snapshot_id, asset_id, asset_client_id, asset_title, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, holding_count, user_id",
           )
           .eq("user_id", targetUserId)
           .in("snapshot_id", snapshotIds)
@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
         supabase
           .from("daily_portfolio_snapshot_holding_items")
           .select(
-            "id, snapshot_id, asset_id, asset_title, holding_id, holding_name, holding_symbol, currency_code, quantity, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, user_id",
+            "id, snapshot_id, asset_id, asset_client_id, asset_title, holding_id, holding_client_id, holding_name, holding_symbol, currency_code, quantity, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, user_id",
           )
           .eq("user_id", targetUserId)
           .in("snapshot_id", snapshotIds)
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
         supabase
           .from("daily_portfolio_snapshot_cash_accounts")
           .select(
-            "id, snapshot_id, asset_id, asset_title, cash_account_id, cash_account_name, currency_code, balance, note, user_id",
+            "id, snapshot_id, asset_id, asset_client_id, asset_title, cash_account_id, cash_account_client_id, cash_account_name, currency_code, balance, note, user_id",
           )
           .eq("user_id", targetUserId)
           .in("snapshot_id", snapshotIds)
@@ -213,6 +213,9 @@ Deno.serve(async (req) => {
         id: Number(row.id),
         snapshot_id: snapshotId,
         asset_id: row.asset_id == null ? null : Number(row.asset_id),
+        asset_client_id: row.asset_client_id == null
+          ? null
+          : String(row.asset_client_id),
         asset_title: String(row.asset_title ?? ""),
         total_purchase_amount: parseNumber(row.total_purchase_amount),
         total_valuation_amount: parseNumber(row.total_valuation_amount),
@@ -234,8 +237,14 @@ Deno.serve(async (req) => {
         id: Number(row.id),
         snapshot_id: snapshotId,
         asset_id: row.asset_id == null ? null : Number(row.asset_id),
+        asset_client_id: row.asset_client_id == null
+          ? null
+          : String(row.asset_client_id),
         asset_title: String(row.asset_title ?? ""),
         holding_id: row.holding_id == null ? null : Number(row.holding_id),
+        holding_client_id: row.holding_client_id == null
+          ? null
+          : String(row.holding_client_id),
         holding_name: String(row.holding_name ?? ""),
         holding_symbol: String(row.holding_symbol ?? ""),
         currency_code: String(row.currency_code ?? "KRW"),
@@ -259,10 +268,16 @@ Deno.serve(async (req) => {
         id: Number(row.id),
         snapshot_id: snapshotId,
         asset_id: row.asset_id == null ? null : Number(row.asset_id),
+        asset_client_id: row.asset_client_id == null
+          ? null
+          : String(row.asset_client_id),
         asset_title: String(row.asset_title ?? ""),
         cash_account_id: row.cash_account_id == null
           ? null
           : Number(row.cash_account_id),
+        cash_account_client_id: row.cash_account_client_id == null
+          ? null
+          : String(row.cash_account_client_id),
         cash_account_name: String(row.cash_account_name ?? ""),
         currency_code: String(row.currency_code ?? "KRW"),
         balance: parseNumber(row.balance),

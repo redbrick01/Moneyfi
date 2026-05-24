@@ -14,6 +14,7 @@ class DeltaChip extends StatelessWidget {
     this.mode = DeltaChipMode.percent,
     this.showIcon = true,
     this.vivid = false,
+    this.compact = false,
   });
 
   final num value;
@@ -21,6 +22,7 @@ class DeltaChip extends StatelessWidget {
   final DeltaChipMode mode;
   final bool showIcon;
   final bool vivid;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +38,11 @@ class DeltaChip extends StatelessWidget {
     };
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      constraints: BoxConstraints(minHeight: compact ? 20 : 24),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 6 : 8,
+        vertical: compact ? 2 : 4,
+      ),
       decoration: BoxDecoration(
         color: MoneyfyPalette.surface,
         border: Border.all(color: MoneyfyPalette.border),
@@ -51,15 +56,21 @@ class DeltaChip extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: context.typography.meta.copyWith(
-                color: isPositive
-                    ? MoneyfyPalette.positive
-                    : isNegative
-                    ? MoneyfyPalette.negative
-                    : MoneyfyPalette.secondaryText,
-                fontWeight: isNeutral ? FontWeight.w600 : FontWeight.w600,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+              style:
+                  (compact
+                          ? context.typography.caption
+                          : context.typography.meta)
+                      .copyWith(
+                        color: isPositive
+                            ? MoneyfyPalette.positive
+                            : isNegative
+                            ? MoneyfyPalette.negative
+                            : MoneyfyPalette.secondaryText,
+                        fontWeight: isNeutral
+                            ? FontWeight.w600
+                            : FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
             ),
           ),
         ],

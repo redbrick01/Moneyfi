@@ -55,6 +55,7 @@
 
 ## 4) Insets / SafeArea
 - Scroll pages: `AppPageScaffold` + `AppInsets.pagePadding()`
+  - horizontal inset: `<=360dp` uses `14`, `361~430dp` uses `16`, wider screens use `24`
 - Bottom overlap prevention: `AppInsets.bottomContentInset()`
 - Form pages: `AppPageScaffold.form` with fixed bottom CTA and keyboard-safe inset
 - Avoid duplicate bottom padding inside page content
@@ -73,10 +74,12 @@
   - pressed/hover/focus overlays are unified with low-alpha state color
 - Chips (`DeltaChip` / `ImpactChips`)
   - height `28`, pill radius `rPill`, horizontal padding `10`, typography `meta`
+  - `DeltaChip.compact` may be used in dense financial rows: min height `20`, horizontal padding `6`, vertical padding `2`, typography `caption`
   - delta sign (`+/-`) must exist in text, colors use scheme containers only
 - Rows (`Asset` / `Rebalance` / `Transaction` / `Snapshot` / `Settings`)
   - min row height `56~72`, right-aligned trailing values, subtitle uses `meta`
   - icon badge size `36`, icon size `24` (20 allowed for tiny supporting icon only)
+  - dense home asset rows may use icon badge `34`, icon `20`, and a narrowed leading slot `46`
   - tappable rows provide consistent ripple overlay (`WidgetStateProperty`)
 - Icons
   - default icon size `24`, icon button touch target `48`

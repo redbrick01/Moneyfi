@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../db/app_database.dart';
@@ -12,6 +13,7 @@ import '../widgets/moneyfy_ui.dart';
 import 'annual_asset_analysis_page.dart';
 import 'dividend_interest_analysis_page.dart';
 import 'investment_performance_page.dart';
+import 'portfolio_analysis_mvp_page.dart';
 import 'snapshot_detail_page.dart';
 
 class AnalysisPage extends StatefulWidget {
@@ -78,14 +80,49 @@ class _AnalysisPageState extends State<AnalysisPage> {
           scrollController: widget.scrollController,
           children: [
             MarketNewsSummaryCard(summary: bundle.marketNewsSummary),
-            const SizedBox(height: MoneyfySpacing.sectionGap),
+            SizedBox(height: context.spacing.sectionGap),
             _Level1WidthCard(
               child: CompanyNewsSummaryCard(items: bundle.companyNewsSummaries),
             ),
-            const SizedBox(height: MoneyfySpacing.sectionGap),
-            const _InvestmentPerformanceEntryCard(),
-            const SizedBox(height: 12),
-            const _DividendInterestEntryCard(),
+            SizedBox(height: context.spacing.sectionGap),
+            _AnalysisEntryCard(
+              icon: Icons.insights_rounded,
+              title: '포트폴리오 MVP 분석',
+              subtitle: '리밸런싱 · 성과기여 · MDD · 집중도',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const PortfolioAnalysisMvpPage(),
+                  ),
+                );
+              },
+            ),
+            SizedBox(height: context.spacing.sm),
+            _AnalysisEntryCard(
+              icon: Icons.query_stats_rounded,
+              title: '투자성과 분석',
+              subtitle: '실현손익 · 배당/이자 · 입출금 제외 성과',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const InvestmentPerformancePage(),
+                  ),
+                );
+              },
+            ),
+            SizedBox(height: context.spacing.sm),
+            _AnalysisEntryCard(
+              icon: Icons.payments_rounded,
+              title: '배당/이자 분석',
+              subtitle: '월별 추이 · 연 총합 · 종목별 수입',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const DividendInterestAnalysisPage(),
+                  ),
+                );
+              },
+            ),
           ],
         );
       },
@@ -112,114 +149,70 @@ class _Level1WidthCard extends StatelessWidget {
   }
 }
 
-class _DividendInterestEntryCard extends StatelessWidget {
-  const _DividendInterestEntryCard();
+class _AnalysisEntryCard extends StatelessWidget {
+  const _AnalysisEntryCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (context) => const DividendInterestAnalysisPage(),
-          ),
-        );
-      },
-      child: MoneyfySurfaceCard(
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: MoneyfyPalette.accentSoft,
-                borderRadius: BorderRadius.circular(14),
+    final colorScheme = Theme.of(context).colorScheme;
+    return SectionCard(
+      dense: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: context.spacing.xs / 2),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(context.radius.rMd),
+                ),
+                child: Icon(
+                  icon,
+                  color: colorScheme.primary,
+                  size: VisualSpec.icon.sizeDefault,
+                ),
               ),
-              child: Icon(
-                Icons.payments_rounded,
-                color: MoneyfyPalette.accent,
-                size: VisualSpec.icon.sizeDefault,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('배당/이자 분석', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 6),
-                  Text(
-                    '월별 추이 · 연 총합 · 종목별 수입',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+              SizedBox(width: context.spacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: context.typography.cardTitle),
+                    SizedBox(height: context.spacing.xs / 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.typography.meta.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            const Icon(Icons.chevron_right_rounded),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InvestmentPerformanceEntryCard extends StatelessWidget {
-  const _InvestmentPerformanceEntryCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (context) => const InvestmentPerformancePage(),
+              SizedBox(width: context.spacing.sm),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ],
           ),
-        );
-      },
-      child: MoneyfySurfaceCard(
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: MoneyfyPalette.accentSoft,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                Icons.query_stats_rounded,
-                color: MoneyfyPalette.accent,
-                size: VisualSpec.icon.sizeDefault,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('투자성과 분석', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 6),
-                  Text(
-                    '실현손익 · 배당/이자 · 입출금 제외 성과',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Icon(Icons.chevron_right_rounded),
-          ],
         ),
       ),
     );

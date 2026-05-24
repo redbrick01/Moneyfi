@@ -1018,6 +1018,202 @@ void main() {
   });
 
   test(
+    'ledger investment edit survives sync restore remapped local ids',
+    () async {
+      final assetId = await createAsset('주식');
+      final holdingId = await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '테스트',
+        symbol: 'TST',
+        quantity: 1,
+        averagePrice: 1000,
+        currentPrice: 1000,
+        note: '',
+      );
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.21',
+        type: '배당',
+        name: '배당',
+        amount: '100',
+        quantity: '',
+      );
+
+      final staleTransaction = (await findHolding(
+        holdingId,
+      )).transactions.singleWhere((item) => item.type == '배당');
+      expect(staleTransaction.clientId, isNotNull);
+      final payload = await db.buildDirtySyncPayload();
+      await db.close();
+
+      final restoredDb = AppDatabase.forTesting(NativeDatabase.memory());
+      db = restoredDb;
+      final dummyAssetId = await restoredDb.createAsset(
+        assetType: '주식',
+        title: '더미',
+        alias: '더미',
+        hidden: false,
+        currencyCode: 'KRW',
+        value: '0',
+        change: '+0.0%',
+        icon: Icons.account_balance_wallet_rounded,
+        quantityLabel: '항목',
+        quantityValue: '0개',
+        averageLabel: '수익률',
+        averageValue: '+0.0%',
+        note: '',
+      );
+      final dummyHoldingId = await restoredDb.createHolding(
+        assetId: dummyAssetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '더미',
+        symbol: 'DMY',
+        quantity: 1,
+        averagePrice: 1,
+        currentPrice: 1,
+        note: '',
+      );
+      await restoredDb.createTransaction(
+        assetId: dummyAssetId,
+        holdingId: dummyHoldingId,
+        date: '2026.05.20',
+        type: '배당',
+        name: '더미',
+        amount: '1',
+        quantity: '',
+      );
+      await restoredDb.replaceLocalSyncData(Map<String, dynamic>.from(payload));
+
+      await restoredDb.updateTransactionItem(
+        TransactionItem(
+          id: staleTransaction.id,
+          clientId: staleTransaction.clientId,
+          assetId: staleTransaction.assetId,
+          holdingId: staleTransaction.holdingId,
+          date: staleTransaction.date,
+          type: staleTransaction.type,
+          name: '배당 수정',
+          amount: '200',
+          quantity: staleTransaction.quantity,
+          ledgerEventId: staleTransaction.ledgerEventId,
+          ledgerLineId: staleTransaction.ledgerLineId,
+          ledgerKind: staleTransaction.ledgerKind,
+          ledgerAction: staleTransaction.ledgerAction,
+          legacySourceTable: staleTransaction.legacySourceTable,
+          legacySourceId: staleTransaction.legacySourceId,
+        ),
+      );
+
+      final restoredHolding = (await restoredDb.fetchAssets())
+          .singleWhere((asset) => asset.assetType == '주식')
+          .holdings
+          .singleWhere((holding) => holding.name == '테스트');
+      final updatedTransaction = restoredHolding.transactions.singleWhere(
+        (item) => item.type == '배당',
+      );
+      expect(updatedTransaction.name, '배당 수정');
+      expect(updatedTransaction.amount, '200');
+    },
+  );
+
+  test('ledger cash edit survives sync restore remapped local ids', () async {
+    final assetId = await createAsset('현금');
+    final cashHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '생활비',
+      note: '',
+      balance: 1000,
+    );
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: cashHoldingId,
+      date: '2026.05.21',
+      type: '입금',
+      name: '입금',
+      amount: '100',
+      quantity: '',
+    );
+
+    final staleTransaction = (await findHolding(
+      cashHoldingId,
+    )).transactions.singleWhere((item) => item.type == '입금');
+    expect(staleTransaction.clientId, isNotNull);
+    final payload = await db.buildDirtySyncPayload();
+    await db.close();
+
+    final restoredDb = AppDatabase.forTesting(NativeDatabase.memory());
+    db = restoredDb;
+    final dummyAssetId = await restoredDb.createAsset(
+      assetType: '현금',
+      title: '더미 현금',
+      alias: '더미 현금',
+      hidden: false,
+      currencyCode: 'KRW',
+      value: '0',
+      change: '+0.0%',
+      icon: Icons.account_balance_wallet_rounded,
+      quantityLabel: '항목',
+      quantityValue: '0개',
+      averageLabel: '수익률',
+      averageValue: '+0.0%',
+      note: '',
+    );
+    final dummyCashHoldingId = await restoredDb.createCashAccount(
+      assetId: dummyAssetId,
+      currencyCode: 'KRW',
+      name: '더미',
+      note: '',
+      balance: 0,
+    );
+    await restoredDb.createTransaction(
+      assetId: dummyAssetId,
+      holdingId: dummyCashHoldingId,
+      date: '2026.05.20',
+      type: '입금',
+      name: '더미',
+      amount: '1',
+      quantity: '',
+    );
+    await restoredDb.replaceLocalSyncData(Map<String, dynamic>.from(payload));
+
+    await restoredDb.updateTransactionItem(
+      TransactionItem(
+        id: staleTransaction.id,
+        clientId: staleTransaction.clientId,
+        assetId: staleTransaction.assetId,
+        holdingId: staleTransaction.holdingId,
+        date: staleTransaction.date,
+        type: staleTransaction.type,
+        name: '입금 수정',
+        amount: '200',
+        quantity: staleTransaction.quantity,
+        ledgerEventId: staleTransaction.ledgerEventId,
+        ledgerLineId: staleTransaction.ledgerLineId,
+        ledgerKind: staleTransaction.ledgerKind,
+        ledgerAction: staleTransaction.ledgerAction,
+        legacySourceTable: staleTransaction.legacySourceTable,
+        legacySourceId: staleTransaction.legacySourceId,
+      ),
+    );
+
+    final restoredHolding = (await restoredDb.fetchAssets())
+        .singleWhere((asset) => asset.assetType == '현금')
+        .holdings
+        .singleWhere((holding) => holding.name == '생활비');
+    final updatedTransaction = restoredHolding.transactions.singleWhere(
+      (item) => item.type == '입금',
+    );
+    expect(updatedTransaction.name, '입금 수정');
+    expect(updatedTransaction.amount, '200');
+    expect(restoredHolding.quantity, 1200);
+  });
+
+  test(
     'create writes active ledger events without replacement churn',
     () async {
       final assetId = await createAsset('주식');
@@ -1743,6 +1939,273 @@ void main() {
     expect(cashTransactions.single.type, '매수');
     expect(cashTransactions.single.amount, '-500');
   });
+
+  test('display snapshots remap remote snapshot client references', () async {
+    final assetId = await createAsset('주식');
+    final asset = await db.fetchAssetById(assetId);
+    final holdingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '테스트 주식',
+      symbol: 'TEST',
+      quantity: 5,
+      averagePrice: 100,
+      currentPrice: 120,
+      note: '',
+    );
+    final holding = await db.fetchHoldingById(holdingId);
+    expect(asset?.clientId, isNotNull);
+    expect(holding?.clientId, isNotNull);
+
+    await db.importRemotePortfolioSnapshots([
+      {
+        'snapshot_date': '2026-05-21',
+        'total_purchase_amount': 500,
+        'total_valuation_amount': 600,
+        'profit_amount': 100,
+        'profit_rate': 20,
+        'items': [
+          {
+            'asset_id': 999,
+            'asset_client_id': asset!.clientId,
+            'asset_title': '주식',
+            'total_purchase_amount': 500,
+            'total_valuation_amount': 600,
+            'profit_amount': 100,
+            'profit_rate': 20,
+            'holding_count': 1,
+          },
+        ],
+        'holding_items': [
+          {
+            'asset_id': 999,
+            'asset_client_id': asset.clientId,
+            'asset_title': '주식',
+            'holding_id': 999,
+            'holding_client_id': holding!.clientId,
+            'holding_name': '테스트 주식',
+            'holding_symbol': '',
+            'currency_code': 'KRW',
+            'quantity': 5,
+            'total_purchase_amount': 500,
+            'total_valuation_amount': 600,
+            'profit_amount': 100,
+            'profit_rate': 20,
+          },
+        ],
+      },
+    ]);
+
+    final holdings = await db.fetchDisplayPortfolioSnapshotHoldingItemsByDates([
+      '2026-05-21',
+    ]);
+    final items = await db.fetchDisplayPortfolioSnapshotItemsByDates([
+      '2026-05-21',
+    ]);
+    final rawHoldings = await db.fetchPortfolioSnapshotHoldingItemsByDates([
+      '2026-05-21',
+    ]);
+
+    expect(holdings, hasLength(1));
+    expect(holdings.single.holdingName, '테스트 주식');
+    expect(rawHoldings.single.assetId, assetId);
+    expect(rawHoldings.single.holdingId, holdingId);
+    expect(items, hasLength(1));
+    expect(items.single.assetId, assetId);
+    expect(items.single.assetTitle, '주식');
+    expect(items.single.holdingCount, 1);
+    expect(items.single.totalValuationAmount, 600);
+  });
+
+  test(
+    'display snapshots keep asset summary rows with partial holding details',
+    () async {
+      final isaAssetId = await createAsset('ISA');
+      final stockAssetId = await createAsset('주식');
+      final coinAssetId = await createAsset('코인');
+      final cashAssetId = await createAsset('현금');
+      final isaHoldingId = await db.createHolding(
+        assetId: isaAssetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: 'ISA 종목',
+        symbol: 'ISA',
+        quantity: 1,
+        averagePrice: 100,
+        currentPrice: 120,
+        note: '',
+      );
+
+      await db.importRemotePortfolioSnapshots([
+        {
+          'snapshot_date': '2026-05-20',
+          'total_purchase_amount': 1000,
+          'total_valuation_amount': 1200,
+          'profit_amount': 200,
+          'profit_rate': 20,
+          'items': [
+            {
+              'asset_id': isaAssetId,
+              'asset_title': 'ISA',
+              'total_purchase_amount': 100,
+              'total_valuation_amount': 120,
+              'profit_amount': 20,
+              'profit_rate': 20,
+              'holding_count': 1,
+            },
+            {
+              'asset_id': stockAssetId,
+              'asset_title': '주식',
+              'total_purchase_amount': 300,
+              'total_valuation_amount': 360,
+              'profit_amount': 60,
+              'profit_rate': 20,
+              'holding_count': 2,
+            },
+            {
+              'asset_id': coinAssetId,
+              'asset_title': '코인',
+              'total_purchase_amount': 400,
+              'total_valuation_amount': 480,
+              'profit_amount': 80,
+              'profit_rate': 20,
+              'holding_count': 3,
+            },
+            {
+              'asset_id': cashAssetId,
+              'asset_title': '현금',
+              'total_purchase_amount': 200,
+              'total_valuation_amount': 240,
+              'profit_amount': 40,
+              'profit_rate': 20,
+              'holding_count': 2,
+            },
+          ],
+          'holding_items': [
+            {
+              'asset_id': isaAssetId,
+              'asset_title': 'ISA',
+              'holding_id': isaHoldingId,
+              'holding_name': 'ISA 종목',
+              'holding_symbol': 'ISA',
+              'currency_code': 'KRW',
+              'quantity': 1,
+              'total_purchase_amount': 100,
+              'total_valuation_amount': 120,
+              'profit_amount': 20,
+              'profit_rate': 20,
+            },
+          ],
+        },
+      ]);
+
+      final items = await db.fetchDisplayPortfolioSnapshotItemsByDates([
+        '2026-05-20',
+      ]);
+      final itemTitles = items.map((item) => item.assetTitle).toSet();
+
+      expect(itemTitles, {'ISA', '주식', '코인', '현금'});
+      expect(
+        items.singleWhere((item) => item.assetTitle == 'ISA').holdingCount,
+        1,
+      );
+      expect(
+        items
+            .singleWhere((item) => item.assetTitle == 'ISA')
+            .totalValuationAmount,
+        120,
+      );
+      expect(
+        items
+            .singleWhere((item) => item.assetTitle == '주식')
+            .totalValuationAmount,
+        360,
+      );
+      expect(
+        items
+            .singleWhere((item) => item.assetTitle == '현금')
+            .totalValuationAmount,
+        240,
+      );
+    },
+  );
+
+  test(
+    'display snapshots keep asset summary rows without holding details',
+    () async {
+      final isaAssetId = await createAsset('ISA');
+      final stockAssetId = await createAsset('주식');
+      final coinAssetId = await createAsset('코인');
+      final cashAssetId = await createAsset('현금');
+
+      await db.importRemotePortfolioSnapshots([
+        {
+          'snapshot_date': '2026-05-21',
+          'total_purchase_amount': 1000,
+          'total_valuation_amount': 1200,
+          'profit_amount': 200,
+          'profit_rate': 20,
+          'items': [
+            {
+              'asset_id': isaAssetId,
+              'asset_title': 'ISA',
+              'total_purchase_amount': 100,
+              'total_valuation_amount': 120,
+              'profit_amount': 20,
+              'profit_rate': 20,
+              'holding_count': 1,
+            },
+            {
+              'asset_id': stockAssetId,
+              'asset_title': '주식',
+              'total_purchase_amount': 300,
+              'total_valuation_amount': 360,
+              'profit_amount': 60,
+              'profit_rate': 20,
+              'holding_count': 2,
+            },
+            {
+              'asset_id': coinAssetId,
+              'asset_title': '코인',
+              'total_purchase_amount': 400,
+              'total_valuation_amount': 480,
+              'profit_amount': 80,
+              'profit_rate': 20,
+              'holding_count': 3,
+            },
+            {
+              'asset_id': cashAssetId,
+              'asset_title': '현금',
+              'total_purchase_amount': 200,
+              'total_valuation_amount': 240,
+              'profit_amount': 40,
+              'profit_rate': 20,
+              'holding_count': 2,
+            },
+          ],
+          'holding_items': const [],
+        },
+      ]);
+
+      final items = await db.fetchDisplayPortfolioSnapshotItemsByDates([
+        '2026-05-21',
+      ]);
+
+      expect(items.map((item) => item.assetTitle).toSet(), {
+        'ISA',
+        '주식',
+        '코인',
+        '현금',
+      });
+      expect(
+        items
+            .singleWhere((item) => item.assetTitle == '코인')
+            .totalValuationAmount,
+        480,
+      );
+    },
+  );
 
   test(
     'snapshot restore opening ledger rows are hidden from transaction views',

@@ -772,11 +772,11 @@ class MarketDataService {
   Future<void> _restoreKisAccessToken() async {
     if (!_persistKisTokenStorage) return;
 
-    final storedToken = await _secureStorage.read(
-      key: _kisAccessTokenStorageKey,
+    final storedToken = await _readSecureStorageValue(
+      _kisAccessTokenStorageKey,
     );
-    final storedExpiry = await _secureStorage.read(
-      key: _kisAccessTokenExpiryStorageKey,
+    final storedExpiry = await _readSecureStorageValue(
+      _kisAccessTokenExpiryStorageKey,
     );
     final parsedExpiry = DateTime.tryParse(storedExpiry ?? '')?.toLocal();
 
@@ -800,14 +800,14 @@ class MarketDataService {
   Future<void> _persistKisAccessToken(String token, DateTime? expiresAt) async {
     if (!_persistKisTokenStorage) return;
 
-    await _secureStorage.write(key: _kisAccessTokenStorageKey, value: token);
+    await _writeSecureStorageValue(_kisAccessTokenStorageKey, token);
     if (expiresAt == null) {
-      await _secureStorage.delete(key: _kisAccessTokenExpiryStorageKey);
+      await _deleteSecureStorageValue(_kisAccessTokenExpiryStorageKey);
       return;
     }
-    await _secureStorage.write(
-      key: _kisAccessTokenExpiryStorageKey,
-      value: expiresAt.toIso8601String(),
+    await _writeSecureStorageValue(
+      _kisAccessTokenExpiryStorageKey,
+      expiresAt.toIso8601String(),
     );
   }
 
@@ -816,8 +816,36 @@ class MarketDataService {
     _accessTokenExpiresAt = null;
     if (!_persistKisTokenStorage) return;
 
-    await _secureStorage.delete(key: _kisAccessTokenStorageKey);
-    await _secureStorage.delete(key: _kisAccessTokenExpiryStorageKey);
+    await _deleteSecureStorageValue(_kisAccessTokenStorageKey);
+    await _deleteSecureStorageValue(_kisAccessTokenExpiryStorageKey);
+  }
+
+  Future<String?> _readSecureStorageValue(String key) async {
+    try {
+      return await _secureStorage.read(key: key);
+    } catch (error, stackTrace) {
+      _log('Secure storage read failed key=$key error=$error');
+      _logStack(stackTrace);
+      return null;
+    }
+  }
+
+  Future<void> _writeSecureStorageValue(String key, String value) async {
+    try {
+      await _secureStorage.write(key: key, value: value);
+    } catch (error, stackTrace) {
+      _log('Secure storage write failed key=$key error=$error');
+      _logStack(stackTrace);
+    }
+  }
+
+  Future<void> _deleteSecureStorageValue(String key) async {
+    try {
+      await _secureStorage.delete(key: key);
+    } catch (error, stackTrace) {
+      _log('Secure storage delete failed key=$key error=$error');
+      _logStack(stackTrace);
+    }
   }
 
   Future<void> _persistCurrentPrice(
