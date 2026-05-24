@@ -8,6 +8,7 @@ class CompanyNewsSummaryService {
 
   static final CompanyNewsSummaryService instance =
       CompanyNewsSummaryService._();
+  static const Duration _cacheFreshnessWindow = Duration(hours: 6);
 
   Future<List<CompanyNewsSummaryItem>>? _inFlightFetch;
 
@@ -38,7 +39,8 @@ class CompanyNewsSummaryService {
 
     if (!forceRefresh) {
       final cached = await fetchCachedUserSummaries();
-      if (cached.isNotEmpty) {
+      if (cached.isNotEmpty &&
+          _areFreshCachedSummaries(cached, DateTime.now())) {
         return cached;
       }
     }
@@ -141,6 +143,41 @@ class CompanyNewsSummaryService {
   ) {
     return _buildLocalFallbackSummaries(symbolAssetTypeMap);
   }
+
+  @visibleForTesting
+  static bool areFreshCachedSummariesForTesting(
+    List<CompanyNewsSummaryItem> items,
+    DateTime now,
+  ) {
+    return _areFreshCachedSummaries(items, now);
+  }
+}
+
+bool _areFreshCachedSummaries(
+  List<CompanyNewsSummaryItem> items,
+  DateTime now,
+) {
+  if (items.isEmpty) {
+    return false;
+  }
+
+  return items.every((item) {
+    final cachedAt = _parseIsoDateTime(item.cachedAt);
+    if (cachedAt == null) {
+      return false;
+    }
+
+    final age = now.difference(cachedAt);
+    return !age.isNegative &&
+        age <= CompanyNewsSummaryService._cacheFreshnessWindow;
+  });
+}
+
+DateTime? _parseIsoDateTime(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return null;
+  }
+  return DateTime.tryParse(value.trim());
 }
 
 List<CompanyNewsSummaryItem> _buildLocalFallbackSummaries(
@@ -203,6 +240,7 @@ class CompanyNewsSummaryItem {
     this.newsCount,
     this.createdAt,
     this.updatedAt,
+    this.cachedAt,
     this.summary,
   });
 
@@ -218,6 +256,7 @@ class CompanyNewsSummaryItem {
           : int.tryParse('${json['news_count'] ?? ''}'),
       createdAt: json['created_at']?.toString(),
       updatedAt: json['updated_at']?.toString(),
+      cachedAt: json['cached_at']?.toString(),
       summary: json['summary'] is Map
           ? Map<String, dynamic>.from(
               (json['summary'] as Map).map(
@@ -236,6 +275,7 @@ class CompanyNewsSummaryItem {
   final int? newsCount;
   final String? createdAt;
   final String? updatedAt;
+  final String? cachedAt;
   final Map<String, dynamic>? summary;
 
   bool get hasKnownAssetType => assetType == '주식' || assetType == '코인';
@@ -250,6 +290,7 @@ class CompanyNewsSummaryItem {
       'news_count': newsCount,
       'created_at': createdAt,
       'updated_at': updatedAt,
+      'cached_at': cachedAt,
       'summary': summary,
     };
   }

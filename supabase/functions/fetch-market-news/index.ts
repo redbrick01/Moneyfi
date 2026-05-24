@@ -4,6 +4,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 const FINNHUB_API_KEY = Deno.env.get("FINNHUB_API_KEY") ?? "";
+const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 const MAX_NEWS_ROWS = 40;
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -17,6 +18,14 @@ function requireEnv(name: string, value: string) {
   if (!value) {
     throw new Error(`Missing env: ${name}`);
   }
+}
+
+function isAuthorizedCronRequest(req: Request) {
+  if (!CRON_SECRET) {
+    return true;
+  }
+
+  return req.headers.get("x-cron-secret") === CRON_SECRET;
 }
 
 function asCategory(value: unknown) {
@@ -95,6 +104,11 @@ Deno.serve(async (req) => {
     requireEnv("SUPABASE_URL", SUPABASE_URL);
     requireEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
     requireEnv("FINNHUB_API_KEY", FINNHUB_API_KEY);
+    requireEnv("CRON_SECRET", CRON_SECRET);
+
+    if (!isAuthorizedCronRequest(req)) {
+      return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+    }
 
     const body = req.method === "POST"
       ? await req.json().catch(() => ({}))

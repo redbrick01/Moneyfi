@@ -5,6 +5,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const OPENAI_MODEL = "gpt-5-mini";
+const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -17,6 +18,14 @@ function requireEnv(name: string, value: string) {
   if (!value) {
     throw new Error(`Missing env: ${name}`);
   }
+}
+
+function isAuthorizedCronRequest(req: Request) {
+  if (!CRON_SECRET) {
+    return true;
+  }
+
+  return req.headers.get("x-cron-secret") === CRON_SECRET;
 }
 
 function asString(value: unknown, fallback = ""): string {
@@ -589,6 +598,11 @@ Deno.serve(async (req) => {
     requireEnv("SUPABASE_URL", SUPABASE_URL);
     requireEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
     requireEnv("OPENAI_API_KEY", OPENAI_API_KEY);
+    requireEnv("CRON_SECRET", CRON_SECRET);
+
+    if (!isAuthorizedCronRequest(req)) {
+      return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+    }
 
     const body = req.method === "POST"
       ? await req.json().catch(() => ({}))

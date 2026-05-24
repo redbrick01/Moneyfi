@@ -7,6 +7,7 @@ class MarketNewsSummaryService {
   MarketNewsSummaryService._();
 
   static final MarketNewsSummaryService instance = MarketNewsSummaryService._();
+  static const Duration _cacheFreshnessWindow = Duration(hours: 6);
 
   Future<MarketNewsSummaryResponse?>? _inFlightFetch;
 
@@ -23,7 +24,7 @@ class MarketNewsSummaryService {
 
     if (!forceRefresh && summaryDate == null) {
       final cached = await fetchCachedSummary(category: category);
-      if (cached != null) {
+      if (cached != null && _isFreshCachedSummary(cached, DateTime.now())) {
         return cached;
       }
     }
@@ -139,6 +140,32 @@ class MarketNewsSummaryService {
   }) {
     return _buildLocalFallbackSummary(category: category);
   }
+
+  @visibleForTesting
+  static bool isFreshCachedSummaryForTesting(
+    MarketNewsSummaryResponse summary,
+    DateTime now,
+  ) {
+    return _isFreshCachedSummary(summary, now);
+  }
+}
+
+bool _isFreshCachedSummary(MarketNewsSummaryResponse summary, DateTime now) {
+  final cachedAt = _parseIsoDateTime(summary.cachedAt);
+  if (cachedAt == null) {
+    return false;
+  }
+
+  final age = now.difference(cachedAt);
+  return !age.isNegative &&
+      age <= MarketNewsSummaryService._cacheFreshnessWindow;
+}
+
+DateTime? _parseIsoDateTime(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return null;
+  }
+  return DateTime.tryParse(value.trim());
 }
 
 MarketNewsSummaryResponse _buildLocalFallbackSummary({
@@ -189,6 +216,7 @@ class MarketNewsSummaryResponse {
     this.summaryDate,
     this.createdAt,
     this.updatedAt,
+    this.cachedAt,
   });
 
   factory MarketNewsSummaryResponse.fromJson(Map<String, dynamic> json) {
@@ -209,6 +237,7 @@ class MarketNewsSummaryResponse {
       summaryDate: json['summary_date']?.toString(),
       createdAt: json['created_at']?.toString(),
       updatedAt: json['updated_at']?.toString(),
+      cachedAt: json['cached_at']?.toString(),
     );
   }
 
@@ -220,4 +249,5 @@ class MarketNewsSummaryResponse {
   final String? summaryDate;
   final String? createdAt;
   final String? updatedAt;
+  final String? cachedAt;
 }

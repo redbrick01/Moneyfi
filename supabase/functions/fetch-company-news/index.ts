@@ -6,6 +6,7 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 const FINNHUB_API_KEY = Deno.env.get("FINNHUB_API_KEY") ?? "";
+const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 const SUPPORTED_ASSET_TYPES = new Set(["주식", "코인"]);
 const MAX_FETCH_DAYS = 2;
 const MAX_NEWS_PER_SYMBOL = 5;
@@ -21,6 +22,14 @@ function requireEnv(name: string, value: string) {
   if (!value) {
     throw new Error(`Missing env: ${name}`);
   }
+}
+
+function isAuthorizedCronRequest(req: Request) {
+  if (!CRON_SECRET) {
+    return false;
+  }
+
+  return req.headers.get("x-cron-secret") === CRON_SECRET;
 }
 
 function asString(value: unknown, fallback = "") {
@@ -109,6 +118,38 @@ function extractAssetType(row: Record<string, unknown>): string {
   }
 
   return "";
+}
+
+function extractAssetHidden(row: Record<string, unknown>): boolean {
+  const assetValue = row.assets;
+  if (Array.isArray(assetValue)) {
+    return assetValue.some((item) => {
+      if (!item || typeof item !== "object") return false;
+      return (item as Record<string, unknown>).hidden === true;
+    });
+  }
+
+  if (assetValue && typeof assetValue === "object") {
+    return (assetValue as Record<string, unknown>).hidden === true;
+  }
+
+  return false;
+}
+
+function extractAssetDeleted(row: Record<string, unknown>): boolean {
+  const assetValue = row.assets;
+  if (Array.isArray(assetValue)) {
+    return assetValue.some((item) => {
+      if (!item || typeof item !== "object") return false;
+      return Boolean((item as Record<string, unknown>).deleted_at);
+    });
+  }
+
+  if (assetValue && typeof assetValue === "object") {
+    return Boolean((assetValue as Record<string, unknown>).deleted_at);
+  }
+
+  return false;
 }
 
 function relatedIncludesSymbol(related: unknown, symbol: string) {
@@ -203,12 +244,19 @@ Deno.serve(async (req) => {
     requireEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
     requireEnv("FINNHUB_API_KEY", FINNHUB_API_KEY);
 
-    const auth = await authenticateUser(
-      req.headers.get("Authorization"),
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY,
-    );
-    if (!auth.userId) {
+    const body = req.method === "POST"
+      ? await req.json().catch(() => ({}))
+      : {};
+    const url = new URL(req.url);
+    const cronRequest = isAuthorizedCronRequest(req);
+    const auth = cronRequest
+      ? { userId: null as string | null, reason: "cron_secret" }
+      : await authenticateUser(
+        req.headers.get("Authorization"),
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
+      );
+    if (!cronRequest && !auth.userId) {
       return jsonResponse(
         {
           ok: false,
@@ -218,11 +266,6 @@ Deno.serve(async (req) => {
         auth.reason === "missing_auth_env" ? 500 : 401,
       );
     }
-
-    const body = req.method === "POST"
-      ? await req.json().catch(() => ({}))
-      : {};
-    const url = new URL(req.url);
 
     const days = asPositiveInt(
       body?.days ?? url.searchParams.get("days"),
@@ -244,10 +287,16 @@ Deno.serve(async (req) => {
       },
     );
 
-    const { data: holdings, error: holdingsError } = await supabase
+    let holdingsQuery = supabase
       .from("holdings")
-      .select("symbol, currency_code, assets!inner(asset_type)")
-      .eq("user_id", auth.userId);
+      .select(
+        "symbol, currency_code, quantity, hidden, deleted_at, assets!inner(asset_type, hidden, deleted_at)",
+      );
+    if (!cronRequest) {
+      holdingsQuery = holdingsQuery.eq("user_id", auth.userId);
+    }
+
+    const { data: holdings, error: holdingsError } = await holdingsQuery;
 
     if (holdingsError) {
       throw new Error(`Failed to load holdings: ${holdingsError.message}`);
@@ -261,6 +310,15 @@ Deno.serve(async (req) => {
 
       const assetType = extractAssetType(record);
       if (!SUPPORTED_ASSET_TYPES.has(assetType)) continue;
+      if (
+        record.hidden === true ||
+        Boolean(record.deleted_at) ||
+        extractAssetHidden(record) ||
+        extractAssetDeleted(record) ||
+        asNumber(record.quantity) <= 0
+      ) {
+        continue;
+      }
 
       const currencyCode = asString(record.currency_code).trim().toUpperCase();
       if (assetType !== "코인" && currencyCode !== "USD") continue;

@@ -568,14 +568,10 @@ Deno.serve(async (req) => {
     requireEnv("SUPABASE_URL", SUPABASE_URL);
     requireEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
     requireEnv("OPENAI_API_KEY", OPENAI_API_KEY);
+    requireEnv("CRON_SECRET", CRON_SECRET);
 
-    // 선택: cron/webhook 보호
-    if (CRON_SECRET) {
-      const authHeader = req.headers.get("authorization") ?? "";
-      const expected = `Bearer ${CRON_SECRET}`;
-      if (authHeader !== expected) {
-        return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
-      }
+    if (req.headers.get("x-cron-secret") !== CRON_SECRET) {
+      return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
     }
 
     const rawBody = req.method === "POST"

@@ -24,6 +24,40 @@ void main() {
       expect(summary.keyRisk.trim(), isNotEmpty);
     });
 
+    test(
+      'market news cache expires so normal fetch can reach remote again',
+      () {
+        final now = DateTime.parse('2026-05-24T12:00:00');
+        final staleSummary = MarketNewsSummaryResponse(
+          category: 'general',
+          found: true,
+          summary: const {'market_summary': 'old'},
+          cachedAt: DateTime.parse('2026-05-21T12:00:00').toIso8601String(),
+        );
+        final freshSummary = MarketNewsSummaryResponse(
+          category: 'general',
+          found: true,
+          summary: const {'market_summary': 'fresh'},
+          cachedAt: DateTime.parse('2026-05-24T08:00:00').toIso8601String(),
+        );
+
+        expect(
+          MarketNewsSummaryService.isFreshCachedSummaryForTesting(
+            staleSummary,
+            now,
+          ),
+          isFalse,
+        );
+        expect(
+          MarketNewsSummaryService.isFreshCachedSummaryForTesting(
+            freshSummary,
+            now,
+          ),
+          isTrue,
+        );
+      },
+    );
+
     test('company news fallback creates visible stock and coin items', () {
       final items = CompanyNewsSummaryService.buildFallbackSummariesForTesting({
         'AAPL': '주식',
@@ -40,6 +74,43 @@ void main() {
         expect('${item.summary?['company_summary'] ?? ''}'.trim(), isNotEmpty);
         expect(item.summary?['issues'], isA<List>());
       }
+    });
+
+    test('company news cache expires per saved cache timestamp', () {
+      final now = DateTime.parse('2026-05-24T12:00:00');
+      final staleItems = [
+        CompanyNewsSummaryItem(
+          symbol: 'AAPL',
+          found: true,
+          assetType: '주식',
+          summary: const {'company_summary': 'old'},
+          cachedAt: DateTime.parse('2026-05-21T12:00:00').toIso8601String(),
+        ),
+      ];
+      final freshItems = [
+        CompanyNewsSummaryItem(
+          symbol: 'AAPL',
+          found: true,
+          assetType: '주식',
+          summary: const {'company_summary': 'fresh'},
+          cachedAt: DateTime.parse('2026-05-24T08:00:00').toIso8601String(),
+        ),
+      ];
+
+      expect(
+        CompanyNewsSummaryService.areFreshCachedSummariesForTesting(
+          staleItems,
+          now,
+        ),
+        isFalse,
+      );
+      expect(
+        CompanyNewsSummaryService.areFreshCachedSummariesForTesting(
+          freshItems,
+          now,
+        ),
+        isTrue,
+      );
     });
 
     test('portfolio diagnosis fallback keeps diagnosis UI populated', () {

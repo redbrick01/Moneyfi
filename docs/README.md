@@ -90,6 +90,9 @@
 | [External API Fallbacks Plan](features/bug_fixes/external_api_fallbacks/plan.md) | KIS/OpenAI/Finnhub/Coinone 실패 시 캐시/샘플/명확한 오류 UI 보강 계획 |
 | [External API Fallbacks Verification Plan](features/bug_fixes/external_api_fallbacks/verification_test_plan.md) | 외부 API 실패 fallback 검증 절차 |
 | [External API Fallbacks Test Report 2026-05-24](features/bug_fixes/external_api_fallbacks/test_report_20260524.md) | 외부 API 실패 fallback 보강 검증 결과 |
+| [News Cache Staleness Plan](features/bug_fixes/news_cache_staleness/plan.md) | 뉴스 조회가 오래된 로컬 캐시에 고정되는 문제 수정 계획 |
+| [News Cache Staleness Verification Plan](features/bug_fixes/news_cache_staleness/verification_test_plan.md) | 뉴스 캐시 freshness 및 서버 운영 검증 절차 |
+| [News Cache Staleness Test Report 2026-05-24](features/bug_fixes/news_cache_staleness/test_report_20260524.md) | 뉴스 캐시 freshness 수정 검증 결과 |
 | [Login Sync Failure UX Plan](features/bug_fixes/login_sync_failure_ux/plan.md) | 로그인 후 코어/뉴스/스냅샷 동기화 실패 안내 개선 계획 |
 | [Login Sync Failure UX Verification Plan](features/bug_fixes/login_sync_failure_ux/verification_test_plan.md) | 로그인 동기화 실패 UX 검증 절차 |
 | [Login Sync Failure UX Test Report 2026-05-24](features/bug_fixes/login_sync_failure_ux/test_report_20260524.md) | 로그인 동기화 실패 UX 검증 결과 |
