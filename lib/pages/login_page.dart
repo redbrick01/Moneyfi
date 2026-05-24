@@ -12,6 +12,7 @@ import '../services/company_news_summary_service.dart';
 import '../services/market_data_service.dart';
 import '../services/market_news_summary_service.dart';
 import '../services/sync_service.dart';
+import '../utils/input_validators.dart';
 import 'signup_page.dart';
 import 'sync_overlay.dart';
 
@@ -34,6 +35,9 @@ class _LoginPageState extends State<LoginPage> {
   SyncStepState _newsState = SyncStepState.pending;
   SyncStepState _snapshotState = SyncStepState.pending;
   String? _syncErrorMessage;
+  String? _syncErrorDetail;
+  String? _syncRetryMessage;
+  _LoginSyncFailureStage? _syncFailureStage;
 
   @override
   void dispose() {
@@ -46,9 +50,17 @@ class _LoginPageState extends State<LoginPage> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    final emailValidation = MoneyfyInputValidators.email(email);
+    if (!emailValidation.isValid) {
       setState(() {
-        _errorMessage = '이메일과 비밀번호를 입력해 주세요.';
+        _errorMessage = emailValidation.message;
+      });
+      return;
+    }
+
+    if (password.isEmpty) {
+      setState(() {
+        _errorMessage = '비밀번호를 입력해 주세요.';
       });
       return;
     }
@@ -57,10 +69,16 @@ class _LoginPageState extends State<LoginPage> {
       _isSubmitting = true;
       _errorMessage = null;
       _syncErrorMessage = null;
+      _syncErrorDetail = null;
+      _syncRetryMessage = null;
+      _syncFailureStage = null;
     });
 
     try {
-      await AuthService.signIn(email: email, password: password);
+      await AuthService.signIn(
+        email: emailValidation.value!,
+        password: password,
+      );
       if (!mounted) return;
       await AppDatabase.instance.clearAllLocalUserData();
       await MarketDataService.instance.clearLocalCache();
@@ -118,6 +136,9 @@ class _LoginPageState extends State<LoginPage> {
   Future<bool> _runPostLoginSync() async {
     setState(() {
       _syncErrorMessage = null;
+      _syncErrorDetail = null;
+      _syncRetryMessage = null;
+      _syncFailureStage = null;
       _coreState = SyncStepState.active;
       _newsState = SyncStepState.pending;
       _snapshotState = SyncStepState.pending;
@@ -130,7 +151,7 @@ class _LoginPageState extends State<LoginPage> {
     if (!coreSuccess) {
       setState(() {
         _coreState = SyncStepState.failed;
-        _syncErrorMessage = '코어 데이터 단계에서 실패했어요.';
+        _applySyncFailureCopy(_LoginSyncFailureStage.core);
       });
       return false;
     }
@@ -154,7 +175,7 @@ class _LoginPageState extends State<LoginPage> {
     if (!newsSuccess) {
       setState(() {
         _newsState = SyncStepState.failed;
-        _syncErrorMessage = '뉴스 데이터 단계에서 실패했어요.';
+        _applySyncFailureCopy(_LoginSyncFailureStage.news);
       });
       return false;
     }
@@ -171,7 +192,7 @@ class _LoginPageState extends State<LoginPage> {
     if (snapshotCount < 0) {
       setState(() {
         _snapshotState = SyncStepState.failed;
-        _syncErrorMessage = '스냅샷 단계에서 실패했어요.';
+        _applySyncFailureCopy(_LoginSyncFailureStage.snapshots);
       });
       return false;
     }
@@ -182,13 +203,78 @@ class _LoginPageState extends State<LoginPage> {
     return true;
   }
 
+  void _applySyncFailureCopy(_LoginSyncFailureStage stage) {
+    final copy = _loginSyncFailureCopy(stage);
+    _syncFailureStage = stage;
+    _syncErrorMessage = copy.message;
+    _syncErrorDetail = copy.detail;
+    _syncRetryMessage = copy.retryMessage;
+  }
+
+  bool get _canContinueAfterSyncFailure =>
+      _syncFailureStage == _LoginSyncFailureStage.news ||
+      _syncFailureStage == _LoginSyncFailureStage.snapshots;
+
+  void _closeSyncOverlay() {
+    if (_canContinueAfterSyncFailure) {
+      setState(() {
+        _showSyncOverlay = false;
+        _isSubmitting = false;
+      });
+      AppSnackBar.showInfo(context, '앱으로 이동합니다. 실패한 데이터는 My에서 다시 동기화할 수 있어요.');
+      Navigator.of(context).pop();
+      return;
+    }
+
+    setState(() {
+      _showSyncOverlay = false;
+      _isSubmitting = false;
+    });
+  }
+
   List<SyncStepItem> _buildSteps() {
     return [
-      SyncStepItem(title: '코어 데이터', state: _coreState),
-      SyncStepItem(title: '뉴스', state: _newsState),
-      SyncStepItem(title: '스냅샷', state: _snapshotState),
+      SyncStepItem(
+        title: '코어 데이터',
+        state: _coreState,
+        meta: _syncStepMeta(_LoginSyncFailureStage.core, _coreState),
+      ),
+      SyncStepItem(
+        title: '뉴스',
+        state: _newsState,
+        meta: _syncStepMeta(_LoginSyncFailureStage.news, _newsState),
+      ),
+      SyncStepItem(
+        title: '스냅샷',
+        state: _snapshotState,
+        meta: _syncStepMeta(_LoginSyncFailureStage.snapshots, _snapshotState),
+      ),
     ];
   }
+
+  String? _syncStepMeta(_LoginSyncFailureStage stage, SyncStepState state) {
+    if (state == SyncStepState.failed) {
+      return _loginSyncFailureCopy(stage).stepMeta;
+    }
+    if (state == SyncStepState.done) {
+      return switch (stage) {
+        _LoginSyncFailureStage.core => '자산, 보유, 거래 데이터를 적용했어요.',
+        _LoginSyncFailureStage.news => '뉴스 캐시를 확인했어요.',
+        _LoginSyncFailureStage.snapshots => '스냅샷을 가져왔어요.',
+      };
+    }
+    if (state == SyncStepState.active) {
+      return switch (stage) {
+        _LoginSyncFailureStage.core => '계정의 핵심 데이터를 서버에서 가져오는 중이에요.',
+        _LoginSyncFailureStage.news => '시장/종목 뉴스 요약 캐시를 준비하는 중이에요.',
+        _LoginSyncFailureStage.snapshots => '분석 차트에 필요한 스냅샷을 가져오는 중이에요.',
+      };
+    }
+    return null;
+  }
+
+  String get _syncOverlayCloseLabel =>
+      _canContinueAfterSyncFailure ? '앱으로 이동' : '닫기';
 
   @override
   Widget build(BuildContext context) {
@@ -308,12 +394,11 @@ class _LoginPageState extends State<LoginPage> {
                 steps: _buildSteps(),
                 isRunning: _isSubmitting,
                 errorMessage: _syncErrorMessage,
+                errorDetail: _syncErrorDetail,
+                retryMessage: _syncRetryMessage,
+                closeLabel: _syncOverlayCloseLabel,
                 onRetry: _runPostLoginSync,
-                onClose: () {
-                  setState(() {
-                    _showSyncOverlay = false;
-                  });
-                },
+                onClose: _closeSyncOverlay,
                 onBackground: () {
                   setState(() {
                     _showSyncOverlay = false;
@@ -325,4 +410,56 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+}
+
+enum _LoginSyncFailureStage { core, news, snapshots }
+
+@visibleForTesting
+LoginSyncFailureCopy loginSyncFailureCopyForTesting(String stage) {
+  return _loginSyncFailureCopy(switch (stage) {
+    'core' => _LoginSyncFailureStage.core,
+    'news' => _LoginSyncFailureStage.news,
+    'snapshots' => _LoginSyncFailureStage.snapshots,
+    _ => _LoginSyncFailureStage.core,
+  });
+}
+
+LoginSyncFailureCopy _loginSyncFailureCopy(_LoginSyncFailureStage stage) {
+  return switch (stage) {
+    _LoginSyncFailureStage.core => const LoginSyncFailureCopy(
+      message: '코어 데이터를 가져오지 못했어요.',
+      detail:
+          '자산, 보유, 거래 내역을 불러와야 앱을 안전하게 시작할 수 있어요. 인터넷 연결과 로그인 상태를 확인한 뒤 다시 시도해 주세요.',
+      retryMessage: '연결이 회복됐거나 잠시 기다렸다면 코어 데이터 가져오기를 다시 시도하세요.',
+      stepMeta: '앱 시작에 필요한 핵심 데이터가 아직 적용되지 않았어요.',
+    ),
+    _LoginSyncFailureStage.news => const LoginSyncFailureCopy(
+      message: '뉴스 데이터를 준비하지 못했어요.',
+      detail:
+          '자산과 거래 데이터는 적용됐어요. 뉴스 요약은 일부 비어 있거나 캐시/기본 안내로 표시될 수 있고, 앱 진입 후 My에서 다시 동기화할 수 있어요.',
+      retryMessage: '뉴스 요약이 꼭 필요하면 재시도하고, 아니면 앱으로 이동해도 됩니다.',
+      stepMeta: '시장/종목 뉴스 요약은 나중에 다시 받을 수 있어요.',
+    ),
+    _LoginSyncFailureStage.snapshots => const LoginSyncFailureCopy(
+      message: '스냅샷 데이터를 가져오지 못했어요.',
+      detail:
+          '자산과 뉴스 단계는 끝났어요. 분석 차트나 과거 성과 일부가 최신이 아닐 수 있으니 앱 진입 후 My에서 다시 동기화해 주세요.',
+      retryMessage: '분석 화면의 최신 스냅샷이 필요하면 재시도하고, 아니면 앱으로 이동해도 됩니다.',
+      stepMeta: '분석 차트용 스냅샷은 나중에 다시 받을 수 있어요.',
+    ),
+  };
+}
+
+class LoginSyncFailureCopy {
+  const LoginSyncFailureCopy({
+    required this.message,
+    required this.detail,
+    required this.retryMessage,
+    required this.stepMeta,
+  });
+
+  final String message;
+  final String detail;
+  final String retryMessage;
+  final String stepMeta;
 }

@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { authenticateUser } from "../_shared/auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 
@@ -9,39 +11,6 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
     status,
     headers: { "Content-Type": "application/json" },
   });
-}
-
-function decodeJwtSub(authHeader: string | null) {
-  try {
-    if (!authHeader) {
-      return { userId: null, reason: "missing_auth_header" };
-    }
-
-    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    const parts = token.split(".");
-    if (parts.length < 2) {
-      return { userId: null, reason: "invalid_jwt_parts" };
-    }
-
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(
-      base64.length + (4 - (base64.length % 4)) % 4,
-      "=",
-    );
-    const payload = JSON.parse(atob(padded));
-
-    return {
-      userId: typeof payload.sub === "string" ? payload.sub : null,
-      reason: typeof payload.sub === "string" ? "ok" : "missing_sub",
-    };
-  } catch (error) {
-    return {
-      userId: null,
-      reason: `decode_failed:${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    };
-  }
 }
 
 function parseNumber(value: unknown, fallback = 0) {
@@ -98,15 +67,19 @@ async function ensureClientIds(
 
 Deno.serve(async (req) => {
   try {
-    const decoded = decodeJwtSub(req.headers.get("Authorization"));
-    if (!decoded.userId) {
+    const auth = await authenticateUser(
+      req.headers.get("Authorization"),
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
+    );
+    if (!auth.userId) {
       return jsonResponse(
         {
           ok: false,
-          step: "jwt_decode",
-          reason: decoded.reason,
+          step: "auth_verify",
+          reason: auth.reason,
         },
-        401,
+        auth.reason === "missing_auth_env" ? 500 : 401,
       );
     }
 
@@ -116,13 +89,14 @@ Deno.serve(async (req) => {
           ok: false,
           step: "env_check",
           supabase_url_exists: !!SUPABASE_URL,
+          anon_key_exists: !!SUPABASE_ANON_KEY,
           service_role_exists: !!SUPABASE_SERVICE_ROLE_KEY,
         },
         500,
       );
     }
 
-    const userId = decoded.userId;
+    const userId = auth.userId;
     const supabase = createClient<any>(
       SUPABASE_URL,
       SUPABASE_SERVICE_ROLE_KEY,
@@ -149,7 +123,7 @@ Deno.serve(async (req) => {
       supabase
         .from("assets")
         .select(
-          "id, client_id, asset_type, title, alias, hidden, currency_code, value, change, icon_code_point, quantity_label, quantity_value, average_label, average_value, note, sort_order",
+          "id, client_id, last_modified_at, asset_type, title, alias, hidden, currency_code, value, change, icon_code_point, quantity_label, quantity_value, average_label, average_value, note, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -158,7 +132,7 @@ Deno.serve(async (req) => {
       supabase
         .from("holdings")
         .select(
-          "id, client_id, asset_id, hidden, currency_code, market_updated_at, exchange_code, name, symbol, quantity, average_price, current_price, note, sort_order",
+          "id, client_id, last_modified_at, asset_id, hidden, currency_code, market_updated_at, exchange_code, name, symbol, quantity, average_price, current_price, note, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -167,7 +141,7 @@ Deno.serve(async (req) => {
       supabase
         .from("cash_accounts")
         .select(
-          "id, client_id, asset_id, hidden, currency_code, name, base_balance, balance, note, sort_order",
+          "id, client_id, last_modified_at, asset_id, hidden, currency_code, name, base_balance, balance, note, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -176,7 +150,7 @@ Deno.serve(async (req) => {
       supabase
         .from("transaction_events")
         .select(
-          "id, client_id, occurred_at, kind, title, memo, source, legacy_source_table, legacy_source_id, sort_order",
+          "id, client_id, last_modified_at, occurred_at, kind, title, memo, source, legacy_source_table, legacy_source_id, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -186,7 +160,7 @@ Deno.serve(async (req) => {
       supabase
         .from("transaction_lines")
         .select(
-          "id, client_id, event_id, asset_id, holding_id, cash_account_id, legacy_source_table, legacy_source_id, action, currency_code, quantity_delta, cash_delta, unit_price, gross_amount, fee_amount, tax_amount, cost_basis_delta, realized_pnl, fx_rate, sort_order",
+          "id, client_id, last_modified_at, event_id, asset_id, holding_id, cash_account_id, legacy_source_table, legacy_source_id, action, currency_code, quantity_delta, cash_delta, unit_price, gross_amount, fee_amount, tax_amount, cost_basis_delta, realized_pnl, fx_rate, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -219,6 +193,9 @@ Deno.serve(async (req) => {
 
     const assetRows = (assetsResult.data ?? []).map((row) => ({
       client_id: typeof row.client_id === "string" ? row.client_id : "",
+      last_modified_at: row.last_modified_at == null
+        ? null
+        : String(row.last_modified_at),
       asset_type: String(row.asset_type ?? "주식"),
       title: String(row.title ?? ""),
       alias: String(row.alias ?? ""),
@@ -246,6 +223,9 @@ Deno.serve(async (req) => {
 
     const holdingRows = (holdingsResult.data ?? []).map((row) => ({
       client_id: typeof row.client_id === "string" ? row.client_id : "",
+      last_modified_at: row.last_modified_at == null
+        ? null
+        : String(row.last_modified_at),
       asset_client_id:
         assetClientByServerId.get(parseNumber(row.asset_id, -1)) ?? null,
       hidden: Boolean(row.hidden),
@@ -274,6 +254,9 @@ Deno.serve(async (req) => {
 
     const cashAccountRows = (cashAccountsResult.data ?? []).map((row) => ({
       client_id: typeof row.client_id === "string" ? row.client_id : "",
+      last_modified_at: row.last_modified_at == null
+        ? null
+        : String(row.last_modified_at),
       asset_client_id:
         assetClientByServerId.get(parseNumber(row.asset_id, -1)) ?? null,
       hidden: Boolean(row.hidden),
@@ -298,6 +281,9 @@ Deno.serve(async (req) => {
       row,
     ) => ({
       client_id: typeof row.client_id === "string" ? row.client_id : "",
+      last_modified_at: row.last_modified_at == null
+        ? null
+        : String(row.last_modified_at),
       occurred_at: String(row.occurred_at ?? ""),
       kind: String(row.kind ?? ""),
       title: String(row.title ?? ""),
@@ -325,6 +311,9 @@ Deno.serve(async (req) => {
       row,
     ) => ({
       client_id: typeof row.client_id === "string" ? row.client_id : "",
+      last_modified_at: row.last_modified_at == null
+        ? null
+        : String(row.last_modified_at),
       event_client_id:
         transactionEventClientByServerId.get(parseNumber(row.event_id, -1)) ??
           null,

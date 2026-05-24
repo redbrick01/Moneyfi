@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
+import 'package:moneyfy/pages/login_page.dart';
 import 'package:moneyfy/pages/sync_overlay.dart';
 
 void main() {
@@ -9,6 +10,9 @@ void main() {
     required List<SyncStepItem> steps,
     required bool isRunning,
     String? errorMessage,
+    String? errorDetail,
+    String? retryMessage,
+    String? closeLabel,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -18,6 +22,9 @@ void main() {
             steps: steps,
             isRunning: isRunning,
             errorMessage: errorMessage,
+            errorDetail: errorDetail,
+            retryMessage: retryMessage,
+            closeLabel: closeLabel,
             onRetry: () {},
             onClose: () {},
             onBackground: () {},
@@ -87,17 +94,39 @@ void main() {
     await pumpOverlay(
       tester,
       isRunning: false,
-      errorMessage: '뉴스 데이터 단계에서 실패했어요.',
+      errorMessage: '뉴스 데이터를 준비하지 못했어요.',
+      errorDetail: '자산과 거래 데이터는 적용됐어요.',
+      retryMessage: '뉴스 요약이 꼭 필요하면 재시도하세요.',
+      closeLabel: '앱으로 이동',
       steps: const [
         SyncStepItem(title: '코어 데이터', state: SyncStepState.done),
-        SyncStepItem(title: '뉴스', state: SyncStepState.failed),
+        SyncStepItem(
+          title: '뉴스',
+          state: SyncStepState.failed,
+          meta: '시장/종목 뉴스 요약은 나중에 다시 받을 수 있어요.',
+        ),
         SyncStepItem(title: '스냅샷', state: SyncStepState.pending),
       ],
     );
 
     expect(find.text('동기화 확인'), findsOneWidget);
-    expect(find.text('뉴스 데이터 단계에서 실패했어요.'), findsOneWidget);
+    expect(find.text('뉴스 데이터를 준비하지 못했어요.'), findsOneWidget);
+    expect(find.text('자산과 거래 데이터는 적용됐어요.'), findsOneWidget);
+    expect(find.text('시장/종목 뉴스 요약은 나중에 다시 받을 수 있어요.'), findsOneWidget);
+    expect(find.text('뉴스 요약이 꼭 필요하면 재시도하세요.'), findsOneWidget);
     expect(find.text('재시도'), findsWidgets);
-    expect(find.text('나중에'), findsOneWidget);
+    expect(find.text('앱으로 이동'), findsOneWidget);
+  });
+
+  test('login sync failure copy gives stage-specific actions', () {
+    final core = loginSyncFailureCopyForTesting('core');
+    final news = loginSyncFailureCopyForTesting('news');
+    final snapshots = loginSyncFailureCopyForTesting('snapshots');
+
+    expect(core.detail, contains('앱을 안전하게 시작'));
+    expect(news.detail, contains('앱 진입 후 My'));
+    expect(snapshots.detail, contains('분석 차트'));
+    expect(news.retryMessage, contains('앱으로 이동'));
+    expect(snapshots.stepMeta, contains('나중에 다시'));
   });
 }

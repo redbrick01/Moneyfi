@@ -53,9 +53,10 @@ class MarketNewsSummaryService {
   }) async {
     if (!await AuthService.ensureInitialized()) {
       debugPrint('[market-news-summary] skipped: auth not initialized');
-      return summaryDate == null
-          ? fetchCachedSummary(category: category)
-          : null;
+      return _fetchCachedOrFallbackSummary(
+        category: category,
+        summaryDate: summaryDate,
+      );
     }
 
     try {
@@ -72,12 +73,18 @@ class MarketNewsSummaryService {
       );
 
       if (response.status != 200 || response.data is! Map) {
-        return null;
+        return _fetchCachedOrFallbackSummary(
+          category: category,
+          summaryDate: summaryDate,
+        );
       }
 
       final payload = Map<String, dynamic>.from(response.data as Map);
       if (payload['ok'] != true) {
-        return null;
+        return _fetchCachedOrFallbackSummary(
+          category: category,
+          summaryDate: summaryDate,
+        );
       }
 
       final result = MarketNewsSummaryResponse.fromJson(payload);
@@ -97,10 +104,23 @@ class MarketNewsSummaryService {
     } catch (error, stackTrace) {
       debugPrint('[market-news-summary] failed error=$error');
       debugPrintStack(stackTrace: stackTrace);
-      return summaryDate == null
-          ? fetchCachedSummary(category: category)
-          : null;
+      return _fetchCachedOrFallbackSummary(
+        category: category,
+        summaryDate: summaryDate,
+      );
     }
+  }
+
+  Future<MarketNewsSummaryResponse?> _fetchCachedOrFallbackSummary({
+    required String category,
+    required String? summaryDate,
+  }) async {
+    if (summaryDate != null) {
+      return null;
+    }
+
+    final cached = await fetchCachedSummary(category: category);
+    return cached ?? _buildLocalFallbackSummary(category: category);
   }
 
   Future<MarketNewsSummaryResponse?> fetchCachedSummary({
@@ -112,6 +132,51 @@ class MarketNewsSummaryService {
     if (payload == null) return null;
     return MarketNewsSummaryResponse.fromJson(payload);
   }
+
+  @visibleForTesting
+  static MarketNewsSummaryResponse buildFallbackSummaryForTesting({
+    String category = 'general',
+  }) {
+    return _buildLocalFallbackSummary(category: category);
+  }
+}
+
+MarketNewsSummaryResponse _buildLocalFallbackSummary({
+  required String category,
+}) {
+  final now = DateTime.now().toUtc().toIso8601String();
+  return MarketNewsSummaryResponse(
+    category: category,
+    found: true,
+    model: 'fallback-local',
+    newsCount: 0,
+    summaryDate: now.split('T').first,
+    createdAt: now,
+    updatedAt: now,
+    summary: const {
+      'market_summary':
+          '외부 시장 뉴스 요약 API가 일시적으로 응답하지 않아 저장된 데이터와 기본 점검 안내를 표시합니다.',
+      'issues': [
+        {
+          'title': '실시간 뉴스 요약 지연',
+          'summary':
+              'KIS, Finnhub, OpenAI 등 외부 API 응답을 받을 수 없어 최신 뉴스 기반 판단은 보류해야 합니다.',
+          'importance': '2',
+          'market_impact': {
+            'stocks': '개별 종목 뉴스와 지수 흐름을 앱 밖에서도 함께 확인하세요.',
+            'bonds_rates': '금리와 환율 변동이 큰 날에는 보수적으로 해석하세요.',
+            'fx': 'USD/KRW 환율 캐시가 최신이 아닐 수 있습니다.',
+            'crypto': '코인 시세는 최근 체결가와 거래소 공지를 함께 확인하세요.',
+          },
+        },
+      ],
+      'overall_assessment': {
+        'key_risk': '외부 데이터 지연으로 최신 리스크 반영이 제한됩니다.',
+        'risk_assets': '변동성이 큰 주식, 코인',
+        'safe_assets': '현금성 자산, 분산된 장기 보유 자산',
+      },
+    },
+  );
 }
 
 class MarketNewsSummaryResponse {

@@ -75,7 +75,8 @@ class PortfolioDiagnosisService {
   }) async {
     if (!await AuthService.ensureInitialized()) {
       debugPrint('[portfolio-diagnosis] skipped: auth not initialized');
-      return _fetchAnyCache(payloadKey: payloadKey);
+      return (await _fetchAnyCache(payloadKey: payloadKey)) ??
+          _buildLocalFallbackDiagnosis(portfolioInput);
     }
 
     try {
@@ -89,12 +90,14 @@ class PortfolioDiagnosisService {
       );
 
       if (response.status != 200 || response.data is! Map) {
-        return null;
+        return (await _fetchAnyCache(payloadKey: payloadKey)) ??
+            _buildLocalFallbackDiagnosis(portfolioInput);
       }
 
       final payload = Map<String, dynamic>.from(response.data as Map);
       if (payload['ok'] != true || payload['diagnosis'] is! Map) {
-        return _fetchAnyCache(payloadKey: payloadKey);
+        return (await _fetchAnyCache(payloadKey: payloadKey)) ??
+            _buildLocalFallbackDiagnosis(portfolioInput);
       }
 
       final diagnosisJson = Map<String, dynamic>.from(
@@ -115,7 +118,8 @@ class PortfolioDiagnosisService {
     } catch (error, stackTrace) {
       debugPrint('[portfolio-diagnosis] failed error=$error');
       debugPrintStack(stackTrace: stackTrace);
-      return _fetchAnyCache(payloadKey: payloadKey);
+      return (await _fetchAnyCache(payloadKey: payloadKey)) ??
+          _buildLocalFallbackDiagnosis(portfolioInput);
     }
   }
 
@@ -158,6 +162,13 @@ class PortfolioDiagnosisService {
       model: row['model']?.toString(),
     );
   }
+
+  @visibleForTesting
+  static PortfolioDiagnosisResult buildFallbackDiagnosisForTesting(
+    Map<String, dynamic> portfolioInput,
+  ) {
+    return _buildLocalFallbackDiagnosis(portfolioInput);
+  }
 }
 
 const Duration _cacheTtl = Duration(hours: 24);
@@ -193,8 +204,9 @@ class PortfolioDiagnosisResult {
     final summary = _asString(json['summary'], fallback: '진단 요약이 없습니다.');
     final score = _resolveScore(json);
     final riskLevel = _resolveRiskLevel(json, score);
-    final uncertainty =
-        json['uncertainty'] is bool ? json['uncertainty'] as bool : true;
+    final uncertainty = json['uncertainty'] is bool
+        ? json['uncertainty'] as bool
+        : true;
     final analysisSource = _resolveAnalysisSource(json['analysis_source']);
 
     return PortfolioDiagnosisResult(
@@ -274,6 +286,45 @@ int _resolveScore(Map<String, dynamic> json) {
 bool _isFallbackDiagnosis(Map<String, dynamic> diagnosis) {
   final source = diagnosis['analysis_source']?.toString().trim().toLowerCase();
   return source == 'fallback_rule_based';
+}
+
+PortfolioDiagnosisResult _buildLocalFallbackDiagnosis(
+  Map<String, dynamic> portfolioInput,
+) {
+  final holdingsCount = _resolvePortfolioHoldingCount(portfolioInput);
+  final hasHoldings = holdingsCount > 0;
+  return PortfolioDiagnosisResult(
+    summary: hasHoldings
+        ? 'AI 진단 API가 일시적으로 응답하지 않아 현재 보유 자산 $holdingsCount개 기준의 기본 점검 결과를 표시합니다.'
+        : 'AI 진단 API가 일시적으로 응답하지 않아 기본 점검 결과를 표시합니다.',
+    score: hasHoldings ? 60 : 50,
+    riskLevel: '보통',
+    strengths: hasHoldings
+        ? const ['보유 자산 데이터가 있어 캐시 또는 기본 규칙으로 최소 점검을 계속할 수 있습니다.']
+        : const [],
+    weaknesses: const ['외부 AI 응답 지연으로 최신 뉴스와 정성 분석 반영이 제한됩니다.'],
+    suggestions: const [
+      '외부 API가 회복된 뒤 AI 포트폴리오 분석을 다시 생성하세요.',
+      '그 전에는 자산 비중, 현금 비중, 최근 급등락 종목을 우선 점검하세요.',
+    ],
+    uncertainty: true,
+    analysisSource: 'fallback_rule_based',
+    model: 'fallback-local',
+  );
+}
+
+int _resolvePortfolioHoldingCount(Map<String, dynamic> portfolioInput) {
+  final candidates = [
+    portfolioInput['holdings'],
+    portfolioInput['assets'],
+    portfolioInput['positions'],
+  ];
+  for (final candidate in candidates) {
+    if (candidate is List) {
+      return candidate.length;
+    }
+  }
+  return 0;
 }
 
 String _resolveRiskLevel(Map<String, dynamic> json, int score) {

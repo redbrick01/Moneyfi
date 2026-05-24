@@ -1,6 +1,8 @@
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { authenticateUser } from "../_shared/auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 const jsonHeaders = { "Content-Type": "application/json" };
@@ -19,39 +21,6 @@ function logStep(message: string, details?: Record<string, unknown>) {
   console.log(`[get-portfolio-snapshots] ${message}`);
 }
 
-function decodeJwtSub(authHeader: string | null) {
-  try {
-    if (!authHeader) {
-      return { userId: null, reason: "missing_auth_header" };
-    }
-
-    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    const parts = token.split(".");
-    if (parts.length < 2) {
-      return { userId: null, reason: "invalid_jwt_parts" };
-    }
-
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(
-      base64.length + (4 - (base64.length % 4)) % 4,
-      "=",
-    );
-    const payload = JSON.parse(atob(padded));
-
-    return {
-      userId: typeof payload.sub === "string" ? payload.sub : null,
-      reason: typeof payload.sub === "string" ? "ok" : "missing_sub",
-    };
-  } catch (error) {
-    return {
-      userId: null,
-      reason: `decode_failed:${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    };
-  }
-}
-
 function parseNumber(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
@@ -64,30 +33,52 @@ function parseNumber(value: unknown) {
 Deno.serve(async (req) => {
   try {
     requireEnv("SUPABASE_URL", SUPABASE_URL);
+    requireEnv("SUPABASE_ANON_KEY", SUPABASE_ANON_KEY);
     requireEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
 
-    const decoded = decodeJwtSub(req.headers.get("Authorization"));
+    const auth = await authenticateUser(
+      req.headers.get("Authorization"),
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
+    );
     const url = new URL(req.url);
     const body = req.method === "POST"
       ? await req.json().catch(() => ({}))
       : {};
 
-    const targetUserId = decoded.userId ??
-      (typeof body?.user_id === "string" && body.user_id.trim()
-        ? body.user_id.trim()
-        : null) ??
-      (url.searchParams.get("user_id")?.trim() || null);
-
-    if (!targetUserId) {
+    if (!auth.userId) {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: "Missing target user. Provide Authorization or user_id.",
-          reason: decoded.reason,
+          error: "Unauthorized",
+          step: "auth_verify",
+          reason: auth.reason,
         }),
-        { status: 401, headers: jsonHeaders },
+        {
+          status: auth.reason === "missing_auth_env" ? 500 : 401,
+          headers: jsonHeaders,
+        },
       );
     }
+
+    const requestedUserId =
+      (typeof body?.user_id === "string" && body.user_id.trim()
+        ? body.user_id.trim()
+        : null) ??
+        (url.searchParams.get("user_id")?.trim() || null);
+
+    if (requestedUserId && requestedUserId !== auth.userId) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "Forbidden",
+          step: "user_scope",
+        }),
+        { status: 403, headers: jsonHeaders },
+      );
+    }
+
+    const targetUserId = auth.userId;
 
     const limitParam = typeof body?.limit === "number"
       ? body.limit

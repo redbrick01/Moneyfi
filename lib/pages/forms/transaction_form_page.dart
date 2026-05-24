@@ -4,6 +4,7 @@ import '../../db/app_database.dart';
 import '../../models/asset_item.dart';
 import '../../services/sync_service.dart';
 import '../../theme/moneyfy_theme.dart';
+import '../../utils/input_validators.dart';
 import 'form_design.dart';
 
 const _transactionTypes = ['매수', '매도', '배당', '이자'];
@@ -83,17 +84,70 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     if (isSaving || typeController.text.trim().isEmpty) return;
     final transactionType = typeController.text.trim();
     final requiresQuantity = transactionType == '매수' || transactionType == '매도';
-    final parsedAmount = _parsePositiveNumber(amountController.text);
-    final parsedQuantity = _parsePositiveNumber(quantityController.text);
-    if (parsedAmount == null || (requiresQuantity && parsedQuantity == null)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            requiresQuantity
-                ? '단가와 수량을 0보다 큰 숫자로 입력해 주세요.'
-                : '금액을 0보다 큰 숫자로 입력해 주세요.',
-          ),
-        ),
+    final dateValidation = MoneyfyInputValidators.date(dateController.text);
+    if (!dateValidation.isValid) {
+      _showValidationMessage(dateValidation.message!);
+      return;
+    }
+
+    final nameValidation = MoneyfyInputValidators.requiredText(
+      nameController.text,
+      fieldName: '이름',
+    );
+    if (!nameValidation.isValid) {
+      _showValidationMessage(nameValidation.message!);
+      return;
+    }
+
+    final amountValidation = MoneyfyInputValidators.decimal(
+      amountController.text,
+      fieldName: requiresQuantity ? '단가' : '금액',
+      allowZero: false,
+    );
+    if (!amountValidation.isValid) {
+      _showValidationMessage(amountValidation.message!);
+      return;
+    }
+
+    final quantityValidation = MoneyfyInputValidators.decimal(
+      quantityController.text,
+      fieldName: '수량',
+      allowZero: false,
+    );
+    if (requiresQuantity && !quantityValidation.isValid) {
+      _showValidationMessage(quantityValidation.message!);
+      return;
+    }
+
+    final amountText = _numberText(amountValidation.value!);
+    final quantityText = requiresQuantity
+        ? _numberText(quantityValidation.value!)
+        : '';
+
+    if (dateController.text.trim() != dateValidation.value ||
+        amountController.text.trim() != amountText ||
+        (requiresQuantity && quantityController.text.trim() != quantityText)) {
+      setState(() {
+        dateController.text = dateValidation.value!;
+        amountController.text = amountText;
+        if (requiresQuantity) {
+          quantityController.text = quantityText;
+        }
+      });
+    }
+
+    if (nameController.text.trim() != nameValidation.value) {
+      setState(() {
+        nameController.text = nameValidation.value!;
+      });
+    }
+
+    if (requiresQuantity &&
+        (amountValidation.value! <= 0 || quantityValidation.value! <= 0)) {
+      _showValidationMessage(
+        requiresQuantity
+            ? '단가와 수량을 0보다 큰 숫자로 입력해 주세요.'
+            : '금액을 0보다 큰 숫자로 입력해 주세요.',
       );
       return;
     }
@@ -111,11 +165,11 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
         await AppDatabase.instance.createTransaction(
           assetId: widget.assetId,
           holdingId: currentHoldingId,
-          date: dateController.text.trim(),
+          date: dateValidation.value!,
           type: transactionType,
-          name: nameController.text.trim(),
-          amount: amountController.text.trim(),
-          quantity: requiresQuantity ? quantityController.text.trim() : '',
+          name: nameValidation.value!,
+          amount: amountText,
+          quantity: quantityText,
         );
       } else {
         await AppDatabase.instance.updateTransactionItem(
@@ -124,11 +178,11 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
             clientId: item.clientId,
             assetId: item.assetId,
             holdingId: item.holdingId,
-            date: dateController.text.trim(),
+            date: dateValidation.value!,
             type: transactionType,
-            name: nameController.text.trim(),
-            amount: amountController.text.trim(),
-            quantity: requiresQuantity ? quantityController.text.trim() : '',
+            name: nameValidation.value!,
+            amount: amountText,
+            quantity: quantityText,
             unitPrice: item.unitPrice,
             quantityValue: item.quantityValue,
             grossAmount: item.grossAmount,
@@ -186,11 +240,14 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     };
   }
 
-  double? _parsePositiveNumber(String raw) {
-    final normalized = raw.replaceAll(',', '').trim();
-    final value = double.tryParse(normalized);
-    if (value == null || value <= 0) return null;
-    return value;
+  String _numberText(double value) {
+    return value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
+  }
+
+  void _showValidationMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<int> _resolveCurrentHoldingId() async {

@@ -1018,6 +1018,53 @@ void main() {
   });
 
   test(
+    'sync payload carries last_modified_at and clears accepted rows only',
+    () async {
+      final acceptedAssetId = await createAsset('주식');
+      final conflictedAssetId = await createAsset('현금');
+      final payload = await db.buildDirtySyncPayload();
+      final assetPayload = (payload['assets'] as List)
+          .whereType<Map>()
+          .toList();
+
+      expect(
+        assetPayload,
+        everyElement(containsPair('last_modified_at', isNotNull)),
+      );
+
+      final acceptedClientId =
+          (await (db.select(db.assets)
+                    ..where((table) => table.id.equals(acceptedAssetId)))
+                  .getSingle())
+              .clientId;
+      final conflictedClientId =
+          (await (db.select(db.assets)
+                    ..where((table) => table.id.equals(conflictedAssetId)))
+                  .getSingle())
+              .clientId;
+
+      await db.markDirtySyncPayloadAsSynced(payload, {
+        'assets': [acceptedClientId],
+        'holdings': const <String>[],
+        'cash_accounts': const <String>[],
+        'transaction_events': const <String>[],
+        'transaction_lines': const <String>[],
+      });
+
+      final dirtyRows = await db
+          .customSelect('SELECT client_id, dirty FROM assets ORDER BY title')
+          .get();
+      final dirtyByClientId = {
+        for (final row in dirtyRows)
+          row.read<String>('client_id'): row.read<bool>('dirty'),
+      };
+
+      expect(dirtyByClientId[acceptedClientId], isFalse);
+      expect(dirtyByClientId[conflictedClientId], isTrue);
+    },
+  );
+
+  test(
     'ledger investment edit survives sync restore remapped local ids',
     () async {
       final assetId = await createAsset('주식');

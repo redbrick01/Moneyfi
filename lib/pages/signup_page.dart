@@ -10,6 +10,7 @@ import '../db/app_database.dart';
 import '../services/auth_service.dart';
 import '../services/market_data_service.dart';
 import '../services/sync_service.dart';
+import '../utils/input_validators.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -42,12 +43,28 @@ class _SignupPageState extends State<SignupPage> {
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
 
-    if (name.isEmpty ||
-        email.isEmpty ||
-        password.isEmpty ||
-        confirmPassword.isEmpty) {
+    final nameValidation = MoneyfyInputValidators.requiredText(
+      name,
+      fieldName: '이름',
+    );
+    if (!nameValidation.isValid) {
       setState(() {
-        _errorMessage = '모든 항목을 입력해 주세요.';
+        _errorMessage = nameValidation.message;
+      });
+      return;
+    }
+
+    final emailValidation = MoneyfyInputValidators.email(email);
+    if (!emailValidation.isValid) {
+      setState(() {
+        _errorMessage = emailValidation.message;
+      });
+      return;
+    }
+
+    if (password.isEmpty || confirmPassword.isEmpty) {
+      setState(() {
+        _errorMessage = '비밀번호와 비밀번호 확인을 입력해 주세요.';
       });
       return;
     }
@@ -66,9 +83,9 @@ class _SignupPageState extends State<SignupPage> {
 
     try {
       final response = await AuthService.signUp(
-        email: email,
+        email: emailValidation.value!,
         password: password,
-        name: name,
+        name: nameValidation.value!,
       );
       if (!mounted) return;
 

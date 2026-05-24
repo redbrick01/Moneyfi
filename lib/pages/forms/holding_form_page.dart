@@ -8,6 +8,7 @@ import '../../models/asset_item.dart';
 import '../../services/market_data_service.dart';
 import '../../services/sync_service.dart';
 import '../../theme/moneyfy_theme.dart';
+import '../../utils/input_validators.dart';
 import 'form_design.dart';
 
 class HoldingFormPage extends StatefulWidget {
@@ -292,17 +293,70 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
       });
       return;
     }
-    if (nameController.text.trim().isEmpty) return;
+    final nameValidation = MoneyfyInputValidators.requiredText(
+      nameController.text,
+      fieldName: '이름',
+    );
+    if (!nameValidation.isValid) {
+      _showValidationMessage(nameValidation.message!);
+      return;
+    }
+
+    final isCashAsset =
+        _asset?.assetType == '현금' || widget.item?.assetType == '현금';
+    final canSearchMarketItem = widget.item == null && !isCashAsset;
+    InputValidationResult<String>? symbolValidation;
+    if (!isCashAsset) {
+      symbolValidation = MoneyfyInputValidators.symbol(symbolController.text);
+      if (!symbolValidation.isValid) {
+        _showValidationMessage(symbolValidation.message!);
+        return;
+      }
+    }
+
+    final quantityValidation = MoneyfyInputValidators.decimal(
+      quantityController.text,
+      fieldName: isCashAsset ? '잔액' : '수량',
+      allowZero: isCashAsset,
+    );
+    if (!quantityValidation.isValid) {
+      _showValidationMessage(quantityValidation.message!);
+      return;
+    }
+
+    final averagePriceValidation = MoneyfyInputValidators.decimal(
+      averagePriceController.text,
+      fieldName: '평단',
+      allowZero: true,
+    );
+    if (!isCashAsset && !averagePriceValidation.isValid) {
+      _showValidationMessage(averagePriceValidation.message!);
+      return;
+    }
+
+    final currentPriceValidation = MoneyfyInputValidators.decimal(
+      currentPriceController.text,
+      fieldName: '현재가',
+      allowZero: true,
+    );
+    if (!isCashAsset &&
+        !canSearchMarketItem &&
+        !currentPriceValidation.isValid) {
+      _showValidationMessage(currentPriceValidation.message!);
+      return;
+    }
 
     setState(() {
       isSaving = true;
     });
 
-    final quantity = double.tryParse(quantityController.text.trim()) ?? 0;
-    final averagePrice =
-        double.tryParse(averagePriceController.text.trim()) ?? 0;
-    final currentPrice =
-        double.tryParse(currentPriceController.text.trim()) ?? 0;
+    final quantity = quantityValidation.value!;
+    final averagePrice = isCashAsset ? quantity : averagePriceValidation.value!;
+    final currentPrice = isCashAsset
+        ? quantity
+        : canSearchMarketItem
+        ? (double.tryParse(currentPriceController.text.trim()) ?? averagePrice)
+        : currentPriceValidation.value!;
     final item = widget.item;
 
     if (item == null) {
@@ -310,8 +364,8 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
         assetId: widget.assetId,
         currencyCode: selectedCurrencyCode,
         exchangeCode: selectedCurrencyCode == 'USD' ? selectedExchangeCode : '',
-        name: nameController.text.trim(),
-        symbol: symbolController.text.trim(),
+        name: nameValidation.value!,
+        symbol: symbolValidation?.value ?? symbolController.text.trim(),
         quantity: quantity,
         averagePrice: averagePrice,
         currentPrice: currentPrice,
@@ -344,8 +398,8 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
           exchangeCode: selectedCurrencyCode == 'USD'
               ? selectedExchangeCode
               : '',
-          name: nameController.text.trim(),
-          symbol: symbolController.text.trim(),
+          name: nameValidation.value!,
+          symbol: symbolValidation?.value ?? symbolController.text.trim(),
           quantity: quantity,
           averagePrice: averagePrice,
           currentPrice: currentPrice,
@@ -361,6 +415,12 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
 
     if (!mounted) return;
     Navigator.of(context).pop(true);
+  }
+
+  void _showValidationMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

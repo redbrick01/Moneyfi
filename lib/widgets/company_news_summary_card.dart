@@ -9,7 +9,8 @@ class CompanyNewsSummaryCard extends StatelessWidget {
   const CompanyNewsSummaryCard({
     required this.items,
     this.title = '종목별 뉴스',
-    this.emptyMessage = '표시할 종목 뉴스가 없습니다.',
+    this.emptyMessage =
+        '종목 뉴스 요약을 불러오지 못했어요. 저장된 캐시가 없거나 외부 API가 일시적으로 응답하지 않습니다.',
     super.key,
   });
 

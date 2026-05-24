@@ -56,7 +56,25 @@ class SyncService {
         debugPrint('[sync] rejected reason=$reason error=${response.data}');
         return false;
       }
-      await AppDatabase.instance.markDirtySyncPayloadAsSynced(payload);
+      final responsePayload = response.data is Map
+          ? Map<String, Object?>.from(response.data as Map)
+          : const <String, Object?>{};
+      final acceptedClientIds = responsePayload['accepted_client_ids'] is Map
+          ? Map<String, Object?>.from(
+              responsePayload['accepted_client_ids'] as Map,
+            )
+          : null;
+      final conflictCount = responsePayload['conflict_count'];
+      if (conflictCount is num && conflictCount > 0) {
+        debugPrint(
+          '[sync] conflict reason=$reason count=${conflictCount.toInt()} '
+          'conflicts=${responsePayload['conflicts']}',
+        );
+      }
+      await AppDatabase.instance.markDirtySyncPayloadAsSynced(
+        payload,
+        acceptedClientIds,
+      );
       debugPrint('[sync] success reason=$reason');
       return true;
     } catch (error, stackTrace) {

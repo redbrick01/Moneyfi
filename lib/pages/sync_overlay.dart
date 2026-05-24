@@ -23,6 +23,9 @@ class SyncOverlay extends StatelessWidget {
     required this.steps,
     required this.isRunning,
     this.errorMessage,
+    this.errorDetail,
+    this.retryMessage,
+    this.closeLabel,
     this.onRetry,
     this.onClose,
     this.onBackground,
@@ -31,6 +34,9 @@ class SyncOverlay extends StatelessWidget {
   final List<SyncStepItem> steps;
   final bool isRunning;
   final String? errorMessage;
+  final String? errorDetail;
+  final String? retryMessage;
+  final String? closeLabel;
   final VoidCallback? onRetry;
   final VoidCallback? onClose;
   final VoidCallback? onBackground;
@@ -147,12 +153,16 @@ class SyncOverlay extends StatelessWidget {
                             SizedBox(height: context.spacing.md),
                             InlineError(
                               message: errorMessage!,
-                              detail: '재시도하면 실패한 단계부터 다시 진행할 수 있어요.',
+                              detail: (errorDetail ?? '').trim().isNotEmpty
+                                  ? errorDetail
+                                  : '재시도하면 실패한 단계부터 다시 진행할 수 있어요.',
                             ),
                             if (onRetry != null) ...[
                               SizedBox(height: context.spacing.xs),
                               RetryRow(
-                                message: '실패한 단계를 다시 시도할 수 있어요.',
+                                message: (retryMessage ?? '').trim().isNotEmpty
+                                    ? retryMessage!
+                                    : '실패한 단계를 다시 시도할 수 있어요.',
                                 onRetry: onRetry!,
                               ),
                             ],
@@ -171,7 +181,7 @@ class SyncOverlay extends StatelessWidget {
                               if (hasFailed) ...[
                                 Expanded(
                                   child: AppGhostButton(
-                                    label: '나중에',
+                                    label: closeLabel ?? '나중에',
                                     onPressed: onClose,
                                     expand: true,
                                   ),

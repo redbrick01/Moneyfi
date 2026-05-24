@@ -292,6 +292,37 @@ flutter test test/ui_component_smoke_test.dart
 - 정적 분석과 관련 테스트가 통과하거나, 실패 이유가 문서화됩니다.
 - 미수행 수동 QA 항목이 별도로 남습니다.
 
+### Remote Supabase Verification Rules
+
+Supabase 원격 DB, Edge Function 배포 상태, 운영 권한을 확인할 때는 로컬 테스트보다 재시도 비용이 크므로 아래 규칙을 따릅니다.
+
+#### Preflight
+
+- 원격 명령을 실행하기 전에 `supabase <subcommand> --help`로 flag 이름과 출력 형식을 확인합니다.
+- `supabase db query`는 `--output` global flag와 query subcommand의 출력 flag가 충돌할 수 있으므로, 확실하지 않으면 기본 JSON 출력을 사용합니다.
+- Postgres catalog query는 원격 Postgres 버전에 맞는 view/function을 사용합니다. 불확실하면 `information_schema`처럼 안정적인 view를 먼저 사용하고, `pg_catalog` 전용 function은 단일 작은 query로 검증한 뒤 확장합니다.
+- `supabase db diff`는 migration replay 특성상 기존 migration의 임시 객체 충돌이나 비멱등 SQL 때문에 실패할 수 있습니다. 권한/RLS 점검은 `db diff`에 의존하지 말고 원격 catalog query를 기준으로 합니다.
+
+#### Execution
+
+- 원격 DB query는 병렬 실행하지 않습니다. Supabase CLI가 임시 DB role을 발급해 접속하므로 여러 query를 동시에 실행하면 인증 실패나 temporary connection throttling이 발생할 수 있습니다.
+- 여러 catalog를 확인해야 하면 table grants, sequence grants, function grants, RLS state, policies 순서로 하나씩 실행합니다.
+- query 실패가 SQL 문법/컬럼명/함수 signature 문제라면 즉시 같은 계열 query를 반복하지 말고, 더 단순한 `information_schema` query로 축소해 확인합니다.
+- authentication failure, circuit breaker, temporary block 메시지가 나오면 즉시 추가 원격 query를 멈추고 잠시 대기합니다. 연속 재시도는 작업 시간을 늘리고 실제 원격 점검을 지연시킵니다.
+- 운영 DB에 변경을 적용하는 `supabase db push`는 적용할 migration 목록을 확인한 뒤 한 번만 실행합니다. 적용 후에는 같은 원격 catalog query로 결과를 검증합니다.
+
+#### Reporting
+
+- 원격 확인 보고서에는 실행한 query의 목적과 결과 요약을 남기되, secret이나 connection string은 기록하지 않습니다.
+- 실패한 원격 명령은 "제품/DB 문제"와 "도구 사용 문제"를 분리해 기록합니다. 예를 들어 잘못된 flag, 잘못된 catalog column, 임시 role throttling은 도구 사용 문제로 분류합니다.
+- 원격 권한 변경 후에는 최소한 다음 결과를 남깁니다.
+  - migration list에서 새 migration이 local/remote 모두 존재하는지
+  - `anon`/`authenticated` table grants
+  - sequence grants
+  - function execute grants
+  - RLS enabled 상태
+  - policy role/scope
+
 ### Stage 9. Test Report
 
 목표: 실제 검증 결과를 영구 문서로 남깁니다.
@@ -367,6 +398,16 @@ flutter analyze
 - UI 문구가 제품적으로 바뀌면 walkthrough 기대값을 함께 갱신합니다.
 - 단순 smoke test와 계산 정확도 test를 구분합니다.
 - 자동 테스트로 확인하지 못한 항목은 test report의 manual QA status에 남깁니다.
+
+### Flutter Tooling Rules
+
+Flutter/Dart 명령은 SDK cache와 startup lock을 공유하므로 아래 순서로 실행합니다.
+
+- `dart format`, `flutter test`, `flutter analyze`는 병렬 실행하지 않습니다. Flutter startup lock 때문에 한 명령이 다른 명령을 기다리므로 실제 시간 절약이 거의 없고 로그만 복잡해집니다.
+- 파일 수정 후에는 먼저 `dart format <changed dart files>`를 실행하고, 그 다음 targeted `flutter test`, 마지막으로 `flutter analyze`를 실행합니다.
+- `dart format` 또는 Flutter 명령이 `/usr/local/share/flutter/bin/cache` 같은 SDK cache 쓰기 권한으로 실패하면 sandbox 문제가 맞는지 확인한 뒤 같은 명령을 escalated 실행으로 재시도합니다. 포맷을 수동으로 맞추거나 다른 우회 명령을 찾느라 시간을 쓰지 않습니다.
+- Flutter startup lock 메시지가 나오면 새 Flutter 명령을 추가로 시작하지 말고 현재 실행 중인 명령이 끝날 때까지 기다립니다.
+- 검증 보고서에는 lock 대기나 cache 권한 실패를 기능 실패가 아닌 환경/도구 이슈로 분리해 기록합니다.
 
 ## Documentation Rules
 

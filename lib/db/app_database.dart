@@ -6904,6 +6904,7 @@ class AppDatabase extends _$AppDatabase {
         .map(
           (row) => <String, Object?>{
             'client_id': row.clientId,
+            'last_modified_at': row.lastModifiedAt ?? _syncTimestamp(),
             'deleted_at': row.deletedAt,
             'asset_type': row.assetType,
             'title': row.title,
@@ -6932,6 +6933,7 @@ class AppDatabase extends _$AppDatabase {
           }
           return <String, Object?>{
             'client_id': row.clientId,
+            'last_modified_at': row.lastModifiedAt ?? _syncTimestamp(),
             'asset_client_id': assetClientId,
             'deleted_at': row.deletedAt,
             'hidden': row.hidden,
@@ -6959,6 +6961,7 @@ class AppDatabase extends _$AppDatabase {
           }
           return <String, Object?>{
             'client_id': row.clientId,
+            'last_modified_at': row.lastModifiedAt ?? _syncTimestamp(),
             'asset_client_id': assetClientId,
             'deleted_at': row.deletedAt,
             'hidden': row.hidden,
@@ -6978,6 +6981,7 @@ class AppDatabase extends _$AppDatabase {
         .map(
           (row) => <String, Object?>{
             'client_id': row.clientId,
+            'last_modified_at': row.lastModifiedAt ?? _syncTimestamp(),
             'deleted_at': row.deletedAt,
             'occurred_at': row.occurredAt,
             'kind': row.kind,
@@ -7019,6 +7023,7 @@ class AppDatabase extends _$AppDatabase {
           }
           return <String, Object?>{
             'client_id': row.clientId,
+            'last_modified_at': row.lastModifiedAt ?? _syncTimestamp(),
             'event_client_id': eventClientId,
             'asset_client_id': assetClientId,
             'holding_client_id': holdingClientId,
@@ -7056,29 +7061,57 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> markDirtySyncPayloadAsSynced(
     Map<String, Object?> payload,
+    Map<String, Object?>? acceptedClientIds,
   ) async {
     await transaction(() async {
       await _clearDirtyByClientIds(
         'assets',
-        _payloadClientIds(payload['assets']),
+        _acceptedOrPayloadClientIds(acceptedClientIds, payload, 'assets'),
       );
       await _clearDirtyByClientIds(
         'holdings',
-        _payloadClientIds(payload['holdings']),
+        _acceptedOrPayloadClientIds(acceptedClientIds, payload, 'holdings'),
       );
       await _clearDirtyByClientIds(
         'cash_accounts',
-        _payloadClientIds(payload['cash_accounts']),
+        _acceptedOrPayloadClientIds(
+          acceptedClientIds,
+          payload,
+          'cash_accounts',
+        ),
       );
       await _clearDirtyByClientIds(
         'transaction_events',
-        _payloadClientIds(payload['transaction_events']),
+        _acceptedOrPayloadClientIds(
+          acceptedClientIds,
+          payload,
+          'transaction_events',
+        ),
       );
       await _clearDirtyByClientIds(
         'transaction_lines',
-        _payloadClientIds(payload['transaction_lines']),
+        _acceptedOrPayloadClientIds(
+          acceptedClientIds,
+          payload,
+          'transaction_lines',
+        ),
       );
     });
+  }
+
+  List<String> _acceptedOrPayloadClientIds(
+    Map<String, Object?>? acceptedClientIds,
+    Map<String, Object?> payload,
+    String key,
+  ) {
+    final accepted = acceptedClientIds?[key];
+    if (accepted is List) {
+      return accepted
+          .map((value) => value?.toString() ?? '')
+          .where((value) => value.isNotEmpty)
+          .toList(growable: false);
+    }
+    return _payloadClientIds(payload[key]);
   }
 
   List<String> _payloadClientIds(Object? rawRows) {
@@ -7150,6 +7183,7 @@ class AppDatabase extends _$AppDatabase {
         final insertedId = await into(assets).insert(
           AssetsCompanion.insert(
             clientId: Value(clientId),
+            lastModifiedAt: Value(_nullableString(row['last_modified_at'])),
             assetType: Value(_stringValue(row['asset_type'], '주식')),
             title: _stringValue(row['title'], ''),
             alias: Value(_stringValue(row['alias'], '')),
@@ -7186,6 +7220,7 @@ class AppDatabase extends _$AppDatabase {
           HoldingsCompanion.insert(
             assetId: assetId,
             clientId: Value(clientId),
+            lastModifiedAt: Value(_nullableString(row['last_modified_at'])),
             hidden: Value(_boolValue(row['hidden'])),
             currencyCode: Value(_stringValue(row['currency_code'], 'KRW')),
             marketUpdatedAt: Value(_nullableString(row['market_updated_at'])),
@@ -7252,6 +7287,7 @@ class AppDatabase extends _$AppDatabase {
           CashAccountsCompanion.insert(
             assetId: assetId,
             clientId: Value(clientId),
+            lastModifiedAt: Value(_nullableString(row['last_modified_at'])),
             hidden: Value(_boolValue(row['hidden'])),
             currencyCode: Value(_stringValue(row['currency_code'], 'KRW')),
             name: _stringValue(row['name'], ''),
@@ -7326,6 +7362,7 @@ class AppDatabase extends _$AppDatabase {
         final insertedId = await into(transactionEvents).insert(
           TransactionEventsCompanion.insert(
             clientId: Value(clientId),
+            lastModifiedAt: Value(_nullableString(row['last_modified_at'])),
             occurredAt: _stringValue(row['occurred_at'], ''),
             kind: _stringValue(row['kind'], 'adjustment'),
             title: Value(_stringValue(row['title'], '')),
@@ -7375,6 +7412,7 @@ class AppDatabase extends _$AppDatabase {
             holdingId: Value(holdingId),
             cashAccountId: Value(cashAccountId),
             clientId: Value(_nullableString(row['client_id'])),
+            lastModifiedAt: Value(_nullableString(row['last_modified_at'])),
             legacySourceTable: Value(
               _nullableString(row['legacy_source_table']),
             ),

@@ -19,6 +19,7 @@ import '../services/auth_service.dart';
 import '../services/market_data_service.dart';
 import '../services/sync_service.dart';
 import '../ui_scaffold/app_page_scaffold.dart';
+import '../utils/input_validators.dart';
 import 'login_page.dart';
 import 'signup_page.dart';
 
@@ -193,6 +194,8 @@ class _LoggedInViewState extends State<_LoggedInView> {
   bool _isSyncing = false;
   bool _isPullingCoreData = false;
   bool _isCopyingDbSummary = false;
+  bool _isUpdatingProfile = false;
+  bool _isUpdatingPassword = false;
   bool _isSigningOut = false;
   _SyncBannerState _syncBannerState = _SyncBannerState.idle;
   String? _syncMessage;
@@ -253,6 +256,192 @@ class _LoggedInViewState extends State<_LoggedInView> {
     );
     if (!approved || !mounted || _isPullingCoreData || _isSyncing) return;
     await _handleCorePull();
+  }
+
+  Future<void> _showEditNameDialog(String currentName) async {
+    if (_isUpdatingProfile) return;
+    final controller = TextEditingController(text: currentName);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('이름 수정'),
+          content: TextField(
+            controller: controller,
+            textInputAction: TextInputAction.done,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: '이름',
+              hintText: '표시할 이름을 입력하세요',
+            ),
+            onSubmitted: (_) => Navigator.of(context).pop(controller.text),
+          ),
+          actions: [
+            AppGhostButton(
+              expand: false,
+              onPressed: () => Navigator.of(context).pop(),
+              label: '취소',
+            ),
+            AppPrimaryButton(
+              expand: false,
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              label: '저장',
+              icon: VisualSpec.icon.check,
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (result == null || !mounted) return;
+
+    final validation = MoneyfyInputValidators.requiredText(
+      result,
+      fieldName: '이름',
+    );
+    if (!validation.isValid) {
+      AppSnackBar.showError(
+        context,
+        validation.message!,
+        hasFloatingNavInset: true,
+      );
+      return;
+    }
+
+    final nextName = validation.value!;
+    if (nextName == currentName.trim()) {
+      AppSnackBar.showInfo(context, '변경된 이름이 없습니다.', hasFloatingNavInset: true);
+      return;
+    }
+
+    setState(() {
+      _isUpdatingProfile = true;
+    });
+    try {
+      await AuthService.updateProfileName(nextName);
+      if (!mounted) return;
+      setState(() {});
+      AppSnackBar.showSuccess(context, '이름을 수정했어요.', hasFloatingNavInset: true);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      AppSnackBar.showError(context, error.message, hasFloatingNavInset: true);
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackBar.showError(
+        context,
+        '이름 수정에 실패했어요. 잠시 후 다시 시도해 주세요.',
+        hasFloatingNavInset: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingProfile = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showChangePasswordDialog() async {
+    if (_isUpdatingPassword) return;
+    final passwordController = TextEditingController();
+    final confirmController = TextEditingController();
+    final result = await showDialog<_PasswordChangeInput>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('비밀번호 변경'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: '새 비밀번호',
+                  hintText: '6자 이상 입력하세요',
+                ),
+              ),
+              SizedBox(height: context.spacing.sm),
+              TextField(
+                controller: confirmController,
+                obscureText: true,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: '새 비밀번호 확인',
+                  hintText: '한 번 더 입력하세요',
+                ),
+                onSubmitted: (_) => Navigator.of(context).pop(
+                  _PasswordChangeInput(
+                    password: passwordController.text,
+                    confirmPassword: confirmController.text,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            AppGhostButton(
+              expand: false,
+              onPressed: () => Navigator.of(context).pop(),
+              label: '취소',
+            ),
+            AppPrimaryButton(
+              expand: false,
+              onPressed: () => Navigator.of(context).pop(
+                _PasswordChangeInput(
+                  password: passwordController.text,
+                  confirmPassword: confirmController.text,
+                ),
+              ),
+              label: '변경',
+              icon: VisualSpec.icon.check,
+            ),
+          ],
+        );
+      },
+    );
+    passwordController.dispose();
+    confirmController.dispose();
+    if (result == null || !mounted) return;
+
+    final validation = validatePasswordChangeForTesting(
+      result.password,
+      result.confirmPassword,
+    );
+    if (validation != null) {
+      AppSnackBar.showError(context, validation, hasFloatingNavInset: true);
+      return;
+    }
+
+    setState(() {
+      _isUpdatingPassword = true;
+    });
+    try {
+      await AuthService.updatePassword(result.password);
+      if (!mounted) return;
+      AppSnackBar.showSuccess(
+        context,
+        '비밀번호를 변경했어요.',
+        hasFloatingNavInset: true,
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      AppSnackBar.showError(context, error.message, hasFloatingNavInset: true);
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackBar.showError(
+        context,
+        '비밀번호 변경에 실패했어요. 다시 로그인한 뒤 시도해 주세요.',
+        hasFloatingNavInset: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingPassword = false;
+        });
+      }
+    }
   }
 
   Future<void> _handleSync() async {
@@ -634,6 +823,40 @@ class _LoggedInViewState extends State<_LoggedInView> {
           child: Column(
             children: [
               SettingsActionRow(
+                icon: VisualSpec.icon.person,
+                title: _isUpdatingProfile ? '이름 수정 중...' : '이름 수정',
+                subtitle: 'My 화면에 표시되는 이름을 변경해요',
+                enabled: !_isUpdatingProfile && !_isUpdatingPassword,
+                onTap: () => _showEditNameDialog(resolvedName),
+                trailing: _isUpdatingProfile
+                    ? SizedBox(
+                        width: context.spacing.md,
+                        height: context.spacing.md,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                        ),
+                      )
+                    : null,
+              ),
+              AppDivider(),
+              SettingsActionRow(
+                icon: VisualSpec.icon.settings,
+                title: _isUpdatingPassword ? '비밀번호 변경 중...' : '비밀번호 변경',
+                subtitle: '현재 로그인된 계정의 비밀번호를 새 값으로 바꿔요',
+                enabled: !_isUpdatingPassword && !_isUpdatingProfile,
+                onTap: _showChangePasswordDialog,
+                trailing: _isUpdatingPassword
+                    ? SizedBox(
+                        width: context.spacing.md,
+                        height: context.spacing.md,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                        ),
+                      )
+                    : null,
+              ),
+              AppDivider(),
+              SettingsActionRow(
                 icon: VisualSpec.icon.sync,
                 title: '지금 동기화',
                 subtitle: _isSyncing ? '동기화 진행 중' : '로컬 변경사항을 서버와 동기화',
@@ -720,4 +943,31 @@ class _LoggedInViewState extends State<_LoggedInView> {
     if ((_syncMessage ?? '').trim().isEmpty) return timeText;
     return '$timeText · $_syncMessage';
   }
+}
+
+@visibleForTesting
+String? validatePasswordChangeForTesting(
+  String password,
+  String confirmPassword,
+) {
+  if (password.trim().isEmpty || confirmPassword.trim().isEmpty) {
+    return '새 비밀번호와 확인 값을 모두 입력해 주세요.';
+  }
+  if (password.length < 6) {
+    return '새 비밀번호는 6자 이상이어야 합니다.';
+  }
+  if (password != confirmPassword) {
+    return '새 비밀번호가 일치하지 않습니다.';
+  }
+  return null;
+}
+
+class _PasswordChangeInput {
+  const _PasswordChangeInput({
+    required this.password,
+    required this.confirmPassword,
+  });
+
+  final String password;
+  final String confirmPassword;
 }

@@ -78,6 +78,23 @@ flowchart LR
 
 `SyncService.syncNow()`는 `AppDatabase.buildDirtySyncPayload()`로 dirty row를 모아 `sync-local-db` Edge Function에 보냅니다. 서버가 정상 처리하면 `markDirtySyncPayloadAsSynced()`가 dirty 상태를 정리합니다.
 
+## Sync Conflict Policy
+
+여러 기기에서 같은 `client_id` row를 수정하면 `last_modified_at`을 기준으로 충돌을 판정합니다.
+
+| 상황 | 기준 |
+| --- | --- |
+| 서버 row가 없거나 서버 `last_modified_at`이 없음 | 클라이언트 변경 수락 |
+| 클라이언트 `last_modified_at`이 서버보다 최신 | 클라이언트 변경 수락 |
+| 클라이언트와 서버 `last_modified_at`이 같음 | 클라이언트 변경 수락 |
+| 서버 `last_modified_at`이 클라이언트보다 최신 | 서버 우선, 클라이언트 push 거절 |
+
+정책 이름은 `last_modified_at` 기반 last-writer-wins입니다. 단, tie는 같은 payload 재전송을 안전하게 처리하기 위해 클라이언트 수락으로 봅니다.
+
+`sync-local-db`는 row별로 `accepted_client_ids`와 `conflicts`를 반환합니다. 앱은 `accepted_client_ids`에 포함된 row만 dirty 해제합니다. 서버가 더 최신이라 거절된 row는 dirty 상태가 남고, 이후 pull flow에서 서버 row를 다시 받아 로컬 상태를 맞춥니다.
+
+삭제도 동일한 정책을 따릅니다. `deleted_at`이 있는 soft delete payload라도 `last_modified_at`이 서버보다 오래되면 삭제가 적용되지 않습니다. 거래는 `transaction_events`와 `transaction_lines`가 각각 같은 기준으로 판정되며, 이벤트와 라인은 같은 사용자 조작에서 같은 `last_modified_at`을 갖도록 유지해야 합니다.
+
 ## Pull Flow
 
 앱 시작, 로그인 상태 변경, 앱 resume 시 다음 흐름이 실행됩니다.

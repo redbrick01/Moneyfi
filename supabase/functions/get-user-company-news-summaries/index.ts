@@ -1,6 +1,8 @@
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { authenticateUser } from "../_shared/auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 
@@ -12,39 +14,6 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
     status,
     headers: { "Content-Type": "application/json; charset=utf-8" },
   });
-}
-
-function decodeJwtSub(authHeader: string | null) {
-  try {
-    if (!authHeader) {
-      return { userId: null, reason: "missing_auth_header" };
-    }
-
-    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    const parts = token.split(".");
-    if (parts.length < 2) {
-      return { userId: null, reason: "invalid_jwt_parts" };
-    }
-
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(
-      base64.length + (4 - (base64.length % 4)) % 4,
-      "=",
-    );
-    const payload = JSON.parse(atob(padded));
-
-    return {
-      userId: typeof payload.sub === "string" ? payload.sub : null,
-      reason: typeof payload.sub === "string" ? "ok" : "missing_sub",
-    };
-  } catch (error) {
-    return {
-      userId: null,
-      reason: `decode_failed:${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    };
-  }
 }
 
 function asString(value: unknown): string {
@@ -175,15 +144,19 @@ function selectLatestSummaryBySymbol(
 
 Deno.serve(async (req) => {
   try {
-    const decoded = decodeJwtSub(req.headers.get("Authorization"));
-    if (!decoded.userId) {
+    const auth = await authenticateUser(
+      req.headers.get("Authorization"),
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
+    );
+    if (!auth.userId) {
       return jsonResponse(
         {
           ok: false,
-          step: "jwt_decode",
-          reason: decoded.reason,
+          step: "auth_verify",
+          reason: auth.reason,
         },
-        401,
+        auth.reason === "missing_auth_env" ? 500 : 401,
       );
     }
 
@@ -193,6 +166,7 @@ Deno.serve(async (req) => {
           ok: false,
           step: "env_check",
           supabase_url_exists: !!SUPABASE_URL,
+          anon_key_exists: !!SUPABASE_ANON_KEY,
           service_role_exists: !!SUPABASE_SERVICE_ROLE_KEY,
         },
         500,
@@ -212,7 +186,7 @@ Deno.serve(async (req) => {
       .select(
         "symbol, quantity, hidden, deleted_at, assets!inner(asset_type, hidden, deleted_at)",
       )
-      .eq("user_id", decoded.userId)
+      .eq("user_id", auth.userId)
       .is("deleted_at", null)
       .gt("quantity", 0);
 

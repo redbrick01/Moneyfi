@@ -1,6 +1,8 @@
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { authenticateUser } from "../_shared/auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 const FINNHUB_API_KEY = Deno.env.get("FINNHUB_API_KEY") ?? "";
@@ -42,39 +44,6 @@ function asPositiveInt(value: unknown, fallback: number, max: number) {
     return fallback;
   }
   return Math.min(Math.trunc(parsed), max);
-}
-
-function decodeJwtSub(authHeader: string | null) {
-  try {
-    if (!authHeader) {
-      return { userId: null, reason: "missing_auth_header" };
-    }
-
-    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    const parts = token.split(".");
-    if (parts.length < 2) {
-      return { userId: null, reason: "invalid_jwt_parts" };
-    }
-
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(
-      base64.length + (4 - (base64.length % 4)) % 4,
-      "=",
-    );
-    const payload = JSON.parse(atob(padded));
-
-    return {
-      userId: typeof payload.sub === "string" ? payload.sub : null,
-      reason: typeof payload.sub === "string" ? "ok" : "missing_sub",
-    };
-  } catch (error) {
-    return {
-      userId: null,
-      reason: `decode_failed:${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    };
-  }
 }
 
 type FinnhubNewsRow = {
@@ -230,14 +199,30 @@ function filterCryptoNewsBySymbol(
 Deno.serve(async (req) => {
   try {
     requireEnv("SUPABASE_URL", SUPABASE_URL);
+    requireEnv("SUPABASE_ANON_KEY", SUPABASE_ANON_KEY);
     requireEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
     requireEnv("FINNHUB_API_KEY", FINNHUB_API_KEY);
+
+    const auth = await authenticateUser(
+      req.headers.get("Authorization"),
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
+    );
+    if (!auth.userId) {
+      return jsonResponse(
+        {
+          ok: false,
+          step: "auth_verify",
+          reason: auth.reason,
+        },
+        auth.reason === "missing_auth_env" ? 500 : 401,
+      );
+    }
 
     const body = req.method === "POST"
       ? await req.json().catch(() => ({}))
       : {};
     const url = new URL(req.url);
-    decodeJwtSub(req.headers.get("Authorization"));
 
     const days = asPositiveInt(
       body?.days ?? url.searchParams.get("days"),
@@ -261,7 +246,8 @@ Deno.serve(async (req) => {
 
     const { data: holdings, error: holdingsError } = await supabase
       .from("holdings")
-      .select("symbol, currency_code, assets!inner(asset_type)");
+      .select("symbol, currency_code, assets!inner(asset_type)")
+      .eq("user_id", auth.userId);
 
     if (holdingsError) {
       throw new Error(`Failed to load holdings: ${holdingsError.message}`);

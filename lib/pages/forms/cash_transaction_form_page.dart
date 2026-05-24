@@ -4,6 +4,7 @@ import '../../db/app_database.dart';
 import '../../models/asset_item.dart';
 import '../../services/sync_service.dart';
 import '../../theme/moneyfy_theme.dart';
+import '../../utils/input_validators.dart';
 import 'form_design.dart';
 
 const _cashTransactionTypes = ['입금', '출금', '환전', '이체'];
@@ -80,29 +81,67 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
   Future<void> _save() async {
     if (isSaving || typeController.text.trim().isEmpty) return;
     final transactionType = typeController.text.trim();
-    final parsedAmount = _parsePositiveNumber(amountController.text);
-    if (parsedAmount == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('금액을 0보다 큰 숫자로 입력해 주세요.')));
+    final dateValidation = MoneyfyInputValidators.date(dateController.text);
+    if (!dateValidation.isValid) {
+      _showValidationMessage(dateValidation.message!);
+      return;
+    }
+
+    final nameValidation = MoneyfyInputValidators.requiredText(
+      nameController.text,
+      fieldName: '이름',
+    );
+    if (!nameValidation.isValid) {
+      _showValidationMessage(nameValidation.message!);
+      return;
+    }
+
+    final amountValidation = MoneyfyInputValidators.decimal(
+      amountController.text,
+      fieldName: '금액',
+      allowZero: false,
+    );
+    if (!amountValidation.isValid) {
+      _showValidationMessage(amountValidation.message!);
       return;
     }
 
     if (transactionType == '이체' && selectedTransferTargetHoldingId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('이체할 현금 계좌를 선택해 주세요.')));
+      _showValidationMessage('이체할 현금 계좌를 선택해 주세요.');
       return;
     }
 
+    InputValidationResult<double>? exchangeRateValidation;
     if (transactionType == '환전') {
-      final exchangeRate = double.tryParse(exchangeRateController.text.trim());
-      if (exchangeRate == null || exchangeRate <= 0) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('유효한 환율을 입력해 주세요.')));
+      exchangeRateValidation = MoneyfyInputValidators.decimal(
+        exchangeRateController.text,
+        fieldName: '환율',
+        allowZero: false,
+      );
+      if (!exchangeRateValidation.isValid) {
+        _showValidationMessage(exchangeRateValidation.message!);
         return;
       }
+    }
+
+    final amountText = _numberText(amountValidation.value!);
+    final exchangeRateText = exchangeRateValidation == null
+        ? ''
+        : _numberText(exchangeRateValidation.value!);
+
+    if (dateController.text.trim() != dateValidation.value ||
+        nameController.text.trim() != nameValidation.value ||
+        amountController.text.trim() != amountText ||
+        (exchangeRateValidation != null &&
+            exchangeRateController.text.trim() != exchangeRateText)) {
+      setState(() {
+        dateController.text = dateValidation.value!;
+        nameController.text = nameValidation.value!;
+        amountController.text = amountText;
+        if (exchangeRateValidation != null) {
+          exchangeRateController.text = exchangeRateText;
+        }
+      });
     }
 
     setState(() {
@@ -117,27 +156,27 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
           assetId: widget.assetId,
           sourceHoldingId: currentHoldingId,
           targetHoldingId: selectedTransferTargetHoldingId!,
-          date: dateController.text.trim(),
-          name: nameController.text.trim(),
-          amount: amountController.text.trim(),
+          date: dateValidation.value!,
+          name: nameValidation.value!,
+          amount: amountText,
         );
       } else if (item == null && transactionType == '환전') {
         await AppDatabase.instance.createCashExchange(
           assetId: widget.assetId,
           sourceHoldingId: currentHoldingId,
-          date: dateController.text.trim(),
-          name: nameController.text.trim(),
-          amount: amountController.text.trim(),
-          exchangeRate: double.parse(exchangeRateController.text.trim()),
+          date: dateValidation.value!,
+          name: nameValidation.value!,
+          amount: amountText,
+          exchangeRate: exchangeRateValidation!.value!,
         );
       } else if (item == null) {
         await AppDatabase.instance.createTransaction(
           assetId: widget.assetId,
           holdingId: currentHoldingId,
-          date: dateController.text.trim(),
+          date: dateValidation.value!,
           type: transactionType,
-          name: nameController.text.trim(),
-          amount: amountController.text.trim(),
+          name: nameValidation.value!,
+          amount: amountText,
           quantity: '',
         );
       } else {
@@ -147,13 +186,11 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
             clientId: item.clientId,
             assetId: item.assetId,
             holdingId: item.holdingId,
-            date: dateController.text.trim(),
+            date: dateValidation.value!,
             type: transactionType,
-            name: nameController.text.trim(),
-            amount: amountController.text.trim(),
-            quantity: transactionType == '환전'
-                ? exchangeRateController.text.trim()
-                : '',
+            name: nameValidation.value!,
+            amount: amountText,
+            quantity: transactionType == '환전' ? exchangeRateText : '',
             ledgerEventId: item.ledgerEventId,
             ledgerLineId: item.ledgerLineId,
             ledgerKind: item.ledgerKind,
@@ -186,11 +223,14 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     }
   }
 
-  double? _parsePositiveNumber(String raw) {
-    final normalized = raw.replaceAll(',', '').trim();
-    final value = double.tryParse(normalized);
-    if (value == null || value <= 0) return null;
-    return value;
+  String _numberText(double value) {
+    return value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
+  }
+
+  void _showValidationMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<int> _resolveCurrentHoldingId() async {

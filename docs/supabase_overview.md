@@ -65,7 +65,9 @@
 
 앱은 `assets/config.json`의 `SUPABASE_URL`, `SUPABASE_ANON_KEY`로 Supabase SDK를 초기화합니다. 사용자 로그인은 Supabase Auth email/password 흐름입니다.
 
-Edge Functions는 대체로 Authorization bearer token에서 사용자 id를 읽고, DB 작업은 service role client로 수행합니다. 이때 함수 내부에서 `user_id`를 명시적으로 제한해야 하므로, 새 함수 작성 시 사용자 범위 검증이 가장 중요합니다.
+사용자 데이터에 접근하는 Edge Functions는 Authorization bearer token을 `SUPABASE_ANON_KEY` 기반 client로 `supabase.auth.getUser()` 검증한 뒤, 검증된 user id만 DB scope에 사용합니다. DB 작업은 service role client로 수행하되, 함수 내부에서 `user_id`를 인증 사용자로 제한해야 합니다. body/query의 `user_id`를 받을 때도 인증 사용자와 일치하는지 확인해야 합니다.
+
+Client role DB grants는 최소 권한으로 유지합니다. `anon`/`authenticated`는 공개 읽기 데이터인 `company_news`, `company_news_summaries`, `exchange_rates`, `market_news`, `market_news_summaries`에만 `SELECT`를 가집니다. 사용자 데이터, snapshot, ledger, diagnosis, token 테이블은 Edge Function service role 경로로만 접근합니다.
 
 ## Secrets
 

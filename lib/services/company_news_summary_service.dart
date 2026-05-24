@@ -62,7 +62,7 @@ class CompanyNewsSummaryService {
   }) async {
     if (!await AuthService.ensureInitialized()) {
       debugPrint('[company-news-summary] skipped: auth not initialized');
-      return fetchCachedUserSummaries();
+      return _fetchCachedOrFallbackUserSummaries();
     }
 
     try {
@@ -75,12 +75,12 @@ class CompanyNewsSummaryService {
       );
 
       if (response.status != 200 || response.data is! Map) {
-        return const [];
+        return _fetchCachedOrFallbackUserSummaries();
       }
 
       final payload = Map<String, dynamic>.from(response.data as Map);
       if (payload['ok'] != true || payload['items'] is! List) {
-        return const [];
+        return _fetchCachedOrFallbackUserSummaries();
       }
 
       final items = (payload['items'] as List)
@@ -100,8 +100,20 @@ class CompanyNewsSummaryService {
     } catch (error, stackTrace) {
       debugPrint('[company-news-summary] failed error=$error');
       debugPrintStack(stackTrace: stackTrace);
-      return fetchCachedUserSummaries();
+      return _fetchCachedOrFallbackUserSummaries();
     }
+  }
+
+  Future<List<CompanyNewsSummaryItem>>
+  _fetchCachedOrFallbackUserSummaries() async {
+    final cached = await fetchCachedUserSummaries();
+    if (cached.isNotEmpty) {
+      return cached;
+    }
+
+    final symbolAssetTypeMap = await AppDatabase.instance
+        .fetchVisibleHoldingSymbolAssetTypes();
+    return _buildLocalFallbackSummaries(symbolAssetTypeMap);
   }
 
   Future<List<CompanyNewsSummaryItem>> fetchCachedUserSummaries() async {
@@ -122,6 +134,63 @@ class CompanyNewsSummaryService {
         .where((item) => item.hasKnownAssetType)
         .toList(growable: false);
   }
+
+  @visibleForTesting
+  static List<CompanyNewsSummaryItem> buildFallbackSummariesForTesting(
+    Map<String, String> symbolAssetTypeMap,
+  ) {
+    return _buildLocalFallbackSummaries(symbolAssetTypeMap);
+  }
+}
+
+List<CompanyNewsSummaryItem> _buildLocalFallbackSummaries(
+  Map<String, String> symbolAssetTypeMap,
+) {
+  if (symbolAssetTypeMap.isEmpty) {
+    return const [];
+  }
+
+  final now = DateTime.now().toUtc().toIso8601String();
+  final summaryDate = now.split('T').first;
+  final symbols = symbolAssetTypeMap.keys.toList(growable: false)..sort();
+  return symbols
+      .where((symbol) {
+        final assetType = symbolAssetTypeMap[symbol];
+        return assetType == '주식' || assetType == '코인';
+      })
+      .take(5)
+      .map((symbol) {
+        final assetType = symbolAssetTypeMap[symbol]!;
+        final targetLabel = assetType == '코인' ? '거래소 공지와 시세' : '공시와 뉴스';
+        return CompanyNewsSummaryItem(
+          symbol: symbol,
+          found: true,
+          assetType: assetType,
+          summaryDate: summaryDate,
+          model: 'fallback-local',
+          newsCount: 0,
+          createdAt: now,
+          updatedAt: now,
+          summary: {
+            'company_summary':
+                '외부 종목 뉴스 API가 일시적으로 응답하지 않아 $symbol의 최신 요약 대신 기본 점검 안내를 표시합니다.',
+            'issues': [
+              {
+                'title': '뉴스 요약 지연',
+                'summary':
+                    'Finnhub 또는 OpenAI 응답을 받을 수 없어 $targetLabel를 별도로 확인한 뒤 판단하세요.',
+                'importance': '2',
+              },
+            ],
+            'outlook': {
+              'business_impact': '외부 뉴스 수집이 회복되기 전까지 단기 이슈 반영이 제한됩니다.',
+              'market_view': '가격 변동, 거래량, 공식 공지의 동시 확인이 필요합니다.',
+              'watchpoint': '$symbol 관련 최신 공시, 거래소 공지, 급격한 가격 변동',
+            },
+          },
+        );
+      })
+      .toList(growable: false);
 }
 
 class CompanyNewsSummaryItem {

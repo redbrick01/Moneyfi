@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../db/app_database.dart';
 import '../../models/asset_item.dart';
 import '../../services/sync_service.dart';
+import '../../utils/input_validators.dart';
 import 'form_design.dart';
 
 class CashAccountFormPage extends StatefulWidget {
@@ -44,7 +45,35 @@ class _CashAccountFormPageState extends State<CashAccountFormPage> {
   }
 
   Future<void> _save() async {
-    if (isSaving || nameController.text.trim().isEmpty) return;
+    if (isSaving) return;
+
+    final nameValidation = MoneyfyInputValidators.requiredText(
+      nameController.text,
+      fieldName: '이름',
+    );
+    if (!nameValidation.isValid) {
+      _showValidationMessage(nameValidation.message!);
+      return;
+    }
+
+    final balanceValidation = MoneyfyInputValidators.decimal(
+      balanceController.text,
+      fieldName: widget.item == null ? '초기 잔고' : '현재 잔고',
+      allowZero: true,
+    );
+    if (!balanceValidation.isValid) {
+      _showValidationMessage(balanceValidation.message!);
+      return;
+    }
+
+    final balanceText = _numberText(balanceValidation.value!);
+    if (nameController.text.trim() != nameValidation.value ||
+        balanceController.text.trim() != balanceText) {
+      setState(() {
+        nameController.text = nameValidation.value!;
+        balanceController.text = balanceText;
+      });
+    }
 
     setState(() {
       isSaving = true;
@@ -52,12 +81,12 @@ class _CashAccountFormPageState extends State<CashAccountFormPage> {
 
     try {
       final item = widget.item;
-      final balance = double.tryParse(balanceController.text.trim()) ?? 0;
+      final balance = balanceValidation.value!;
       if (item == null) {
         await AppDatabase.instance.createCashAccount(
           assetId: widget.assetId,
           currencyCode: selectedCurrencyCode,
-          name: nameController.text.trim(),
+          name: nameValidation.value!,
           note: noteController.text.trim(),
           balance: balance,
         );
@@ -85,7 +114,7 @@ class _CashAccountFormPageState extends State<CashAccountFormPage> {
             assetType: fallbackItem?.assetType ?? item.assetType,
             currencyCode: selectedCurrencyCode,
             exchangeCode: fallbackItem?.exchangeCode ?? item.exchangeCode,
-            name: nameController.text.trim(),
+            name: nameValidation.value!,
             symbol: fallbackItem?.symbol ?? item.symbol,
             quantity: balance,
             averagePrice: balance,
@@ -115,6 +144,16 @@ class _CashAccountFormPageState extends State<CashAccountFormPage> {
         });
       }
     }
+  }
+
+  String _numberText(double value) {
+    return value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
+  }
+
+  void _showValidationMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

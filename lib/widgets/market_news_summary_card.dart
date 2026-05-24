@@ -214,7 +214,7 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
               SizedBox(
                 width: double.infinity,
                 child: Text(
-                  '표시할 마켓 뉴스 요약이 없습니다.',
+                  '시장 뉴스 요약을 불러오지 못했어요. 저장된 캐시가 없거나 외부 API가 일시적으로 응답하지 않습니다.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: MoneyfyPalette.tertiaryText,

@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { authenticateUser } from "../_shared/auth.ts";
 
 type AssetRow = {
   id: number;
@@ -68,6 +69,7 @@ type SnapshotCashAccountSummary = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 const USD_KRW_RATE_URL = Deno.env.get("USD_KRW_RATE_URL") ??
@@ -139,39 +141,6 @@ function defaultSnapshotDate() {
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   kst.setUTCDate(kst.getUTCDate() - 1);
   return kst.toISOString().slice(0, 10);
-}
-
-function decodeJwtSub(authHeader: string | null) {
-  try {
-    if (!authHeader) {
-      return { userId: null, reason: "missing_auth_header" };
-    }
-
-    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    const parts = token.split(".");
-    if (parts.length < 2) {
-      return { userId: null, reason: "invalid_jwt_parts" };
-    }
-
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(
-      base64.length + (4 - (base64.length % 4)) % 4,
-      "=",
-    );
-    const payload = JSON.parse(atob(padded));
-
-    return {
-      userId: typeof payload.sub === "string" ? payload.sub : null,
-      reason: typeof payload.sub === "string" ? "ok" : "missing_sub",
-    };
-  } catch (error) {
-    return {
-      userId: null,
-      reason: `decode_failed:${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    };
-  }
 }
 
 async function loadLatestExchangeRateFromDb(supabase: SupabaseClient<any>) {
@@ -292,32 +261,8 @@ async function fetchLatestExchangeRate(supabase: SupabaseClient<any>) {
   }
 }
 
-async function resolveTargetUserIds(
-  supabase: SupabaseClient<any>,
-  targetUserId: string | null,
-  authUserId: string | null,
-) {
-  if (targetUserId) return [targetUserId];
-  if (authUserId) return [authUserId];
-
-  const response = ensureSupabaseResponse(
-    await supabase
-      .from("assets")
-      .select("user_id")
-      .is("deleted_at", null),
-    "resolveTargetUserIds",
-  );
-  const { data, error } = response;
-
-  if (error) {
-    throw new Error(`Failed to load target users: ${error.message}`);
-  }
-
-  return [
-    ...new Set(
-      (data ?? []).map((row) => String(row.user_id ?? "")).filter(Boolean),
-    ),
-  ];
+function resolveTargetUserIds(authUserId: string) {
+  return [authUserId];
 }
 
 async function loadAssets(supabase: SupabaseClient<any>, userId: string) {
@@ -787,7 +732,28 @@ async function createSnapshotForUser(
 Deno.serve(async (req) => {
   try {
     requireEnv("SUPABASE_URL", SUPABASE_URL);
+    requireEnv("SUPABASE_ANON_KEY", SUPABASE_ANON_KEY);
     requireEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
+
+    const auth = await authenticateUser(
+      req.headers.get("Authorization"),
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
+    );
+    if (!auth.userId) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "Unauthorized",
+          step: "auth_verify",
+          reason: auth.reason,
+        }),
+        {
+          status: auth.reason === "missing_auth_env" ? 500 : 401,
+          headers: jsonHeaders,
+        },
+      );
+    }
 
     const supabase = createClient<any>(
       SUPABASE_URL,
@@ -797,7 +763,6 @@ Deno.serve(async (req) => {
       },
     );
 
-    const decoded = decodeJwtSub(req.headers.get("Authorization"));
     const body = req.method === "POST"
       ? await req.json().catch(() => ({}))
       : {};
@@ -814,14 +779,21 @@ Deno.serve(async (req) => {
       method: req.method,
       snapshot_date: snapshotDate,
       target_user_id: targetUserId,
-      auth_user_id: decoded.userId,
+      auth_user_id: auth.userId,
     });
 
-    const userIds = await resolveTargetUserIds(
-      supabase,
-      targetUserId,
-      decoded.userId,
-    );
+    if (targetUserId && targetUserId !== auth.userId) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "Forbidden",
+          step: "user_scope",
+        }),
+        { status: 403, headers: jsonHeaders },
+      );
+    }
+
+    const userIds = resolveTargetUserIds(auth.userId);
     const usdKrwRate = await fetchLatestExchangeRate(supabase);
 
     logStep("Resolved snapshot targets", {

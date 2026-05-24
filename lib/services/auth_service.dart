@@ -89,10 +89,16 @@ class AuthService {
     return client.auth.signUp(
       email: email,
       password: password,
-      data: {
-        if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
-      },
+      data: {if (name != null && name.trim().isNotEmpty) 'name': name.trim()},
     );
+  }
+
+  static Future<UserResponse> updateProfileName(String name) {
+    return client.auth.updateUser(UserAttributes(data: {'name': name.trim()}));
+  }
+
+  static Future<UserResponse> updatePassword(String password) {
+    return client.auth.updateUser(UserAttributes(password: password));
   }
 
   static Future<void> signOut() {
@@ -131,9 +137,7 @@ class _SupabaseConfig {
     required this.supabaseAnonKey,
   });
 
-  const _SupabaseConfig.empty()
-      : supabaseUrl = '',
-        supabaseAnonKey = '';
+  const _SupabaseConfig.empty() : supabaseUrl = '', supabaseAnonKey = '';
 
   final String supabaseUrl;
   final String supabaseAnonKey;
