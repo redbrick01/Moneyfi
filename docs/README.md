@@ -21,6 +21,9 @@
 | [Main Asset Card Format](main_asset_card_format.md) | 메인 자산 카드 표시 포맷 |
 | [Transaction Ledger Redesign](transaction_ledger_redesign.md) | 거래 내역 화면 개편 방향 |
 | [Investment Performance Docs](features/investment_performance/README.md) | 원장 기반 투자성과 리포트 기능 계획, 검증 계획, 테스트 보고서 |
+| [Portfolio Diagnosis Plan](features/portfolio_diagnosis/plan.md) | 포트폴리오 MVP 분석 화면을 진단형 UX로 재설계하는 계획 |
+| [Portfolio Diagnosis Verification Plan](features/portfolio_diagnosis/verification_test_plan.md) | 포트폴리오 진단 리디자인 검증 계획 |
+| [Portfolio Diagnosis Test Report 2026-05-24](features/portfolio_diagnosis/test_report_20260524.md) | 포트폴리오 진단 리디자인 첫 batch 검증 결과 |
 | [UI Snapshot Targets](ui_snapshot_targets.md) | UI 회귀 확인용 주요 화면 목록 |
 | [Final Polish Pass](final_polish_pass.md) | 최종 UI 다듬기 체크리스트 |
 

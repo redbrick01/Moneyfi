@@ -87,8 +87,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
             SizedBox(height: context.spacing.sectionGap),
             _AnalysisEntryCard(
               icon: Icons.insights_rounded,
-              title: '포트폴리오 MVP 분석',
-              subtitle: '리밸런싱 · 성과기여 · MDD · 집중도',
+              title: '포트폴리오 진단',
+              subtitle: '위험 신호 · 조정 후보 · 집중도 점검',
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(

@@ -20,8 +20,8 @@ class PortfolioAnalysisMvpPage extends StatelessWidget {
       builder: (context, snapshot) {
         final data = snapshot.data;
         return MoneyfyPage(
-          title: '포트폴리오 MVP 분석',
-          subtitle: '테스트 화면',
+          title: '포트폴리오 진단',
+          subtitle: '위험 신호와 조정 후보를 먼저 확인해요',
           children: [
             if (snapshot.connectionState == ConnectionState.waiting &&
                 data == null)
@@ -40,6 +40,8 @@ class PortfolioAnalysisMvpPage extends StatelessWidget {
               )
             else ...[
               _OverviewCard(data: data),
+              SizedBox(height: context.spacing.sectionGap),
+              _AttentionItemsCard(data: data),
               SizedBox(height: context.spacing.sectionGap),
               _RebalancePreviewCard(data: data),
               SizedBox(height: context.spacing.sectionGap),
@@ -266,23 +268,19 @@ class _OverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topThreeRatio = data.assetMetrics
-        .take(3)
-        .fold<double>(0, (sum, item) => sum + item.ratio);
-    final targetCount = data.assetMetrics
-        .where((item) => item.targetRatio != null)
-        .length;
+    final diagnosis = _PortfolioDiagnosis.fromData(data);
     final drawdown = _calculateMaxDrawdown(data.riskSnapshots);
+    final maxTargetGap = _maxTargetGap(data.assetMetrics);
 
     return _AnalysisSectionCard(
-      title: '분석 요약',
-      subtitle: '1차 MVP에서 한 화면에 모을 핵심 지표',
+      title: '진단 요약',
+      subtitle: '최근 자산과 스냅샷 기준',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionExplanation(
-            text: '현재 포트폴리오의 규모, 손익, 목표 설정 상태, 위험 신호를 한 번에 보는 요약 영역입니다.',
-          ),
+          _DiagnosisHero(diagnosis: diagnosis),
+          SizedBox(height: context.spacing.md),
+          _SectionExplanation(text: diagnosis.reason),
           _MetricGrid(
             metrics: [
               _MetricTileData(
@@ -291,28 +289,20 @@ class _OverviewCard extends StatelessWidget {
                 accent: MoneyfyPalette.info,
               ),
               _MetricTileData(
-                label: '평가손익',
-                value: _formatSignedAmount(data.totalProfit),
-                accent: _valueColor(data.totalProfit),
-              ),
-              _MetricTileData(
                 label: '수익률',
                 value: _formatSignedPercent(data.totalProfitRate),
                 accent: _valueColor(data.totalProfit),
               ),
               _MetricTileData(
-                label: '상위 3개 비중',
-                value: '${topThreeRatio.toStringAsFixed(1)}%',
-                accent: topThreeRatio >= 70
+                label: '목표 이탈',
+                value: maxTargetGap == null
+                    ? '미설정'
+                    : '${maxTargetGap.abs().toStringAsFixed(1)}%p',
+                accent: maxTargetGap == null
+                    ? MoneyfyPalette.tertiaryText
+                    : maxTargetGap.abs() >= 5
                     ? MoneyfyPalette.warningStrong
-                    : MoneyfyPalette.info,
-              ),
-              _MetricTileData(
-                label: '목표 설정',
-                value: '$targetCount/${data.assetMetrics.length}',
-                accent: targetCount == data.assetMetrics.length
-                    ? MoneyfyPalette.positive
-                    : MoneyfyPalette.warningStrong,
+                    : MoneyfyPalette.positive,
               ),
               _MetricTileData(
                 label: '최대 낙폭',
@@ -325,6 +315,31 @@ class _OverviewCard extends StatelessWidget {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AttentionItemsCard extends StatelessWidget {
+  const _AttentionItemsCard({required this.data});
+
+  final _PortfolioAnalysisMvpData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _buildAttentionItems(data);
+
+    return _AnalysisSectionCard(
+      title: '주의가 필요한 항목',
+      subtitle: '먼저 확인할 위험 신호',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionExplanation(
+            text: '상태가 나쁜 지표만 따로 찾지 않아도 되도록 집중도, 낙폭, 목표 이탈, 손익 영향을 한곳에 모았어요.',
+          ),
+          ...items.map((item) => _AttentionRow(item: item)),
         ],
       ),
     );
@@ -345,8 +360,8 @@ class _RebalancePreviewCard extends StatelessWidget {
           ..sort((a, b) => b.targetGap.abs().compareTo(a.targetGap.abs()));
 
     return _AnalysisSectionCard(
-      title: '목표 비중 리밸런싱',
-      subtitle: '현재 비중과 목표 비중의 차이를 금액으로 환산',
+      title: '조정 제안',
+      subtitle: '목표 비중과 비교한 점검 후보',
       child: entries.isEmpty
           ? const _InlineNotice(
               icon: Icons.flag_outlined,
@@ -370,7 +385,7 @@ class _RebalancePreviewCard extends StatelessWidget {
                       0,
                       const _SectionExplanation(
                         text:
-                            '목표보다 많이 들고 있는 자산은 축소 후보, 적게 들고 있는 자산은 확대 후보로 표시합니다.',
+                            '목표보다 많이 보유한 자산은 축소 후보, 적게 보유한 자산은 확대 후보로 표시합니다. 실제 거래 판단 전 점검 정보로 봐주세요.',
                       ),
                     ),
             ),
@@ -645,6 +660,166 @@ class _LoadingCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DiagnosisHero extends StatelessWidget {
+  const _DiagnosisHero({required this.diagnosis});
+
+  final _PortfolioDiagnosis diagnosis;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: diagnosis.background,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: diagnosis.color.withValues(alpha: 0.24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: MoneyfyPalette.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: diagnosis.color.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Icon(diagnosis.icon, color: diagnosis.color),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: MoneyfyPalette.surface,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: diagnosis.color.withValues(alpha: 0.24),
+                  ),
+                ),
+                child: Text(
+                  diagnosis.label,
+                  style: context.typography.meta.copyWith(
+                    color: diagnosis.color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            diagnosis.message,
+            style: context.typography.sectionTitle.copyWith(
+              color: MoneyfyPalette.ink,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AttentionItem {
+  const _AttentionItem({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final String value;
+  final Color color;
+}
+
+class _AttentionRow extends StatelessWidget {
+  const _AttentionRow({required this.item});
+
+  final _AttentionItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: MoneyfyPalette.surfaceMuted,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: MoneyfyPalette.borderNeutral),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: MoneyfyPalette.surface,
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: item.color.withValues(alpha: 0.20)),
+              ),
+              child: Icon(item.icon, color: item.color, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: context.typography.cardTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.body,
+                    style: context.typography.meta.copyWith(
+                      color: MoneyfyPalette.tertiaryText,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 108),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  item.value,
+                  textAlign: TextAlign.right,
+                  style: context.typography.cardTitle.copyWith(
+                    color: item.color,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -930,18 +1105,23 @@ class _HhiGauge extends StatelessWidget {
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
-              final markerLeft = (constraints.maxWidth * markerPosition).clamp(
+              const markerSize = 16.0;
+              const markerRadius = markerSize / 2;
+              final trackLeft = markerRadius;
+              final trackWidth = math.max(
                 0.0,
-                constraints.maxWidth,
+                constraints.maxWidth - markerSize,
               );
+              double gaugeX(double ratio) => trackLeft + (trackWidth * ratio);
+              final markerCenter = gaugeX(markerPosition);
               return SizedBox(
-                height: 44,
+                height: 76,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     Positioned(
-                      left: 0,
-                      right: 0,
+                      left: trackLeft,
+                      width: trackWidth,
                       top: 17,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(999),
@@ -973,28 +1153,19 @@ class _HhiGauge extends StatelessWidget {
                       ),
                     ),
                     Positioned(
-                      left: (constraints.maxWidth * 0.10) - 1,
+                      left: gaugeX(0.10) - 1,
                       top: 10,
-                      bottom: 12,
-                      child: _GaugeThresholdLine(
-                        label: '1,000',
-                        alignRight: false,
-                      ),
+                      height: 34,
+                      child: const _GaugeThresholdLine(),
                     ),
                     Positioned(
-                      left: (constraints.maxWidth * 0.18) - 1,
+                      left: gaugeX(0.18) - 1,
                       top: 10,
-                      bottom: 12,
-                      child: _GaugeThresholdLine(
-                        label: '1,800',
-                        alignRight: false,
-                      ),
+                      height: 34,
+                      child: const _GaugeThresholdLine(),
                     ),
                     Positioned(
-                      left: (markerLeft - 8).clamp(
-                        0.0,
-                        constraints.maxWidth - 16,
-                      ),
+                      left: markerCenter - markerRadius,
                       top: 6,
                       child: Column(
                         children: [
@@ -1014,6 +1185,18 @@ class _HhiGauge extends StatelessWidget {
                         ],
                       ),
                     ),
+                    _GaugeThresholdLabel(
+                      left: gaugeX(0.10),
+                      top: 46,
+                      width: constraints.maxWidth,
+                      label: '1,000',
+                    ),
+                    _GaugeThresholdLabel(
+                      left: gaugeX(0.18),
+                      top: 58,
+                      width: constraints.maxWidth,
+                      label: '1,800',
+                    ),
                   ],
                 ),
               );
@@ -1021,6 +1204,7 @@ class _HhiGauge extends StatelessWidget {
           ),
           Row(
             children: [
+              const SizedBox(width: 8),
               Expanded(
                 flex: 10,
                 child: Text(
@@ -1053,6 +1237,7 @@ class _HhiGauge extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
             ],
           ),
         ],
@@ -1161,16 +1346,20 @@ class _MddGauge extends StatelessWidget {
                   textColor: MoneyfyPalette.negative,
                 ),
               ];
-              final markerLeft = (constraints.maxWidth * markerPosition).clamp(
+              const markerSize = 16.0;
+              const markerRadius = markerSize / 2;
+              final trackLeft = markerRadius;
+              final trackWidth = math.max(
                 0.0,
-                constraints.maxWidth,
+                constraints.maxWidth - markerSize,
               );
+              double gaugeX(double ratio) => trackLeft + (trackWidth * ratio);
+              final markerCenter = gaugeX(markerPosition);
 
               Widget labelFor(_GaugeSegment segment) {
-                final width =
-                    constraints.maxWidth * (segment.end - segment.start);
+                final width = trackWidth * (segment.end - segment.start);
                 return Positioned(
-                  left: constraints.maxWidth * segment.start,
+                  left: gaugeX(segment.start),
                   width: width,
                   top: 0,
                   child: Text(
@@ -1191,13 +1380,13 @@ class _MddGauge extends StatelessWidget {
               return Column(
                 children: [
                   SizedBox(
-                    height: 44,
+                    height: 64,
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
                         Positioned(
-                          left: 0,
-                          right: 0,
+                          left: trackLeft,
+                          width: trackWidth,
                           top: 17,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(999),
@@ -1207,10 +1396,9 @@ class _MddGauge extends StatelessWidget {
                                 children: [
                                   for (final segment in segments)
                                     Positioned(
-                                      left:
-                                          constraints.maxWidth * segment.start,
+                                      left: trackWidth * segment.start,
                                       width:
-                                          constraints.maxWidth *
+                                          trackWidth *
                                           (segment.end - segment.start),
                                       top: 0,
                                       bottom: 0,
@@ -1222,37 +1410,25 @@ class _MddGauge extends StatelessWidget {
                           ),
                         ),
                         Positioned(
-                          left: (constraints.maxWidth * 0.10) - 1,
+                          left: gaugeX(0.10) - 1,
                           top: 10,
-                          bottom: 12,
-                          child: _GaugeThresholdLine(
-                            label: '5%',
-                            alignRight: false,
-                          ),
+                          height: 34,
+                          child: const _GaugeThresholdLine(),
                         ),
                         Positioned(
-                          left: (constraints.maxWidth * 0.30) - 1,
+                          left: gaugeX(0.30) - 1,
                           top: 10,
-                          bottom: 12,
-                          child: _GaugeThresholdLine(
-                            label: '15%',
-                            alignRight: false,
-                          ),
+                          height: 34,
+                          child: const _GaugeThresholdLine(),
                         ),
                         Positioned(
-                          left: (constraints.maxWidth * 0.60) - 1,
+                          left: gaugeX(0.60) - 1,
                           top: 10,
-                          bottom: 12,
-                          child: _GaugeThresholdLine(
-                            label: '30%',
-                            alignRight: true,
-                          ),
+                          height: 34,
+                          child: const _GaugeThresholdLine(),
                         ),
                         Positioned(
-                          left: (markerLeft - 8).clamp(
-                            0.0,
-                            constraints.maxWidth - 16,
-                          ),
+                          left: markerCenter - markerRadius,
                           top: 6,
                           child: Column(
                             children: [
@@ -1275,6 +1451,24 @@ class _MddGauge extends StatelessWidget {
                               ),
                             ],
                           ),
+                        ),
+                        _GaugeThresholdLabel(
+                          left: gaugeX(0.10),
+                          top: 46,
+                          width: constraints.maxWidth,
+                          label: '5%',
+                        ),
+                        _GaugeThresholdLabel(
+                          left: gaugeX(0.30),
+                          top: 46,
+                          width: constraints.maxWidth,
+                          label: '15%',
+                        ),
+                        _GaugeThresholdLabel(
+                          left: gaugeX(0.60),
+                          top: 46,
+                          width: constraints.maxWidth,
+                          label: '30%',
                         ),
                       ],
                     ),
@@ -1392,28 +1586,53 @@ class _DateMetricText extends StatelessWidget {
 }
 
 class _GaugeThresholdLine extends StatelessWidget {
-  const _GaugeThresholdLine({required this.label, required this.alignRight});
-
-  final String label;
-  final bool alignRight;
+  const _GaugeThresholdLine();
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(width: 2, height: 18, color: MoneyfyPalette.border),
-        const SizedBox(height: 2),
-        Transform.translate(
-          offset: Offset(alignRight ? -34 : 0, 0),
-          child: Text(
-            label,
-            style: context.typography.meta.copyWith(
-              color: MoneyfyPalette.tertiaryText,
-              fontSize: 11,
-            ),
-          ),
+    return Container(
+      width: 2,
+      decoration: BoxDecoration(
+        color: MoneyfyPalette.border,
+        borderRadius: BorderRadius.circular(999),
+      ),
+    );
+  }
+}
+
+class _GaugeThresholdLabel extends StatelessWidget {
+  const _GaugeThresholdLabel({
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.label,
+  });
+
+  final double left;
+  final double top;
+  final double width;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    const labelWidth = 52.0;
+    final resolvedLeft = (left - (labelWidth / 2)).clamp(
+      0.0,
+      math.max(0.0, width - labelWidth),
+    ).toDouble();
+
+    return Positioned(
+      left: resolvedLeft,
+      top: top,
+      width: labelWidth,
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: context.typography.meta.copyWith(
+          color: MoneyfyPalette.tertiaryText,
+          fontSize: 11,
         ),
-      ],
+      ),
     );
   }
 }
@@ -1557,7 +1776,11 @@ class _RebalanceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final gapAmount = totalValue * (item.targetGap / 100);
-    final action = item.targetGap > 0 ? '축소 후보' : '확대 후보';
+    final action = item.targetGap.abs() <= 3
+        ? '정상 범위'
+        : item.targetGap > 0
+        ? '축소 후보'
+        : '확대 후보';
     final color = item.targetGap.abs() < 1
         ? MoneyfyPalette.tertiaryText
         : item.targetGap > 0
@@ -1574,10 +1797,7 @@ class _RebalanceRow extends StatelessWidget {
             dense: true,
           ),
           const SizedBox(height: 8),
-          _ProgressLine(
-            ratio: (item.targetGap.abs() / 20).clamp(0, 1),
-            color: color,
-          ),
+          _ProgressLine(gapPercent: item.targetGap, color: color),
           const SizedBox(height: 8),
           Text(
             '현재 ${item.ratio.toStringAsFixed(1)}% · 목표 ${item.targetRatio!.toStringAsFixed(1)}% · 차이 ${item.targetGap >= 0 ? '+' : ''}${item.targetGap.toStringAsFixed(1)}%p (${_formatSignedAmount(gapAmount)})',
@@ -2007,30 +2227,143 @@ class _InfoPairRow extends StatelessWidget {
 }
 
 class _ProgressLine extends StatelessWidget {
-  const _ProgressLine({required this.ratio, required this.color});
+  const _ProgressLine({required this.gapPercent, required this.color});
 
-  final double ratio;
+  final double gapPercent;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(999),
-      child: SizedBox(
-        width: double.infinity,
-        height: 8,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: ColoredBox(color: MoneyfyPalette.borderNeutral),
-            ),
-            FractionallySizedBox(
-              widthFactor: ratio.clamp(0, 1),
-              child: ColoredBox(color: color),
-            ),
-          ],
-        ),
+    return SizedBox(
+      height: 14,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final center = constraints.maxWidth / 2;
+          final fillWidth = center * (gapPercent.abs() / 20).clamp(0.0, 1.0);
+          final fillLeft = gapPercent >= 0 ? center : center - fillWidth;
+
+          return Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 3,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: const ColoredBox(
+                    color: MoneyfyPalette.borderNeutral,
+                    child: SizedBox(height: 8),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: fillLeft,
+                top: 3,
+                width: fillWidth,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: ColoredBox(
+                    color: color,
+                    child: const SizedBox(height: 8),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: center - 1,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 2,
+                  decoration: BoxDecoration(
+                    color: MoneyfyPalette.secondaryText.withValues(alpha: 0.42),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
+    );
+  }
+}
+
+class _PortfolioDiagnosis {
+  const _PortfolioDiagnosis({
+    required this.label,
+    required this.message,
+    required this.reason,
+    required this.icon,
+    required this.color,
+    required this.background,
+  });
+
+  final String label;
+  final String message;
+  final String reason;
+  final IconData icon;
+  final Color color;
+  final Color background;
+
+  static _PortfolioDiagnosis fromData(_PortfolioAnalysisMvpData data) {
+    final topThreeRatio = _topThreeRatio(data.assetMetrics);
+    final hhiScore = _hhiScore(data.assetMetrics);
+    final drawdown = _calculateMaxDrawdown(data.riskSnapshots);
+    final maxTargetGap = _maxTargetGap(data.assetMetrics)?.abs();
+    final drawdownAbs = drawdown?.percent.abs() ?? 0;
+
+    if (topThreeRatio >= 80 || hhiScore > 2500 || drawdownAbs >= 30) {
+      return const _PortfolioDiagnosis(
+        label: '위험',
+        message: '포트폴리오 쏠림이나 낙폭을 먼저 점검해야 해요.',
+        reason: '상위 자산 비중, 집중도, 최근 낙폭 중 하나 이상이 높은 구간에 있어요.',
+        icon: Icons.warning_amber_rounded,
+        color: MoneyfyPalette.negative,
+        background: MoneyfyPalette.errorBg,
+      );
+    }
+
+    if (topThreeRatio >= 70 || hhiScore > 1800 || drawdownAbs >= 15) {
+      return const _PortfolioDiagnosis(
+        label: '주의',
+        message: '상위 자산 비중이 높아 변동성에 취약할 수 있어요.',
+        reason: '집중도와 낙폭 지표를 함께 보고, 목표 비중과 크게 벗어난 자산이 있는지 확인해 보세요.',
+        icon: Icons.report_problem_outlined,
+        color: MoneyfyPalette.warningStrong,
+        background: Color(0xFFFFF4D8),
+      );
+    }
+
+    if (maxTargetGap != null && maxTargetGap >= 5) {
+      return const _PortfolioDiagnosis(
+        label: '주의',
+        message: '목표 비중과 크게 벗어난 자산이 있어요.',
+        reason: '전체 위험은 높지 않지만, 목표 대비 초과 또는 부족한 자산을 조정 후보로 점검할 수 있어요.',
+        icon: Icons.tune_rounded,
+        color: MoneyfyPalette.warningStrong,
+        background: Color(0xFFFFF4D8),
+      );
+    }
+
+    if (data.totalProfit < 0) {
+      return const _PortfolioDiagnosis(
+        label: '점검',
+        message: '손실 자산이 전체 성과를 낮추고 있어요.',
+        reason: '집중도 위험은 제한적이지만, 성과 기여도에서 손실 영향이 큰 자산을 확인해 보세요.',
+        icon: Icons.query_stats_rounded,
+        color: MoneyfyPalette.info,
+        background: MoneyfyPalette.infoBg,
+      );
+    }
+
+    return const _PortfolioDiagnosis(
+      label: '양호',
+      message: '큰 위험 신호는 낮은 편이에요.',
+      reason: '현재 기준으로 집중도와 낙폭이 과도하지 않습니다. 목표 비중을 설정해두면 조정 후보를 더 정확히 볼 수 있어요.',
+      icon: Icons.check_circle_outline_rounded,
+      color: MoneyfyPalette.positive,
+      background: MoneyfyPalette.successBg,
     );
   }
 }
@@ -2087,6 +2420,106 @@ _DrawdownResult? _calculateMaxDrawdown(List<DailyPortfolioSnapshot> snapshots) {
     peakDate: worstPeakDate,
     troughDate: worstTroughDate,
   );
+}
+
+List<_AttentionItem> _buildAttentionItems(_PortfolioAnalysisMvpData data) {
+  final metrics = data.assetMetrics;
+  final topOne = metrics.isEmpty ? 0.0 : metrics.first.ratio;
+  final topThree = _topThreeRatio(metrics);
+  final hhi = _hhiScore(metrics);
+  final drawdown = _calculateMaxDrawdown(data.riskSnapshots);
+  final maxGap = _maxTargetGap(metrics);
+  final worstAsset = metrics.isEmpty
+      ? null
+      : ([...metrics]..sort((a, b) => a.profit.compareTo(b.profit))).first;
+
+  final concentrationColor = topThree >= 70 || hhi > 1800
+      ? MoneyfyPalette.warningStrong
+      : MoneyfyPalette.positive;
+  final drawdownColor = drawdown == null
+      ? MoneyfyPalette.tertiaryText
+      : drawdown.percent.abs() >= 15
+      ? MoneyfyPalette.warningStrong
+      : MoneyfyPalette.positive;
+  final targetColor = maxGap == null
+      ? MoneyfyPalette.tertiaryText
+      : maxGap.abs() >= 5
+      ? MoneyfyPalette.warningStrong
+      : MoneyfyPalette.positive;
+  final performanceColor = worstAsset == null
+      ? MoneyfyPalette.tertiaryText
+      : _valueColor(worstAsset.profit);
+
+  return [
+    _AttentionItem(
+      icon: Icons.donut_large_rounded,
+      title: '집중도',
+      body: topThree >= 70
+          ? '상위 자산이 전체 변동을 크게 좌우할 수 있어요.'
+          : '상위 자산 쏠림은 과도하지 않은 편이에요.',
+      value: '${topThree.toStringAsFixed(1)}%',
+      color: concentrationColor,
+    ),
+    _AttentionItem(
+      icon: Icons.show_chart_rounded,
+      title: '최대 낙폭',
+      body: drawdown == null
+          ? '2개 이상의 스냅샷이 쌓이면 낙폭을 계산할 수 있어요.'
+          : '최근 스냅샷 기준 고점 대비 하락폭이에요.',
+      value: drawdown == null
+          ? '부족'
+          : '${drawdown.percent.toStringAsFixed(1)}%',
+      color: drawdownColor,
+    ),
+    _AttentionItem(
+      icon: Icons.flag_outlined,
+      title: '목표 비중 이탈',
+      body: maxGap == null
+          ? '목표 비중을 설정하면 조정 후보를 볼 수 있어요.'
+          : '현재 비중과 목표 비중의 가장 큰 차이예요.',
+      value: maxGap == null ? '미설정' : '${maxGap.abs().toStringAsFixed(1)}%p',
+      color: targetColor,
+    ),
+    _AttentionItem(
+      icon: Icons.trending_down_rounded,
+      title: '성과 영향',
+      body: worstAsset == null || worstAsset.profit >= 0
+          ? '전체 성과를 크게 낮추는 자산은 아직 뚜렷하지 않아요.'
+          : '${worstAsset.label}의 손익 영향이 가장 큽니다.',
+      value: worstAsset == null ? '-' : _formatSignedAmount(worstAsset.profit),
+      color: performanceColor,
+    ),
+    _AttentionItem(
+      icon: Icons.filter_3_rounded,
+      title: '상위 1개 비중',
+      body: topOne >= 50
+          ? '단일 자산 비중이 높아 포트폴리오 체감 변동이 커질 수 있어요.'
+          : '단일 자산 비중은 관리 가능한 수준이에요.',
+      value: '${topOne.toStringAsFixed(1)}%',
+      color: topOne >= 50 ? MoneyfyPalette.warningStrong : MoneyfyPalette.info,
+    ),
+  ];
+}
+
+double _topThreeRatio(List<_AssetMetric> metrics) {
+  return metrics.take(3).fold<double>(0, (sum, item) => sum + item.ratio);
+}
+
+int _hhiScore(List<_AssetMetric> metrics) {
+  final hhi = metrics.fold<double>(
+    0,
+    (sum, item) => sum + math.pow(item.ratio / 100, 2).toDouble(),
+  );
+  return (hhi * 10000).round();
+}
+
+double? _maxTargetGap(List<_AssetMetric> metrics) {
+  final entries = metrics
+      .where((item) => item.targetRatio != null)
+      .toList(growable: false);
+  if (entries.isEmpty) return null;
+  entries.sort((a, b) => b.targetGap.abs().compareTo(a.targetGap.abs()));
+  return entries.first.targetGap;
 }
 
 Color _valueColor(double value) {

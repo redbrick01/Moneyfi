@@ -17,6 +17,7 @@ import 'package:moneyfy/pages/forms/transaction_form_page.dart';
 import 'package:moneyfy/pages/holding_detail_page.dart';
 import 'package:moneyfy/pages/investment_performance_page.dart';
 import 'package:moneyfy/pages/login_page.dart';
+import 'package:moneyfy/pages/portfolio_analysis_mvp_page.dart';
 import 'package:moneyfy/pages/signup_page.dart';
 import 'package:moneyfy/pages/snapshot_detail_page.dart';
 
@@ -66,6 +67,18 @@ void main() {
     tester,
   ) async {
     await pumpInteractivePage(tester, const AnalysisPage());
+
+    await tester.scrollUntilVisible(
+      find.text('포트폴리오 진단'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('포트폴리오 진단').first);
+    await settlePage(tester);
+    expect(find.text('포트폴리오 진단'), findsWidgets);
+
+    Navigator.of(tester.element(find.byType(PortfolioAnalysisMvpPage))).pop();
+    await settlePage(tester);
 
     await tester.scrollUntilVisible(
       find.text('투자성과 분석'),
