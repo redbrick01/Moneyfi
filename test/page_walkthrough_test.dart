@@ -21,6 +21,7 @@ import 'package:moneyfy/pages/portfolio_analysis_mvp_page.dart';
 import 'package:moneyfy/pages/signup_page.dart';
 import 'package:moneyfy/pages/snapshot_detail_page.dart';
 import 'package:moneyfy/pages/app_shell_page.dart';
+import 'package:moneyfy/pages/transactions_page.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -159,7 +160,7 @@ void main() {
     await tester.pumpWidget(const MoneyfyApp());
     await settlePage(tester);
 
-    for (final label in const ['홈', '포트폴리오', '분석', '통계', 'My']) {
+    for (final label in const ['홈', '포트폴', '거래', '분석', '통계', 'My']) {
       await tester.tap(find.text(label).last);
       await settlePage(tester);
       expect(find.text(label), findsWidgets);
@@ -256,6 +257,10 @@ final _standalonePageCases = <_StandalonePageCase>[
       holdingId: ids.cashHoldingId,
       defaultName: '생활비',
     ),
+  ),
+  _StandalonePageCase(
+    name: 'transactions',
+    build: (_) => const TransactionsPage(),
   ),
   _StandalonePageCase(name: 'login', build: (_) => const LoginPage()),
   _StandalonePageCase(name: 'signup', build: (_) => const SignupPage()),

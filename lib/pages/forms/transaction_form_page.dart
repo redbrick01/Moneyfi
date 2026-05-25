@@ -4,6 +4,7 @@ import '../../db/app_database.dart';
 import '../../models/asset_item.dart';
 import '../../services/sync_service.dart';
 import '../../theme/moneyfy_theme.dart';
+import '../../utils/display_currency.dart';
 import '../../utils/input_validators.dart';
 import 'form_design.dart';
 
@@ -46,6 +47,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
   late final TextEditingController nameController;
   late final TextEditingController amountController;
   late final TextEditingController quantityController;
+  late bool includeInCalculations;
   bool isSaving = false;
 
   @override
@@ -59,6 +61,9 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     );
     amountController = TextEditingController(text: item?.amount ?? '');
     quantityController = TextEditingController(text: item?.quantity ?? '');
+    amountController.addListener(_handlePreviewInputChanged);
+    quantityController.addListener(_handlePreviewInputChanged);
+    includeInCalculations = item?.includeInCalculations ?? false;
     _assetFuture = AppDatabase.instance.fetchAssetById(widget.assetId);
   }
 
@@ -75,9 +80,17 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     dateController.dispose();
     typeController.dispose();
     nameController.dispose();
+    amountController.removeListener(_handlePreviewInputChanged);
+    quantityController.removeListener(_handlePreviewInputChanged);
     amountController.dispose();
     quantityController.dispose();
     super.dispose();
+  }
+
+  void _handlePreviewInputChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _save() async {
@@ -170,6 +183,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
           name: nameValidation.value!,
           amount: amountText,
           quantity: quantityText,
+          includeInCalculations: includeInCalculations,
         );
       } else {
         await AppDatabase.instance.updateTransactionItem(
@@ -194,6 +208,8 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
             ledgerAction: item.ledgerAction,
             legacySourceTable: item.legacySourceTable,
             legacySourceId: item.legacySourceId,
+            includeInCalculations: includeInCalculations,
+            flowCategory: item.flowCategory,
           ),
         );
       }
@@ -242,6 +258,47 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
 
   String _numberText(double value) {
     return value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
+  }
+
+  String _transactionAmountPreview(AssetItem? asset) {
+    final type = typeController.text.trim();
+    final unitAmount = _parseFormNumber(amountController.text);
+    if (unitAmount == null || unitAmount <= 0) return '-';
+
+    final totalAmount = switch (type) {
+      '매수' || '매도' => () {
+        final quantity = _parseFormNumber(quantityController.text);
+        if (quantity == null || quantity <= 0) return null;
+        return unitAmount * quantity;
+      }(),
+      _ => unitAmount,
+    };
+    if (totalAmount == null || totalAmount <= 0) return '-';
+
+    final holding = _currentHolding(asset);
+    return MoneyfyDisplayCurrencySettings.formatAmountFromSource(
+      totalAmount,
+      sourceCurrency: holding?.currencyCode ?? asset?.currencyCode ?? 'KRW',
+      exchangeRate: holding?.exchangeRate ?? 1,
+    );
+  }
+
+  double? _parseFormNumber(String value) {
+    return double.tryParse(value.replaceAll(',', '').trim());
+  }
+
+  HoldingItem? _currentHolding(AssetItem? asset) {
+    if (asset == null) return null;
+    for (final holding in asset.holdings) {
+      if (holding.id == widget.holdingId) return holding;
+    }
+    final clientId = widget.holdingClientId;
+    if (clientId != null && clientId.trim().isNotEmpty) {
+      for (final holding in asset.holdings) {
+        if (holding.clientId == clientId) return holding;
+      }
+    }
+    return asset.holdings.isEmpty ? null : asset.holdings.first;
   }
 
   void _showValidationMessage(String message) {
@@ -330,12 +387,54 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                         decimal: true,
                       ),
                     ),
+                  MoneyfyLedgerPreview(
+                    rows: [
+                      MoneyfyLedgerPreviewRow(
+                        label: '거래금액',
+                        value: _transactionAmountPreview(snapshot.data),
+                      ),
+                    ],
+                  ),
                 ],
+              ),
+            ),
+            MoneyfyFormSection(
+              title: '계산 반영',
+              child: _CalculationToggle(
+                value: includeInCalculations,
+                onChanged: (value) {
+                  setState(() {
+                    includeInCalculations = value;
+                  });
+                },
               ),
             ),
           ],
         );
       },
+    );
+  }
+}
+
+class _CalculationToggle extends StatelessWidget {
+  const _CalculationToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile.adaptive(
+      value: value,
+      onChanged: onChanged,
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        '포트폴리오 계산에 반영',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      subtitle: Text(
+        value ? '보유 수량, 평단, 현금 흐름에 반영됩니다.' : '거래 내역에만 기록되고 현재 포트폴리오는 변하지 않습니다.',
+      ),
     );
   }
 }

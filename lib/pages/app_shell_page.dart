@@ -12,6 +12,7 @@ import 'my_page.dart';
 import 'portfolio_dashboard_page.dart';
 import 'portfolio_page.dart';
 import 'statistics_page.dart';
+import 'transactions_page.dart';
 
 class AppShellPage extends StatefulWidget {
   const AppShellPage({super.key});
@@ -30,9 +31,14 @@ class _AppShellPageState extends State<AppShellPage>
       selectedIcon: Icons.home_rounded,
     ),
     _NavItem(
-      label: '포트폴리오',
+      label: '포트폴',
       icon: Icons.pie_chart_outline_rounded,
       selectedIcon: Icons.pie_chart_rounded,
+    ),
+    _NavItem(
+      label: '거래',
+      icon: Icons.receipt_long_outlined,
+      selectedIcon: Icons.receipt_long_rounded,
     ),
     _NavItem(
       label: '분석',
@@ -142,7 +148,7 @@ class _AppShellPageState extends State<AppShellPage>
           curve: Curves.easeOutCubic,
         );
       }
-      if (index == 2) {
+      if (index == 3) {
         setState(() {
           _analysisReselectionTick++;
         });
@@ -263,9 +269,18 @@ class _AppShellPageState extends State<AppShellPage>
                 _DataScopedTabPage(
                   scopeVersion: _dataScopeVersion,
                   replacementMessage: _dataReplacementMessage,
+                  title: '거래',
+                  child: TransactionsPage(
+                    scrollController: _pageScrollControllers[2],
+                    dataRefreshTick: _dataRefreshTick,
+                  ),
+                ),
+                _DataScopedTabPage(
+                  scopeVersion: _dataScopeVersion,
+                  replacementMessage: _dataReplacementMessage,
                   title: '분석',
                   child: AnalysisPage(
-                    scrollController: _pageScrollControllers[2],
+                    scrollController: _pageScrollControllers[3],
                     reselectionTick: _analysisReselectionTick,
                     dataRefreshTick: _dataRefreshTick,
                   ),
@@ -275,11 +290,11 @@ class _AppShellPageState extends State<AppShellPage>
                   replacementMessage: _dataReplacementMessage,
                   title: '통계',
                   child: StatisticsPage(
-                    scrollController: _pageScrollControllers[3],
+                    scrollController: _pageScrollControllers[4],
                     dataRefreshTick: _dataRefreshTick,
                   ),
                 ),
-                MyPage(scrollController: _pageScrollControllers[4]),
+                MyPage(scrollController: _pageScrollControllers[5]),
               ],
             ),
           ),
@@ -444,7 +459,7 @@ class _FloatingTabBar extends StatelessWidget {
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
                 child: Row(
                   children: [
                     for (var i = 0; i < items.length; i++)
@@ -483,18 +498,18 @@ class _FloatingTabBarItem extends StatelessWidget {
     final labelStyle = TextStyle(
       fontSize: 11,
       height: 1.2,
-      letterSpacing: -0.12,
+      letterSpacing: 0,
       color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
       fontWeight: FontWeight.w400,
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 1),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             color: isSelected ? colorScheme.primary : Colors.transparent,
@@ -504,7 +519,7 @@ class _FloatingTabBarItem extends StatelessWidget {
             children: [
               Container(
                 width: 34,
-                height: 28,
+                height: 26,
                 decoration: BoxDecoration(
                   color: isSelected ? colorScheme.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(16),

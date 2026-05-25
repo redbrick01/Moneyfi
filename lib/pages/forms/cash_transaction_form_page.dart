@@ -4,6 +4,7 @@ import '../../db/app_database.dart';
 import '../../models/asset_item.dart';
 import '../../services/sync_service.dart';
 import '../../theme/moneyfy_theme.dart';
+import '../../utils/display_currency.dart';
 import '../../utils/input_validators.dart';
 import 'form_design.dart';
 
@@ -44,6 +45,9 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
   late final TextEditingController exchangeRateController;
   List<_CashAccountOption> cashAccountOptions = const [];
   int? selectedTransferTargetHoldingId;
+  String sourceCurrencyCode = 'KRW';
+  double sourceExchangeRate = 1;
+  late bool includeInCalculations;
   bool isSaving = false;
 
   @override
@@ -57,6 +61,8 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     );
     amountController = TextEditingController(text: item?.amount ?? '');
     exchangeRateController = TextEditingController();
+    amountController.addListener(_handlePreviewInputChanged);
+    includeInCalculations = item?.includeInCalculations ?? false;
     _loadCashAccountOptions();
   }
 
@@ -73,9 +79,16 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     dateController.dispose();
     typeController.dispose();
     nameController.dispose();
+    amountController.removeListener(_handlePreviewInputChanged);
     amountController.dispose();
     exchangeRateController.dispose();
     super.dispose();
+  }
+
+  void _handlePreviewInputChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _save() async {
@@ -106,13 +119,15 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
       return;
     }
 
-    if (transactionType == '이체' && selectedTransferTargetHoldingId == null) {
+    if (includeInCalculations &&
+        transactionType == '이체' &&
+        selectedTransferTargetHoldingId == null) {
       _showValidationMessage('이체할 현금 계좌를 선택해 주세요.');
       return;
     }
 
     InputValidationResult<double>? exchangeRateValidation;
-    if (transactionType == '환전') {
+    if (includeInCalculations && transactionType == '환전') {
       exchangeRateValidation = MoneyfyInputValidators.decimal(
         exchangeRateController.text,
         fieldName: '환율',
@@ -151,7 +166,18 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     try {
       final currentHoldingId = await _resolveCurrentHoldingId();
       final item = widget.item;
-      if (item == null && transactionType == '이체') {
+      if (!includeInCalculations && item == null) {
+        await AppDatabase.instance.createTransaction(
+          assetId: widget.assetId,
+          holdingId: currentHoldingId,
+          date: dateValidation.value!,
+          type: transactionType,
+          name: nameValidation.value!,
+          amount: amountText,
+          quantity: '',
+          includeInCalculations: false,
+        );
+      } else if (item == null && transactionType == '이체') {
         await AppDatabase.instance.createCashTransfer(
           assetId: widget.assetId,
           sourceHoldingId: currentHoldingId,
@@ -178,6 +204,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
           name: nameValidation.value!,
           amount: amountText,
           quantity: '',
+          includeInCalculations: includeInCalculations,
         );
       } else {
         await AppDatabase.instance.updateTransactionItem(
@@ -197,6 +224,8 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
             ledgerAction: item.ledgerAction,
             legacySourceTable: item.legacySourceTable,
             legacySourceId: item.legacySourceId,
+            includeInCalculations: includeInCalculations,
+            flowCategory: item.flowCategory,
           ),
         );
       }
@@ -225,6 +254,20 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
 
   String _numberText(double value) {
     return value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
+  }
+
+  String _cashTransactionAmountPreview() {
+    final amount = _parseFormNumber(amountController.text);
+    if (amount == null || amount <= 0) return '-';
+    return MoneyfyDisplayCurrencySettings.formatAmountFromSource(
+      amount,
+      sourceCurrency: sourceCurrencyCode,
+      exchangeRate: sourceExchangeRate,
+    );
+  }
+
+  double? _parseFormNumber(String value) {
+    return double.tryParse(value.replaceAll(',', '').trim());
   }
 
   void _showValidationMessage(String message) {
@@ -263,7 +306,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
       );
     }
     final sourceHoldingId = loadedSourceHolding?.id ?? widget.holdingId;
-    final sourceCurrencyCode = loadedSourceHolding?.currencyCode;
+    final sourceOptionCurrencyCode = loadedSourceHolding?.currencyCode;
     final assets = await AppDatabase.instance.fetchAssets();
     final options = assets
         .expand(
@@ -272,8 +315,8 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
                 (holding) =>
                     (holding.id ?? 0) < 0 &&
                     holding.id != sourceHoldingId &&
-                    (sourceCurrencyCode == null ||
-                        holding.currencyCode == sourceCurrencyCode),
+                    (sourceOptionCurrencyCode == null ||
+                        holding.currencyCode == sourceOptionCurrencyCode),
               )
               .map(
                 (holding) => _CashAccountOption(
@@ -301,6 +344,8 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     setState(() {
       cashAccountOptions = options;
       selectedTransferTargetHoldingId = initialSelection;
+      sourceCurrencyCode = loadedSourceHolding?.currencyCode ?? 'KRW';
+      sourceExchangeRate = loadedSourceHolding?.exchangeRate ?? 1;
       if (initialSelection != null) {
         typeController.text = '이체';
       }
@@ -367,13 +412,22 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
                   decimal: true,
                 ),
               ),
-              if (transactionType == '환전') ...[
+              MoneyfyLedgerPreview(
+                rows: [
+                  MoneyfyLedgerPreviewRow(
+                    label: '거래금액',
+                    value: _cashTransactionAmountPreview(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (includeInCalculations && transactionType == '환전') ...[
                 MoneyfyFormField(
                   label: '환율',
                   controller: exchangeRateController,
                 ),
               ],
-              if (transactionType == '이체')
+              if (includeInCalculations && transactionType == '이체')
                 _TransferTargetField(
                   options: cashAccountOptions,
                   value: selectedTransferTargetHoldingId,
@@ -386,7 +440,41 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
             ],
           ),
         ),
+        MoneyfyFormSection(
+          title: '계산 반영',
+          child: _CashCalculationToggle(
+            value: includeInCalculations,
+            onChanged: (value) {
+              setState(() {
+                includeInCalculations = value;
+              });
+            },
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _CashCalculationToggle extends StatelessWidget {
+  const _CashCalculationToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile.adaptive(
+      value: value,
+      onChanged: onChanged,
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        '포트폴리오 계산에 반영',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      subtitle: Text(
+        value ? '현금 잔액과 연결 거래에 반영됩니다.' : '거래 내역에만 기록되고 현금 잔액은 변하지 않습니다.',
+      ),
     );
   }
 }
