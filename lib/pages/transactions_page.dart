@@ -24,10 +24,12 @@ class TransactionsPage extends StatefulWidget {
     super.key,
     this.scrollController,
     this.dataRefreshTick = 0,
+    this.remoteRefresh,
   });
 
   final ScrollController? scrollController;
   final int dataRefreshTick;
+  final Future<bool> Function()? remoteRefresh;
 
   @override
   State<TransactionsPage> createState() => _TransactionsPageState();
@@ -118,6 +120,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   Future<void> _refreshPage() async {
+    await _refreshRemoteData();
     final nextFuture = _loadPageData();
     setState(() {
       _pageFuture = nextFuture;
@@ -126,6 +129,23 @@ class _TransactionsPageState extends State<TransactionsPage> {
       await nextFuture;
     } catch (_) {
       // FutureBuilder renders the error state; pull-to-refresh should settle.
+    }
+  }
+
+  Future<void> _refreshRemoteData() async {
+    try {
+      final refresh = widget.remoteRefresh;
+      if (refresh != null) {
+        await refresh();
+        return;
+      }
+      if (SyncService.instance.canSync) {
+        await SyncService.instance.refreshFromServer(
+          reason: 'transactions_page_pull_refresh',
+        );
+      }
+    } catch (_) {
+      // The local reload below still gives the user the latest available state.
     }
   }
 

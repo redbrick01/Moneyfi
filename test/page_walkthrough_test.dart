@@ -271,6 +271,29 @@ void main() {
     expect(grouped.last.ledgerAction, 'buy');
   });
 
+  testWidgets('transactions pull refresh downloads remote data first', (
+    tester,
+  ) async {
+    var remoteRefreshCount = 0;
+
+    await pumpInteractivePage(
+      tester,
+      TransactionsPage(
+        remoteRefresh: () async {
+          remoteRefreshCount++;
+          return true;
+        },
+      ),
+    );
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 360));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(remoteRefreshCount, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('transaction form exposes market item search', (tester) async {
     await pumpInteractivePage(
       tester,
