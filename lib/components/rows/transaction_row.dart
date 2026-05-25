@@ -30,9 +30,8 @@ class TransactionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final badgeColor = typeColor ?? colorScheme.surfaceContainerHighest;
-    final leadingSlotWidth = context.spacing.xxxl;
-    final badgeWidth = context.spacing.xl;
-    final trailingMinWidth = context.spacing.xxxl + context.spacing.xxxl;
+    final badgeWidth = context.spacing.xl + context.spacing.xs;
+    final trailingWidth = context.spacing.xxxl + context.spacing.xl;
 
     return InkWell(
       onTap: onTap,
@@ -56,26 +55,25 @@ class TransactionRow extends StatelessWidget {
           child: Row(
             children: [
               SizedBox(
-                width: leadingSlotWidth,
-                child: Container(
-                  width: badgeWidth,
-                  height: 28,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.spacing.xs / 2,
-                    vertical: context.spacing.xs - 2,
-                  ),
-                  alignment: Alignment.center,
+                width: badgeWidth,
+                height: context.spacing.md + context.spacing.xs / 2,
+                child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: badgeColor,
                     borderRadius: BorderRadius.circular(context.radius.rPill),
-                    border: Border.all(color: colorScheme.outlineVariant),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+                    ),
                   ),
-                  child: Text(
-                    typeLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.typography.meta.copyWith(
-                      fontWeight: FontWeight.w600,
+                  child: Center(
+                    child: Text(
+                      typeLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.typography.caption.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -104,21 +102,27 @@ class TransactionRow extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(width: context.spacing.sm),
+              SizedBox(width: context.spacing.xs),
               SizedBox(
-                width: trailingMinWidth,
+                width: trailingWidth,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      amountText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                      style: context.typography.cardTitle.copyWith(
-                        color: amountColor,
-                        fontWeight: FontWeight.w600,
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          amountText,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: context.typography.cardTitle.copyWith(
+                            color: amountColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                     if ((metaText ?? '').trim().isNotEmpty) ...[

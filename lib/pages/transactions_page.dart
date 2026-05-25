@@ -393,6 +393,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
               ),
             ),
           ),
+        SizedBox(height: context.spacing.xl),
       ],
     );
   }
@@ -421,39 +422,67 @@ class _TransactionQueryPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return SectionCard(
-      padding: EdgeInsets.all(context.spacing.md),
+      dense: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
-            controller: searchController,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: '거래 검색',
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: searchController.text.trim().isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: '검색어 지우기',
-                      onPressed: searchController.clear,
-                      icon: const Icon(Icons.close_rounded),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: searchController,
+                  textInputAction: TextInputAction.search,
+                  style: context.typography.body,
+                  decoration: InputDecoration(
+                    hintText: '거래 검색',
+                    prefixIcon: const Icon(Icons.search_rounded, size: 24),
+                    prefixIconConstraints: BoxConstraints(
+                      minWidth: context.spacing.xl + context.spacing.sm,
+                      minHeight: context.spacing.xxl,
                     ),
-              isDense: true,
-              filled: true,
-              fillColor: colorScheme.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(context.radius.rPill),
-                borderSide: BorderSide(color: colorScheme.outlineVariant),
+                    suffixIcon: searchController.text.trim().isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: '검색어 지우기',
+                            onPressed: searchController.clear,
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                    suffixIconConstraints: BoxConstraints(
+                      minWidth: context.spacing.xxl,
+                      minHeight: context.spacing.xxl,
+                    ),
+                    constraints: BoxConstraints(
+                      minHeight: context.spacing.xxl,
+                      maxHeight: context.spacing.xxl,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: context.spacing.sm,
+                      vertical: context.spacing.sm,
+                    ),
+                    isDense: true,
+                    filled: true,
+                    fillColor: colorScheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(context.radius.rPill),
+                      borderSide: BorderSide(color: colorScheme.outlineVariant),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(context.radius.rPill),
+                      borderSide: BorderSide(color: colorScheme.outlineVariant),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(context.radius.rPill),
+                      borderSide: BorderSide(color: colorScheme.primary),
+                    ),
+                  ),
+                ),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(context.radius.rPill),
-                borderSide: BorderSide(color: colorScheme.outlineVariant),
+              SizedBox(width: context.spacing.xs),
+              _TransactionSortButton(
+                sortMode: sortMode,
+                onSortChanged: onSortChanged,
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(context.radius.rPill),
-                borderSide: BorderSide(color: colorScheme.primary),
-              ),
-            ),
+            ],
           ),
           SizedBox(height: context.spacing.sm),
           _FilterStrip<_TransactionPeriodFilter>(
@@ -463,58 +492,60 @@ class _TransactionQueryPanel extends StatelessWidget {
             onChanged: onPeriodChanged,
           ),
           SizedBox(height: context.spacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: _FilterStrip<_TransactionCategoryFilter>(
-                  values: _TransactionCategoryFilter.values,
-                  selected: selectedCategory,
-                  labelBuilder: (category) => category.label,
-                  onChanged: onCategoryChanged,
-                ),
-              ),
-              SizedBox(width: context.spacing.sm),
-              PopupMenuButton<_TransactionSortMode>(
-                tooltip: '정렬',
-                initialValue: sortMode,
-                onSelected: onSortChanged,
-                itemBuilder: (context) => [
-                  for (final mode in _TransactionSortMode.values)
-                    PopupMenuItem<_TransactionSortMode>(
-                      value: mode,
-                      child: Row(
-                        children: [
-                          Expanded(child: Text(mode.label)),
-                          if (mode == sortMode)
-                            Icon(
-                              Icons.check_rounded,
-                              color: colorScheme.primary,
-                            ),
-                        ],
-                      ),
-                    ),
-                ],
-                child: Container(
-                  height: 40,
-                  padding: EdgeInsets.symmetric(horizontal: context.spacing.sm),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(context.radius.rPill),
-                    border: Border.all(color: colorScheme.outlineVariant),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.sort_rounded, size: 18),
-                      SizedBox(width: context.spacing.xs),
-                      Text(sortMode.shortLabel, style: context.typography.meta),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          _FilterStrip<_TransactionCategoryFilter>(
+            values: _TransactionCategoryFilter.values,
+            selected: selectedCategory,
+            labelBuilder: (category) => category.label,
+            onChanged: onCategoryChanged,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TransactionSortButton extends StatelessWidget {
+  const _TransactionSortButton({
+    required this.sortMode,
+    required this.onSortChanged,
+  });
+
+  final _TransactionSortMode sortMode;
+  final ValueChanged<_TransactionSortMode> onSortChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return PopupMenuButton<_TransactionSortMode>(
+      tooltip: '정렬',
+      initialValue: sortMode,
+      onSelected: onSortChanged,
+      itemBuilder: (context) => [
+        for (final mode in _TransactionSortMode.values)
+          PopupMenuItem<_TransactionSortMode>(
+            value: mode,
+            child: Row(
+              children: [
+                Expanded(child: Text(mode.label)),
+                if (mode == sortMode)
+                  Icon(Icons.check_rounded, color: colorScheme.primary),
+              ],
+            ),
+          ),
+      ],
+      child: Container(
+        width: context.spacing.xxl,
+        height: context.spacing.xxl,
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(context.radius.rPill),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Icon(
+          Icons.sort_rounded,
+          size: 24,
+          color: colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -540,10 +571,23 @@ class _FilterStrip<T> extends StatelessWidget {
       child: Row(
         children: [
           for (final value in values) ...[
-            ChoiceChip(
+            RawChip(
               label: Text(labelBuilder(value)),
               selected: selected == value,
-              onSelected: (_) => onChanged(value),
+              onPressed: () => onChanged(value),
+              showCheckmark: false,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: EdgeInsets.symmetric(horizontal: context.spacing.xs),
+              labelPadding: EdgeInsets.zero,
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              labelStyle: context.typography.meta.copyWith(
+                fontWeight: selected == value
+                    ? FontWeight.w600
+                    : FontWeight.w400,
+              ),
             ),
             if (value != values.last) SizedBox(width: context.spacing.xs),
           ],
@@ -1015,7 +1059,7 @@ List<_TransactionEntry> _sortEntries(
 }
 
 enum _TransactionPeriodFilter {
-  all('전체', null),
+  all('전체 기간', null),
   week('1주', Duration(days: 7)),
   month('1개월', Duration(days: 31)),
   threeMonths('3개월', Duration(days: 93)),
@@ -1040,7 +1084,7 @@ enum _TransactionPeriodFilter {
 }
 
 enum _TransactionCategoryFilter {
-  all('전체', {}),
+  all('전체 유형', {}),
   buy('매수', {'buy', '매수'}),
   sell('매도', {'sell', '매도'}),
   dividend('배당', {'dividend', '배당'}),
@@ -1119,11 +1163,11 @@ Color _externalCashAmountColor(
   BuildContext context,
   TransactionItem transaction,
 ) {
-  final colorScheme = Theme.of(context).colorScheme;
+  final colors = context.colors;
   return switch (TransactionFlowCategory.normalize(transaction.flowCategory)) {
-    TransactionFlowCategory.externalDeposit => colorScheme.primary,
-    TransactionFlowCategory.externalWithdrawal => colorScheme.error,
-    _ => colorScheme.onSurface,
+    TransactionFlowCategory.externalDeposit => colors.positiveOn,
+    TransactionFlowCategory.externalWithdrawal => colors.negativeOn,
+    _ => colors.neutralText,
   };
 }
 
@@ -1170,16 +1214,16 @@ String _formatTransactionAmountInKrw(
 }
 
 Color _transactionTypeColor(BuildContext context, String type) {
-  final colorScheme = Theme.of(context).colorScheme;
+  final colors = context.colors;
   return switch (type.trim()) {
     '매수' ||
     '출금' ||
     '이체' ||
-    '환전' => colorScheme.errorContainer.withValues(alpha: 0.36),
+    '환전' => colors.negativeContainer.withValues(alpha: 0.72),
     '매도' ||
     '배당' ||
     '이자' ||
-    '입금' => colorScheme.primaryContainer.withValues(alpha: 0.5),
-    _ => colorScheme.surfaceContainerHighest,
+    '입금' => colors.positiveContainer.withValues(alpha: 0.78),
+    _ => colors.neutralSurfaceOverlay,
   };
 }
