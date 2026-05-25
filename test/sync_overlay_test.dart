@@ -35,7 +35,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   }
 
-  testWidgets('SyncOverlay renders running bottom-sheet state', (tester) async {
+  testWidgets('SyncOverlay renders running centered modal state', (
+    tester,
+  ) async {
     await pumpOverlay(
       tester,
       isRunning: true,
@@ -50,6 +52,10 @@ void main() {
     expect(find.text('로그인된 계정의 최신 데이터를 가져오고 있어요.'), findsOneWidget);
     expect(find.text('백그라운드로'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsWidgets);
+    expect(find.byKey(SyncOverlay.cardKey), findsOneWidget);
+
+    final cardCenter = tester.getCenter(find.byKey(SyncOverlay.cardKey));
+    expect(cardCenter.dy, closeTo(300, 80));
   });
 
   testWidgets('SyncOverlay scrolls instead of clipping on short windows', (
@@ -71,6 +77,7 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
+    expect(find.byKey(SyncOverlay.cardKey), findsOneWidget);
     expect(find.text('스냅샷'), findsOneWidget);
     expect(find.text('백그라운드로'), findsOneWidget);
   });

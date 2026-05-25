@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../components/buttons/app_buttons.dart';
@@ -41,6 +43,8 @@ class SyncOverlay extends StatelessWidget {
   final VoidCallback? onClose;
   final VoidCallback? onBackground;
 
+  static const cardKey = ValueKey('sync-overlay-card');
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -56,7 +60,6 @@ class SyncOverlay extends StatelessWidget {
     final hasFailed = steps.any((step) => step.state == SyncStepState.failed);
     final isSuccess = !isRunning && !hasFailed && doneCount == steps.length;
     final isPartialFailure = !isRunning && hasFailed && doneCount > 0;
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final title = isRunning
         ? '데이터를 맞추는 중'
         : isSuccess
@@ -71,146 +74,148 @@ class SyncOverlay extends StatelessWidget {
         : '코어 → 뉴스 → 스냅샷 순서로 진행돼요.';
 
     return Material(
-      color: colorScheme.scrim.withValues(alpha: 0.35),
+      color: colorScheme.scrim.withValues(alpha: 0.58),
       child: SafeArea(
-        top: false,
-        child: AnimatedPadding(
-          duration: context.motion.normal,
-          curve: Curves.easeOutCubic,
-          padding: EdgeInsets.fromLTRB(
-            context.spacing.md,
-            context.spacing.md,
-            context.spacing.md,
-            bottomInset > 0 ? context.spacing.md : context.spacing.lg,
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return Align(
-                alignment: Alignment.bottomCenter,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: 420,
-                    maxHeight: constraints.maxHeight,
-                  ),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: context.surfaces.surfaceOverlay,
-                      borderRadius: BorderRadius.circular(context.radius.rLg),
-                      border: Border.all(color: colorScheme.outlineVariant),
-                      boxShadow: context.shadows.level3,
-                    ),
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.all(context.spacing.lg),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              _SyncStatusMark(
-                                isRunning: isRunning,
-                                hasFailed: hasFailed,
-                                isSuccess: isSuccess,
-                              ),
-                              SizedBox(width: context.spacing.sm),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      title,
-                                      style: context.typography.cardTitle,
-                                    ),
-                                    SizedBox(height: context.spacing.xs / 2),
-                                    Text(
-                                      description,
-                                      style: context.typography.meta,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: context.spacing.md),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              context.radius.rPill,
-                            ),
-                            child: LinearProgressIndicator(
-                              minHeight: 6,
-                              value: progress.clamp(0, 1),
-                              backgroundColor:
-                                  colorScheme.surfaceContainerHighest,
-                            ),
-                          ),
-                          SizedBox(height: context.spacing.md),
-                          for (var i = 0; i < steps.length; i++) ...[
-                            _SyncStepRow(item: steps[i]),
-                            if (i != steps.length - 1)
-                              SizedBox(height: context.spacing.xs),
-                          ],
-                          if ((errorMessage ?? '').trim().isNotEmpty) ...[
-                            SizedBox(height: context.spacing.md),
-                            InlineError(
-                              message: errorMessage!,
-                              detail: (errorDetail ?? '').trim().isNotEmpty
-                                  ? errorDetail
-                                  : '재시도하면 실패한 단계부터 다시 진행할 수 있어요.',
-                            ),
-                            if (onRetry != null) ...[
-                              SizedBox(height: context.spacing.xs),
-                              RetryRow(
-                                message: (retryMessage ?? '').trim().isNotEmpty
-                                    ? retryMessage!
-                                    : '실패한 단계를 다시 시도할 수 있어요.',
-                                onRetry: onRetry!,
-                              ),
-                            ],
-                          ],
-                          SizedBox(height: context.spacing.md),
-                          Row(
-                            children: [
-                              if (isRunning)
-                                Expanded(
-                                  child: AppGhostButton(
-                                    label: '백그라운드로',
-                                    onPressed: onBackground ?? onClose,
-                                    expand: true,
-                                  ),
-                                ),
-                              if (hasFailed) ...[
-                                Expanded(
-                                  child: AppGhostButton(
-                                    label: closeLabel ?? '나중에',
-                                    onPressed: onClose,
-                                    expand: true,
-                                  ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final verticalPadding = context.spacing.lg;
+            final minHeight = math.max(
+              0.0,
+              constraints.maxHeight - verticalPadding * 2,
+            );
+            return SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing.md,
+                vertical: verticalPadding,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: minHeight),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: DecoratedBox(
+                      key: cardKey,
+                      decoration: BoxDecoration(
+                        color: context.surfaces.surfaceOverlay,
+                        borderRadius: BorderRadius.circular(context.radius.rLg),
+                        border: Border.all(color: colorScheme.outlineVariant),
+                        boxShadow: context.shadows.level3,
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(context.spacing.lg),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                _SyncStatusMark(
+                                  isRunning: isRunning,
+                                  hasFailed: hasFailed,
+                                  isSuccess: isSuccess,
                                 ),
                                 SizedBox(width: context.spacing.sm),
                                 Expanded(
-                                  child: AppPrimaryButton(
-                                    label: CopySpec.retry,
-                                    onPressed: onRetry,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        title,
+                                        style: context.typography.cardTitle,
+                                      ),
+                                      SizedBox(height: context.spacing.xs / 2),
+                                      Text(
+                                        description,
+                                        style: context.typography.meta,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
-                              if (isSuccess)
-                                Expanded(
-                                  child: AppPrimaryButton(
-                                    label: '확인',
-                                    onPressed: onClose,
-                                  ),
-                                ),
+                            ),
+                            SizedBox(height: context.spacing.md),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                context.radius.rPill,
+                              ),
+                              child: LinearProgressIndicator(
+                                minHeight: 6,
+                                value: progress.clamp(0, 1),
+                                backgroundColor:
+                                    colorScheme.surfaceContainerHighest,
+                              ),
+                            ),
+                            SizedBox(height: context.spacing.md),
+                            for (var i = 0; i < steps.length; i++) ...[
+                              _SyncStepRow(item: steps[i]),
+                              if (i != steps.length - 1)
+                                SizedBox(height: context.spacing.xs),
                             ],
-                          ),
-                        ],
+                            if ((errorMessage ?? '').trim().isNotEmpty) ...[
+                              SizedBox(height: context.spacing.md),
+                              InlineError(
+                                message: errorMessage!,
+                                detail: (errorDetail ?? '').trim().isNotEmpty
+                                    ? errorDetail
+                                    : '재시도하면 실패한 단계부터 다시 진행할 수 있어요.',
+                              ),
+                              if (onRetry != null) ...[
+                                SizedBox(height: context.spacing.xs),
+                                RetryRow(
+                                  message:
+                                      (retryMessage ?? '').trim().isNotEmpty
+                                      ? retryMessage!
+                                      : '실패한 단계를 다시 시도할 수 있어요.',
+                                  onRetry: onRetry!,
+                                ),
+                              ],
+                            ],
+                            SizedBox(height: context.spacing.md),
+                            Row(
+                              children: [
+                                if (isRunning)
+                                  Expanded(
+                                    child: AppGhostButton(
+                                      label: '백그라운드로',
+                                      onPressed: onBackground ?? onClose,
+                                      expand: true,
+                                    ),
+                                  ),
+                                if (hasFailed) ...[
+                                  Expanded(
+                                    child: AppGhostButton(
+                                      label: closeLabel ?? '나중에',
+                                      onPressed: onClose,
+                                      expand: true,
+                                    ),
+                                  ),
+                                  SizedBox(width: context.spacing.sm),
+                                  Expanded(
+                                    child: AppPrimaryButton(
+                                      label: CopySpec.retry,
+                                      onPressed: onRetry,
+                                    ),
+                                  ),
+                                ],
+                                if (isSuccess)
+                                  Expanded(
+                                    child: AppPrimaryButton(
+                                      label: '확인',
+                                      onPressed: onClose,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
