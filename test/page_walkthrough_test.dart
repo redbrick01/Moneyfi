@@ -271,6 +271,23 @@ void main() {
     expect(grouped.last.ledgerAction, 'buy');
   });
 
+  testWidgets('transaction form exposes market item search', (tester) async {
+    await pumpInteractivePage(
+      tester,
+      TransactionFormPage(
+        assetId: _walkthroughIds.stockAssetId,
+        holdingId: _walkthroughIds.holdingId,
+        defaultName: '삼성전자',
+      ),
+    );
+
+    expect(find.text('새 종목 검색'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextField, '예: 005930, AAPL, BTC'),
+      findsOneWidget,
+    );
+  });
+
   for (final pageCase in _standalonePageCases) {
     testWidgets('stage 3: ${pageCase.name} builds once', (tester) async {
       await pumpFirstFramePage(tester, pageCase.build(_walkthroughIds));
