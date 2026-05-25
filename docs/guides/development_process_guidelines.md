@@ -201,6 +201,7 @@ docs/features/<category>/<work>/tmp_execution_plan.md
 - 계산 로직은 UI보다 먼저 테스트로 고정합니다.
 - 기존 호출부와 호환되는 API 변경을 우선합니다.
 - DB schema 변경이 필요하면 migration, sync, generated file 영향을 함께 봅니다.
+- Supabase migration 적용이나 Edge Function 배포가 다음 구현 단계의 전제이거나 원격 동작 검증에 필요하면 Stage 5 중간에도 실행할 수 있습니다. 단, 해당 implementation batch의 로컬/자동 검증이 완료된 이후에만 허용합니다. 이때 적용/배포는 별도 최종 단계가 아니라 검증 완료된 implementation batch의 일부로 취급합니다.
 - UI는 기존 design system과 component를 우선 사용합니다.
 - 큰 리팩터는 기능 목표와 직접 관련된 경우에만 수행합니다.
 
@@ -310,9 +311,13 @@ flutter test test/ui_component_smoke_test.dart
 
 Supabase 원격 DB, Edge Function 배포 상태, 운영 권한을 확인할 때는 로컬 테스트보다 재시도 비용이 크므로 아래 규칙을 따릅니다.
 
+이 규칙은 Stage 8 최종 검증에만 한정되지 않습니다. 구현 중간에 migration apply, Edge Function deploy, 원격 schema/data 확인이 다음 작업을 진행하기 위한 전제라면 Stage 5 Staged Implementation 중에도 실행할 수 있습니다. 단, 원격 변경을 일으키는 migration apply와 Edge Function deploy는 해당 batch의 로컬/자동 검증이 완료된 이후에만 허용합니다. Simple Patch와 Bug Fix 프로세스에서 Supabase를 다룰 때도 이 규칙을 공통으로 적용합니다.
+
 #### Preflight
 
 - 원격 명령을 실행하기 전에 `supabase <subcommand> --help`로 flag 이름과 출력 형식을 확인합니다.
+- Supabase CLI 접근은 필요한 경우 허용됩니다. 원격 schema, migration 이력, Edge Function 배포 상태, RLS/grant/catalog 정보, 버그 재현이나 데이터 보정 판단에 필요한 제한된 운영 데이터를 확인할 수 있습니다.
+- 운영 데이터 확인은 목적에 필요한 최소 컬럼과 최소 row로 제한합니다. secret, token, connection string, 불필요한 개인정보는 출력하거나 문서에 남기지 않습니다.
 - `supabase db query`는 `--output` global flag와 query subcommand의 출력 flag가 충돌할 수 있으므로, 확실하지 않으면 기본 JSON 출력을 사용합니다.
 - Postgres catalog query는 원격 Postgres 버전에 맞는 view/function을 사용합니다. 불확실하면 `information_schema`처럼 안정적인 view를 먼저 사용하고, `pg_catalog` 전용 function은 단일 작은 query로 검증한 뒤 확장합니다.
 - `supabase db diff`는 migration replay 특성상 기존 migration의 임시 객체 충돌이나 비멱등 SQL 때문에 실패할 수 있습니다. 권한/RLS 점검은 `db diff`에 의존하지 말고 원격 catalog query를 기준으로 합니다.
@@ -323,11 +328,13 @@ Supabase 원격 DB, Edge Function 배포 상태, 운영 권한을 확인할 때�
 - 여러 catalog를 확인해야 하면 table grants, sequence grants, function grants, RLS state, policies 순서로 하나씩 실행합니다.
 - query 실패가 SQL 문법/컬럼명/함수 signature 문제라면 즉시 같은 계열 query를 반복하지 말고, 더 단순한 `information_schema` query로 축소해 확인합니다.
 - authentication failure, circuit breaker, temporary block 메시지가 나오면 즉시 추가 원격 query를 멈추고 잠시 대기합니다. 연속 재시도는 작업 시간을 늘리고 실제 원격 점검을 지연시킵니다.
-- 운영 DB에 변경을 적용하는 `supabase db push`는 적용할 migration 목록을 확인한 뒤 한 번만 실행합니다. 적용 후에는 같은 원격 catalog query로 결과를 검증합니다.
+- 운영 DB에 변경을 적용하는 `supabase db push`는 해당 batch의 검증 완료 후 적용할 migration 목록을 확인한 뒤 한 번만 실행합니다. 적용 후에는 같은 원격 catalog query로 결과를 검증합니다.
+- Edge Function 변경이 원격 DB schema 변경과 맞물려 있으면 검증 완료 이후 migration apply와 function deploy를 같은 작업 흐름 안에서 순서대로 진행할 수 있습니다. 예: 로컬/자동 검증 완료, schema 변경 적용, 관련 function 배포, 원격 query/function list로 확인, 필요 시 자동 테스트 재실행.
 
 #### Reporting
 
 - 원격 확인 보고서에는 실행한 query의 목적과 결과 요약을 남기되, secret이나 connection string은 기록하지 않습니다.
+- 중간에 실행한 migration apply와 Edge Function deploy도 최종 test report 또는 implementation report의 Commands run/Command results에 기록합니다.
 - 실패한 원격 명령은 "제품/DB 문제"와 "도구 사용 문제"를 분리해 기록합니다. 예를 들어 잘못된 flag, 잘못된 catalog column, 임시 role throttling은 도구 사용 문제로 분류합니다.
 - 원격 권한 변경 후에는 최소한 다음 결과를 남깁니다.
   - migration list에서 새 migration이 local/remote 모두 존재하는지

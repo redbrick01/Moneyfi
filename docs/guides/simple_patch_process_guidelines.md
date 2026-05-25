@@ -81,6 +81,8 @@ docs/features/simple_patches/<work>/
 - 큰 리팩터를 한 번에 하지 말고, mechanical move와 behavior change를 분리합니다.
 - schema, migration, generated file 변경은 정말 필요한 경우에만 포함합니다.
 - 보안/권한 패치는 적용 전후 검증 쿼리나 테스트 기준을 문서화합니다.
+- Supabase migration 적용이나 Edge Function 배포가 패치 검증에 필요하면 Stage 3 구현 중간에도 실행할 수 있습니다. 단, 해당 변경 batch에 대한 로컬/자동 검증이 완료된 이후에만 허용합니다. 적용 전에는 Stage 2의 계획과 검증 기준, 적용할 migration/배포할 함수 목록, 검증 결과를 확인합니다.
+- Supabase 원격 DB/Edge Function 상태 확인이 필요하면 `docs/guides/development_process_guidelines.md`의 Remote Supabase Verification Rules와 `docs/supabase_cli_runbook.md`를 따릅니다. 필요한 경우 Supabase CLI로 원격 schema, migration 이력, function 상태, catalog, 제한된 운영 데이터를 확인할 수 있습니다.
 - 테스트 보강 패치는 production 코드 변경 없이 실패/통과 기준을 명확히 고정합니다.
 
 완료 기준:
@@ -107,6 +109,8 @@ flutter analyze
 | 넓은 영향 범위 | `flutter test` |
 
 Flutter/Dart 명령은 `development_process_guidelines.md`의 Flutter Tooling Rules를 그대로 따릅니다.
+
+Supabase 관련 패치는 원격 적용/배포를 Stage 4까지 미루지 않아도 됩니다. 다만 구현 중간에 `supabase db push`나 `supabase functions deploy`를 실행하려면 해당 변경 batch의 검증이 먼저 완료되어야 합니다. 원격 상태 확인용 `supabase db query --linked`, `supabase migration list`, `supabase functions list`는 적용/배포 전후에 실행할 수 있으며, 결과와 잔여 리스크를 `test_report_YYYYMMDD.md`에 남깁니다.
 
 ### Stage 5. Report And Cleanup
 

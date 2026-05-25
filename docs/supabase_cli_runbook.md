@@ -324,4 +324,6 @@ supabase db push
 supabase functions deploy --use-api --jobs 1
 ```
 
-`db push`는 운영 DB 변경이므로 functions 배포보다 더 조심해서 실행합니다.
+`db push`와 `functions deploy`는 작업의 마지막 검증 단계에서만 실행해야 하는 명령이 아닙니다. schema 변경과 Edge Function 코드가 함께 맞물려 다음 검증이나 구현을 진행하려면 작업 중간에도 실행할 수 있습니다. 다만 원격 변경을 일으키므로 해당 변경 batch의 로컬/자동 검증이 완료된 이후에만 허용합니다. 적용 전에는 migration 목록, 배포할 함수 목록, 검증 결과를 확인하고, 적용 후에는 `supabase migration list`, `supabase functions list`, 필요한 `supabase db query --linked`로 결과를 확인합니다.
+
+`db push`는 운영 DB 변경이므로 functions 배포보다 더 조심해서 실행합니다. 필요한 경우 Supabase CLI로 원격 schema, migration 이력, Edge Function 상태, catalog, 제한된 운영 데이터를 확인할 수 있지만, 목적에 필요한 최소 정보만 조회하고 secret/connection string/불필요한 개인정보는 기록하지 않습니다.

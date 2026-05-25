@@ -96,6 +96,8 @@ docs/features/bug_fixes/<work>/
 - 에러 메시지는 사용자가 다음에 할 수 있는 행동을 포함해야 합니다.
 - 외부 API/config/auth 문제는 secret이나 token을 문서에 남기지 않습니다.
 - 계산 버그는 fixture와 기대값을 테스트로 고정합니다.
+- Supabase migration 적용이나 Edge Function 배포가 버그 재현/수정 확인에 필요하면 Stage 4 수정 중간에도 실행할 수 있습니다. 단, 해당 수정 batch에 대한 로컬/자동 검증이 완료된 이후에만 허용합니다. 적용 전에는 Stage 2의 수정 계획, Stage 3의 회귀 테스트/검증 기준, 적용할 migration/배포할 함수 목록, 검증 결과를 확인합니다.
+- Supabase 원격 DB/Edge Function 상태 확인이 필요하면 `docs/guides/development_process_guidelines.md`의 Remote Supabase Verification Rules와 `docs/supabase_cli_runbook.md`를 따릅니다. 필요한 경우 Supabase CLI로 원격 schema, migration 이력, function 상태, catalog, 제한된 운영 데이터를 확인할 수 있습니다.
 
 완료 기준:
 
@@ -120,6 +122,8 @@ flutter analyze
 | DB/원장/snapshot 계산 | `flutter test test/transaction_flow_test.dart` |
 | 화면 깨짐 | `flutter test test/page_walkthrough_test.dart` 또는 관련 widget test |
 | 넓은 영향 범위 | `flutter test` |
+
+Supabase 관련 버그는 원격 적용/배포를 Stage 5까지 미루지 않아도 됩니다. 다만 수정 중간에 `supabase db push`나 `supabase functions deploy`를 실행하려면 해당 수정 batch의 검증이 먼저 완료되어야 합니다. 원격 상태 확인용 `supabase db query --linked`, `supabase migration list`, `supabase functions list`는 적용/배포 전후에 실행할 수 있으며, 실제 결과를 `test_report_YYYYMMDD.md`에 남깁니다.
 
 실패가 있으면 아래처럼 분류합니다.
 
