@@ -38,6 +38,8 @@ docs/features/bug_fixes/<work>/
 
 ## Required Process
 
+이 순서는 필수입니다. 구현이나 파일 수정은 Stage 1의 triage와 Stage 2의 `plan.md` 작성, 그리고 가능한 경우 Stage 3의 회귀 테스트/검증 기준 고정 이후에 진행합니다. `test_report_YYYYMMDD.md`는 테스트 실행 후 실제 결과를 기록하는 문서이며, 패치를 먼저 끝낸 뒤 계획서와 검증 계획을 사후 작성하는 방식은 허용하지 않습니다.
+
 ### Stage 1. Triage And Reproduction
 
 목표: 문제를 정확히 식별하고 재현 가능성을 확인합니다.

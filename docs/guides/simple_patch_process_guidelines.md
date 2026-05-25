@@ -38,6 +38,8 @@ docs/features/simple_patches/<work>/
 
 ## Required Process
 
+이 순서는 필수입니다. 구현이나 파일 수정은 Stage 1의 scope check와 Stage 2의 `plan.md` 작성 이후에 진행합니다. `verification_test_plan.md`는 실행할 검증 기준을 구현 전에 고정하는 문서이고, `test_report_YYYYMMDD.md`는 테스트 실행 후 실제 결과를 기록하는 문서입니다. 패치를 먼저 끝낸 뒤 계획서와 검증 계획을 사후 작성하는 방식은 허용하지 않습니다.
+
 ### Stage 1. Scope Check
 
 목표: 변경이 단순 패치 범위에 맞는지 확인합니다.

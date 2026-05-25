@@ -72,6 +72,8 @@
 
 ## Required Process
 
+이 순서는 필수입니다. 구현이나 파일 수정은 Discovery, Feature Plan, 필요한 Feasibility Feedback/Temporary Execution Plan을 거친 뒤 진행합니다. 검증 계획은 테스트 실행 전에 작성하고, Test Report는 테스트 실행 후 실제 결과를 기록합니다. 기능을 먼저 구현한 뒤 계획서, 검증 계획, 테스트 보고서를 사후 문서화하는 방식은 허용하지 않습니다.
+
 ### Stage 1. Discovery
 
 목표: 현재 코드와 문서가 말하는 제품/기술 맥락을 파악합니다.
