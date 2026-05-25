@@ -9,7 +9,6 @@ type HoldingRow = {
   symbol: string;
   currency_code: string;
   exchange_code: string;
-  hidden: boolean;
   deleted_at: string | null;
   current_price: number | null;
 };
@@ -344,7 +343,7 @@ async function fetchCurrentPrice(
   supabase: SupabaseClient<any>,
   row: HoldingRow,
 ) {
-  if (!row.symbol.trim() || row.hidden || isCashLikeHolding(row)) {
+  if (!row.symbol.trim() || isCashLikeHolding(row)) {
     return null;
   }
 
@@ -373,7 +372,6 @@ function normalizeHoldingRow(row: Record<string, unknown>): HoldingRow {
     symbol: String(row.symbol ?? ""),
     currency_code: String(row.currency_code ?? ""),
     exchange_code: String(row.exchange_code ?? ""),
-    hidden: Boolean(row.hidden),
     deleted_at: row.deleted_at == null ? null : String(row.deleted_at),
     current_price: parseNumber(row.current_price),
   };
@@ -402,7 +400,7 @@ Deno.serve(async (req) => {
     let query = supabase
       .from("holdings")
       .select(
-        "id, user_id, symbol, currency_code, exchange_code, hidden, deleted_at, current_price, assets!inner(asset_type)",
+        "id, user_id, symbol, currency_code, exchange_code, deleted_at, current_price, assets!inner(asset_type)",
       )
       .is("deleted_at", null);
 

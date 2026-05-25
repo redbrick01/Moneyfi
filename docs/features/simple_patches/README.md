@@ -12,4 +12,5 @@
 | Input Validation Hardening | [Plan](input_validation_hardening/plan.md), [Verification](input_validation_hardening/verification_test_plan.md), [Test Report](input_validation_hardening/test_report_20260524.md) |
 | Ledger Numeric Regression | [Plan](ledger_numeric_regression/plan.md), [Verification](ledger_numeric_regression/verification_test_plan.md), [Test Report](ledger_numeric_regression/test_report_20260524.md) |
 | Supabase RLS Hardening | [Plan](supabase_rls_hardening/plan.md), [Verification](supabase_rls_hardening/verification_test_plan.md), [Test Report](supabase_rls_hardening/test_report_20260524.md) |
+| Supabase Frontend-Only Hidden State | [Plan](supabase_frontend_only_hidden/plan.md), [Verification](supabase_frontend_only_hidden/verification_test_plan.md), [Test Report](supabase_frontend_only_hidden/test_report_20260525.md) |
 | Sync Conflict Policy | [Plan](sync_conflict_policy/plan.md), [Verification](sync_conflict_policy/verification_test_plan.md), [Test Report](sync_conflict_policy/test_report_20260524.md) |

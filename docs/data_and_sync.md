@@ -154,13 +154,13 @@ sequenceDiagram
 
 #### 1. Snapshot Scope
 
-스냅샷 생성 대상은 사용자의 현재 표시 대상 자산입니다.
+로컬 스냅샷 생성 대상은 사용자의 현재 표시 대상 자산입니다. Supabase 원격 스키마와 Edge Function은 숨김 상태를 저장하거나 필터링하지 않으며, 숨김 적용은 프론트엔드 로컬 DB에서만 수행합니다.
 
 | row | 포함 조건 | 제외 조건 |
 | --- | --- | --- |
-| 자산 | `deleted_at is null`, `hidden = false` | 숨김 자산, 삭제 자산 |
-| 보유 종목 | 자산이 포함 대상이고 `hidden = false`, `quantity > 0` | 숨김 종목, 수량 0 종목 |
-| 현금 계좌 | 자산이 포함 대상이고 `hidden = false` | 숨김 현금 계좌 |
+| 자산 | 로컬 `deleted_at is null`, 로컬 `hidden = false` | 숨김 자산, 삭제 자산 |
+| 보유 종목 | 자산이 포함 대상이고 로컬 `hidden = false`, `quantity > 0` | 숨김 종목, 수량 0 종목 |
+| 현금 계좌 | 자산이 포함 대상이고 로컬 `hidden = false` | 숨김 현금 계좌 |
 
 자식 row가 있는 자산에서 모든 자식 row가 제외되면 해당 자산의 평가금액과 매입금액은 `0`으로 둡니다. 이 경우 `asset.value`로 fallback하지 않습니다. 자식 row가 전혀 없는 자산만 `asset.value`를 fallback 값으로 사용합니다.
 
@@ -243,7 +243,7 @@ snapshot.profit_amount == snapshot.total_valuation_amount - snapshot.total_purch
 - 총자산은 표시 대상 자산의 평가금액 합계입니다.
 - 평가손익은 `총 평가금액 - 총 매입금액`입니다.
 - 현금은 총자산에 포함하지만 평가손익에는 영향을 주지 않습니다.
-- 숨김 자산/숨김 종목/숨김 현금 계좌는 표시 기준 합계에서 제외합니다.
+- 숨김 자산/숨김 종목/숨김 현금 계좌는 프론트엔드 로컬 표시 기준 합계에서 제외합니다.
 - 기간 비교 수익은 평가손익이 아니라 snapshot 간 총자산 변화입니다.
 
 관련 보정 내역은 [Cash Snapshot Profit Fix Report](cash_snapshot_profit_fix_report.md)에 기록합니다.

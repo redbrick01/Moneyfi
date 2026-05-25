@@ -1064,6 +1064,80 @@ void main() {
     },
   );
 
+  test('sync payload omits frontend-only hidden state', () async {
+    final assetId = await createAsset('주식');
+    final holdingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '테스트',
+      symbol: 'TST',
+      quantity: 1,
+      averagePrice: 1000,
+      currentPrice: 1000,
+      note: '',
+    );
+    final cashAssetId = await createAsset('현금');
+    final cashHoldingId = await db.createCashAccount(
+      assetId: cashAssetId,
+      currencyCode: 'KRW',
+      name: '생활비',
+      note: '',
+      balance: 1000,
+    );
+
+    var payload = await db.buildDirtySyncPayload();
+    final assetPayload = (payload['assets'] as List).whereType<Map>();
+    final holdingPayload = (payload['holdings'] as List).whereType<Map>();
+    final cashAccountPayload = (payload['cash_accounts'] as List)
+        .whereType<Map>();
+
+    expect(assetPayload, everyElement(isNot(containsPair('hidden', anything))));
+    expect(
+      holdingPayload,
+      everyElement(isNot(containsPair('hidden', anything))),
+    );
+    expect(
+      cashAccountPayload,
+      everyElement(isNot(containsPair('hidden', anything))),
+    );
+
+    final assetClientId =
+        (await (db.select(db.assets)..where((row) => row.id.equals(assetId)))
+                .getSingle())
+            .clientId!;
+    final holdingClientId =
+        (await (db.select(
+                  db.holdings,
+                )..where((row) => row.id.equals(holdingId)))
+                .getSingle())
+            .clientId!;
+    final cashClientId =
+        (await (db.select(db.cashAccounts)
+                  ..where((row) => row.id.equals(cashHoldingId.abs())))
+                .getSingle())
+            .clientId!;
+
+    await db.markDirtySyncPayloadAsSynced(payload, null);
+    await db.updateAssetHidden(assetId, true);
+    await db.updateHoldingHidden(holdingId, true);
+    await db.updateHoldingHidden(cashHoldingId, true);
+
+    final cleanPayload = await db.buildDirtySyncPayload();
+    expect(cleanPayload['assets'], isEmpty);
+    expect(cleanPayload['holdings'], isEmpty);
+    expect(cleanPayload['cash_accounts'], isEmpty);
+
+    await db.replaceLocalSyncData(Map<String, dynamic>.from(payload));
+
+    final hiddenAsset = await db.fetchAssetByClientId(assetClientId);
+    expect(hiddenAsset?.isHidden, isTrue);
+    final hiddenHolding = await db.fetchHoldingByClientId(holdingClientId);
+    expect(hiddenHolding?.isHidden, isTrue);
+    final hiddenCashHolding = await db.fetchHoldingByClientId(cashClientId);
+    expect(hiddenCashHolding?.isHidden, isTrue);
+  });
+
   test(
     'ledger investment edit survives sync restore remapped local ids',
     () async {

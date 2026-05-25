@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
       supabase
         .from("assets")
         .select(
-          "id, client_id, last_modified_at, asset_type, title, alias, hidden, currency_code, value, change, icon_code_point, quantity_label, quantity_value, average_label, average_value, note, sort_order",
+          "id, client_id, last_modified_at, asset_type, title, alias, currency_code, value, change, icon_code_point, quantity_label, quantity_value, average_label, average_value, note, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
       supabase
         .from("holdings")
         .select(
-          "id, client_id, last_modified_at, asset_id, hidden, currency_code, market_updated_at, exchange_code, name, symbol, quantity, average_price, current_price, note, sort_order",
+          "id, client_id, last_modified_at, asset_id, currency_code, market_updated_at, exchange_code, name, symbol, quantity, average_price, current_price, note, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
       supabase
         .from("cash_accounts")
         .select(
-          "id, client_id, last_modified_at, asset_id, hidden, currency_code, name, base_balance, balance, note, sort_order",
+          "id, client_id, last_modified_at, asset_id, currency_code, name, base_balance, balance, note, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -199,7 +199,6 @@ Deno.serve(async (req) => {
       asset_type: String(row.asset_type ?? "주식"),
       title: String(row.title ?? ""),
       alias: String(row.alias ?? ""),
-      hidden: Boolean(row.hidden),
       currency_code: String(row.currency_code ?? "KRW"),
       value: String(row.value ?? ""),
       change: String(row.change ?? ""),
@@ -228,7 +227,6 @@ Deno.serve(async (req) => {
         : String(row.last_modified_at),
       asset_client_id:
         assetClientByServerId.get(parseNumber(row.asset_id, -1)) ?? null,
-      hidden: Boolean(row.hidden),
       currency_code: String(row.currency_code ?? "KRW"),
       market_updated_at: row.market_updated_at == null
         ? null
@@ -259,7 +257,6 @@ Deno.serve(async (req) => {
         : String(row.last_modified_at),
       asset_client_id:
         assetClientByServerId.get(parseNumber(row.asset_id, -1)) ?? null,
-      hidden: Boolean(row.hidden),
       currency_code: String(row.currency_code ?? "KRW"),
       name: String(row.name ?? ""),
       base_balance: parseNumber(row.base_balance),

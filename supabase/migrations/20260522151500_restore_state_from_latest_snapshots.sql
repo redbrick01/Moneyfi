@@ -142,7 +142,6 @@ insert into public.assets (
   asset_type,
   title,
   alias,
-  hidden,
   currency_code,
   value,
   change,
@@ -169,7 +168,6 @@ select
   coalesce(a.asset_type, '주식'),
   ra.title,
   coalesce(a.alias, ''),
-  false,
   coalesce(a.currency_code, 'KRW'),
   case
     when ra.valuation_krw < 0
@@ -201,7 +199,6 @@ left join public.assets a
   on a.id = ra.asset_id
 on conflict (id) do update set
   title = excluded.title,
-  hidden = false,
   value = excluded.value,
   change = excluded.change,
   sort_order = excluded.sort_order,
@@ -225,7 +222,6 @@ where a.user_id in (select user_id from latest_restore_snapshots)
 insert into public.holdings (
   id,
   asset_id,
-  hidden,
   currency_code,
   market_updated_at,
   exchange_code,
@@ -245,7 +241,6 @@ insert into public.holdings (
 select
   rh.holding_id,
   rh.asset_id,
-  false,
   rh.currency_code,
   null,
   coalesce(h.exchange_code, ''),
@@ -266,7 +261,6 @@ left join public.holdings h
   on h.id = rh.holding_id
 on conflict (id) do update set
   asset_id = excluded.asset_id,
-  hidden = false,
   currency_code = excluded.currency_code,
   name = excluded.name,
   symbol = excluded.symbol,
@@ -289,7 +283,6 @@ where h.user_id in (select user_id from latest_restore_snapshots)
 insert into public.cash_accounts (
   id,
   asset_id,
-  hidden,
   currency_code,
   name,
   base_balance,
@@ -305,7 +298,6 @@ insert into public.cash_accounts (
 select
   rc.cash_account_id,
   rc.asset_id,
-  false,
   rc.currency_code,
   rc.cash_account_name,
   0,
@@ -322,7 +314,6 @@ left join public.cash_accounts ca
   on ca.id = rc.cash_account_id
 on conflict (id) do update set
   asset_id = excluded.asset_id,
-  hidden = false,
   currency_code = excluded.currency_code,
   name = excluded.name,
   base_balance = 0,

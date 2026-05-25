@@ -2534,8 +2534,6 @@ class AppDatabase extends _$AppDatabase {
     await (update(assets)..where((table) => table.id.equals(assetId))).write(
       AssetsCompanion(
         hidden: Value(isHidden),
-        dirty: const Value(true),
-        lastModifiedAt: Value(_syncTimestamp()),
       ),
     );
     await refreshTodaySnapshot();
@@ -3157,8 +3155,6 @@ class AppDatabase extends _$AppDatabase {
       )..where((table) => table.id.equals(holdingId.abs()))).write(
         CashAccountsCompanion(
           hidden: Value(isHidden),
-          dirty: const Value(true),
-          lastModifiedAt: Value(_syncTimestamp()),
         ),
       );
       await refreshTodaySnapshot();
@@ -3169,8 +3165,6 @@ class AppDatabase extends _$AppDatabase {
     )..where((table) => table.id.equals(holdingId))).write(
       HoldingsCompanion(
         hidden: Value(isHidden),
-        dirty: const Value(true),
-        lastModifiedAt: Value(_syncTimestamp()),
       ),
     );
     await refreshTodaySnapshot();
@@ -6224,7 +6218,6 @@ class AppDatabase extends _$AppDatabase {
             'asset_type': row.assetType,
             'title': row.title,
             'alias': row.alias,
-            'hidden': row.hidden,
             'currency_code': row.currencyCode,
             'value': row.value,
             'change': row.change,
@@ -6251,7 +6244,6 @@ class AppDatabase extends _$AppDatabase {
             'last_modified_at': row.lastModifiedAt ?? _syncTimestamp(),
             'asset_client_id': assetClientId,
             'deleted_at': row.deletedAt,
-            'hidden': row.hidden,
             'currency_code': row.currencyCode,
             'market_updated_at': row.marketUpdatedAt,
             'exchange_code': row.exchangeCode,
@@ -6279,7 +6271,6 @@ class AppDatabase extends _$AppDatabase {
             'last_modified_at': row.lastModifiedAt ?? _syncTimestamp(),
             'asset_client_id': assetClientId,
             'deleted_at': row.deletedAt,
-            'hidden': row.hidden,
             'currency_code': row.currencyCode,
             'name': row.name,
             'base_balance': row.baseBalance,
@@ -6483,6 +6474,22 @@ class AppDatabase extends _$AppDatabase {
             .map((row) => row.map((key, value) => MapEntry('$key', value)))
             .toList(growable: false);
 
+    final localAssetHiddenByClientId = {
+      for (final row in await select(assets).get())
+        if (row.clientId != null && row.clientId!.isNotEmpty)
+          row.clientId!: row.hidden,
+    };
+    final localHoldingHiddenByClientId = {
+      for (final row in await select(holdings).get())
+        if (row.clientId != null && row.clientId!.isNotEmpty)
+          row.clientId!: row.hidden,
+    };
+    final localCashAccountHiddenByClientId = {
+      for (final row in await select(cashAccounts).get())
+        if (row.clientId != null && row.clientId!.isNotEmpty)
+          row.clientId!: row.hidden,
+    };
+
     await transaction(() async {
       await delete(transactionLines).go();
       await delete(transactionEvents).go();
@@ -6502,7 +6509,7 @@ class AppDatabase extends _$AppDatabase {
             assetType: Value(_stringValue(row['asset_type'], '주식')),
             title: _stringValue(row['title'], ''),
             alias: Value(_stringValue(row['alias'], '')),
-            hidden: Value(_boolValue(row['hidden'])),
+            hidden: Value(localAssetHiddenByClientId[clientId] ?? false),
             currencyCode: Value(_stringValue(row['currency_code'], 'KRW')),
             value: _stringValue(row['value'], ''),
             change: _stringValue(row['change'], ''),
@@ -6536,7 +6543,7 @@ class AppDatabase extends _$AppDatabase {
             assetId: assetId,
             clientId: Value(clientId),
             lastModifiedAt: Value(_nullableString(row['last_modified_at'])),
-            hidden: Value(_boolValue(row['hidden'])),
+            hidden: Value(localHoldingHiddenByClientId[clientId] ?? false),
             currencyCode: Value(_stringValue(row['currency_code'], 'KRW')),
             marketUpdatedAt: Value(_nullableString(row['market_updated_at'])),
             exchangeCode: Value(_stringValue(row['exchange_code'], '')),
@@ -6603,7 +6610,7 @@ class AppDatabase extends _$AppDatabase {
             assetId: assetId,
             clientId: Value(clientId),
             lastModifiedAt: Value(_nullableString(row['last_modified_at'])),
-            hidden: Value(_boolValue(row['hidden'])),
+            hidden: Value(localCashAccountHiddenByClientId[clientId] ?? false),
             currencyCode: Value(_stringValue(row['currency_code'], 'KRW')),
             name: _stringValue(row['name'], ''),
             baseBalance: Value(_doubleValue(row['base_balance'])),
@@ -6787,17 +6794,6 @@ class AppDatabase extends _$AppDatabase {
     }
     final result = '$value'.trim();
     return result.isEmpty ? null : result;
-  }
-
-  bool _boolValue(Object? value) {
-    if (value is bool) {
-      return value;
-    }
-    if (value is num) {
-      return value != 0;
-    }
-    final normalized = '$value'.trim().toLowerCase();
-    return normalized == 'true' || normalized == '1';
   }
 
   int _intValue(Object? value, [int fallback = 0]) {

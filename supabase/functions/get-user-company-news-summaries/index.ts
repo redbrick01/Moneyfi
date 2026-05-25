@@ -67,22 +67,6 @@ function extractAssetType(row: Record<string, unknown>): string {
   return "";
 }
 
-function extractAssetHidden(row: Record<string, unknown>): boolean {
-  const assetValue = row.assets;
-  if (Array.isArray(assetValue)) {
-    return assetValue.some((item) => {
-      if (!item || typeof item !== "object") return false;
-      return (item as Record<string, unknown>).hidden === true;
-    });
-  }
-
-  if (assetValue && typeof assetValue === "object") {
-    return (assetValue as Record<string, unknown>).hidden === true;
-  }
-
-  return false;
-}
-
 function extractAssetDeleted(row: Record<string, unknown>): boolean {
   const assetValue = row.assets;
   if (Array.isArray(assetValue)) {
@@ -184,7 +168,7 @@ Deno.serve(async (req) => {
     const holdingsResponse = await supabase
       .from("holdings")
       .select(
-        "symbol, quantity, hidden, deleted_at, assets!inner(asset_type, hidden, deleted_at)",
+        "symbol, quantity, deleted_at, assets!inner(asset_type, deleted_at)",
       )
       .eq("user_id", auth.userId)
       .is("deleted_at", null)
@@ -199,11 +183,8 @@ Deno.serve(async (req) => {
     for (const row of extractSupabaseData(holdingsResponse)) {
       const record = (row ?? {}) as Record<string, unknown>;
       const assetType = extractAssetType(record);
-      const assetHidden = extractAssetHidden(record);
       const assetDeleted = extractAssetDeleted(record);
       if (
-        record.hidden === true ||
-        assetHidden === true ||
         assetDeleted === true ||
         asNumber(record.quantity) <= 0 ||
         !SUPPORTED_ASSET_TYPES.has(assetType)

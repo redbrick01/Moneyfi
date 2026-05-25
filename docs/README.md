@@ -79,6 +79,9 @@
 | [Ledger Numeric Regression Plan](features/simple_patches/ledger_numeric_regression/plan.md) | 원장/현금/환전/스냅샷 핵심 수치 계산 회귀 테스트 추가 계획 |
 | [Ledger Numeric Regression Verification Plan](features/simple_patches/ledger_numeric_regression/verification_test_plan.md) | 원장/현금/환전/스냅샷 계산 회귀 검증 절차 |
 | [Ledger Numeric Regression Test Report 2026-05-24](features/simple_patches/ledger_numeric_regression/test_report_20260524.md) | 원장/현금/환전/스냅샷 계산 회귀 테스트 추가 검증 결과 |
+| [Supabase Frontend-Only Hidden State Plan](features/simple_patches/supabase_frontend_only_hidden/plan.md) | Supabase 원격 DB와 Edge Function에서 숨김 상태 소유권 제거 계획 |
+| [Supabase Frontend-Only Hidden State Verification Plan](features/simple_patches/supabase_frontend_only_hidden/verification_test_plan.md) | 원격 숨김 필드 제거 검증 절차 |
+| [Supabase Frontend-Only Hidden State Test Report 2026-05-25](features/simple_patches/supabase_frontend_only_hidden/test_report_20260525.md) | 원격 숨김 필드 제거 검증 결과 |
 | [App Database Modularization Plan](features/simple_patches/app_database_modularization/plan.md) | `app_database.dart` 비대화 1차 분리 계획 |
 | [App Database Modularization Verification Plan](features/simple_patches/app_database_modularization/verification_test_plan.md) | DB 파일 구조 분리 검증 절차 |
 | [App Database Modularization Test Report 2026-05-24](features/simple_patches/app_database_modularization/test_report_20260524.md) | DB 파일 구조 분리 검증 결과 |

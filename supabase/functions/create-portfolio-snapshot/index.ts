@@ -7,7 +7,6 @@ type AssetRow = {
   asset_type: string;
   title: string;
   alias: string;
-  hidden: boolean;
   currency_code: string;
   value: string;
   user_id: string;
@@ -17,7 +16,6 @@ type HoldingRow = {
   id: number;
   client_id: string;
   asset_id: number;
-  hidden: boolean;
   currency_code: string;
   name: string;
   symbol: string;
@@ -32,7 +30,6 @@ type CashAccountRow = {
   id: number;
   client_id: string;
   asset_id: number;
-  hidden: boolean;
   currency_code: string;
   name: string;
   balance: number;
@@ -270,10 +267,9 @@ async function loadAssets(supabase: SupabaseClient<any>, userId: string) {
     await supabase
       .from("assets")
       .select(
-        "id, client_id, asset_type, title, alias, hidden, currency_code, value, user_id",
+        "id, client_id, asset_type, title, alias, currency_code, value, user_id",
       )
       .eq("user_id", userId)
-      .eq("hidden", false)
       .is("deleted_at", null)
       .order("sort_order", { ascending: true }),
     "loadAssets",
@@ -290,7 +286,6 @@ async function loadAssets(supabase: SupabaseClient<any>, userId: string) {
     asset_type: String(row.asset_type ?? ""),
     title: String(row.title ?? ""),
     alias: String(row.alias ?? ""),
-    hidden: Boolean(row.hidden),
     currency_code: String(row.currency_code ?? "KRW"),
     value: String(row.value ?? "0"),
     user_id: String(row.user_id ?? ""),
@@ -302,7 +297,7 @@ async function loadHoldings(supabase: SupabaseClient<any>, userId: string) {
     await supabase
       .from("holdings")
       .select(
-        "id, client_id, asset_id, hidden, currency_code, name, symbol, quantity, average_price, current_price, note, user_id",
+        "id, client_id, asset_id, currency_code, name, symbol, quantity, average_price, current_price, note, user_id",
       )
       .eq("user_id", userId)
       .is("deleted_at", null)
@@ -319,7 +314,6 @@ async function loadHoldings(supabase: SupabaseClient<any>, userId: string) {
     id: Number(row.id),
     client_id: String(row.client_id ?? ""),
     asset_id: Number(row.asset_id),
-    hidden: Boolean(row.hidden),
     currency_code: String(row.currency_code ?? "KRW"),
     name: String(row.name ?? ""),
     symbol: String(row.symbol ?? ""),
@@ -336,7 +330,7 @@ async function loadCashAccounts(supabase: SupabaseClient<any>, userId: string) {
     await supabase
       .from("cash_accounts")
       .select(
-        "id, client_id, asset_id, hidden, currency_code, name, balance, note, user_id",
+        "id, client_id, asset_id, currency_code, name, balance, note, user_id",
       )
       .eq("user_id", userId)
       .is("deleted_at", null)
@@ -353,7 +347,6 @@ async function loadCashAccounts(supabase: SupabaseClient<any>, userId: string) {
     id: Number(row.id),
     client_id: String(row.client_id ?? ""),
     asset_id: Number(row.asset_id),
-    hidden: Boolean(row.hidden),
     currency_code: String(row.currency_code ?? "KRW"),
     name: String(row.name ?? ""),
     balance: parseNumber(row.balance),
@@ -517,12 +510,11 @@ async function createSnapshotForUser(
     const allAssetHoldings = holdingsByAssetId.get(asset.id) ?? [];
     const allAssetCashAccounts = cashAccountsByAssetId.get(asset.id) ?? [];
     const assetHoldingSummaries = allAssetHoldings
-      .filter((holding) => !holding.hidden && holding.quantity > 0)
+      .filter((holding) => holding.quantity > 0)
       .map((holding) =>
         buildHoldingSummary(holding, asset, assetTitle, usdKrwRate)
       );
     const assetCashAccountSummaries = allAssetCashAccounts
-      .filter((account) => !account.hidden)
       .map((account) => buildCashAccountSummary(account, asset, assetTitle));
 
     let purchaseAmount = 0;
