@@ -120,64 +120,21 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
       _selectedMarketResult = null;
     });
 
-    final inferredCurrency = _inferCurrencyCode(assetType, query);
-    final inferredExchange = inferredCurrency == 'USD'
-        ? _inferExchangeCode(query)
-        : '';
-    final symbol = _normalizeSymbol(query, assetType, inferredCurrency);
-    final lookupHolding = HoldingItem(
-      assetTitle: query,
-      assetType: assetType,
-      currencyCode: inferredCurrency,
-      exchangeCode: inferredExchange,
-      name: query,
-      symbol: symbol,
-      quantity: 0,
-      averagePrice: 0,
-      currentPrice: -1,
-      note: '',
-      transactions: const [],
-    );
-
     try {
-      final snapshot = await MarketDataService.instance.fetchSnapshot(
-        lookupHolding,
-        includeFundComponents: false,
+      final apiResult = await _fetchFirstVerifiedMarketResult(
+        assetType: assetType,
+        query: query,
+        localResults: localResults,
       );
-      final currentPrice = snapshot.currentPriceValue;
-      final isVerified = currentPrice != null && currentPrice >= 0;
 
       if (!mounted || generation != _searchGeneration) return;
       setState(() {
-        if (isVerified) {
-          _MarketSearchResult? matchedLocal;
-          for (final result in localResults) {
-            if (result.symbol == symbol &&
-                result.currencyCode == inferredCurrency) {
-              matchedLocal = result;
-              break;
-            }
-          }
-          final apiResult = _MarketSearchResult(
-            name: matchedLocal?.name ?? query,
-            symbol: symbol,
-            assetType: assetType,
-            currencyCode: inferredCurrency,
-            exchangeCode: inferredExchange,
-            currentPrice: currentPrice,
-            sourceLabel: 'API',
-            aliases: matchedLocal?.aliases ?? const [],
-          );
+        if (apiResult != null) {
           _searchResults = _mergeSearchResults(apiResult, localResults);
           searchMessage = null;
         } else {
           searchMessage = localResults.isEmpty ? '연관 종목이 없습니다.' : null;
         }
-      });
-    } catch (_) {
-      if (!mounted || generation != _searchGeneration) return;
-      setState(() {
-        searchMessage = localResults.isEmpty ? '연관 종목이 없습니다.' : null;
       });
     } finally {
       if (mounted && generation == _searchGeneration) {
@@ -246,37 +203,92 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
     ].take(8).toList(growable: false);
   }
 
-  String _inferCurrencyCode(String assetType, String query) {
-    if (assetType == '코인') return 'KRW';
-    final normalized = query.trim().toUpperCase();
-    final known = _knownMarketInstruments.where(
-      (instrument) =>
-          instrument.assetType == assetType && instrument.matches(normalized),
-    );
-    if (known.isNotEmpty) return known.first.currencyCode;
-    return RegExp(r'^\d+$').hasMatch(normalized) ? 'KRW' : 'USD';
-  }
+  Future<_MarketSearchResult?> _fetchFirstVerifiedMarketResult({
+    required String assetType,
+    required String query,
+    required List<_MarketSearchResult> localResults,
+  }) async {
+    for (final candidate in _marketLookupCandidates(assetType, query)) {
+      final lookupHolding = HoldingItem(
+        assetTitle: query,
+        assetType: assetType,
+        currencyCode: candidate.currencyCode,
+        exchangeCode: candidate.exchangeCode,
+        name: query,
+        symbol: candidate.symbol,
+        quantity: 0,
+        averagePrice: 0,
+        currentPrice: -1,
+        note: '',
+        transactions: const [],
+      );
 
-  String _inferExchangeCode(String query) {
-    final normalized = query.trim().toUpperCase();
-    final known = _knownMarketInstruments.where(
-      (instrument) => instrument.matches(normalized),
-    );
-    if (known.isNotEmpty && known.first.exchangeCode.isNotEmpty) {
-      return known.first.exchangeCode;
+      final snapshot = await MarketDataService.instance.fetchSnapshot(
+        lookupHolding,
+        includeFundComponents: false,
+      );
+      final currentPrice = snapshot.currentPriceValue;
+      if (currentPrice == null || currentPrice < 0) continue;
+
+      _MarketSearchResult? matchedLocal;
+      for (final result in localResults) {
+        if (result.symbol == candidate.symbol &&
+            result.currencyCode == candidate.currencyCode) {
+          matchedLocal = result;
+          break;
+        }
+      }
+      return _MarketSearchResult(
+        name: matchedLocal?.name ?? query,
+        symbol: candidate.symbol,
+        assetType: assetType,
+        currencyCode: candidate.currencyCode,
+        exchangeCode: candidate.exchangeCode,
+        currentPrice: currentPrice,
+        sourceLabel: 'API',
+        aliases: matchedLocal?.aliases ?? const [],
+      );
     }
-    return exchangeOptions.keys.first;
+    return null;
   }
 
-  String _normalizeSymbol(String query, String assetType, String currencyCode) {
+  List<_MarketLookupCandidate> _marketLookupCandidates(
+    String assetType,
+    String query,
+  ) {
     final normalized = query.trim().toUpperCase();
+    final candidates = <_MarketLookupCandidate>[];
+    final seen = <String>{};
+
+    void add(String symbol, String currencyCode, String exchangeCode) {
+      final key = '$currencyCode:$exchangeCode:$symbol';
+      if (seen.add(key)) {
+        candidates.add(
+          _MarketLookupCandidate(
+            symbol: symbol,
+            currencyCode: currencyCode,
+            exchangeCode: exchangeCode,
+          ),
+        );
+      }
+    }
+
     final known = _knownMarketInstruments.where(
       (instrument) =>
           instrument.assetType == assetType && instrument.matches(normalized),
     );
-    if (known.isNotEmpty) return known.first.symbol;
-    if (currencyCode == 'KRW' && assetType != '코인') return query.trim();
-    return normalized;
+    for (final instrument in known) {
+      add(instrument.symbol, instrument.currencyCode, instrument.exchangeCode);
+    }
+
+    if (assetType == '코인') {
+      add(normalized, 'KRW', '');
+      return candidates;
+    }
+
+    add(normalized, 'KRW', '');
+    add(normalized, 'USD', exchangeOptions.keys.first);
+    return candidates;
   }
 
   String _numberInputText(double value) {
@@ -868,6 +880,18 @@ class _MarketSearchResult {
         : currentPrice.toStringAsFixed(2);
     return currencyCode == 'USD' ? '\$$rounded' : '₩$rounded';
   }
+}
+
+class _MarketLookupCandidate {
+  const _MarketLookupCandidate({
+    required this.symbol,
+    required this.currencyCode,
+    required this.exchangeCode,
+  });
+
+  final String symbol;
+  final String currencyCode;
+  final String exchangeCode;
 }
 
 const _knownMarketInstruments = <_MarketSearchResult>[
