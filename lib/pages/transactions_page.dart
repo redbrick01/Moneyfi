@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../components/icons/app_icon.dart';
+import '../components/rows/transaction_row.dart';
 import '../components/section_card.dart';
+import '../components/separators/app_divider.dart';
 import '../components/states/empty_state.dart';
 import '../components/states/inline_error.dart';
 import '../components/states/retry_row.dart';
@@ -11,7 +13,6 @@ import '../db/app_database.dart';
 import '../design_system/context_extensions.dart';
 import '../models/asset_item.dart';
 import '../services/sync_service.dart';
-import '../theme/moneyfy_theme.dart';
 import '../ui_scaffold/app_page_scaffold.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
@@ -36,7 +37,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
   static const String _kSlidableGroupTag = 'transactions_page_slidable_group';
   late Future<_TransactionsPageData> _pageFuture;
   late final TextEditingController _searchController;
-  _TransactionFilter _selectedFilter = _TransactionFilter.all;
+  _TransactionPeriodFilter _selectedPeriod = _TransactionPeriodFilter.all;
+  _TransactionCategoryFilter _selectedCategory = _TransactionCategoryFilter.all;
   _TransactionSortMode _sortMode = _TransactionSortMode.dateDesc;
 
   @override
@@ -129,14 +131,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   Future<void> _openCreateFlow(_TransactionsPageData data) async {
     if (data.accounts.isEmpty) return;
-    final account = await showModalBottomSheet<_TransactionAccountOption>(
+    final kind = await showModalBottomSheet<_TransactionCreateKind>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: MoneyfyPalette.transparent,
+      backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.62),
-      builder: (context) => _AccountPickerSheet(accounts: data.accounts),
+      builder: (context) =>
+          _TransactionKindPickerSheet(accounts: data.accounts),
     );
-    if (account == null || !mounted) return;
+    if (kind == null || !mounted) return;
+
+    final account = data.accounts.firstWhere(
+      (account) => kind == _TransactionCreateKind.cash
+          ? account.isCash
+          : !account.isCash,
+    );
     await _openTransactionForm(account);
   }
 
@@ -145,7 +154,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
       _searchController.clear();
     }
     setState(() {
-      _selectedFilter = _TransactionFilter.all;
+      _selectedPeriod = _TransactionPeriodFilter.all;
+      _selectedCategory = _TransactionCategoryFilter.all;
       _sortMode = _TransactionSortMode.dateDesc;
     });
   }
@@ -280,7 +290,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final query = _searchController.text.trim().toLowerCase();
     final filtered = entries
         .where((entry) {
-          if (!_selectedFilter.matches(entry)) return false;
+          if (!_selectedPeriod.matches(entry)) return false;
+          if (!_selectedCategory.matches(entry)) return false;
           if (query.isEmpty) return true;
           return entry.searchText.contains(query);
         })
@@ -327,11 +338,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
       children: [
         _TransactionQueryPanel(
           searchController: _searchController,
-          selectedFilter: _selectedFilter,
+          selectedPeriod: _selectedPeriod,
+          selectedCategory: _selectedCategory,
           sortMode: _sortMode,
-          onFilterChanged: (filter) {
+          onPeriodChanged: (period) {
             setState(() {
-              _selectedFilter = filter;
+              _selectedPeriod = period;
+            });
+          },
+          onCategoryChanged: (category) {
+            setState(() {
+              _selectedCategory = category;
             });
           },
           onSortChanged: (mode) {
@@ -370,12 +387,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       onDelete: () => _deleteTransaction(visibleEntries[index]),
                     ),
                     if (index != visibleEntries.length - 1)
-                      Divider(
-                        height: 1,
-                        indent: context.spacing.md,
-                        endIndent: context.spacing.md,
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
+                      AppDivider(inset: context.spacing.md),
                   ],
                 ],
               ),
@@ -389,16 +401,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
 class _TransactionQueryPanel extends StatelessWidget {
   const _TransactionQueryPanel({
     required this.searchController,
-    required this.selectedFilter,
+    required this.selectedPeriod,
+    required this.selectedCategory,
     required this.sortMode,
-    required this.onFilterChanged,
+    required this.onPeriodChanged,
+    required this.onCategoryChanged,
     required this.onSortChanged,
   });
 
   final TextEditingController searchController;
-  final _TransactionFilter selectedFilter;
+  final _TransactionPeriodFilter selectedPeriod;
+  final _TransactionCategoryFilter selectedCategory;
   final _TransactionSortMode sortMode;
-  final ValueChanged<_TransactionFilter> onFilterChanged;
+  final ValueChanged<_TransactionPeriodFilter> onPeriodChanged;
+  final ValueChanged<_TransactionCategoryFilter> onCategoryChanged;
   final ValueChanged<_TransactionSortMode> onSortChanged;
 
   @override
@@ -440,24 +456,21 @@ class _TransactionQueryPanel extends StatelessWidget {
             ),
           ),
           SizedBox(height: context.spacing.sm),
+          _FilterStrip<_TransactionPeriodFilter>(
+            values: _TransactionPeriodFilter.values,
+            selected: selectedPeriod,
+            labelBuilder: (period) => period.label,
+            onChanged: onPeriodChanged,
+          ),
+          SizedBox(height: context.spacing.xs),
           Row(
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      for (final filter in _TransactionFilter.values) ...[
-                        ChoiceChip(
-                          label: Text(filter.label),
-                          selected: selectedFilter == filter,
-                          onSelected: (_) => onFilterChanged(filter),
-                        ),
-                        if (filter != _TransactionFilter.values.last)
-                          SizedBox(width: context.spacing.xs),
-                      ],
-                    ],
-                  ),
+                child: _FilterStrip<_TransactionCategoryFilter>(
+                  values: _TransactionCategoryFilter.values,
+                  selected: selectedCategory,
+                  labelBuilder: (category) => category.label,
+                  onChanged: onCategoryChanged,
                 ),
               ),
               SizedBox(width: context.spacing.sm),
@@ -507,6 +520,39 @@ class _TransactionQueryPanel extends StatelessWidget {
   }
 }
 
+class _FilterStrip<T> extends StatelessWidget {
+  const _FilterStrip({
+    required this.values,
+    required this.selected,
+    required this.labelBuilder,
+    required this.onChanged,
+  });
+
+  final List<T> values;
+  final T selected;
+  final String Function(T value) labelBuilder;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final value in values) ...[
+            ChoiceChip(
+              label: Text(labelBuilder(value)),
+              selected: selected == value,
+              onSelected: (_) => onChanged(value),
+            ),
+            if (value != values.last) SizedBox(width: context.spacing.xs),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _TransactionEntryRow extends StatelessWidget {
   const _TransactionEntryRow({
     required this.entry,
@@ -546,91 +592,92 @@ class _TransactionEntryRow extends StatelessWidget {
         icon: Icons.delete_outline_rounded,
         iconColor: Theme.of(context).colorScheme.error,
       ),
-      child: _CompactTransactionRow(
+      child: TransactionRow(
         typeLabel: transaction.type,
         title: transaction.name,
         subtitle: subtitle,
         amountText: signedAmountText,
         amountColor: amountColor,
         onTap: onTap,
+        typeColor: _transactionTypeColor(context, transaction.type),
       ),
     );
   }
 }
 
-class _CompactTransactionRow extends StatelessWidget {
-  const _CompactTransactionRow({
-    required this.typeLabel,
-    required this.title,
-    required this.subtitle,
-    required this.amountText,
-    required this.amountColor,
-    required this.onTap,
-  });
+enum _TransactionCreateKind {
+  investment(
+    '일반 거래',
+    '보유 종목의 매수, 매도, 배당, 이자를 기록합니다.',
+    Icons.trending_up_rounded,
+  ),
+  cash(
+    '현금 계좌 거래',
+    '입금, 출금, 이체, 환전을 기록합니다.',
+    Icons.account_balance_wallet_rounded,
+  );
 
-  final String typeLabel;
+  const _TransactionCreateKind(this.title, this.subtitle, this.icon);
+
   final String title;
   final String subtitle;
-  final String amountText;
-  final Color amountColor;
-  final VoidCallback onTap;
+  final IconData icon;
+}
+
+class _TransactionKindPickerSheet extends StatelessWidget {
+  const _TransactionKindPickerSheet({required this.accounts});
+
+  final List<_TransactionAccountOption> accounts;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final typeColor = _transactionTypeColor(context, typeLabel);
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    final hasInvestmentAccount = accounts.any((account) => !account.isCash);
+    final hasCashAccount = accounts.any((account) => account.isCash);
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(context.radius.rMd),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 58),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacing.md,
-            vertical: context.spacing.sm,
+    return FractionallySizedBox(
+      heightFactor: 0.42,
+      alignment: Alignment.bottomCenter,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(context.radius.rLg),
+            ),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                constraints: const BoxConstraints(minWidth: 44),
-                height: 28,
-                padding: EdgeInsets.symmetric(horizontal: context.spacing.xs),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: typeColor,
-                  borderRadius: BorderRadius.circular(context.radius.rPill),
-                  border: Border.all(color: colorScheme.outlineVariant),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  context.spacing.md,
+                  context.spacing.sm,
+                  context.spacing.md,
+                  context.spacing.sm,
                 ),
-                child: Text(
-                  typeLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.typography.caption.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              SizedBox(width: context.spacing.md),
-              Expanded(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.typography.cardTitle.copyWith(
-                        fontWeight: FontWeight.w700,
+                    Center(
+                      child: Container(
+                        width: context.spacing.xl + context.spacing.xs,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: colorScheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(
+                            context.radius.rPill,
+                          ),
+                        ),
                       ),
                     ),
+                    SizedBox(height: context.spacing.md),
+                    Text('거래 유형 선택', style: context.typography.sectionTitle),
                     SizedBox(height: context.spacing.xs / 2),
                     Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      '세부 계좌와 보유 종목은 다음 화면에서 선택할 수 있어요.',
                       style: context.typography.meta.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -638,105 +685,24 @@ class _CompactTransactionRow extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(width: context.spacing.sm),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 118),
-                child: Text(
-                  amountText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  softWrap: false,
-                  style: context.typography.cardTitle.copyWith(
-                    color: amountColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AccountPickerSheet extends StatelessWidget {
-  const _AccountPickerSheet({required this.accounts});
-
-  final List<_TransactionAccountOption> accounts;
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
-    final investmentAccounts = accounts
-        .where((account) => !account.isCash)
-        .toList(growable: false);
-    final cashAccounts = accounts
-        .where((account) => account.isCash)
-        .toList(growable: false);
-
-    return FractionallySizedBox(
-      heightFactor: 0.70,
-      alignment: Alignment.bottomCenter,
-      child: SafeArea(
-        top: false,
-        child: Container(
-          decoration: const BoxDecoration(
-            color: MoneyfyPalette.background,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 42,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: MoneyfyPalette.border,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    Text(
-                      '거래 계좌 선택',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '거래를 등록할 보유 항목을 선택하세요.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: MoneyfyPalette.tertiaryText,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               Expanded(
                 child: ListView(
-                  padding: EdgeInsets.fromLTRB(20, 2, 20, 24 + bottomInset),
+                  padding: EdgeInsets.fromLTRB(
+                    context.spacing.md,
+                    context.spacing.xs / 2,
+                    context.spacing.md,
+                    context.spacing.md + bottomInset,
+                  ),
                   children: [
-                    if (investmentAccounts.isNotEmpty) ...[
-                      _AccountPickerSection(
-                        title: '투자 보유',
-                        accounts: investmentAccounts,
-                      ),
-                      if (cashAccounts.isNotEmpty) const SizedBox(height: 18),
-                    ],
-                    if (cashAccounts.isNotEmpty)
-                      _AccountPickerSection(
-                        title: '현금 계좌',
-                        accounts: cashAccounts,
-                      ),
+                    _TransactionKindTile(
+                      kind: _TransactionCreateKind.investment,
+                      enabled: hasInvestmentAccount,
+                    ),
+                    SizedBox(height: context.spacing.sm),
+                    _TransactionKindTile(
+                      kind: _TransactionCreateKind.cash,
+                      enabled: hasCashAccount,
+                    ),
                   ],
                 ),
               ),
@@ -748,86 +714,75 @@ class _AccountPickerSheet extends StatelessWidget {
   }
 }
 
-class _AccountPickerSection extends StatelessWidget {
-  const _AccountPickerSection({required this.title, required this.accounts});
+class _TransactionKindTile extends StatelessWidget {
+  const _TransactionKindTile({required this.kind, required this.enabled});
 
-  final String title;
-  final List<_TransactionAccountOption> accounts;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: MoneyfyPalette.secondaryText,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        for (var index = 0; index < accounts.length; index++) ...[
-          _AccountOptionTile(account: accounts[index]),
-          if (index != accounts.length - 1)
-            Divider(
-              height: 1,
-              indent: 2,
-              color: Theme.of(
-                context,
-              ).colorScheme.outlineVariant.withValues(alpha: 0.52),
-            ),
-        ],
-      ],
-    );
-  }
-}
-
-class _AccountOptionTile extends StatelessWidget {
-  const _AccountOptionTile({required this.account});
-
-  final _TransactionAccountOption account;
+  final _TransactionCreateKind kind;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final subtitle = _cleanAccountSubtitle(account.subtitle);
+    final colorScheme = Theme.of(context).colorScheme;
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () => Navigator.of(context).pop(account),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 13),
+      borderRadius: BorderRadius.circular(context.radius.rLg),
+      onTap: enabled ? () => Navigator.of(context).pop(kind) : null,
+      child: Ink(
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.sm,
+          vertical: context.spacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: enabled
+              ? colorScheme.surfaceContainerLow
+              : colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(context.radius.rLg),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
         child: Row(
           children: [
+            Icon(
+              kind.icon,
+              size: 24,
+              color: enabled
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+            ),
+            SizedBox(width: context.spacing.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    account.title,
+                    kind.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                    style: context.typography.cardTitle.copyWith(
+                      color: enabled
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: MoneyfyPalette.tertiaryText,
-                      ),
+                  SizedBox(height: context.spacing.xs / 2),
+                  Text(
+                    enabled ? kind.subtitle : '등록 가능한 항목이 없습니다.',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.typography.meta.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            const Icon(Icons.chevron_right_rounded, size: 24),
+            SizedBox(width: context.spacing.sm),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 24,
+              color: enabled
+                  ? colorScheme.onSurfaceVariant
+                  : colorScheme.outline,
+            ),
           ],
         ),
       ),
@@ -1024,14 +979,6 @@ List<TransactionItem> groupTransactionEventsForTesting(
   ).map((entry) => entry.transaction).toList(growable: false);
 }
 
-String? _cleanAccountSubtitle(String value) {
-  final normalized = value.trim();
-  if (normalized.isEmpty || normalized == '+') {
-    return null;
-  }
-  return normalized;
-}
-
 int _compareTransactionEntries(_TransactionEntry a, _TransactionEntry b) {
   final byDate = _parseDate(
     b.transaction.date,
@@ -1067,25 +1014,56 @@ List<_TransactionEntry> _sortEntries(
   }
 }
 
-enum _TransactionFilter {
-  all('전체'),
-  investment('투자'),
-  cash('현금'),
-  income('입금·수익'),
-  expense('출금·매수');
+enum _TransactionPeriodFilter {
+  all('전체', null),
+  week('1주', Duration(days: 7)),
+  month('1개월', Duration(days: 31)),
+  threeMonths('3개월', Duration(days: 93)),
+  sixMonths('6개월', Duration(days: 186)),
+  year('1년', Duration(days: 366));
 
-  const _TransactionFilter(this.label);
+  const _TransactionPeriodFilter(this.label, this.duration);
 
   final String label;
+  final Duration? duration;
 
   bool matches(_TransactionEntry entry) {
-    return switch (this) {
-      _TransactionFilter.all => true,
-      _TransactionFilter.investment => !entry.account.isCash,
-      _TransactionFilter.cash => entry.account.isCash,
-      _TransactionFilter.income => _isIncomeTransaction(entry.transaction),
-      _TransactionFilter.expense => _isExpenseTransaction(entry.transaction),
-    };
+    final duration = this.duration;
+    if (duration == null) return true;
+    final transactionDate = _parseDate(entry.transaction.date);
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final fromDate = todayDate.subtract(duration);
+    return !transactionDate.isBefore(fromDate) &&
+        !transactionDate.isAfter(todayDate);
+  }
+}
+
+enum _TransactionCategoryFilter {
+  all('전체', {}),
+  buy('매수', {'buy', '매수'}),
+  sell('매도', {'sell', '매도'}),
+  dividend('배당', {'dividend', '배당'}),
+  interest('이자', {'interest', '이자'}),
+  deposit('입금', {'deposit', 'opening_cash', '입금'}),
+  withdrawal('출금', {'withdrawal', '출금'}),
+  transfer('이체', {'transfer_out', 'transfer_in', '이체'}),
+  exchange('환전', {'fx_out', 'fx_in', '환전'}),
+  fee('수수료', {'fee', '수수료'}),
+  tax('세금', {'tax', '세금'}),
+  adjustment('조정', {'adjustment', 'opening_quantity', '초기', '조정'});
+
+  const _TransactionCategoryFilter(this.label, this.actions);
+
+  final String label;
+  final Set<String> actions;
+
+  bool matches(_TransactionEntry entry) {
+    if (this == _TransactionCategoryFilter.all) return true;
+    final transaction = entry.transaction;
+    final action = transaction.ledgerAction ?? transaction.type.trim();
+    return actions.contains(action) ||
+        actions.contains(transaction.type.trim());
   }
 }
 
@@ -1146,38 +1124,6 @@ Color _externalCashAmountColor(
     TransactionFlowCategory.externalDeposit => colorScheme.primary,
     TransactionFlowCategory.externalWithdrawal => colorScheme.error,
     _ => colorScheme.onSurface,
-  };
-}
-
-bool _isIncomeTransaction(TransactionItem transaction) {
-  return switch (transaction.ledgerAction ?? transaction.type.trim()) {
-    'sell' ||
-    'dividend' ||
-    'interest' ||
-    'deposit' ||
-    'transfer_in' ||
-    'fx_in' ||
-    '매도' ||
-    '배당' ||
-    '이자' ||
-    '입금' => true,
-    _ => false,
-  };
-}
-
-bool _isExpenseTransaction(TransactionItem transaction) {
-  return switch (transaction.ledgerAction ?? transaction.type.trim()) {
-    'buy' ||
-    'withdrawal' ||
-    'transfer_out' ||
-    'fx_out' ||
-    'fee' ||
-    'tax' ||
-    '매수' ||
-    '출금' ||
-    '이체' ||
-    '환전' => true,
-    _ => false,
   };
 }
 

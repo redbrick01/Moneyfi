@@ -30,7 +30,8 @@ class TransactionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final badgeColor = typeColor ?? colorScheme.surfaceContainerHighest;
-    final leadingSlotWidth = context.spacing.xxxl + context.spacing.md;
+    final leadingSlotWidth = context.spacing.xxxl;
+    final badgeWidth = context.spacing.xl;
     final trailingMinWidth = context.spacing.xxxl + context.spacing.xxxl;
 
     return InkWell(
@@ -56,29 +57,30 @@ class TransactionRow extends StatelessWidget {
             children: [
               SizedBox(
                 width: leadingSlotWidth,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    height: 28,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: context.spacing.sm - 2,
-                      vertical: context.spacing.xs - 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: badgeColor,
-                      borderRadius: BorderRadius.circular(context.radius.rPill),
-                      border: Border.all(color: colorScheme.outlineVariant),
-                    ),
-                    child: Text(
-                      typeLabel,
-                      style: context.typography.meta.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                child: Container(
+                  width: badgeWidth,
+                  height: 28,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.xs / 2,
+                    vertical: context.spacing.xs - 2,
+                  ),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: badgeColor,
+                    borderRadius: BorderRadius.circular(context.radius.rPill),
+                    border: Border.all(color: colorScheme.outlineVariant),
+                  ),
+                  child: Text(
+                    typeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.typography.meta.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: context.spacing.sm),
+              SizedBox(width: context.spacing.xs),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
