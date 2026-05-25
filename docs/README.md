@@ -93,12 +93,21 @@
 | [External API Fallbacks Plan](features/bug_fixes/external_api_fallbacks/plan.md) | KIS/OpenAI/Finnhub/Coinone 실패 시 캐시/샘플/명확한 오류 UI 보강 계획 |
 | [External API Fallbacks Verification Plan](features/bug_fixes/external_api_fallbacks/verification_test_plan.md) | 외부 API 실패 fallback 검증 절차 |
 | [External API Fallbacks Test Report 2026-05-24](features/bug_fixes/external_api_fallbacks/test_report_20260524.md) | 외부 API 실패 fallback 보강 검증 결과 |
+| [Login Initial Stale Tab Data Plan](features/bug_fixes/login_initial_stale_tab_data/plan.md) | 로그인 직후 탭 화면에 이전/중간 데이터가 먼저 표시되는 문제 수정 계획 |
+| [Login Initial Stale Tab Data Verification Plan](features/bug_fixes/login_initial_stale_tab_data/verification_test_plan.md) | 로그인 직후 탭 데이터 초기화 검증 절차 |
+| [Login Initial Stale Tab Data Test Report 2026-05-25](features/bug_fixes/login_initial_stale_tab_data/test_report_20260525.md) | 로그인 직후 탭 데이터 초기화 수정 검증 결과 |
+| [Login Sync Overlay Layout Plan](features/bug_fixes/login_sync_overlay_layout/plan.md) | 로그인 데이터 가져오기 오버레이 레이아웃 수정 계획 |
+| [Login Sync Overlay Layout Verification Plan](features/bug_fixes/login_sync_overlay_layout/verification_test_plan.md) | 로그인 데이터 가져오기 오버레이 검증 절차 |
+| [Login Sync Overlay Layout Test Report 2026-05-25](features/bug_fixes/login_sync_overlay_layout/test_report_20260525.md) | 로그인 데이터 가져오기 오버레이 수정 검증 결과 |
 | [News Cache Staleness Plan](features/bug_fixes/news_cache_staleness/plan.md) | 뉴스 조회가 오래된 로컬 캐시에 고정되는 문제 수정 계획 |
 | [News Cache Staleness Verification Plan](features/bug_fixes/news_cache_staleness/verification_test_plan.md) | 뉴스 캐시 freshness 및 서버 운영 검증 절차 |
 | [News Cache Staleness Test Report 2026-05-24](features/bug_fixes/news_cache_staleness/test_report_20260524.md) | 뉴스 캐시 freshness 수정 검증 결과 |
 | [Login Sync Failure UX Plan](features/bug_fixes/login_sync_failure_ux/plan.md) | 로그인 후 코어/뉴스/스냅샷 동기화 실패 안내 개선 계획 |
 | [Login Sync Failure UX Verification Plan](features/bug_fixes/login_sync_failure_ux/verification_test_plan.md) | 로그인 동기화 실패 UX 검증 절차 |
 | [Login Sync Failure UX Test Report 2026-05-24](features/bug_fixes/login_sync_failure_ux/test_report_20260524.md) | 로그인 동기화 실패 UX 검증 결과 |
+| [Logout Stale Tab Data Plan](features/bug_fixes/logout_stale_tab_data/plan.md) | 로그아웃 후 탭 화면에 이전 계정 데이터가 남는 문제 수정 계획 |
+| [Logout Stale Tab Data Verification Plan](features/bug_fixes/logout_stale_tab_data/verification_test_plan.md) | 로그아웃 후 탭 데이터 초기화 검증 절차 |
+| [Logout Stale Tab Data Test Report 2026-05-25](features/bug_fixes/logout_stale_tab_data/test_report_20260525.md) | 로그아웃 후 탭 데이터 초기화 수정 검증 결과 |
 | [Optional Local Config Plan](features/bug_fixes/optional_local_config/plan.md) | `assets/config.json` 누락에도 앱이 시작되도록 하는 설정 구조 개선 계획 |
 | [Optional Local Config Verification Plan](features/bug_fixes/optional_local_config/verification_test_plan.md) | 로컬 설정 파일 optional 처리 검증 절차 |
 | [Optional Local Config Test Report 2026-05-24](features/bug_fixes/optional_local_config/test_report_20260524.md) | 로컬 설정 파일 optional 처리 검증 결과 |

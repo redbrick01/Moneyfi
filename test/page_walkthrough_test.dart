@@ -20,6 +20,7 @@ import 'package:moneyfy/pages/login_page.dart';
 import 'package:moneyfy/pages/portfolio_analysis_mvp_page.dart';
 import 'package:moneyfy/pages/signup_page.dart';
 import 'package:moneyfy/pages/snapshot_detail_page.dart';
+import 'package:moneyfy/pages/app_shell_page.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -51,6 +52,108 @@ void main() {
     );
     await settlePage(tester);
   }
+
+  testWidgets('logout clears preserved tab data before manual refresh', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        home: buildDataScopedTabPageForTesting(
+          scopeVersion: 0,
+          replacementMessage: null,
+          title: '홈',
+          child: const Center(child: Text('이전 계정 자산')),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('이전 계정 자산'), findsWidgets);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        home: buildDataScopedTabPageForTesting(
+          scopeVersion: 1,
+          replacementMessage: '로그아웃 정보를 정리하고 있어요.',
+          title: '홈',
+          child: const Center(child: Text('이전 계정 자산')),
+        ),
+      ),
+    );
+
+    expect(find.text('이전 계정 자산'), findsNothing);
+    expect(find.text('로그아웃 정보를 정리하고 있어요.'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        home: buildDataScopedTabPageForTesting(
+          scopeVersion: 2,
+          replacementMessage: null,
+          title: '홈',
+          child: const Center(child: Text('새 계정 데이터 없음')),
+        ),
+      ),
+    );
+
+    expect(find.text('이전 계정 자산'), findsNothing);
+    expect(find.text('새 계정 데이터 없음'), findsOneWidget);
+  });
+
+  testWidgets('login replacement hides preserved tab data until ready', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        home: buildDataScopedTabPageForTesting(
+          scopeVersion: 0,
+          replacementMessage: null,
+          title: '홈',
+          child: const Center(child: Text('로그인 전 데이터')),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('로그인 전 데이터'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        home: buildDataScopedTabPageForTesting(
+          scopeVersion: 1,
+          replacementMessage: '로그인 정보를 불러오고 있어요.',
+          title: '홈',
+          child: const Center(child: Text('로그인 전 데이터')),
+        ),
+      ),
+    );
+
+    expect(find.text('로그인 전 데이터'), findsNothing);
+    expect(find.text('로그인 정보를 불러오고 있어요.'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        home: buildDataScopedTabPageForTesting(
+          scopeVersion: 2,
+          replacementMessage: null,
+          title: '홈',
+          child: const Center(child: Text('로그인 후 정상 데이터')),
+        ),
+      ),
+    );
+
+    expect(find.text('로그인 전 데이터'), findsNothing);
+    expect(find.text('로그인 후 정상 데이터'), findsOneWidget);
+  });
 
   testWidgets('stage 1: app shell visits every bottom tab', (tester) async {
     await tester.pumpWidget(const MoneyfyApp());
