@@ -14,3 +14,4 @@
 | Supabase RLS Hardening | [Plan](supabase_rls_hardening/plan.md), [Verification](supabase_rls_hardening/verification_test_plan.md), [Test Report](supabase_rls_hardening/test_report_20260524.md) |
 | Supabase Frontend-Only Hidden State | [Plan](supabase_frontend_only_hidden/plan.md), [Verification](supabase_frontend_only_hidden/verification_test_plan.md), [Test Report](supabase_frontend_only_hidden/test_report_20260525.md) |
 | Sync Conflict Policy | [Plan](sync_conflict_policy/plan.md), [Verification](sync_conflict_policy/verification_test_plan.md), [Test Report](sync_conflict_policy/test_report_20260524.md) |
+| Transaction Tab UI Density | [Plan](transaction_tab_ui_density/plan.md), [Verification](transaction_tab_ui_density/verification_test_plan.md), [Test Report](transaction_tab_ui_density/test_report_20260525.md) |

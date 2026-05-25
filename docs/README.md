@@ -50,6 +50,14 @@
 | 문서 | 내용 |
 | --- | --- |
 | [Investment Performance Docs](features/new_feature_development/investment_performance/README.md) | 원장 기반 투자성과 리포트 기능 계획, 검증 계획, 테스트 보고서 |
+| [Transaction Management Page Plan](features/new_feature_development/transaction_management_page/plan.md) | 전체 거래 내역 전용 탭과 거래 CRUD 화면 계획 |
+| [Transaction Management Page Verification Plan](features/new_feature_development/transaction_management_page/verification_test_plan.md) | 거래 관리 페이지 자동/수동 검증 계획 |
+| [Transaction Management Page Test Report 2026-05-25](features/new_feature_development/transaction_management_page/test_report_20260525.md) | 거래 관리 페이지 구현 검증 결과 |
+| [Transaction Management Page Implementation Report 2026-05-25](features/new_feature_development/transaction_management_page/implementation_report_20260525.md) | 거래 관리 페이지 구현 내용과 남은 위험 |
+| [Transaction Event Flow Classification Plan](features/new_feature_development/transaction_event_flow_classification/plan.md) | 외부 입금/외부 출금/내부 거래를 원장 이벤트 schema로 명시하는 계획 |
+| [Transaction Event Flow Classification Verification Plan](features/new_feature_development/transaction_event_flow_classification/verification_test_plan.md) | 거래 흐름 분류 schema와 UI 색상 검증 계획 |
+| [Transaction Event Flow Classification Test Report 2026-05-25](features/new_feature_development/transaction_event_flow_classification/test_report_20260525.md) | 거래 흐름 분류 schema 구현 검증 결과 |
+| [Transaction Event Flow Classification Implementation Report 2026-05-25](features/new_feature_development/transaction_event_flow_classification/implementation_report_20260525.md) | 거래 흐름 분류 schema 구현 내용과 배포 리스크 |
 | [Portfolio Diagnosis Plan](features/new_feature_development/portfolio_diagnosis/plan.md) | 포트폴리오 MVP 분석 화면을 진단형 UX로 재설계하는 계획 |
 | [Portfolio Diagnosis Verification Plan](features/new_feature_development/portfolio_diagnosis/verification_test_plan.md) | 포트폴리오 진단 리디자인 검증 계획 |
 | [Portfolio Diagnosis Test Report 2026-05-24](features/new_feature_development/portfolio_diagnosis/test_report_20260524.md) | 포트폴리오 진단 리디자인 첫 batch 검증 결과 |
@@ -79,6 +87,9 @@
 | [Ledger Numeric Regression Plan](features/simple_patches/ledger_numeric_regression/plan.md) | 원장/현금/환전/스냅샷 핵심 수치 계산 회귀 테스트 추가 계획 |
 | [Ledger Numeric Regression Verification Plan](features/simple_patches/ledger_numeric_regression/verification_test_plan.md) | 원장/현금/환전/스냅샷 계산 회귀 검증 절차 |
 | [Ledger Numeric Regression Test Report 2026-05-24](features/simple_patches/ledger_numeric_regression/test_report_20260524.md) | 원장/현금/환전/스냅샷 계산 회귀 테스트 추가 검증 결과 |
+| [Transaction Tab UI Density Plan](features/simple_patches/transaction_tab_ui_density/plan.md) | 거래 탭 목록과 하단 탭 밀도 개선 계획 |
+| [Transaction Tab UI Density Verification Plan](features/simple_patches/transaction_tab_ui_density/verification_test_plan.md) | 거래 탭 UI 밀도 패치 검증 절차 |
+| [Transaction Tab UI Density Test Report 2026-05-25](features/simple_patches/transaction_tab_ui_density/test_report_20260525.md) | 거래 탭 UI 밀도 패치 검증 결과 |
 | [Supabase Frontend-Only Hidden State Plan](features/simple_patches/supabase_frontend_only_hidden/plan.md) | Supabase 원격 DB와 Edge Function에서 숨김 상태 소유권 제거 계획 |
 | [Supabase Frontend-Only Hidden State Verification Plan](features/simple_patches/supabase_frontend_only_hidden/verification_test_plan.md) | 원격 숨김 필드 제거 검증 절차 |
 | [Supabase Frontend-Only Hidden State Test Report 2026-05-25](features/simple_patches/supabase_frontend_only_hidden/test_report_20260525.md) | 원격 숨김 필드 제거 검증 결과 |
