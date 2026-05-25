@@ -7,6 +7,7 @@ import '../components/section_card.dart';
 import '../components/states/inline_error.dart';
 import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
+import '../services/app_data_lifecycle_service.dart';
 import '../services/auth_service.dart';
 import '../services/company_news_summary_service.dart';
 import '../services/market_data_service.dart';
@@ -74,6 +75,8 @@ class _LoginPageState extends State<LoginPage> {
       _syncFailureStage = null;
     });
 
+    AppDataLifecycleService.beginReplacement(message: '로그인 정보를 불러오고 있어요.');
+
     try {
       await AuthService.signIn(
         email: emailValidation.value!,
@@ -104,17 +107,20 @@ class _LoginPageState extends State<LoginPage> {
       setState(() {
         _isSubmitting = false;
       });
+      AppDataLifecycleService.completeReplacement();
       await Future<void>.delayed(const Duration(milliseconds: 450));
       if (!mounted) return;
 
       AppSnackBar.showSuccess(context, '로그인됐어요.');
       Navigator.of(context).pop();
     } on AuthException catch (error) {
+      AppDataLifecycleService.completeReplacement();
       if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
       });
     } catch (_) {
+      AppDataLifecycleService.completeReplacement();
       if (!mounted) return;
       setState(() {
         _errorMessage = '로그인 중 오류가 발생했어요.';
@@ -217,6 +223,7 @@ class _LoginPageState extends State<LoginPage> {
 
   void _closeSyncOverlay() {
     if (_canContinueAfterSyncFailure) {
+      AppDataLifecycleService.completeReplacement();
       setState(() {
         _showSyncOverlay = false;
         _isSubmitting = false;
