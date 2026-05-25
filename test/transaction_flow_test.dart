@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' show Variable;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -53,6 +55,60 @@ void main() {
       containsAll(['transaction_events', 'transaction_lines']),
     );
   });
+
+  test(
+    'old transaction event tables gain flow category before index creation',
+    () async {
+      await db.close();
+      final tempDir = Directory.systemTemp.createTempSync(
+        'moneyfy_migration_test_',
+      );
+      try {
+        final file = File('${tempDir.path}/db.sqlite');
+        db = AppDatabase.forTesting(
+          NativeDatabase(
+            file,
+            setup: (sqlite) {
+              sqlite.execute('''
+              CREATE TABLE transaction_events (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                client_id TEXT,
+                dirty INTEGER NOT NULL DEFAULT 0,
+                last_modified_at TEXT,
+                deleted_at TEXT,
+                occurred_at TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT '',
+                memo TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT 'manual',
+                legacy_source_table TEXT,
+                legacy_source_id INTEGER,
+                sort_order INTEGER NOT NULL DEFAULT 0
+              )
+            ''');
+              sqlite.execute('PRAGMA user_version = 31');
+            },
+          ),
+        );
+        final columnRows = await db
+            .customSelect("PRAGMA table_info('transaction_events')")
+            .get();
+        final columnNames = columnRows.map((row) => row.read<String>('name'));
+        expect(columnNames, contains('flow_category'));
+
+        final indexRows = await db
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'transaction_events_flow_category_idx'",
+            )
+            .get();
+        expect(indexRows, hasLength(1));
+      } finally {
+        await db.close();
+        db = AppDatabase.forTesting(NativeDatabase.memory());
+        tempDir.deleteSync(recursive: true);
+      }
+    },
+  );
 
   test('cash withdrawal normalizes signed input and blocks overdraft', () async {
     final assetId = await createAsset('현금');

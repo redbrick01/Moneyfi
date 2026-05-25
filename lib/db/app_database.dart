@@ -405,9 +405,7 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS transaction_events_kind_idx ON transaction_events(kind)',
     );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS transaction_events_flow_category_idx ON transaction_events(flow_category)',
-    );
+    await _ensureTransactionEventFlowCategoryColumn();
     await customStatement(
       'CREATE INDEX IF NOT EXISTS transaction_lines_event_id_idx ON transaction_lines(event_id)',
     );
@@ -418,7 +416,6 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS transaction_lines_cash_account_id_idx ON transaction_lines(cash_account_id)',
     );
     await _ensureLedgerLineLegacySourceColumns();
-    await _ensureTransactionEventFlowCategoryColumn();
   }
 
   Future<void> _ensureTransactionEventFlowCategoryColumn() async {

@@ -22,7 +22,7 @@ Future<void> main() async {
     runApp(const MoneyfyApp());
   } catch (error, stackTrace) {
     debugPrint('[main] startup failed: $error');
-    debugPrintStack(stackTrace: stackTrace);
+    debugPrint(stackTrace.toString());
     runApp(StartupErrorApp(error: error.toString()));
   }
 }
