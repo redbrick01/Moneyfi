@@ -122,6 +122,9 @@
 | [Optional Local Config Plan](features/bug_fixes/optional_local_config/plan.md) | `assets/config.json` 누락에도 앱이 시작되도록 하는 설정 구조 개선 계획 |
 | [Optional Local Config Verification Plan](features/bug_fixes/optional_local_config/verification_test_plan.md) | 로컬 설정 파일 optional 처리 검증 절차 |
 | [Optional Local Config Test Report 2026-05-24](features/bug_fixes/optional_local_config/test_report_20260524.md) | 로컬 설정 파일 optional 처리 검증 결과 |
+| [Transaction Tab Null Row Crash Plan](features/bug_fixes/transaction_tab_null_row_crash/plan.md) | 거래 탭 목록 렌더링 중 nullable 원장 행으로 발생한 크래시 수정 계획 |
+| [Transaction Tab Null Row Crash Verification Plan](features/bug_fixes/transaction_tab_null_row_crash/verification_test_plan.md) | 거래 탭 null 행 크래시 회귀 검증 절차 |
+| [Transaction Tab Null Row Crash Test Report 2026-05-25](features/bug_fixes/transaction_tab_null_row_crash/test_report_20260525.md) | 거래 탭 null 행 크래시 수정 검증 결과 |
 
 ## Maintenance Rules
 

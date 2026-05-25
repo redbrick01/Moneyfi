@@ -13,3 +13,4 @@
 | Logout Stale Tab Data | [Plan](logout_stale_tab_data/plan.md), [Verification](logout_stale_tab_data/verification_test_plan.md), [Test Report](logout_stale_tab_data/test_report_20260525.md) |
 | News Cache Staleness | [Plan](news_cache_staleness/plan.md), [Verification](news_cache_staleness/verification_test_plan.md), [Test Report](news_cache_staleness/test_report_20260524.md) |
 | Optional Local Config | [Plan](optional_local_config/plan.md), [Verification](optional_local_config/verification_test_plan.md), [Test Report](optional_local_config/test_report_20260524.md) |
+| Transaction Tab Null Row Crash | [Plan](transaction_tab_null_row_crash/plan.md), [Verification](transaction_tab_null_row_crash/verification_test_plan.md), [Test Report](transaction_tab_null_row_crash/test_report_20260525.md) |
