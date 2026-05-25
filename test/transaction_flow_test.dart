@@ -992,6 +992,16 @@ void main() {
       final portfolioPerformance = await db.fetchLedgerPortfolioPerformance();
       expect(holdingPerformance?.buyAmount, 500);
       expect(portfolioPerformance.buyAmount, 500);
+      expect(
+        (await db.fetchLedgerPortfolioPerformanceByCurrency())['KRW']
+                ?.buyAmount ??
+            0,
+        500,
+      );
+      expect(
+        await db.fetchLedgerPerformanceEvents(action: 'buy'),
+        hasLength(1),
+      );
     },
   );
 

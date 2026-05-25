@@ -4,6 +4,10 @@
 -- can therefore attach one holding to multiple events. Rebuild those opening
 -- ledger rows using legacy_source_table/id as the stable key.
 
+drop table if exists latest_restore_snapshots;
+drop table if exists restore_holdings;
+drop table if exists restore_cash_accounts;
+
 create temp table latest_restore_snapshots as
 select id, user_id, snapshot_date
 from (

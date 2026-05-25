@@ -131,6 +131,9 @@
 | [Transaction Pull Refresh Remote Sync Plan](features/bug_fixes/transaction_pull_refresh_remote_sync/plan.md) | 거래 탭 당겨서 새로고침 시 Supabase core data를 다시 내려받도록 하는 계획 |
 | [Transaction Pull Refresh Remote Sync Verification Plan](features/bug_fixes/transaction_pull_refresh_remote_sync/verification_test_plan.md) | 거래 탭 수동 새로고침 remote pull 검증 절차 |
 | [Transaction Pull Refresh Remote Sync Test Report 2026-05-25](features/bug_fixes/transaction_pull_refresh_remote_sync/test_report_20260525.md) | 거래 탭 수동 새로고침 remote pull 수정 검증 결과 |
+| [Transaction Record Only Calculation And Supabase Start Plan](features/bug_fixes/transaction_record_only_calculation_sync/plan.md) | 기록전용 거래의 현재값 계산 제외와 분석 포함 정책, Supabase 로컬 마이그레이션 시작 오류 수정 계획 |
+| [Transaction Record Only Calculation And Supabase Start Verification Plan](features/bug_fixes/transaction_record_only_calculation_sync/verification_test_plan.md) | 기록전용 거래 계산/분석 정책과 Supabase 시작 검증 절차 |
+| [Transaction Record Only Calculation And Supabase Start Test Report 2026-05-25](features/bug_fixes/transaction_record_only_calculation_sync/test_report_20260525.md) | 기록전용 거래 계산/분석 정책과 Supabase 시작 오류 수정 검증 결과 |
 | [Transaction Tab Null Row Crash Plan](features/bug_fixes/transaction_tab_null_row_crash/plan.md) | 거래 탭 목록 렌더링 중 nullable 원장 행으로 발생한 크래시 수정 계획 |
 | [Transaction Tab Null Row Crash Verification Plan](features/bug_fixes/transaction_tab_null_row_crash/verification_test_plan.md) | 거래 탭 null 행 크래시 회귀 검증 절차 |
 | [Transaction Tab Null Row Crash Test Report 2026-05-25](features/bug_fixes/transaction_tab_null_row_crash/test_report_20260525.md) | 거래 탭 null 행 크래시 수정 검증 결과 |
