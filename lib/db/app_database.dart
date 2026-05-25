@@ -45,7 +45,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._internal();
 
   @override
-  int get schemaVersion => 31;
+  int get schemaVersion => 32;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -258,12 +258,24 @@ class AppDatabase extends _$AppDatabase {
         await _ensureLedgerLineLegacySourceColumns();
         await rebuildNormalizedLedgerFromLegacy(markDirty: false);
       }
+      if (from < 32) {
+        await _ensureTransactionEventFlowCategoryColumn();
+        await _backfillTransactionEventFlowCategories();
+      }
 
       await _ensureSeedExchangeRateIfEmpty();
     },
   );
 
   String _syncTimestamp() => DateTime.now().toIso8601String();
+
+  String _transactionFlowCategoryForCashType(String type) {
+    return switch (_normalizeTransactionType(type)) {
+      '입금' => TransactionFlowCategory.externalDeposit,
+      '출금' => TransactionFlowCategory.externalWithdrawal,
+      _ => TransactionFlowCategory.internal,
+    };
+  }
 
   Future<void> _softDeleteByIds(String tableName, List<int> ids) async {
     if (ids.isEmpty) return;
@@ -352,6 +364,7 @@ class AppDatabase extends _$AppDatabase {
         title TEXT NOT NULL DEFAULT '',
         memo TEXT NOT NULL DEFAULT '',
         source TEXT NOT NULL DEFAULT 'manual',
+        flow_category TEXT NOT NULL DEFAULT 'internal',
         legacy_source_table TEXT,
         legacy_source_id INTEGER,
         sort_order INTEGER NOT NULL DEFAULT 0
@@ -393,6 +406,9 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS transaction_events_kind_idx ON transaction_events(kind)',
     );
     await customStatement(
+      'CREATE INDEX IF NOT EXISTS transaction_events_flow_category_idx ON transaction_events(flow_category)',
+    );
+    await customStatement(
       'CREATE INDEX IF NOT EXISTS transaction_lines_event_id_idx ON transaction_lines(event_id)',
     );
     await customStatement(
@@ -402,6 +418,57 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS transaction_lines_cash_account_id_idx ON transaction_lines(cash_account_id)',
     );
     await _ensureLedgerLineLegacySourceColumns();
+    await _ensureTransactionEventFlowCategoryColumn();
+  }
+
+  Future<void> _ensureTransactionEventFlowCategoryColumn() async {
+    if (!await _tableExists('transaction_events')) return;
+    if (!await _columnExists('transaction_events', 'flow_category')) {
+      await customStatement(
+        "ALTER TABLE transaction_events ADD COLUMN flow_category TEXT NOT NULL DEFAULT 'internal'",
+      );
+    }
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS transaction_events_flow_category_idx ON transaction_events(flow_category)',
+    );
+  }
+
+  Future<void> _backfillTransactionEventFlowCategories() async {
+    if (!await _tableExists('transaction_events') ||
+        !await _tableExists('transaction_lines')) {
+      return;
+    }
+    await customStatement('''
+      UPDATE transaction_events
+      SET flow_category = 'internal'
+      WHERE flow_category IS NULL OR flow_category = ''
+    ''');
+    await customStatement('''
+      UPDATE transaction_events
+      SET flow_category = 'external_deposit'
+      WHERE kind = 'cash_flow'
+        AND deleted_at IS NULL
+        AND EXISTS (
+          SELECT 1
+          FROM transaction_lines
+          WHERE transaction_lines.event_id = transaction_events.id
+            AND transaction_lines.deleted_at IS NULL
+            AND transaction_lines.action = 'deposit'
+        )
+    ''');
+    await customStatement('''
+      UPDATE transaction_events
+      SET flow_category = 'external_withdrawal'
+      WHERE kind = 'cash_flow'
+        AND deleted_at IS NULL
+        AND EXISTS (
+          SELECT 1
+          FROM transaction_lines
+          WHERE transaction_lines.event_id = transaction_events.id
+            AND transaction_lines.deleted_at IS NULL
+            AND transaction_lines.action = 'withdrawal'
+        )
+    ''');
   }
 
   Future<void> _ensureLedgerLineLegacySourceColumns() async {
@@ -689,7 +756,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display')
+          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
         WHERE tl.deleted_at IS NULL
           AND holding_id IS NOT NULL
           $dateWhere
@@ -763,7 +830,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display')
+          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
         WHERE tl.deleted_at IS NULL
           $dateWhere
       ''',
@@ -842,7 +909,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display')
+          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
         WHERE tl.deleted_at IS NULL
           $dateWhere
         GROUP BY COALESCE(NULLIF(currency_code, ''), 'KRW')
@@ -924,7 +991,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te ON te.id = tl.event_id
         WHERE tl.deleted_at IS NULL
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display')
+          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
           $dateWhere
           AND tl.action IN (
             'sell',
@@ -977,7 +1044,7 @@ class AppDatabase extends _$AppDatabase {
         LEFT JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source != 'history_display'
+          AND te.source NOT IN ('history_display', 'record_only')
         WHERE h.deleted_at IS NULL
         GROUP BY h.id
         HAVING ABS(
@@ -1007,7 +1074,7 @@ class AppDatabase extends _$AppDatabase {
         LEFT JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source != 'history_display'
+          AND te.source NOT IN ('history_display', 'record_only')
         WHERE ca.deleted_at IS NULL
         GROUP BY ca.id
         HAVING ABS(
@@ -1063,7 +1130,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display')
+          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
         LEFT JOIN holdings h
           ON h.id = tl.holding_id
         LEFT JOIN assets a
@@ -1124,7 +1191,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display')
+          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
         LEFT JOIN holdings h
           ON h.id = tl.holding_id
         LEFT JOIN cash_accounts ca
@@ -1220,6 +1287,7 @@ class AppDatabase extends _$AppDatabase {
           kind: eventKind,
           title: Value(row.name),
           source: const Value('legacy'),
+          flowCategory: const Value(TransactionFlowCategory.internal),
           legacySourceTable: const Value('transactions'),
           legacySourceId: Value(row.id),
           sortOrder: Value(row.sortOrder),
@@ -1407,6 +1475,11 @@ class AppDatabase extends _$AppDatabase {
           kind: eventKind,
           title: Value(row.name),
           source: const Value('legacy'),
+          flowCategory: Value(
+            isOutgoingPair
+                ? TransactionFlowCategory.internal
+                : _transactionFlowCategoryForCashType(normalizedType),
+          ),
           legacySourceTable: const Value('cash_transactions'),
           legacySourceId: Value(row.id),
           sortOrder: Value(row.sortOrder),
@@ -1529,6 +1602,9 @@ class AppDatabase extends _$AppDatabase {
         kind: eventKind,
         title: Value(row.name),
         source: const Value('legacy'),
+        flowCategory: Value(
+          _transactionFlowCategoryForCashType(normalizedType),
+        ),
         legacySourceTable: const Value('cash_transactions'),
         legacySourceId: Value(row.id),
         sortOrder: Value(row.sortOrder),
@@ -1599,6 +1675,7 @@ class AppDatabase extends _$AppDatabase {
         kind: eventKind,
         title: Value(sourceRow.name),
         source: const Value('legacy'),
+        flowCategory: const Value(TransactionFlowCategory.internal),
         legacySourceTable: const Value('cash_transactions'),
         legacySourceId: Value(sourceRow.id),
         sortOrder: Value(sourceRow.sortOrder),
@@ -1651,6 +1728,9 @@ class AppDatabase extends _$AppDatabase {
         kind: 'cash_flow',
         title: Value(name),
         source: const Value('ledger'),
+        flowCategory: Value(
+          _transactionFlowCategoryForCashType(normalizedType),
+        ),
         sortOrder: Value(sortOrder),
       ),
     );
@@ -1680,6 +1760,64 @@ class AppDatabase extends _$AppDatabase {
     );
 
     await _recalculateCashAccountFromLedgerLines(cashAccountId);
+    return eventId;
+  }
+
+  Future<int> _createRecordOnlyCashFlow({
+    required int assetId,
+    required int cashAccountId,
+    required String date,
+    required String type,
+    required String name,
+    required String amount,
+    required int sortOrder,
+  }) async {
+    final normalizedType = _normalizeTransactionType(type);
+    final cashAccount = await (select(
+      cashAccounts,
+    )..where((table) => table.id.equals(cashAccountId))).getSingleOrNull();
+    if (cashAccount == null) {
+      throw StateError('현금 계좌를 찾을 수 없습니다.');
+    }
+
+    final timestamp = _syncTimestamp();
+    final eventId = await into(transactionEvents).insert(
+      TransactionEventsCompanion.insert(
+        clientId: Value(_uuid.v4()),
+        dirty: const Value(true),
+        lastModifiedAt: Value(timestamp),
+        occurredAt: date,
+        kind: 'record_only',
+        title: Value(name),
+        source: const Value('record_only'),
+        flowCategory: Value(
+          _transactionFlowCategoryForCashType(normalizedType),
+        ),
+        sortOrder: Value(sortOrder),
+      ),
+    );
+
+    await into(transactionLines).insert(
+      TransactionLinesCompanion.insert(
+        eventId: eventId,
+        assetId: Value(assetId),
+        cashAccountId: Value(cashAccountId),
+        clientId: Value(_uuid.v4()),
+        dirty: const Value(true),
+        lastModifiedAt: Value(timestamp),
+        action: switch (normalizedType) {
+          '입금' => 'deposit',
+          '출금' => 'withdrawal',
+          '이체' => 'transfer_out',
+          '환전' => 'fx_out',
+          _ => 'adjustment',
+        },
+        currencyCode: Value(cashAccount.currencyCode),
+        cashDelta: const Value(0),
+        grossAmount: Value(_parseTransactionNumber(amount).abs()),
+        sortOrder: const Value(0),
+      ),
+    );
     return eventId;
   }
 
@@ -1715,6 +1853,7 @@ class AppDatabase extends _$AppDatabase {
         kind: 'cash_transfer',
         title: Value(name),
         source: const Value('ledger'),
+        flowCategory: const Value(TransactionFlowCategory.internal),
         sortOrder: Value(sourceSortOrder),
       ),
     );
@@ -1789,6 +1928,7 @@ class AppDatabase extends _$AppDatabase {
         kind: 'fx_exchange',
         title: Value(name),
         source: const Value('ledger'),
+        flowCategory: const Value(TransactionFlowCategory.internal),
         sortOrder: Value(sourceSortOrder),
       ),
     );
@@ -1890,6 +2030,7 @@ class AppDatabase extends _$AppDatabase {
         kind: eventKind,
         title: Value(name),
         source: const Value('ledger'),
+        flowCategory: const Value(TransactionFlowCategory.internal),
         sortOrder: Value(sortOrder),
       ),
     );
@@ -1953,6 +2094,80 @@ class AppDatabase extends _$AppDatabase {
     return eventId;
   }
 
+  Future<int> _createRecordOnlyInvestment({
+    required int assetId,
+    required int holdingId,
+    required String date,
+    required String type,
+    required String name,
+    required String amount,
+    required String quantity,
+    required int sortOrder,
+  }) async {
+    final holding = await (select(
+      holdings,
+    )..where((table) => table.id.equals(holdingId))).getSingleOrNull();
+    if (holding == null) {
+      throw StateError('보유 항목을 찾을 수 없습니다.');
+    }
+
+    final normalizedType = _normalizeTransactionType(type);
+    final normalizedValues = _normalizedTransactionValues(
+      type: normalizedType,
+      amount: amount,
+      quantity: quantity,
+      averageCostBasis: holding.averagePrice,
+    );
+    final action = switch (normalizedType) {
+      '초기' => 'opening_quantity',
+      '매수' => 'buy',
+      '매도' => 'sell',
+      '배당' => 'dividend',
+      '이자' => 'interest',
+      _ => 'adjustment',
+    };
+    final displayQuantityDelta = switch (normalizedType) {
+      '매도' => -normalizedValues.quantityValue,
+      '초기' || '매수' => normalizedValues.quantityValue,
+      _ => 0.0,
+    };
+    final timestamp = _syncTimestamp();
+    final eventId = await into(transactionEvents).insert(
+      TransactionEventsCompanion.insert(
+        clientId: Value(_uuid.v4()),
+        dirty: const Value(true),
+        lastModifiedAt: Value(timestamp),
+        occurredAt: date,
+        kind: 'record_only',
+        title: Value(name),
+        source: const Value('record_only'),
+        flowCategory: const Value(TransactionFlowCategory.internal),
+        sortOrder: Value(sortOrder),
+      ),
+    );
+
+    await into(transactionLines).insert(
+      TransactionLinesCompanion.insert(
+        eventId: eventId,
+        assetId: Value(assetId),
+        holdingId: Value(holdingId),
+        clientId: Value(_uuid.v4()),
+        dirty: const Value(true),
+        lastModifiedAt: Value(timestamp),
+        action: action,
+        currencyCode: Value(holding.currencyCode),
+        quantityDelta: Value(displayQuantityDelta),
+        cashDelta: const Value(0),
+        unitPrice: Value(normalizedValues.unitPrice),
+        grossAmount: Value(normalizedValues.grossAmount),
+        costBasisDelta: const Value(0),
+        realizedPnl: const Value(0),
+        sortOrder: const Value(0),
+      ),
+    );
+    return eventId;
+  }
+
   Future<Map<int, List<TransactionItem>>>
   _fetchLedgerInvestmentTransactionsByHoldingId() async {
     final rows = await customSelect(
@@ -1963,6 +2178,8 @@ class AppDatabase extends _$AppDatabase {
           te.client_id AS event_client_id,
           tl.id AS ledger_line_id,
           te.kind AS ledger_kind,
+          te.source AS ledger_source,
+          te.flow_category AS flow_category,
           te.legacy_source_id AS legacy_source_id,
           te.legacy_source_table AS event_legacy_source_table,
           tl.legacy_source_table AS line_legacy_source_table,
@@ -2038,12 +2255,17 @@ class AppDatabase extends _$AppDatabase {
         ledgerLineId: row.read<int>('ledger_line_id'),
         ledgerKind: row.read<String>('ledger_kind'),
         ledgerAction: action,
+        flowCategory: TransactionFlowCategory.normalize(
+          row.read<String?>('flow_category'),
+        ),
         legacySourceTable:
             row.read<String?>('line_legacy_source_table') ??
             row.read<String?>('event_legacy_source_table'),
         legacySourceId:
             row.read<int?>('line_legacy_source_id') ??
             row.read<int?>('legacy_source_id'),
+        includeInCalculations:
+            row.read<String>('ledger_source') != 'record_only',
       );
       result.putIfAbsent(holdingId, () => <TransactionItem>[]).add(item);
     }
@@ -2064,6 +2286,8 @@ class AppDatabase extends _$AppDatabase {
           te.client_id AS event_client_id,
           tl.id AS ledger_line_id,
           te.kind AS ledger_kind,
+          te.source AS ledger_source,
+          te.flow_category AS flow_category,
           te.legacy_source_table AS event_legacy_source_table,
           te.legacy_source_id AS event_legacy_source_id,
           tl.legacy_source_table AS line_legacy_source_table,
@@ -2075,6 +2299,7 @@ class AppDatabase extends _$AppDatabase {
           te.title AS name,
           tl.cash_delta AS cash_delta,
           ABS(tl.cash_delta) AS amount_value,
+          tl.gross_amount AS gross_amount,
           te.sort_order AS event_sort_order,
           tl.sort_order AS line_sort_order
         FROM transaction_lines tl
@@ -2110,6 +2335,7 @@ class AppDatabase extends _$AppDatabase {
       if (cashAccountId == null) continue;
       final cashDelta = row.read<double>('cash_delta');
       final legacySourceId = row.read<int?>('legacy_source_id');
+      final ledgerSource = row.read<String>('ledger_source');
       final item = TransactionItem(
         id: -(legacySourceId ?? row.read<int>('event_id')),
         clientId: row.read<String?>('event_client_id'),
@@ -2121,7 +2347,11 @@ class AppDatabase extends _$AppDatabase {
           cashDelta: cashDelta,
         ),
         name: row.read<String>('name'),
-        amount: _formatPlainNumber(cashDelta),
+        amount: _formatPlainNumber(
+          ledgerSource == 'record_only'
+              ? row.read<double>('gross_amount')
+              : cashDelta,
+        ),
         quantity: '',
         grossAmount: row.read<double>('amount_value'),
         cashFlowAmount: cashDelta,
@@ -2129,11 +2359,15 @@ class AppDatabase extends _$AppDatabase {
         ledgerLineId: row.read<int>('ledger_line_id'),
         ledgerKind: row.read<String>('ledger_kind'),
         ledgerAction: row.read<String>('action'),
+        flowCategory: TransactionFlowCategory.normalize(
+          row.read<String?>('flow_category'),
+        ),
         legacySourceTable:
             row.read<String?>('line_legacy_source_table') ??
             row.read<String?>('event_legacy_source_table'),
         legacySourceId:
             legacySourceId ?? row.read<int?>('event_legacy_source_id'),
+        includeInCalculations: ledgerSource != 'record_only',
       );
       result.putIfAbsent(cashAccountId, () => <TransactionItem>[]).add(item);
     }
@@ -2532,9 +2766,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> updateAssetHidden(int assetId, bool isHidden) async {
     await (update(assets)..where((table) => table.id.equals(assetId))).write(
-      AssetsCompanion(
-        hidden: Value(isHidden),
-      ),
+      AssetsCompanion(hidden: Value(isHidden)),
     );
     await refreshTodaySnapshot();
   }
@@ -3002,7 +3234,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te ON te.id = tl.event_id
         WHERE tl.deleted_at IS NULL
           AND te.deleted_at IS NULL
-          AND te.source != 'history_display'
+          AND te.source NOT IN ('history_display', 'record_only')
           AND tl.holding_id = ?
           AND ABS(tl.quantity_delta) > 0.0000001
       ''',
@@ -3021,6 +3253,7 @@ class AppDatabase extends _$AppDatabase {
         kind: 'opening_balance',
         title: Value(holdingRow.name),
         source: const Value('ledger'),
+        flowCategory: const Value(TransactionFlowCategory.internal),
         sortOrder: const Value(0),
       ),
     );
@@ -3075,7 +3308,7 @@ class AppDatabase extends _$AppDatabase {
           INNER JOIN transaction_events te ON te.id = tl.event_id
           WHERE tl.deleted_at IS NULL
             AND te.deleted_at IS NULL
-            AND te.source != 'history_display'
+            AND te.source NOT IN ('history_display', 'record_only')
             AND tl.cash_account_id = ?
         ''',
         variables: [Variable.withInt(cashAccountId)],
@@ -3150,23 +3383,14 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> updateHoldingHidden(int holdingId, bool isHidden) async {
     if (holdingId < 0) {
-      await (update(
-        cashAccounts,
-      )..where((table) => table.id.equals(holdingId.abs()))).write(
-        CashAccountsCompanion(
-          hidden: Value(isHidden),
-        ),
-      );
+      await (update(cashAccounts)
+            ..where((table) => table.id.equals(holdingId.abs())))
+          .write(CashAccountsCompanion(hidden: Value(isHidden)));
       await refreshTodaySnapshot();
       return;
     }
-    await (update(
-      holdings,
-    )..where((table) => table.id.equals(holdingId))).write(
-      HoldingsCompanion(
-        hidden: Value(isHidden),
-      ),
-    );
+    await (update(holdings)..where((table) => table.id.equals(holdingId)))
+        .write(HoldingsCompanion(hidden: Value(isHidden)));
     await refreshTodaySnapshot();
   }
 
@@ -3535,6 +3759,7 @@ class AppDatabase extends _$AppDatabase {
     required String name,
     required String amount,
     required String quantity,
+    bool includeInCalculations = true,
   }) async {
     final normalizedDate = _normalizeStoredDateKey(date);
     if (holdingId < 0) {
@@ -3560,20 +3785,32 @@ class AppDatabase extends _$AppDatabase {
 
       late final int insertedId;
       await transaction(() async {
-        await _ensureSufficientCashBalance(
-          cashAccountId: holdingId.abs(),
-          type: normalizedType,
-          amount: savedAmount,
-        );
-        insertedId = await _createLedgerCashFlowWithLegacyMirror(
-          assetId: assetId,
-          cashAccountId: holdingId.abs(),
-          date: normalizedDate,
-          type: normalizedType,
-          name: name,
-          amount: savedAmount,
-          sortOrder: currentMax + 1,
-        );
+        if (includeInCalculations) {
+          await _ensureSufficientCashBalance(
+            cashAccountId: holdingId.abs(),
+            type: normalizedType,
+            amount: savedAmount,
+          );
+          insertedId = await _createLedgerCashFlowWithLegacyMirror(
+            assetId: assetId,
+            cashAccountId: holdingId.abs(),
+            date: normalizedDate,
+            type: normalizedType,
+            name: name,
+            amount: savedAmount,
+            sortOrder: currentMax + 1,
+          );
+        } else {
+          insertedId = await _createRecordOnlyCashFlow(
+            assetId: assetId,
+            cashAccountId: holdingId.abs(),
+            date: normalizedDate,
+            type: normalizedType,
+            name: name,
+            amount: savedAmount,
+            sortOrder: currentMax + 1,
+          );
+        }
       });
       await refreshTodaySnapshot();
       return -insertedId;
@@ -3598,19 +3835,6 @@ class AppDatabase extends _$AppDatabase {
         ? _formatPlainNumber(parsedQuantity.abs())
         : quantity.trim();
     await transaction(() async {
-      await _ensureHoldingOpeningLedgerLine(holdingId);
-      await _ensureSufficientHoldingQuantityForSell(
-        holdingId: holdingId,
-        type: normalizedType,
-        quantity: storedQuantity,
-      );
-      await _ensureSufficientSettlementCashForBuy(
-        assetId: assetId,
-        holdingId: holdingId,
-        type: normalizedType,
-        amount: storedAmount,
-        quantity: storedQuantity,
-      );
       final maxQuery = selectOnly(transactionEvents)
         ..addColumns([transactionEvents.sortOrder.max()])
         ..where(transactionEvents.deletedAt.isNull());
@@ -3620,28 +3844,56 @@ class AppDatabase extends _$AppDatabase {
           ) ??
           -1;
 
-      insertedId = await _createLedgerInvestmentWithLegacyMirror(
-        assetId: assetId,
-        holdingId: holdingId,
-        date: normalizedDate,
-        type: normalizedType,
-        name: name,
-        amount: storedAmount,
-        quantity: storedQuantity,
-        sortOrder: currentMax + 1,
-      );
+      if (includeInCalculations) {
+        await _ensureHoldingOpeningLedgerLine(holdingId);
+        await _ensureSufficientHoldingQuantityForSell(
+          holdingId: holdingId,
+          type: normalizedType,
+          quantity: storedQuantity,
+        );
+        await _ensureSufficientSettlementCashForBuy(
+          assetId: assetId,
+          holdingId: holdingId,
+          type: normalizedType,
+          amount: storedAmount,
+          quantity: storedQuantity,
+        );
+        insertedId = await _createLedgerInvestmentWithLegacyMirror(
+          assetId: assetId,
+          holdingId: holdingId,
+          date: normalizedDate,
+          type: normalizedType,
+          name: name,
+          amount: storedAmount,
+          quantity: storedQuantity,
+          sortOrder: currentMax + 1,
+        );
+      } else {
+        insertedId = await _createRecordOnlyInvestment(
+          assetId: assetId,
+          holdingId: holdingId,
+          date: normalizedDate,
+          type: normalizedType,
+          name: name,
+          amount: storedAmount,
+          quantity: storedQuantity,
+          sortOrder: currentMax + 1,
+        );
+      }
     });
-    final parityIssues = await fetchLedgerStateParityIssues();
-    if (parityIssues.any(
-      (issue) =>
-          (issue.kind == 'holding_quantity' && issue.id == holdingId) ||
-          issue.kind == 'cash_balance',
-    )) {
-      await _refreshNormalizedLedgerFromLegacyScope(
-        investmentHoldingIds: {holdingId},
-        markDirty: true,
-        softDeleteOldLedger: true,
-      );
+    if (includeInCalculations) {
+      final parityIssues = await fetchLedgerStateParityIssues();
+      if (parityIssues.any(
+        (issue) =>
+            (issue.kind == 'holding_quantity' && issue.id == holdingId) ||
+            issue.kind == 'cash_balance',
+      )) {
+        await _refreshNormalizedLedgerFromLegacyScope(
+          investmentHoldingIds: {holdingId},
+          markDirty: true,
+          softDeleteOldLedger: true,
+        );
+      }
     }
     await refreshTodaySnapshot();
     return insertedId;
@@ -3677,6 +3929,8 @@ class AppDatabase extends _$AppDatabase {
           ledgerAction: item.ledgerAction,
           legacySourceTable: item.legacySourceTable,
           legacySourceId: item.legacySourceId,
+          includeInCalculations: item.includeInCalculations,
+          flowCategory: item.flowCategory,
         ),
       );
       return;
@@ -4019,12 +4273,27 @@ class AppDatabase extends _$AppDatabase {
         name: item.name,
         amount: item.amount,
         quantity: item.quantity,
+        includeInCalculations: item.includeInCalculations,
       );
       await markReplacement(newId);
       return;
     }
 
     if (primaryCashAccountId == null) return;
+    if (!item.includeInCalculations) {
+      final newId = await createTransaction(
+        assetId: primaryAssetId,
+        holdingId: -primaryCashAccountId,
+        date: item.date,
+        type: normalizedType,
+        name: item.name,
+        amount: item.amount,
+        quantity: item.quantity,
+        includeInCalculations: false,
+      );
+      await markReplacement(newId);
+      return;
+    }
     if (normalizedType == '이체') {
       final cashAccountIds = lineRows
           .map((row) => row.read<int?>('cash_account_id'))
@@ -4073,6 +4342,7 @@ class AppDatabase extends _$AppDatabase {
       name: item.name,
       amount: item.amount,
       quantity: item.quantity,
+      includeInCalculations: item.includeInCalculations,
     );
     await markReplacement(newId);
   }
@@ -4452,7 +4722,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te ON te.id = tl.event_id
         WHERE tl.deleted_at IS NULL
           AND te.deleted_at IS NULL
-          AND te.source != 'history_display'
+          AND te.source NOT IN ('history_display', 'record_only')
           AND tl.holding_id = ?
       ''',
       variables: [Variable.withInt(holdingId)],
@@ -4556,7 +4826,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te ON te.id = tl.event_id
         WHERE tl.deleted_at IS NULL
           AND te.deleted_at IS NULL
-          AND te.source != 'history_display'
+          AND te.source NOT IN ('history_display', 'record_only')
           AND tl.cash_account_id = ?
       ''',
       variables: [Variable.withInt(cashAccountId)],
@@ -6294,6 +6564,7 @@ class AppDatabase extends _$AppDatabase {
             'title': row.title,
             'memo': row.memo,
             'source': row.source,
+            'flow_category': row.flowCategory,
             'legacy_source_table': row.legacySourceTable,
             'legacy_source_id': row.legacySourceId,
             'sort_order': row.sortOrder,
@@ -6690,6 +6961,11 @@ class AppDatabase extends _$AppDatabase {
             title: Value(_stringValue(row['title'], '')),
             memo: Value(_stringValue(row['memo'], '')),
             source: Value(_stringValue(row['source'], 'manual')),
+            flowCategory: Value(
+              TransactionFlowCategory.normalize(
+                _nullableString(row['flow_category']),
+              ),
+            ),
             legacySourceTable: Value(
               _nullableString(row['legacy_source_table']),
             ),

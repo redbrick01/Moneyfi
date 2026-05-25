@@ -54,44 +54,49 @@ void main() {
     );
   });
 
-  test(
-    'cash withdrawal normalizes signed input and blocks overdraft',
-    () async {
-      final assetId = await createAsset('현금');
-      final cashHoldingId = await db.createCashAccount(
-        assetId: assetId,
-        currencyCode: 'KRW',
-        name: '생활비',
-        note: '',
-        balance: 1000,
-      );
+  test('cash withdrawal normalizes signed input and blocks overdraft', () async {
+    final assetId = await createAsset('현금');
+    final cashHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '생활비',
+      note: '',
+      balance: 1000,
+    );
 
-      await db.createTransaction(
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: cashHoldingId,
+      date: '2026.05.21',
+      type: '출금',
+      name: '출금',
+      amount: '-100',
+      quantity: '',
+    );
+
+    final holding = await findHolding(cashHoldingId);
+    expect(holding.quantity, 900);
+    expect(holding.transactions.single.flowCategory, 'external_withdrawal');
+    final eventRow = await db
+        .customSelect(
+          "SELECT flow_category FROM transaction_events WHERE kind = 'cash_flow' AND deleted_at IS NULL LIMIT 1",
+        )
+        .getSingle();
+    expect(eventRow.read<String>('flow_category'), 'external_withdrawal');
+
+    expect(
+      () => db.createTransaction(
         assetId: assetId,
         holdingId: cashHoldingId,
         date: '2026.05.21',
         type: '출금',
-        name: '출금',
-        amount: '-100',
+        name: '초과 출금',
+        amount: '901',
         quantity: '',
-      );
-
-      expect((await findHolding(cashHoldingId)).quantity, 900);
-
-      expect(
-        () => db.createTransaction(
-          assetId: assetId,
-          holdingId: cashHoldingId,
-          date: '2026.05.21',
-          type: '출금',
-          name: '초과 출금',
-          amount: '901',
-          quantity: '',
-        ),
-        throwsA(isA<StateError>()),
-      );
-    },
-  );
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
 
   test(
     'cash deposit normalizes signed input and rejects zero amount',
@@ -117,7 +122,7 @@ void main() {
 
       expect((await findHolding(cashHoldingId)).quantity, 1200);
       final ledgerEvent = await db.customSelect('''
-            SELECT source, legacy_source_id
+            SELECT source, flow_category, legacy_source_id
             FROM transaction_events
             WHERE kind = 'cash_flow' AND deleted_at IS NULL
             LIMIT 1
@@ -134,9 +139,14 @@ void main() {
             ''').getSingle();
 
       expect(ledgerEvent.read<String>('source'), 'ledger');
+      expect(ledgerEvent.read<String>('flow_category'), 'external_deposit');
       expect(ledgerEvent.read<int?>('legacy_source_id'), isNull);
       expect(ledgerLine.read<String>('action'), 'deposit');
       expect(ledgerLine.read<double>('cash_delta'), 200);
+      expect(
+        (await findHolding(cashHoldingId)).transactions.single.flowCategory,
+        'external_deposit',
+      );
       expect(await db.fetchLedgerStateParityIssues(), isEmpty);
 
       expect(
@@ -153,6 +163,43 @@ void main() {
       );
     },
   );
+
+  test('record-only cash transaction stays out of cash balance', () async {
+    final assetId = await createAsset('현금');
+    final cashHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '생활비',
+      note: '',
+      balance: 1000,
+    );
+
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: cashHoldingId,
+      date: '2026.05.21',
+      type: '입금',
+      name: '과거 기록',
+      amount: '500',
+      quantity: '',
+      includeInCalculations: false,
+    );
+
+    final holding = await findHolding(cashHoldingId);
+    expect(holding.quantity, 1000);
+    expect(holding.transactions.single.name, '과거 기록');
+    expect(holding.transactions.single.amount, '500');
+    expect(holding.transactions.single.includeInCalculations, isFalse);
+
+    final sourceRow = await db
+        .customSelect(
+          'SELECT source, flow_category FROM transaction_events WHERE title = ? AND deleted_at IS NULL',
+          variables: [Variable.withString('과거 기록')],
+        )
+        .getSingle();
+    expect(sourceRow.read<String>('source'), 'record_only');
+    expect(sourceRow.read<String>('flow_category'), 'external_deposit');
+  });
 
   test(
     'cash transfer updates both linked accounts and deletes as a pair',
@@ -203,12 +250,14 @@ void main() {
       final updateCounts = await db.customSelect('''
             SELECT
               SUM(CASE WHEN deleted_at IS NULL THEN 1 ELSE 0 END) AS active_count,
-              SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) AS deleted_count
+              SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) AS deleted_count,
+              SUM(CASE WHEN flow_category = 'internal' THEN 1 ELSE 0 END) AS internal_count
             FROM transaction_events
             WHERE kind = 'cash_transfer'
             ''').getSingle();
       expect(updateCounts.read<int>('active_count'), 1);
       expect(updateCounts.read<int>('deleted_count'), 1);
+      expect(updateCounts.read<int>('internal_count'), 2);
 
       await db.deleteTransactionItem(transactionId);
 
@@ -584,7 +633,7 @@ void main() {
         .getSingle();
     final eventRow = await db
         .customSelect(
-          "SELECT source, legacy_source_id FROM transaction_events WHERE kind = 'fx_exchange' AND deleted_at IS NULL LIMIT 1",
+          "SELECT source, flow_category, legacy_source_id FROM transaction_events WHERE kind = 'fx_exchange' AND deleted_at IS NULL LIMIT 1",
         )
         .getSingle();
     final lineSummary = await db.customSelect('''
@@ -597,6 +646,7 @@ void main() {
 
     expect(eventCount.read<int>('count'), 1);
     expect(eventRow.read<String>('source'), 'ledger');
+    expect(eventRow.read<String>('flow_category'), 'internal');
     expect(eventRow.read<int?>('legacy_source_id'), isNull);
     expect(lineSummary.read<double>('out_amount'), -1300);
     expect(lineSummary.read<double>('in_amount'), 1);
@@ -715,6 +765,50 @@ void main() {
         ),
         throwsA(isA<StateError>()),
       );
+    },
+  );
+
+  test(
+    'record-only buy is visible but does not change holding or cash',
+    () async {
+      final assetId = await createAsset('주식');
+      final holdingId = await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '테스트 주식',
+        symbol: 'TEST',
+        quantity: 0,
+        averagePrice: 0,
+        currentPrice: 100,
+        note: '',
+      );
+      final cashHoldingId = await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '결제 현금',
+        note: '',
+        balance: 1000,
+      );
+
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.21',
+        type: '매수',
+        name: '기록용 매수',
+        amount: '100',
+        quantity: '5',
+        includeInCalculations: false,
+      );
+
+      final holding = await findHolding(holdingId);
+      expect(holding.quantity, 0);
+      expect(holding.transactions.single.name, '기록용 매수');
+      expect(holding.transactions.single.quantity, '5');
+      expect(holding.transactions.single.includeInCalculations, isFalse);
+      expect((await findHolding(cashHoldingId)).quantity, 1000);
+      expect(await db.fetchLedgerStateParityIssues(), isEmpty);
     },
   );
 
@@ -1014,6 +1108,10 @@ void main() {
       eventPayload.map((row) => row['client_id']),
       contains(firstEvent.read<String>('client_id')),
     );
+    expect(
+      eventPayload,
+      everyElement(containsPair('flow_category', 'internal')),
+    );
     expect(await db.fetchLedgerStateParityIssues(), isEmpty);
   });
 
@@ -1102,20 +1200,16 @@ void main() {
       everyElement(isNot(containsPair('hidden', anything))),
     );
 
-    final assetClientId =
-        (await (db.select(db.assets)..where((row) => row.id.equals(assetId)))
-                .getSingle())
-            .clientId!;
-    final holdingClientId =
-        (await (db.select(
-                  db.holdings,
-                )..where((row) => row.id.equals(holdingId)))
-                .getSingle())
-            .clientId!;
+    final assetClientId = (await (db.select(
+      db.assets,
+    )..where((row) => row.id.equals(assetId))).getSingle()).clientId!;
+    final holdingClientId = (await (db.select(
+      db.holdings,
+    )..where((row) => row.id.equals(holdingId))).getSingle()).clientId!;
     final cashClientId =
-        (await (db.select(db.cashAccounts)
-                  ..where((row) => row.id.equals(cashHoldingId.abs())))
-                .getSingle())
+        (await (db.select(
+              db.cashAccounts,
+            )..where((row) => row.id.equals(cashHoldingId.abs()))).getSingle())
             .clientId!;
 
     await db.markDirtySyncPayloadAsSynced(payload, null);

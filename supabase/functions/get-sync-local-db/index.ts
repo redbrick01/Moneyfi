@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
       supabase
         .from("transaction_events")
         .select(
-          "id, client_id, last_modified_at, occurred_at, kind, title, memo, source, legacy_source_table, legacy_source_id, sort_order",
+          "id, client_id, last_modified_at, occurred_at, kind, title, memo, source, flow_category, legacy_source_table, legacy_source_id, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -286,6 +286,7 @@ Deno.serve(async (req) => {
       title: String(row.title ?? ""),
       memo: String(row.memo ?? ""),
       source: String(row.source ?? "manual"),
+      flow_category: String(row.flow_category ?? "internal"),
       legacy_source_table: row.legacy_source_table == null
         ? null
         : String(row.legacy_source_table),

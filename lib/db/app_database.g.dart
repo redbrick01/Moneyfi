@@ -4750,6 +4750,18 @@ class $TransactionEventsTable extends TransactionEvents
     requiredDuringInsert: false,
     defaultValue: const Constant('manual'),
   );
+  static const VerificationMeta _flowCategoryMeta = const VerificationMeta(
+    'flowCategory',
+  );
+  @override
+  late final GeneratedColumn<String> flowCategory = GeneratedColumn<String>(
+    'flow_category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('internal'),
+  );
   static const VerificationMeta _legacySourceTableMeta = const VerificationMeta(
     'legacySourceTable',
   );
@@ -4797,6 +4809,7 @@ class $TransactionEventsTable extends TransactionEvents
     title,
     memo,
     source,
+    flowCategory,
     legacySourceTable,
     legacySourceId,
     sortOrder,
@@ -4877,6 +4890,15 @@ class $TransactionEventsTable extends TransactionEvents
         source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
       );
     }
+    if (data.containsKey('flow_category')) {
+      context.handle(
+        _flowCategoryMeta,
+        flowCategory.isAcceptableOrUnknown(
+          data['flow_category']!,
+          _flowCategoryMeta,
+        ),
+      );
+    }
     if (data.containsKey('legacy_source_table')) {
       context.handle(
         _legacySourceTableMeta,
@@ -4950,6 +4972,10 @@ class $TransactionEventsTable extends TransactionEvents
         DriftSqlType.string,
         data['${effectivePrefix}source'],
       )!,
+      flowCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}flow_category'],
+      )!,
       legacySourceTable: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}legacy_source_table'],
@@ -4983,6 +5009,7 @@ class TransactionEvent extends DataClass
   final String title;
   final String memo;
   final String source;
+  final String flowCategory;
   final String? legacySourceTable;
   final int? legacySourceId;
   final int sortOrder;
@@ -4997,6 +5024,7 @@ class TransactionEvent extends DataClass
     required this.title,
     required this.memo,
     required this.source,
+    required this.flowCategory,
     this.legacySourceTable,
     this.legacySourceId,
     required this.sortOrder,
@@ -5020,6 +5048,7 @@ class TransactionEvent extends DataClass
     map['title'] = Variable<String>(title);
     map['memo'] = Variable<String>(memo);
     map['source'] = Variable<String>(source);
+    map['flow_category'] = Variable<String>(flowCategory);
     if (!nullToAbsent || legacySourceTable != null) {
       map['legacy_source_table'] = Variable<String>(legacySourceTable);
     }
@@ -5048,6 +5077,7 @@ class TransactionEvent extends DataClass
       title: Value(title),
       memo: Value(memo),
       source: Value(source),
+      flowCategory: Value(flowCategory),
       legacySourceTable: legacySourceTable == null && nullToAbsent
           ? const Value.absent()
           : Value(legacySourceTable),
@@ -5074,6 +5104,7 @@ class TransactionEvent extends DataClass
       title: serializer.fromJson<String>(json['title']),
       memo: serializer.fromJson<String>(json['memo']),
       source: serializer.fromJson<String>(json['source']),
+      flowCategory: serializer.fromJson<String>(json['flowCategory']),
       legacySourceTable: serializer.fromJson<String?>(
         json['legacySourceTable'],
       ),
@@ -5095,6 +5126,7 @@ class TransactionEvent extends DataClass
       'title': serializer.toJson<String>(title),
       'memo': serializer.toJson<String>(memo),
       'source': serializer.toJson<String>(source),
+      'flowCategory': serializer.toJson<String>(flowCategory),
       'legacySourceTable': serializer.toJson<String?>(legacySourceTable),
       'legacySourceId': serializer.toJson<int?>(legacySourceId),
       'sortOrder': serializer.toJson<int>(sortOrder),
@@ -5112,6 +5144,7 @@ class TransactionEvent extends DataClass
     String? title,
     String? memo,
     String? source,
+    String? flowCategory,
     Value<String?> legacySourceTable = const Value.absent(),
     Value<int?> legacySourceId = const Value.absent(),
     int? sortOrder,
@@ -5128,6 +5161,7 @@ class TransactionEvent extends DataClass
     title: title ?? this.title,
     memo: memo ?? this.memo,
     source: source ?? this.source,
+    flowCategory: flowCategory ?? this.flowCategory,
     legacySourceTable: legacySourceTable.present
         ? legacySourceTable.value
         : this.legacySourceTable,
@@ -5152,6 +5186,9 @@ class TransactionEvent extends DataClass
       title: data.title.present ? data.title.value : this.title,
       memo: data.memo.present ? data.memo.value : this.memo,
       source: data.source.present ? data.source.value : this.source,
+      flowCategory: data.flowCategory.present
+          ? data.flowCategory.value
+          : this.flowCategory,
       legacySourceTable: data.legacySourceTable.present
           ? data.legacySourceTable.value
           : this.legacySourceTable,
@@ -5175,6 +5212,7 @@ class TransactionEvent extends DataClass
           ..write('title: $title, ')
           ..write('memo: $memo, ')
           ..write('source: $source, ')
+          ..write('flowCategory: $flowCategory, ')
           ..write('legacySourceTable: $legacySourceTable, ')
           ..write('legacySourceId: $legacySourceId, ')
           ..write('sortOrder: $sortOrder')
@@ -5194,6 +5232,7 @@ class TransactionEvent extends DataClass
     title,
     memo,
     source,
+    flowCategory,
     legacySourceTable,
     legacySourceId,
     sortOrder,
@@ -5212,6 +5251,7 @@ class TransactionEvent extends DataClass
           other.title == this.title &&
           other.memo == this.memo &&
           other.source == this.source &&
+          other.flowCategory == this.flowCategory &&
           other.legacySourceTable == this.legacySourceTable &&
           other.legacySourceId == this.legacySourceId &&
           other.sortOrder == this.sortOrder);
@@ -5228,6 +5268,7 @@ class TransactionEventsCompanion extends UpdateCompanion<TransactionEvent> {
   final Value<String> title;
   final Value<String> memo;
   final Value<String> source;
+  final Value<String> flowCategory;
   final Value<String?> legacySourceTable;
   final Value<int?> legacySourceId;
   final Value<int> sortOrder;
@@ -5242,6 +5283,7 @@ class TransactionEventsCompanion extends UpdateCompanion<TransactionEvent> {
     this.title = const Value.absent(),
     this.memo = const Value.absent(),
     this.source = const Value.absent(),
+    this.flowCategory = const Value.absent(),
     this.legacySourceTable = const Value.absent(),
     this.legacySourceId = const Value.absent(),
     this.sortOrder = const Value.absent(),
@@ -5257,6 +5299,7 @@ class TransactionEventsCompanion extends UpdateCompanion<TransactionEvent> {
     this.title = const Value.absent(),
     this.memo = const Value.absent(),
     this.source = const Value.absent(),
+    this.flowCategory = const Value.absent(),
     this.legacySourceTable = const Value.absent(),
     this.legacySourceId = const Value.absent(),
     this.sortOrder = const Value.absent(),
@@ -5273,6 +5316,7 @@ class TransactionEventsCompanion extends UpdateCompanion<TransactionEvent> {
     Expression<String>? title,
     Expression<String>? memo,
     Expression<String>? source,
+    Expression<String>? flowCategory,
     Expression<String>? legacySourceTable,
     Expression<int>? legacySourceId,
     Expression<int>? sortOrder,
@@ -5288,6 +5332,7 @@ class TransactionEventsCompanion extends UpdateCompanion<TransactionEvent> {
       if (title != null) 'title': title,
       if (memo != null) 'memo': memo,
       if (source != null) 'source': source,
+      if (flowCategory != null) 'flow_category': flowCategory,
       if (legacySourceTable != null) 'legacy_source_table': legacySourceTable,
       if (legacySourceId != null) 'legacy_source_id': legacySourceId,
       if (sortOrder != null) 'sort_order': sortOrder,
@@ -5305,6 +5350,7 @@ class TransactionEventsCompanion extends UpdateCompanion<TransactionEvent> {
     Value<String>? title,
     Value<String>? memo,
     Value<String>? source,
+    Value<String>? flowCategory,
     Value<String?>? legacySourceTable,
     Value<int?>? legacySourceId,
     Value<int>? sortOrder,
@@ -5320,6 +5366,7 @@ class TransactionEventsCompanion extends UpdateCompanion<TransactionEvent> {
       title: title ?? this.title,
       memo: memo ?? this.memo,
       source: source ?? this.source,
+      flowCategory: flowCategory ?? this.flowCategory,
       legacySourceTable: legacySourceTable ?? this.legacySourceTable,
       legacySourceId: legacySourceId ?? this.legacySourceId,
       sortOrder: sortOrder ?? this.sortOrder,
@@ -5359,6 +5406,9 @@ class TransactionEventsCompanion extends UpdateCompanion<TransactionEvent> {
     if (source.present) {
       map['source'] = Variable<String>(source.value);
     }
+    if (flowCategory.present) {
+      map['flow_category'] = Variable<String>(flowCategory.value);
+    }
     if (legacySourceTable.present) {
       map['legacy_source_table'] = Variable<String>(legacySourceTable.value);
     }
@@ -5384,6 +5434,7 @@ class TransactionEventsCompanion extends UpdateCompanion<TransactionEvent> {
           ..write('title: $title, ')
           ..write('memo: $memo, ')
           ..write('source: $source, ')
+          ..write('flowCategory: $flowCategory, ')
           ..write('legacySourceTable: $legacySourceTable, ')
           ..write('legacySourceId: $legacySourceId, ')
           ..write('sortOrder: $sortOrder')
@@ -14397,6 +14448,7 @@ typedef $$TransactionEventsTableCreateCompanionBuilder =
       Value<String> title,
       Value<String> memo,
       Value<String> source,
+      Value<String> flowCategory,
       Value<String?> legacySourceTable,
       Value<int?> legacySourceId,
       Value<int> sortOrder,
@@ -14413,6 +14465,7 @@ typedef $$TransactionEventsTableUpdateCompanionBuilder =
       Value<String> title,
       Value<String> memo,
       Value<String> source,
+      Value<String> flowCategory,
       Value<String?> legacySourceTable,
       Value<int?> legacySourceId,
       Value<int> sortOrder,
@@ -14511,6 +14564,11 @@ class $$TransactionEventsTableFilterComposer
 
   ColumnFilters<String> get source => $composableBuilder(
     column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get flowCategory => $composableBuilder(
+    column: $table.flowCategory,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14614,6 +14672,11 @@ class $$TransactionEventsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get flowCategory => $composableBuilder(
+    column: $table.flowCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get legacySourceTable => $composableBuilder(
     column: $table.legacySourceTable,
     builder: (column) => ColumnOrderings(column),
@@ -14672,6 +14735,11 @@ class $$TransactionEventsTableAnnotationComposer
 
   GeneratedColumn<String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get flowCategory => $composableBuilder(
+    column: $table.flowCategory,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get legacySourceTable => $composableBuilder(
     column: $table.legacySourceTable,
@@ -14755,6 +14823,7 @@ class $$TransactionEventsTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String> memo = const Value.absent(),
                 Value<String> source = const Value.absent(),
+                Value<String> flowCategory = const Value.absent(),
                 Value<String?> legacySourceTable = const Value.absent(),
                 Value<int?> legacySourceId = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
@@ -14769,6 +14838,7 @@ class $$TransactionEventsTableTableManager
                 title: title,
                 memo: memo,
                 source: source,
+                flowCategory: flowCategory,
                 legacySourceTable: legacySourceTable,
                 legacySourceId: legacySourceId,
                 sortOrder: sortOrder,
@@ -14785,6 +14855,7 @@ class $$TransactionEventsTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String> memo = const Value.absent(),
                 Value<String> source = const Value.absent(),
+                Value<String> flowCategory = const Value.absent(),
                 Value<String?> legacySourceTable = const Value.absent(),
                 Value<int?> legacySourceId = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
@@ -14799,6 +14870,7 @@ class $$TransactionEventsTableTableManager
                 title: title,
                 memo: memo,
                 source: source,
+                flowCategory: flowCategory,
                 legacySourceTable: legacySourceTable,
                 legacySourceId: legacySourceId,
                 sortOrder: sortOrder,

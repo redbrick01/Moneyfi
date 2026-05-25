@@ -458,6 +458,9 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                                   sourceCurrency: holding.currencyCode,
                                   exchangeRate: holding.exchangeRate,
                                 ),
+                            amountColor: _cashTransactionAmountColor(
+                              holding.transactions[index],
+                            ),
                             metaText: _ledgerLineMeta(
                               holding.transactions[index],
                             ),
@@ -601,6 +604,14 @@ class _CashCardSection extends StatelessWidget {
       ),
     );
   }
+}
+
+Color _cashTransactionAmountColor(TransactionItem transaction) {
+  return switch (TransactionFlowCategory.normalize(transaction.flowCategory)) {
+    TransactionFlowCategory.externalDeposit => MoneyfyPalette.positive,
+    TransactionFlowCategory.externalWithdrawal => MoneyfyPalette.negative,
+    _ => MoneyfyPalette.ink,
+  };
 }
 
 class _CashHeroDeltaMetricRow extends StatelessWidget {

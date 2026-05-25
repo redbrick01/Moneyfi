@@ -503,6 +503,7 @@ Deno.serve(async (req) => {
           "title",
           "memo",
           "source",
+          "flow_category",
           "legacy_source_table",
           "legacy_source_id",
           "sort_order",

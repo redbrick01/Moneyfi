@@ -2,6 +2,22 @@ import 'package:flutter/material.dart';
 
 import '../utils/display_currency.dart';
 
+class TransactionFlowCategory {
+  const TransactionFlowCategory._();
+
+  static const String internal = 'internal';
+  static const String externalDeposit = 'external_deposit';
+  static const String externalWithdrawal = 'external_withdrawal';
+
+  static String normalize(String? value) {
+    return switch (value?.trim()) {
+      externalDeposit => externalDeposit,
+      externalWithdrawal => externalWithdrawal,
+      _ => internal,
+    };
+  }
+}
+
 class TransactionItem {
   const TransactionItem({
     this.id,
@@ -24,6 +40,8 @@ class TransactionItem {
     this.ledgerAction,
     this.legacySourceTable,
     this.legacySourceId,
+    this.includeInCalculations = true,
+    this.flowCategory = TransactionFlowCategory.internal,
   });
 
   final int? id;
@@ -46,6 +64,8 @@ class TransactionItem {
   final String? ledgerAction;
   final String? legacySourceTable;
   final int? legacySourceId;
+  final bool includeInCalculations;
+  final String flowCategory;
 
   bool get isLedgerBacked => ledgerEventId != null || ledgerLineId != null;
 

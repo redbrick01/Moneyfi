@@ -1667,8 +1667,7 @@ class _TransactionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final typeStyle = _holdingTransactionTypeStyle(transaction.type);
-    final amountValue =
-        double.tryParse(transaction.amount.replaceAll(',', '').trim()) ?? 0;
+    final amountValue = _holdingTransactionDisplayAmountValue(transaction);
     final formattedAmount =
         MoneyfyDisplayCurrencySettings.formatAmountFromSource(
           amountValue,
@@ -1738,10 +1737,7 @@ class _TransactionRow extends StatelessWidget {
                   Text(
                     formattedAmount,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: moneyfyValueColor(
-                        _holdingAmountSign(transaction, formattedAmount),
-                        defaultColor: MoneyfyPalette.ink,
-                      ),
+                      color: _holdingTransactionAmountColor(transaction),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1762,17 +1758,34 @@ class _TransactionRow extends StatelessWidget {
   }
 }
 
-String _holdingAmountSign(TransactionItem transaction, String formattedAmount) {
-  return switch (transaction.ledgerAction ?? transaction.type.trim()) {
-    'sell' ||
-    'dividend' ||
-    'interest' ||
-    '매도' ||
-    '배당' ||
-    '이자' => '+$formattedAmount',
-    'fee' || 'tax' || '수수료' || '세금' => '-$formattedAmount',
-    _ => '-$formattedAmount',
+Color _holdingTransactionAmountColor(TransactionItem transaction) {
+  return switch (TransactionFlowCategory.normalize(transaction.flowCategory)) {
+    TransactionFlowCategory.externalDeposit => MoneyfyPalette.positive,
+    TransactionFlowCategory.externalWithdrawal => MoneyfyPalette.negative,
+    _ => MoneyfyPalette.ink,
   };
+}
+
+double _holdingTransactionDisplayAmountValue(TransactionItem transaction) {
+  final grossAmount = transaction.grossAmount ?? 0;
+  if (grossAmount.abs() > 0.0000001) {
+    return grossAmount;
+  }
+  final amount =
+      double.tryParse(transaction.amount.replaceAll(',', '').trim()) ?? 0;
+  final quantity =
+      double.tryParse(transaction.quantity.replaceAll(',', '').trim()) ?? 0;
+  final action = transaction.ledgerAction ?? transaction.type.trim();
+  if ((action == 'buy' ||
+          action == 'sell' ||
+          action == 'opening_quantity' ||
+          action == '매수' ||
+          action == '매도' ||
+          action == '초기') &&
+      quantity.abs() > 0.0000001) {
+    return amount * quantity;
+  }
+  return amount;
 }
 
 String _holdingLedgerLineMeta(TransactionItem transaction) {

@@ -109,6 +109,8 @@ class TransactionEvents extends Table {
   TextColumn get title => text().withDefault(const Constant(''))();
   TextColumn get memo => text().withDefault(const Constant(''))();
   TextColumn get source => text().withDefault(const Constant('manual'))();
+  TextColumn get flowCategory =>
+      text().withDefault(const Constant('internal'))();
   TextColumn get legacySourceTable => text().nullable()();
   IntColumn get legacySourceId => integer().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();

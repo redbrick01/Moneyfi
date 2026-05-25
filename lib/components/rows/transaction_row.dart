@@ -13,6 +13,7 @@ class TransactionRow extends StatelessWidget {
     this.metaText,
     this.onTap,
     this.typeColor,
+    this.amountColor,
   });
 
   final String typeLabel;
@@ -23,6 +24,7 @@ class TransactionRow extends StatelessWidget {
   final String? metaText;
   final VoidCallback? onTap;
   final Color? typeColor;
+  final Color? amountColor;
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +115,7 @@ class TransactionRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,
                       style: context.typography.cardTitle.copyWith(
+                        color: amountColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
