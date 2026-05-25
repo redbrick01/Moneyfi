@@ -526,6 +526,67 @@ void main() {
     },
   );
 
+  test('cash transfer edit can change source and target accounts', () async {
+    final assetId = await createAsset('현금');
+    final sourceHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '기존 출금',
+      note: '',
+      balance: 1000,
+    );
+    final targetHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '기존 입금',
+      note: '',
+      balance: 0,
+    );
+    final newSourceHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '새 출금',
+      note: '',
+      balance: 500,
+    );
+    final newTargetHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '새 입금',
+      note: '',
+      balance: 0,
+    );
+
+    final transactionId = await db.createCashTransfer(
+      assetId: assetId,
+      sourceHoldingId: sourceHoldingId,
+      targetHoldingId: targetHoldingId,
+      date: '2026.05.21',
+      name: '계좌 이동',
+      amount: '200',
+    );
+
+    await db.updateTransactionItem(
+      TransactionItem(
+        id: transactionId,
+        assetId: assetId,
+        holdingId: newSourceHoldingId,
+        counterpartyHoldingId: newTargetHoldingId,
+        date: '2026.05.22',
+        type: '이체',
+        name: '계좌 이동 수정',
+        amount: '100',
+        quantity: '',
+      ),
+    );
+
+    expect((await findHolding(sourceHoldingId)).quantity, 1000);
+    expect((await findHolding(targetHoldingId)).quantity, 0);
+    expect((await findHolding(newSourceHoldingId)).quantity, 400);
+    expect((await findHolding(newTargetHoldingId)).quantity, 100);
+    expect(await db.fetchLedgerStateParityIssues(), isEmpty);
+  });
+
   test(
     'cash account edits preserve transaction-adjusted base balance',
     () async {
@@ -823,6 +884,66 @@ void main() {
       );
     },
   );
+
+  test('investment transaction edit can move to another holding', () async {
+    final assetId = await createAsset('주식');
+    final firstHoldingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '첫 보유',
+      symbol: 'ONE',
+      quantity: 0,
+      averagePrice: 0,
+      currentPrice: 100,
+      note: '',
+    );
+    final secondHoldingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '둘째 보유',
+      symbol: 'TWO',
+      quantity: 0,
+      averagePrice: 0,
+      currentPrice: 100,
+      note: '',
+    );
+    await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '결제 현금',
+      note: '',
+      balance: 1000,
+    );
+
+    final transactionId = await db.createTransaction(
+      assetId: assetId,
+      holdingId: firstHoldingId,
+      date: '2026.05.21',
+      type: '매수',
+      name: '보유 이동 매수',
+      amount: '100',
+      quantity: '5',
+    );
+
+    await db.updateTransactionItem(
+      TransactionItem(
+        id: transactionId,
+        assetId: assetId,
+        holdingId: secondHoldingId,
+        date: '2026.05.22',
+        type: '매수',
+        name: '보유 이동 매수 수정',
+        amount: '100',
+        quantity: '5',
+      ),
+    );
+
+    expect((await findHolding(firstHoldingId)).quantity, 0);
+    expect((await findHolding(secondHoldingId)).quantity, 5);
+    expect(await db.fetchLedgerStateParityIssues(), isEmpty);
+  });
 
   test(
     'record-only buy is visible but does not change holding or cash',

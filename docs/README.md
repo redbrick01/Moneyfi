@@ -54,6 +54,12 @@
 | [Transaction Management Page Verification Plan](features/new_feature_development/transaction_management_page/verification_test_plan.md) | 거래 관리 페이지 자동/수동 검증 계획 |
 | [Transaction Management Page Test Report 2026-05-25](features/new_feature_development/transaction_management_page/test_report_20260525.md) | 거래 관리 페이지 구현 검증 결과 |
 | [Transaction Management Page Implementation Report 2026-05-25](features/new_feature_development/transaction_management_page/implementation_report_20260525.md) | 거래 관리 페이지 구현 내용과 남은 위험 |
+| [Transaction Event Rows Plan](features/new_feature_development/transaction_event_rows/plan.md) | 거래 탭을 원장 라인 대신 이벤트 단위 행으로 표시하는 계획 |
+| [Transaction Event Rows Verification Plan](features/new_feature_development/transaction_event_rows/verification_test_plan.md) | 거래 이벤트 행 표시 검증 계획 |
+| [Transaction Event Rows Test Report 2026-05-25](features/new_feature_development/transaction_event_rows/test_report_20260525.md) | 거래 이벤트 행 표시 구현 검증 결과 |
+| [Transaction Form Ledger Layout Plan](features/new_feature_development/transaction_form_ledger_layout/plan.md) | 거래/현금 거래 폼을 원장 이벤트와 라인 대상 중심으로 재배치하는 계획 |
+| [Transaction Form Ledger Layout Verification Plan](features/new_feature_development/transaction_form_ledger_layout/verification_test_plan.md) | 거래 폼 계좌 선택과 원장 재생성 검증 계획 |
+| [Transaction Form Ledger Layout Test Report 2026-05-25](features/new_feature_development/transaction_form_ledger_layout/test_report_20260525.md) | 거래 폼 원장 레이아웃 구현 검증 결과 |
 | [Transaction Event Flow Classification Plan](features/new_feature_development/transaction_event_flow_classification/plan.md) | 외부 입금/외부 출금/내부 거래를 원장 이벤트 schema로 명시하는 계획 |
 | [Transaction Event Flow Classification Verification Plan](features/new_feature_development/transaction_event_flow_classification/verification_test_plan.md) | 거래 흐름 분류 schema와 UI 색상 검증 계획 |
 | [Transaction Event Flow Classification Test Report 2026-05-25](features/new_feature_development/transaction_event_flow_classification/test_report_20260525.md) | 거래 흐름 분류 schema 구현 검증 결과 |

@@ -3537,6 +3537,32 @@ class AppDatabase extends _$AppDatabase {
     return -linkedRow.cashAccountId;
   }
 
+  Future<int?> fetchLinkedCashTransferSourceHoldingId(int transactionId) async {
+    final eventId = transactionId.abs();
+    final ledgerRow = await customSelect(
+      '''
+        SELECT cash_account_id
+        FROM transaction_lines
+        WHERE event_id = ?
+          AND deleted_at IS NULL
+          AND action = 'transfer_out'
+          AND cash_account_id IS NOT NULL
+        ORDER BY sort_order ASC, id ASC
+        LIMIT 1
+      ''',
+      variables: [Variable.withInt(eventId)],
+      readsFrom: {transactionLines},
+    ).getSingleOrNull();
+    final ledgerCashAccountId = ledgerRow?.read<int>('cash_account_id');
+    if (ledgerCashAccountId != null) return -ledgerCashAccountId;
+
+    final row = await (select(
+      cashTransactions,
+    )..where((table) => table.id.equals(transactionId))).getSingleOrNull();
+    if (row == null) return null;
+    return -row.cashAccountId;
+  }
+
   Future<double?> fetchLinkedCashExchangeRate(int transactionId) async {
     final eventId = transactionId.abs();
     final ledgerRows = await customSelect(
@@ -3926,6 +3952,7 @@ class AppDatabase extends _$AppDatabase {
           ledgerAction: item.ledgerAction,
           legacySourceTable: item.legacySourceTable,
           legacySourceId: item.legacySourceId,
+          counterpartyHoldingId: item.counterpartyHoldingId,
           includeInCalculations: item.includeInCalculations,
           flowCategory: item.flowCategory,
         ),
@@ -4261,10 +4288,31 @@ class AppDatabase extends _$AppDatabase {
       );
     }
 
+    final requestedHoldingId = item.holdingId;
+    final requestedHoldingRow =
+        requestedHoldingId != null && requestedHoldingId > 0
+        ? await (select(holdings)..where(
+                (table) =>
+                    table.id.equals(requestedHoldingId) &
+                    table.deletedAt.isNull(),
+              ))
+              .getSingleOrNull()
+        : null;
+    final requestedCashAccountRow =
+        requestedHoldingId != null && requestedHoldingId < 0
+        ? await (select(cashAccounts)..where(
+                (table) =>
+                    table.id.equals(requestedHoldingId.abs()) &
+                    table.deletedAt.isNull(),
+              ))
+              .getSingleOrNull()
+        : null;
     if (primaryHoldingId != null) {
+      final targetHoldingId = requestedHoldingRow?.id ?? primaryHoldingId;
+      final targetAssetId = requestedHoldingRow?.assetId ?? primaryAssetId;
       final newId = await createTransaction(
-        assetId: primaryAssetId,
-        holdingId: primaryHoldingId,
+        assetId: targetAssetId,
+        holdingId: targetHoldingId,
         date: item.date,
         type: normalizedType,
         name: item.name,
@@ -4277,10 +4325,14 @@ class AppDatabase extends _$AppDatabase {
     }
 
     if (primaryCashAccountId == null) return;
+    final requestedCashAccountId =
+        requestedCashAccountRow?.id ?? primaryCashAccountId;
+    final requestedCashAssetId =
+        requestedCashAccountRow?.assetId ?? primaryAssetId;
     if (!item.includeInCalculations) {
       final newId = await createTransaction(
-        assetId: primaryAssetId,
-        holdingId: -primaryCashAccountId,
+        assetId: requestedCashAssetId,
+        holdingId: -requestedCashAccountId,
         date: item.date,
         type: normalizedType,
         name: item.name,
@@ -4300,13 +4352,17 @@ class AppDatabase extends _$AppDatabase {
       if (cashAccountIds.length < 2) {
         throw StateError('이체 대상 현금 계좌를 찾을 수 없습니다.');
       }
-      final targetCashAccountId = cashAccountIds.firstWhere(
-        (id) => id != primaryCashAccountId,
-        orElse: () => cashAccountIds.last,
-      );
+      final requestedTargetHoldingId = item.counterpartyHoldingId;
+      final targetCashAccountId =
+          requestedTargetHoldingId != null && requestedTargetHoldingId < 0
+          ? requestedTargetHoldingId.abs()
+          : cashAccountIds.firstWhere(
+              (id) => id != primaryCashAccountId,
+              orElse: () => cashAccountIds.last,
+            );
       final newId = await createCashTransfer(
-        assetId: primaryAssetId,
-        sourceHoldingId: -primaryCashAccountId,
+        assetId: requestedCashAssetId,
+        sourceHoldingId: -requestedCashAccountId,
         targetHoldingId: -targetCashAccountId,
         date: item.date,
         name: item.name,
@@ -4321,8 +4377,8 @@ class AppDatabase extends _$AppDatabase {
           await fetchLinkedCashExchangeRate(-eventId) ??
           0;
       final newId = await createCashExchange(
-        assetId: primaryAssetId,
-        sourceHoldingId: -primaryCashAccountId,
+        assetId: requestedCashAssetId,
+        sourceHoldingId: -requestedCashAccountId,
         date: item.date,
         name: item.name,
         amount: item.amount,
@@ -4332,8 +4388,8 @@ class AppDatabase extends _$AppDatabase {
       return;
     }
     final newId = await createTransaction(
-      assetId: primaryAssetId,
-      holdingId: -primaryCashAccountId,
+      assetId: requestedCashAssetId,
+      holdingId: -requestedCashAccountId,
       date: item.date,
       type: normalizedType,
       name: item.name,

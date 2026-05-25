@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
 import 'package:moneyfy/main.dart';
+import 'package:moneyfy/models/asset_item.dart';
 import 'package:moneyfy/pages/analysis_page.dart';
 import 'package:moneyfy/pages/annual_asset_analysis_page.dart';
 import 'package:moneyfy/pages/asset_detail_page.dart';
@@ -204,6 +205,70 @@ void main() {
     await tester.tap(find.text('배당/이자 분석').first);
     await settlePage(tester);
     expect(find.text('배당/이자 총합'), findsOneWidget);
+  });
+
+  test('transactions page groups ledger lines by event id', () {
+    final grouped = groupTransactionEventsForTesting(
+      const [
+        TransactionItem(
+          assetId: 1,
+          holdingId: -101,
+          date: '2026-05-21',
+          type: '이체',
+          name: '계좌 이동',
+          amount: '-250',
+          quantity: '',
+          cashFlowAmount: -250,
+          ledgerEventId: 7,
+          ledgerLineId: 11,
+          ledgerAction: 'transfer_out',
+        ),
+        TransactionItem(
+          assetId: 1,
+          holdingId: -102,
+          date: '2026-05-21',
+          type: '이체',
+          name: '계좌 이동',
+          amount: '250',
+          quantity: '',
+          cashFlowAmount: 250,
+          ledgerEventId: 7,
+          ledgerLineId: 12,
+          ledgerAction: 'transfer_in',
+        ),
+        TransactionItem(
+          assetId: 1,
+          holdingId: 201,
+          date: '2026-05-22',
+          type: '매수',
+          name: '대표 투자 라인',
+          amount: '100',
+          quantity: '2',
+          ledgerEventId: 8,
+          ledgerLineId: 13,
+          ledgerAction: 'buy',
+        ),
+        TransactionItem(
+          assetId: 1,
+          holdingId: -103,
+          date: '2026-05-22',
+          type: '매수',
+          name: '현금 결제 라인',
+          amount: '-200',
+          quantity: '',
+          cashFlowAmount: -200,
+          ledgerEventId: 8,
+          ledgerLineId: 14,
+          ledgerAction: 'settlement',
+        ),
+      ],
+      cashHoldingIds: {-101, -102, -103},
+    );
+
+    expect(grouped, hasLength(2));
+    expect(grouped.map((item) => item.ledgerEventId), [7, 8]);
+    expect(grouped.first.ledgerAction, 'transfer_out');
+    expect(grouped.last.ledgerAction, 'buy');
   });
 
   for (final pageCase in _standalonePageCases) {

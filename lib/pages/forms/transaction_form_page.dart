@@ -47,6 +47,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
   late final TextEditingController nameController;
   late final TextEditingController amountController;
   late final TextEditingController quantityController;
+  late int selectedHoldingId;
   late bool includeInCalculations;
   bool isSaving = false;
 
@@ -63,6 +64,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     quantityController = TextEditingController(text: item?.quantity ?? '');
     amountController.addListener(_handlePreviewInputChanged);
     quantityController.addListener(_handlePreviewInputChanged);
+    selectedHoldingId = item?.holdingId ?? widget.holdingId;
     includeInCalculations = item?.includeInCalculations ?? false;
     _assetFuture = AppDatabase.instance.fetchAssetById(widget.assetId);
   }
@@ -171,9 +173,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
 
     try {
       final item = widget.item;
-      final currentHoldingId = item == null
-          ? await _resolveCurrentHoldingId()
-          : widget.holdingId;
+      final currentHoldingId = await _resolveCurrentHoldingId();
       if (item == null) {
         await AppDatabase.instance.createTransaction(
           assetId: widget.assetId,
@@ -190,8 +190,8 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
           TransactionItem(
             id: item.id,
             clientId: item.clientId,
-            assetId: item.assetId,
-            holdingId: item.holdingId,
+            assetId: widget.assetId,
+            holdingId: currentHoldingId,
             date: dateValidation.value!,
             type: transactionType,
             name: nameValidation.value!,
@@ -290,7 +290,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
   HoldingItem? _currentHolding(AssetItem? asset) {
     if (asset == null) return null;
     for (final holding in asset.holdings) {
-      if (holding.id == widget.holdingId) return holding;
+      if (holding.id == selectedHoldingId) return holding;
     }
     final clientId = widget.holdingClientId;
     if (clientId != null && clientId.trim().isNotEmpty) {
@@ -308,6 +308,11 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
   }
 
   Future<int> _resolveCurrentHoldingId() async {
+    final selectedById = await AppDatabase.instance.fetchHoldingById(
+      selectedHoldingId,
+    );
+    if (selectedById?.id != null) return selectedById!.id!;
+
     final holdingById = await AppDatabase.instance.fetchHoldingById(
       widget.holdingId,
     );
@@ -323,6 +328,43 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     throw StateError('보유 종목 정보를 찾을 수 없습니다.');
   }
 
+  List<MoneyfySelectionOption<int>> _holdingOptions(AssetItem? asset) {
+    if (asset == null) return const [];
+    return asset.holdings
+        .where((holding) => !holding.isCashLike && holding.id != null)
+        .map(
+          (holding) => MoneyfySelectionOption<int>(
+            value: holding.id!,
+            title: holding.name,
+            subtitle: [
+              if (holding.symbol.trim().isNotEmpty) holding.symbol,
+              holding.currencyCode,
+              holding.quantityMetricValue,
+            ].join(' · '),
+            meta: holding.currencyCode,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  String _investmentLineActionLabel(String type) {
+    return switch (type) {
+      '매수' => 'buy',
+      '매도' => 'sell',
+      '배당' => 'dividend',
+      '이자' => 'interest',
+      _ => 'adjustment',
+    };
+  }
+
+  String _investmentEventKindLabel(String type) {
+    return switch (type) {
+      '매수' || '매도' => 'trade',
+      '배당' || '이자' => 'income',
+      _ => 'adjustment',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<AssetItem?>(
@@ -333,6 +375,8 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
         final requiresQuantity =
             transactionType == '매수' || transactionType == '매도';
         final ledgerCopy = _ledgerCopyFor(transactionType);
+        final holdingOptions = _holdingOptions(snapshot.data);
+        final currentHolding = _currentHolding(snapshot.data);
 
         return MoneyfyFormScaffold(
           title: widget.item == null ? '거래 추가' : '거래 수정',
@@ -341,7 +385,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
           onSave: _save,
           children: [
             MoneyfyFormSection(
-              title: '거래 설정',
+              title: '원장 이벤트',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -363,11 +407,34 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                       });
                     },
                   ),
+                  const SizedBox(height: 14),
+                  _CalculationToggle(
+                    value: includeInCalculations,
+                    onChanged: (value) {
+                      setState(() {
+                        includeInCalculations = value;
+                      });
+                    },
+                  ),
                 ],
               ),
             ),
             MoneyfyFormSection(
-              title: '입력 정보',
+              title: '대상 보유',
+              child: MoneyfySelectionField<int>(
+                label: '보유 종목',
+                options: holdingOptions,
+                value: currentHolding?.id ?? selectedHoldingId,
+                placeholder: '보유 종목 선택',
+                onChanged: (value) {
+                  setState(() {
+                    selectedHoldingId = value;
+                  });
+                },
+              ),
+            ),
+            MoneyfyFormSection(
+              title: '거래 내용',
               child: Column(
                 children: [
                   MoneyfyFormField(label: '날짜', controller: dateController),
@@ -390,23 +457,24 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                   MoneyfyLedgerPreview(
                     rows: [
                       MoneyfyLedgerPreviewRow(
+                        label: 'event.kind',
+                        value: _investmentEventKindLabel(transactionType),
+                      ),
+                      MoneyfyLedgerPreviewRow(
+                        label: 'line.action',
+                        value: _investmentLineActionLabel(transactionType),
+                      ),
+                      MoneyfyLedgerPreviewRow(
+                        label: 'line.holding',
+                        value: currentHolding?.name ?? '보유 종목 선택',
+                      ),
+                      MoneyfyLedgerPreviewRow(
                         label: '거래금액',
                         value: _transactionAmountPreview(snapshot.data),
                       ),
                     ],
                   ),
                 ],
-              ),
-            ),
-            MoneyfyFormSection(
-              title: '계산 반영',
-              child: _CalculationToggle(
-                value: includeInCalculations,
-                onChanged: (value) {
-                  setState(() {
-                    includeInCalculations = value;
-                  });
-                },
               ),
             ),
           ],

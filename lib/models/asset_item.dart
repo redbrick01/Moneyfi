@@ -40,6 +40,7 @@ class TransactionItem {
     this.ledgerAction,
     this.legacySourceTable,
     this.legacySourceId,
+    this.counterpartyHoldingId,
     this.includeInCalculations = true,
     this.flowCategory = TransactionFlowCategory.internal,
   });
@@ -64,6 +65,7 @@ class TransactionItem {
   final String? ledgerAction;
   final String? legacySourceTable;
   final int? legacySourceId;
+  final int? counterpartyHoldingId;
   final bool includeInCalculations;
   final String flowCategory;
 

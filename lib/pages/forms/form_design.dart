@@ -324,6 +324,272 @@ class MoneyfyFormField extends StatelessWidget {
   }
 }
 
+class MoneyfySelectionOption<T> {
+  const MoneyfySelectionOption({
+    required this.value,
+    required this.title,
+    this.subtitle,
+    this.meta,
+  });
+
+  final T value;
+  final String title;
+  final String? subtitle;
+  final String? meta;
+}
+
+class MoneyfySelectionField<T> extends StatelessWidget {
+  const MoneyfySelectionField({
+    super.key,
+    required this.label,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+    this.placeholder = '선택',
+  });
+
+  final String label;
+  final List<MoneyfySelectionOption<T>> options;
+  final T? value;
+  final ValueChanged<T> onChanged;
+  final String placeholder;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final selected = _selectedOption;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: MoneyfyPalette.tertiaryText,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            borderRadius: BorderRadius.circular(9999),
+            onTap: options.isEmpty
+                ? null
+                : () async {
+                    final selectedValue = await showModalBottomSheet<T>(
+                      context: context,
+                      backgroundColor: MoneyfyPalette.transparent,
+                      builder: (context) => _MoneyfySelectionSheet<T>(
+                        title: label,
+                        options: options,
+                        value: value,
+                      ),
+                    );
+                    if (selectedValue != null) onChanged(selectedValue);
+                  },
+            child: Ink(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+              decoration: BoxDecoration(
+                color: MoneyfyPalette.surface,
+                borderRadius: BorderRadius.circular(9999),
+                border: Border.all(color: MoneyfyPalette.border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          selected?.title ?? placeholder,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: selected == null
+                                ? MoneyfyPalette.tertiaryText
+                                : MoneyfyPalette.ink,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (selected?.subtitle case final subtitle?) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: MoneyfyPalette.tertiaryText,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.expand_more_rounded),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  MoneyfySelectionOption<T>? get _selectedOption {
+    for (final option in options) {
+      if (option.value == value) return option;
+    }
+    return null;
+  }
+}
+
+class _MoneyfySelectionSheet<T> extends StatelessWidget {
+  const _MoneyfySelectionSheet({
+    required this.title,
+    required this.options,
+    required this.value,
+  });
+
+  final String title;
+  final List<MoneyfySelectionOption<T>> options;
+  final T? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: MoneyfyPalette.background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + bottomInset),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: MoneyfyPalette.border,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(title, style: theme.textTheme.titleLarge),
+              const SizedBox(height: 18),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final option = options[index];
+                    return _MoneyfySelectionOptionTile<T>(
+                      option: option,
+                      isSelected: option.value == value,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MoneyfySelectionOptionTile<T> extends StatelessWidget {
+  const _MoneyfySelectionOptionTile({
+    required this.option,
+    required this.isSelected,
+  });
+
+  final MoneyfySelectionOption<T> option;
+  final bool isSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => Navigator.of(context).pop(option.value),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? MoneyfyPalette.accentSoft
+              : MoneyfyPalette.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isSelected ? MoneyfyPalette.accent : MoneyfyPalette.border,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    option.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: MoneyfyPalette.ink,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (option.subtitle case final subtitle?) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: MoneyfyPalette.tertiaryText,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (option.meta case final meta?) ...[
+              const SizedBox(width: 12),
+              Text(
+                meta,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: MoneyfyPalette.secondaryText,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+            const SizedBox(width: 12),
+            Icon(
+              isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+              color: isSelected
+                  ? MoneyfyPalette.accent
+                  : MoneyfyPalette.tertiaryText,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class MoneyfyChoiceWrap<T> extends StatelessWidget {
   const MoneyfyChoiceWrap({
     super.key,

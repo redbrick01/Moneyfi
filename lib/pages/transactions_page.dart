@@ -73,7 +73,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Future<_TransactionsPageData> _loadPageData() async {
     final assets = await AppDatabase.instance.fetchAssets();
     final accounts = <_TransactionAccountOption>[];
-    final rows = <_TransactionEntry>[];
+    final rawRows = <_TransactionEntry>[];
 
     for (final asset in assets) {
       for (final holding in asset.holdings) {
@@ -94,7 +94,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         accounts.add(account);
 
         for (var index = 0; index < holding.transactions.length; index++) {
-          rows.add(
+          rawRows.add(
             _TransactionEntry(
               transaction: holding.transactions[index],
               account: account,
@@ -107,6 +107,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       }
     }
 
+    final rows = _groupEntriesByLedgerEvent(rawRows);
     rows.sort(_compareTransactionEntries);
     return _TransactionsPageData(
       entries: List.unmodifiable(rows),
@@ -528,10 +529,16 @@ class _TransactionEntryRow extends StatelessWidget {
     );
     final signedAmountText = _signedAmountText(transaction, amountText);
     final amountColor = _externalCashAmountColor(context, transaction);
+    final subtitle = [
+      entry.accountSummary,
+      entry.account.subtitle,
+      transaction.date,
+      if (!transaction.includeInCalculations) '기록전용',
+    ].where((value) => value.trim().isNotEmpty).join(' · ');
 
     return Slidable(
       key: ValueKey(
-        'transactions-page-${transaction.ledgerEventId ?? transaction.id ?? transaction.hashCode}-${entry.account.holdingId}-${entry.originalIndex}',
+        'transactions-page-${entry.entryKey}-${entry.account.holdingId}-${entry.originalIndex}',
       ),
       groupTag: _TransactionsPageState._kSlidableGroupTag,
       endActionPane: moneyfySingleSlideActionPane(
@@ -542,12 +549,7 @@ class _TransactionEntryRow extends StatelessWidget {
       child: _CompactTransactionRow(
         typeLabel: transaction.type,
         title: transaction.name,
-        subtitle: [
-          entry.account.title,
-          entry.account.subtitle,
-          transaction.date,
-          if (!transaction.includeInCalculations) '기록전용',
-        ].join(' · '),
+        subtitle: subtitle,
         amountText: signedAmountText,
         amountColor: amountColor,
         onTap: onTap,
@@ -851,6 +853,7 @@ class _TransactionEntry {
     required this.currencyCode,
     required this.exchangeRate,
     required this.originalIndex,
+    this.relatedAccounts = const <_TransactionAccountOption>[],
   });
 
   final TransactionItem transaction;
@@ -858,6 +861,15 @@ class _TransactionEntry {
   final String currencyCode;
   final double exchangeRate;
   final int originalIndex;
+  final List<_TransactionAccountOption> relatedAccounts;
+
+  Object get entryKey =>
+      transaction.ledgerEventId ?? transaction.id ?? hashCode;
+
+  String get accountSummary {
+    if (relatedAccounts.length <= 1) return account.title;
+    return '${account.title} 외 ${relatedAccounts.length - 1}개';
+  }
 
   String get searchText {
     return [
@@ -868,6 +880,11 @@ class _TransactionEntry {
       transaction.quantity,
       account.title,
       account.subtitle,
+      for (final relatedAccount in relatedAccounts) ...[
+        relatedAccount.title,
+        relatedAccount.subtitle,
+        relatedAccount.isCash ? '현금' : '투자',
+      ],
       account.isCash ? '현금' : '투자',
       transaction.includeInCalculations ? '계산반영' : '기록전용 계산미반영',
     ].join(' ').toLowerCase();
@@ -894,6 +911,117 @@ class _TransactionAccountOption {
   final bool isCash;
   final String currencyCode;
   final double exchangeRate;
+}
+
+List<_TransactionEntry> _groupEntriesByLedgerEvent(
+  List<_TransactionEntry> entries,
+) {
+  final ungrouped = <_TransactionEntry>[];
+  final byEvent = <int, List<_TransactionEntry>>{};
+
+  for (final entry in entries) {
+    final eventId = entry.transaction.ledgerEventId;
+    if (eventId == null) {
+      ungrouped.add(entry);
+      continue;
+    }
+    byEvent.putIfAbsent(eventId, () => <_TransactionEntry>[]).add(entry);
+  }
+
+  return [
+    ...ungrouped,
+    for (final group in byEvent.values) _representativeEventEntry(group),
+  ];
+}
+
+_TransactionEntry _representativeEventEntry(List<_TransactionEntry> group) {
+  final sorted = group.toList(growable: false)
+    ..sort(_compareRepresentativeEntries);
+  final representative = sorted.first;
+  return _TransactionEntry(
+    transaction: representative.transaction,
+    account: representative.account,
+    currencyCode: representative.currencyCode,
+    exchangeRate: representative.exchangeRate,
+    originalIndex: representative.originalIndex,
+    relatedAccounts: _uniqueEventAccounts(representative, group),
+  );
+}
+
+int _compareRepresentativeEntries(_TransactionEntry a, _TransactionEntry b) {
+  final byPriority = _representativePriority(
+    a,
+  ).compareTo(_representativePriority(b));
+  if (byPriority != 0) return byPriority;
+  final byLineId = (a.transaction.ledgerLineId ?? 0).compareTo(
+    b.transaction.ledgerLineId ?? 0,
+  );
+  if (byLineId != 0) return byLineId;
+  return a.originalIndex.compareTo(b.originalIndex);
+}
+
+int _representativePriority(_TransactionEntry entry) {
+  final action = entry.transaction.ledgerAction;
+  if (!entry.account.isCash) return 0;
+  if (action == 'transfer_out' ||
+      action == 'fx_out' ||
+      (entry.transaction.cashFlowAmount ?? 0) < 0) {
+    return 1;
+  }
+  return 2;
+}
+
+List<_TransactionAccountOption> _uniqueEventAccounts(
+  _TransactionEntry representative,
+  List<_TransactionEntry> group,
+) {
+  final result = <_TransactionAccountOption>[];
+  final seen = <String>{};
+
+  void addAccount(_TransactionAccountOption account) {
+    final key = '${account.isCash}:${account.holdingId}';
+    if (seen.add(key)) result.add(account);
+  }
+
+  addAccount(representative.account);
+  for (final entry in group) {
+    addAccount(entry.account);
+  }
+  return List.unmodifiable(result);
+}
+
+@visibleForTesting
+List<TransactionItem> groupTransactionEventsForTesting(
+  List<TransactionItem> transactions, {
+  Set<int> cashHoldingIds = const <int>{},
+}) {
+  final entries = <_TransactionEntry>[];
+  for (var index = 0; index < transactions.length; index++) {
+    final transaction = transactions[index];
+    final holdingId = transaction.holdingId ?? index;
+    final isCash = cashHoldingIds.contains(holdingId);
+    entries.add(
+      _TransactionEntry(
+        transaction: transaction,
+        account: _TransactionAccountOption(
+          assetId: transaction.assetId ?? 0,
+          holdingId: holdingId,
+          holdingClientId: null,
+          title: 'account-$holdingId',
+          subtitle: '',
+          isCash: isCash,
+          currencyCode: 'KRW',
+          exchangeRate: 1,
+        ),
+        currencyCode: 'KRW',
+        exchangeRate: 1,
+        originalIndex: index,
+      ),
+    );
+  }
+  return _groupEntriesByLedgerEvent(
+    entries,
+  ).map((entry) => entry.transaction).toList(growable: false);
 }
 
 String? _cleanAccountSubtitle(String value) {
