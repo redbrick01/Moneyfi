@@ -986,6 +986,12 @@ void main() {
       expect(holding.transactions.single.includeInCalculations, isFalse);
       expect((await findHolding(cashHoldingId)).quantity, 1000);
       expect(await db.fetchLedgerStateParityIssues(), isEmpty);
+
+      final holdingPerformance = (await db
+          .fetchLedgerHoldingPerformanceByHoldingId())[holdingId];
+      final portfolioPerformance = await db.fetchLedgerPortfolioPerformance();
+      expect(holdingPerformance?.buyAmount, 500);
+      expect(portfolioPerformance.buyAmount, 500);
     },
   );
 
@@ -2488,6 +2494,16 @@ void main() {
       amount: '5',
       quantity: '',
     );
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: holdingId,
+      date: '2026.04.30',
+      type: '배당',
+      name: '기록용 배당',
+      amount: '7',
+      quantity: '',
+      includeInCalculations: false,
+    );
     await db.customStatement(
       "UPDATE transactions SET type = '매수', amount = '999' WHERE type IN ('배당', '이자')",
     );
@@ -2497,7 +2513,7 @@ void main() {
       rows.map((row) => row.action),
       containsAll(['dividend', 'interest']),
     );
-    expect(rows.fold<double>(0, (sum, row) => sum + row.amount), 35);
+    expect(rows.fold<double>(0, (sum, row) => sum + row.amount), 42);
     expect(rows.map((row) => row.holdingName).toSet(), {'배당 주식'});
   });
 

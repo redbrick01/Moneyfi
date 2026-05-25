@@ -753,7 +753,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
+          AND te.source NOT IN ('snapshot_restore', 'history_display')
         WHERE tl.deleted_at IS NULL
           AND holding_id IS NOT NULL
           $dateWhere
@@ -827,7 +827,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
+          AND te.source NOT IN ('snapshot_restore', 'history_display')
         WHERE tl.deleted_at IS NULL
           $dateWhere
       ''',
@@ -906,7 +906,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
+          AND te.source NOT IN ('snapshot_restore', 'history_display')
         WHERE tl.deleted_at IS NULL
           $dateWhere
         GROUP BY COALESCE(NULLIF(currency_code, ''), 'KRW')
@@ -988,7 +988,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te ON te.id = tl.event_id
         WHERE tl.deleted_at IS NULL
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
+          AND te.source NOT IN ('snapshot_restore', 'history_display')
           $dateWhere
           AND tl.action IN (
             'sell',
@@ -1127,7 +1127,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
+          AND te.source NOT IN ('snapshot_restore', 'history_display')
         LEFT JOIN holdings h
           ON h.id = tl.holding_id
         LEFT JOIN assets a
@@ -1188,7 +1188,7 @@ class AppDatabase extends _$AppDatabase {
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
-          AND te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')
+          AND te.source NOT IN ('snapshot_restore', 'history_display')
         LEFT JOIN holdings h
           ON h.id = tl.holding_id
         LEFT JOIN cash_accounts ca
@@ -4108,8 +4108,11 @@ class AppDatabase extends _$AppDatabase {
       final storedQuantity = parsedQuantity > 0
           ? _formatPlainNumber(parsedQuantity.abs())
           : item.quantity.trim();
-      final assetId = existing.assetId ?? item.assetId ?? 0;
-      final holdingId = existing.holdingId;
+      final assetId = item.assetId ?? existing.assetId ?? 0;
+      final holdingId = item.holdingId ?? existing.holdingId;
+      if (existing.holdingId != null) {
+        updatedHoldingIds.add(existing.holdingId!);
+      }
       if (holdingId != null) {
         updatedHoldingIds.add(holdingId);
       }
@@ -4138,6 +4141,8 @@ class AppDatabase extends _$AppDatabase {
           dirty: const Value(true),
           lastModifiedAt: Value(_syncTimestamp()),
           date: Value(normalizedDate),
+          assetId: Value(assetId),
+          holdingId: Value(holdingId),
           type: Value(normalizedType),
           name: Value(item.name),
           amount: Value(storedAmount),
