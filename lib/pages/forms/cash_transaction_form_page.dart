@@ -64,7 +64,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     exchangeRateController = TextEditingController();
     amountController.addListener(_handlePreviewInputChanged);
     selectedSourceHoldingId = item?.holdingId ?? widget.holdingId;
-    includeInCalculations = item?.includeInCalculations ?? false;
+    includeInCalculations = item?.includeInCalculations ?? true;
     _loadCashAccountOptions();
   }
 

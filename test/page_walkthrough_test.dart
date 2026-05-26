@@ -18,7 +18,6 @@ import 'package:moneyfy/pages/forms/transaction_form_page.dart';
 import 'package:moneyfy/pages/holding_detail_page.dart';
 import 'package:moneyfy/pages/investment_performance_page.dart';
 import 'package:moneyfy/pages/login_page.dart';
-import 'package:moneyfy/pages/portfolio_analysis_mvp_page.dart';
 import 'package:moneyfy/pages/signup_page.dart';
 import 'package:moneyfy/pages/snapshot_detail_page.dart';
 import 'package:moneyfy/pages/app_shell_page.dart';
@@ -181,9 +180,11 @@ void main() {
     await tester.tap(find.text('포트폴리오 진단').first);
     await settlePage(tester);
     expect(find.text('포트폴리오 진단'), findsWidgets);
+    expect(find.byTooltip('뒤로'), findsOneWidget);
 
-    Navigator.of(tester.element(find.byType(PortfolioAnalysisMvpPage))).pop();
+    await tester.tap(find.byTooltip('뒤로'));
     await settlePage(tester);
+    expect(find.text('종목별 뉴스'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('투자성과 분석'),
@@ -193,9 +194,11 @@ void main() {
     await tester.tap(find.text('투자성과 분석').first);
     await settlePage(tester);
     expect(find.text('순 투자성과'), findsWidgets);
+    expect(find.byTooltip('뒤로'), findsOneWidget);
 
-    Navigator.of(tester.element(find.byType(InvestmentPerformancePage))).pop();
+    await tester.tap(find.byTooltip('뒤로'));
     await settlePage(tester);
+    expect(find.text('종목별 뉴스'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('배당/이자 분석'),
@@ -205,6 +208,11 @@ void main() {
     await tester.tap(find.text('배당/이자 분석').first);
     await settlePage(tester);
     expect(find.text('배당/이자 총합'), findsOneWidget);
+    expect(find.byTooltip('뒤로'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('뒤로'));
+    await settlePage(tester);
+    expect(find.text('종목별 뉴스'), findsOneWidget);
   });
 
   test('transactions page groups ledger lines by event id', () {
@@ -308,6 +316,45 @@ void main() {
     expect(
       find.widgetWithText(TextField, '예: 005930, AAPL, BTC'),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('new transaction forms default to calculation included', (
+    tester,
+  ) async {
+    await pumpInteractivePage(
+      tester,
+      TransactionFormPage(
+        assetId: _walkthroughIds.stockAssetId,
+        holdingId: _walkthroughIds.holdingId,
+        defaultName: '삼성전자',
+      ),
+    );
+
+    expect(
+      tester.widget<SwitchListTile>(
+        find.byType(SwitchListTile).first,
+      ).value,
+      isTrue,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+
+    await pumpInteractivePage(
+      tester,
+      CashTransactionFormPage(
+        assetId: _walkthroughIds.cashAssetId,
+        holdingId: _walkthroughIds.cashHoldingId,
+        defaultName: '생활비',
+      ),
+    );
+
+    expect(
+      tester.widget<SwitchListTile>(
+        find.byType(SwitchListTile).first,
+      ).value,
+      isTrue,
     );
   });
 

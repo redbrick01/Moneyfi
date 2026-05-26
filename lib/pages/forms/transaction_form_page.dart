@@ -76,7 +76,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     amountController.addListener(_handlePreviewInputChanged);
     quantityController.addListener(_handlePreviewInputChanged);
     selectedHoldingId = item?.holdingId ?? widget.holdingId;
-    includeInCalculations = item?.includeInCalculations ?? false;
+    includeInCalculations = item?.includeInCalculations ?? true;
     _assetsFuture = AppDatabase.instance.fetchAssets();
   }
 

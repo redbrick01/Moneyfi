@@ -42,6 +42,7 @@ class MoneyfyPage extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final horizontalPadding = context.contentHorizontalPadding;
+    final canPop = Navigator.canPop(context);
     final scrollView = SingleChildScrollView(
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
@@ -57,6 +58,14 @@ class MoneyfyPage extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (canPop) ...[
+                IconButton(
+                  tooltip: '뒤로',
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
+                SizedBox(width: context.spacing.xs),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
