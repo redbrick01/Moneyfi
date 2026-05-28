@@ -69,4 +69,12 @@ void main() {
 
     expect(asset.visibleHoldings.map((item) => item.name), ['Open', 'Cash']);
   });
+
+  test('quantityText preserves crypto-scale fractional quantity', () {
+    expect(
+      holding(name: 'BTC', quantity: 0.12345678).quantityText,
+      '0.12345678',
+    );
+    expect(holding(name: 'Whole', quantity: 2).quantityText, '2');
+  });
 }

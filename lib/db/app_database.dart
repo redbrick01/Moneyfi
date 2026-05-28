@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/asset_item.dart';
 import '../utils/display_currency.dart';
+import '../utils/number_formatters.dart';
 
 part 'app_database_records.dart';
 part 'app_database_tables.dart';
@@ -1331,10 +1332,10 @@ class AppDatabase extends _$AppDatabase {
           costBasisDelta = -(averageCost * sellQuantity);
           realizedPnl = (unitPrice - averageCost) * sellQuantity;
           final nextQuantity = currentQuantity + quantityDelta;
-          quantityByHoldingId[holdingId ?? -1] = nextQuantity <= 0.0000001
-              ? 0
-              : nextQuantity;
-          costByHoldingId[holdingId ?? -1] = nextQuantity <= 0.0000001
+          quantityByHoldingId[holdingId ?? -1] =
+              isEffectivelyZeroQuantity(nextQuantity) ? 0 : nextQuantity;
+          costByHoldingId[holdingId ??
+              -1] = isEffectivelyZeroQuantity(nextQuantity)
               ? 0
               : currentCost + costBasisDelta;
           break;
@@ -2242,7 +2243,7 @@ class AppDatabase extends _$AppDatabase {
             grossAmount: grossAmount,
           ),
         ),
-        quantity: _formatPlainNumber(quantityValue),
+        quantity: formatPlainQuantity(quantityValue),
         unitPrice: unitPrice,
         quantityValue: quantityValue,
         grossAmount: grossAmount,
@@ -3029,13 +3030,16 @@ class AppDatabase extends _$AppDatabase {
       }
     }
 
-    if (availableQuantity < 0.0000001) {
+    if (isEffectivelyZeroQuantity(availableQuantity)) {
       availableQuantity = 0;
     }
 
-    if (sellQuantity > availableQuantity + 0.0000001) {
+    if (exceedsAvailableQuantity(
+      requested: sellQuantity,
+      available: availableQuantity,
+    )) {
       throw StateError(
-        '매도 수량이 보유 수량보다 많습니다. 매도 ${_formatPlainNumber(sellQuantity)} / 보유 ${_formatPlainNumber(availableQuantity)}',
+        '매도 수량이 보유 수량보다 많습니다. 매도 ${formatPlainQuantity(sellQuantity)} / 보유 ${formatPlainQuantity(availableQuantity)}',
       );
     }
   }
@@ -3233,9 +3237,12 @@ class AppDatabase extends _$AppDatabase {
           AND te.deleted_at IS NULL
           AND te.source NOT IN ('history_display', 'record_only')
           AND tl.holding_id = ?
-          AND ABS(tl.quantity_delta) > 0.0000001
+          AND ABS(tl.quantity_delta) > ?
       ''',
-      variables: [Variable.withInt(holdingId)],
+      variables: [
+        Variable.withInt(holdingId),
+        Variable.withReal(moneyfyQuantityTolerance),
+      ],
       readsFrom: {transactionEvents, transactionLines},
     ).getSingle();
     if (existing.read<int>('count') > 0) return;
@@ -3852,10 +3859,10 @@ class AppDatabase extends _$AppDatabase {
       throw StateError('배당/이자 거래는 금액을 0보다 크게 입력해야 합니다.');
     }
     final storedAmount = parsedAmount > 0
-        ? _formatPlainNumber(parsedAmount.abs())
+        ? _formatPlainAmount(parsedAmount.abs())
         : amount.trim();
     final storedQuantity = parsedQuantity > 0
-        ? _formatPlainNumber(parsedQuantity.abs())
+        ? formatPlainQuantity(parsedQuantity.abs())
         : quantity.trim();
     await transaction(() async {
       final maxQuery = selectOnly(transactionEvents)
@@ -4103,10 +4110,10 @@ class AppDatabase extends _$AppDatabase {
         throw StateError('배당/이자 거래는 금액을 0보다 크게 입력해야 합니다.');
       }
       final storedAmount = parsedAmount > 0
-          ? _formatPlainNumber(parsedAmount.abs())
+          ? _formatPlainAmount(parsedAmount.abs())
           : item.amount.trim();
       final storedQuantity = parsedQuantity > 0
-          ? _formatPlainNumber(parsedQuantity.abs())
+          ? formatPlainQuantity(parsedQuantity.abs())
           : item.quantity.trim();
       final assetId = item.assetId ?? existing.assetId ?? 0;
       final holdingId = item.holdingId ?? existing.holdingId;
@@ -4697,7 +4704,7 @@ class AppDatabase extends _$AppDatabase {
           if (deltaQuantity <= 0 || quantity <= 0) continue;
           totalCost -= averagePrice * deltaQuantity;
           quantity -= deltaQuantity;
-          if (quantity <= 0.0000001) {
+          if (isEffectivelyZeroQuantity(quantity)) {
             quantity = 0;
             totalCost = 0;
             averagePrice = 0;
@@ -4729,7 +4736,7 @@ class AppDatabase extends _$AppDatabase {
           if (deltaQuantity <= 0 || quantity <= 0) continue;
           totalCost -= averagePrice * deltaQuantity;
           quantity -= deltaQuantity;
-          if (quantity <= 0.0000001) {
+          if (isEffectivelyZeroQuantity(quantity)) {
             quantity = 0;
             totalCost = 0;
             averagePrice = 0;
@@ -4792,7 +4799,7 @@ class AppDatabase extends _$AppDatabase {
 
     final quantity = row.read<double>('quantity');
     final costBasis = row.read<double>('cost_basis');
-    final averagePrice = quantity.abs() <= 0.0000001
+    final averagePrice = isEffectivelyZeroQuantity(quantity)
         ? 0.0
         : costBasis / quantity;
 
@@ -4804,7 +4811,7 @@ class AppDatabase extends _$AppDatabase {
         lastModifiedAt: markDirty
             ? Value(_syncTimestamp())
             : const Value.absent(),
-        quantity: Value(quantity.abs() <= 0.0000001 ? 0 : quantity),
+        quantity: Value(isEffectivelyZeroQuantity(quantity) ? 0 : quantity),
         averagePrice: Value(averagePrice < 0 ? 0 : averagePrice),
       ),
     );
@@ -5504,7 +5511,7 @@ class AppDatabase extends _$AppDatabase {
                 grossAmount: row.read<double>('gross_amount'),
               ),
             ),
-            quantity: _formatPlainNumber(row.read<double>('quantity')),
+            quantity: formatPlainQuantity(row.read<double>('quantity')),
             sortOrder: row.read<int>('event_sort_order'),
           );
         })

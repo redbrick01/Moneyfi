@@ -136,6 +136,10 @@ String _storedCashTransactionAmount({
   }
 }
 
+String _formatPlainAmount(double value) {
+  return _formatPlainNumber(value);
+}
+
 double _cashOutgoingAmount({required String type, required String amount}) {
   final normalizedType = _normalizeTransactionType(type);
   final parsedAmount = _parseTransactionNumber(amount);

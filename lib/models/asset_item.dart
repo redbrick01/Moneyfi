@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../utils/display_currency.dart';
+import '../utils/number_formatters.dart';
 
 class TransactionFlowCategory {
   const TransactionFlowCategory._();
@@ -164,9 +165,7 @@ class HoldingItem {
     return (profitAmount / purchaseAmount) * 100;
   }
 
-  String get quantityText => quantity == quantity.roundToDouble()
-      ? quantity.toStringAsFixed(0)
-      : quantity.toStringAsFixed(3);
+  String get quantityText => formatPlainQuantity(quantity);
 
   String get subtitle =>
       symbol.isEmpty ? quantityText : '$symbol • $quantityText';
