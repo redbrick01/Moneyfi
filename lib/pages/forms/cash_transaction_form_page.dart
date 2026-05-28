@@ -24,6 +24,7 @@ class CashTransactionFormPage extends StatefulWidget {
     this.holdingClientId,
     this.item,
     this.defaultName,
+    this.assetsFutureForTesting,
   });
 
   final int assetId;
@@ -31,6 +32,7 @@ class CashTransactionFormPage extends StatefulWidget {
   final String? holdingClientId;
   final TransactionItem? item;
   final String? defaultName;
+  final Future<List<AssetItem>>? assetsFutureForTesting;
 
   @override
   State<CashTransactionFormPage> createState() =>
@@ -263,6 +265,11 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     return value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
   }
 
+  String _amountShortcutText(double value) {
+    final safeValue = value <= 0 ? 0.0 : (value * 1000).floorToDouble() / 1000;
+    return _numberText(safeValue);
+  }
+
   String _cashTransactionAmountPreview() {
     final amount = _parseFormNumber(amountController.text);
     if (amount == null || amount <= 0) return '-';
@@ -275,6 +282,45 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
 
   double? _parseFormNumber(String value) {
     return double.tryParse(value.replaceAll(',', '').trim());
+  }
+
+  double _cashShortcutAvailableBalance() {
+    final sourceOption = _selectedSourceOption;
+    if (sourceOption == null) return 0;
+    var balance = sourceOption.balance;
+    final item = widget.item;
+    if (item == null || !item.includeInCalculations) {
+      return balance <= 0 ? 0 : balance;
+    }
+    if (item.holdingId != sourceOption.holdingId) {
+      return balance <= 0 ? 0 : balance;
+    }
+    final existingAmount = _parseFormNumber(item.amount)?.abs() ?? 0;
+    switch (item.type.trim()) {
+      case '출금':
+      case 'withdraw':
+      case 'withdrawal':
+      case '이체':
+      case 'transfer':
+      case '환전':
+      case 'exchange':
+        balance += existingAmount;
+        break;
+      case '입금':
+      case 'deposit':
+        balance -= existingAmount;
+        break;
+    }
+    return balance <= 0 ? 0 : balance;
+  }
+
+  void _applyCashAmountRatio(double availableBalance, double ratio) {
+    final selectedAmount = ratio >= 1
+        ? availableBalance
+        : availableBalance * ratio;
+    setState(() {
+      amountController.text = _amountShortcutText(selectedAmount);
+    });
   }
 
   void _showValidationMessage(String message) {
@@ -307,17 +353,21 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
   Future<void> _loadCashAccountOptions() async {
     HoldingItem? loadedSourceHolding;
     final clientId = widget.holdingClientId;
-    loadedSourceHolding = await AppDatabase.instance.fetchHoldingById(
-      widget.holdingId,
-    );
-    if (loadedSourceHolding == null &&
-        clientId != null &&
-        clientId.trim().isNotEmpty) {
-      loadedSourceHolding = await AppDatabase.instance.fetchHoldingByClientId(
-        clientId,
+    if (widget.assetsFutureForTesting == null) {
+      loadedSourceHolding = await AppDatabase.instance.fetchHoldingById(
+        widget.holdingId,
       );
+      if (loadedSourceHolding == null &&
+          clientId != null &&
+          clientId.trim().isNotEmpty) {
+        loadedSourceHolding = await AppDatabase.instance.fetchHoldingByClientId(
+          clientId,
+        );
+      }
     }
-    final assets = await AppDatabase.instance.fetchAssets();
+    final assets = widget.assetsFutureForTesting == null
+        ? await AppDatabase.instance.fetchAssets()
+        : await widget.assetsFutureForTesting!;
     final options = assets
         .expand(
           (asset) => asset.holdings
@@ -489,6 +539,10 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     final sourceOptions = _sourceAccountOptions();
     final targetOptions = _transferTargetOptions();
     final sourceOption = _selectedSourceOption;
+    final shortcutBalance = switch (transactionType) {
+      '출금' || '이체' || '환전' => _cashShortcutAvailableBalance(),
+      _ => 0.0,
+    };
 
     return MoneyfyFormScaffold(
       title: widget.item == null ? '현금 거래 추가' : '현금 거래 수정',
@@ -575,6 +629,15 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
                   decimal: true,
                 ),
               ),
+              if (shortcutBalance > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: MoneyfyPercentageShortcutButtons(
+                    keyPrefix: 'cash-amount-shortcut',
+                    onSelected: (ratio) =>
+                        _applyCashAmountRatio(shortcutBalance, ratio),
+                  ),
+                ),
               MoneyfyLedgerPreview(
                 rows: [
                   MoneyfyLedgerPreviewRow(

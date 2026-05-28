@@ -655,3 +655,52 @@ class MoneyfyChoiceWrap<T> extends StatelessWidget {
     );
   }
 }
+
+class MoneyfyPercentageShortcutButtons extends StatelessWidget {
+  const MoneyfyPercentageShortcutButtons({
+    super.key,
+    required this.onSelected,
+    this.enabled = true,
+    this.keyPrefix = 'percentage-shortcut',
+  });
+
+  final ValueChanged<double> onSelected;
+  final bool enabled;
+  final String keyPrefix;
+
+  static const _options = <double>[0.25, 0.5, 0.75, 1.0];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final ratio in _options)
+            OutlinedButton(
+              key: ValueKey('$keyPrefix-${(ratio * 100).round()}'),
+              onPressed: enabled ? () => onSelected(ratio) : null,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: MoneyfyPalette.primary,
+                side: const BorderSide(color: MoneyfyPalette.border),
+                minimumSize: const Size(56, 36),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              child: Text('${(ratio * 100).round()}%'),
+            ),
+        ],
+      ),
+    );
+  }
+}

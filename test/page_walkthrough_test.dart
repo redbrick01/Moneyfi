@@ -332,9 +332,7 @@ void main() {
     );
 
     expect(
-      tester.widget<SwitchListTile>(
-        find.byType(SwitchListTile).first,
-      ).value,
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile).first).value,
       isTrue,
     );
 
@@ -351,9 +349,7 @@ void main() {
     );
 
     expect(
-      tester.widget<SwitchListTile>(
-        find.byType(SwitchListTile).first,
-      ).value,
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile).first).value,
       isTrue,
     );
   });

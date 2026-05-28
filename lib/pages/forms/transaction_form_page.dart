@@ -10,6 +10,7 @@ import '../../services/sync_service.dart';
 import '../../theme/moneyfy_theme.dart';
 import '../../utils/display_currency.dart';
 import '../../utils/input_validators.dart';
+import '../../utils/number_formatters.dart';
 import 'form_design.dart';
 
 const _transactionTypes = ['매수', '매도', '배당', '이자'];
@@ -32,6 +33,7 @@ class TransactionFormPage extends StatefulWidget {
     this.holdingClientId,
     this.item,
     this.defaultName,
+    this.assetsFutureForTesting,
   });
 
   final int assetId;
@@ -39,6 +41,7 @@ class TransactionFormPage extends StatefulWidget {
   final String? holdingClientId;
   final TransactionItem? item;
   final String? defaultName;
+  final Future<List<AssetItem>>? assetsFutureForTesting;
 
   @override
   State<TransactionFormPage> createState() => _TransactionFormPageState();
@@ -77,7 +80,8 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     quantityController.addListener(_handlePreviewInputChanged);
     selectedHoldingId = item?.holdingId ?? widget.holdingId;
     includeInCalculations = item?.includeInCalculations ?? true;
-    _assetsFuture = AppDatabase.instance.fetchAssets();
+    _assetsFuture =
+        widget.assetsFutureForTesting ?? AppDatabase.instance.fetchAssets();
   }
 
   String _todayText() {
@@ -303,6 +307,103 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
 
   double? _parseFormNumber(String value) {
     return double.tryParse(value.replaceAll(',', '').trim());
+  }
+
+  HoldingItem? _settlementCashHoldingFor(
+    List<AssetItem> assets,
+    HoldingItem? holding,
+  ) {
+    if (holding == null) return null;
+    for (final asset in assets) {
+      if (asset.id != (holding.assetId ?? widget.assetId)) continue;
+      final matches = asset.holdings.where(
+        (candidate) =>
+            candidate.isCashLike &&
+            candidate.currencyCode == holding.currencyCode,
+      );
+      if (matches.isNotEmpty) return matches.first;
+    }
+    return null;
+  }
+
+  double _buyableCashFor(List<AssetItem> assets, HoldingItem? holding) {
+    final settlementCash = _settlementCashHoldingFor(assets, holding);
+    if (settlementCash == null) return 0;
+    var balance = settlementCash.quantity;
+    final item = widget.item;
+    if (item == null || !item.includeInCalculations) {
+      return balance <= 0 ? 0 : balance;
+    }
+    if (item.holdingId != holding?.id) {
+      return balance <= 0 ? 0 : balance;
+    }
+    final existingAmount = _parseFormNumber(item.amount)?.abs() ?? 0;
+    final existingQuantity = _parseFormNumber(item.quantity)?.abs() ?? 0;
+    final existingTotal = existingQuantity > 0
+        ? existingAmount * existingQuantity
+        : existingAmount;
+    switch (item.type.trim()) {
+      case '매수':
+      case 'buy':
+        balance += existingTotal;
+        break;
+      case '매도':
+      case 'sell':
+        balance -= existingTotal;
+        break;
+    }
+    return balance <= 0 ? 0 : balance;
+  }
+
+  double _sellableQuantityFor(HoldingItem? holding) {
+    if (holding == null || holding.isCashLike) return 0;
+    var quantity = holding.quantity;
+    final item = widget.item;
+    if (item == null || !item.includeInCalculations) {
+      return isEffectivelyZeroQuantity(quantity) ? 0 : quantity;
+    }
+    if (item.holdingId != holding.id) {
+      return isEffectivelyZeroQuantity(quantity) ? 0 : quantity;
+    }
+
+    final existingQuantity = _parseFormNumber(item.quantity)?.abs() ?? 0;
+    switch (item.type.trim()) {
+      case '매도':
+      case 'sell':
+      case '출금':
+      case 'withdraw':
+      case 'withdrawal':
+        quantity += existingQuantity;
+        break;
+      case '초기':
+      case 'initial':
+      case '매수':
+      case 'buy':
+      case '입금':
+      case 'deposit':
+        quantity -= existingQuantity;
+        break;
+    }
+    return isEffectivelyZeroQuantity(quantity) ? 0 : quantity;
+  }
+
+  void _applySellQuantityRatio(double availableQuantity, double ratio) {
+    final selectedQuantity = ratio >= 1
+        ? availableQuantity
+        : availableQuantity * ratio;
+    setState(() {
+      quantityController.text = formatPlainQuantity(selectedQuantity);
+    });
+  }
+
+  void _applyBuyCashRatio(double availableCash, double ratio) {
+    final unitAmount = _parseFormNumber(amountController.text);
+    if (unitAmount == null || unitAmount <= 0) return;
+    final selectedAmount = ratio >= 1 ? availableCash : availableCash * ratio;
+    final selectedQuantity = selectedAmount / unitAmount;
+    setState(() {
+      quantityController.text = formatPlainQuantity(selectedQuantity);
+    });
   }
 
   HoldingItem? _currentHolding(List<AssetItem> assets) {
@@ -808,6 +909,15 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
         final currentHolding = _currentHolding(assets);
         final targetHoldingLabel =
             currentHolding?.name ?? _selectedMarketResult?.name ?? '보유 종목 선택';
+        final sellableQuantity = transactionType == '매도'
+            ? _sellableQuantityFor(currentHolding)
+            : 0.0;
+        final buyableCash = transactionType == '매수'
+            ? _buyableCashFor(assets, currentHolding)
+            : 0.0;
+        final canUseBuyShortcuts =
+            buyableCash > 0 &&
+            (_parseFormNumber(amountController.text) ?? 0) > 0;
 
         return MoneyfyFormScaffold(
           title: widget.item == null ? '거래 추가' : '거래 수정',
@@ -916,7 +1026,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                       decimal: true,
                     ),
                   ),
-                  if (requiresQuantity)
+                  if (requiresQuantity) ...[
                     MoneyfyFormField(
                       label: ledgerCopy.quantityLabel,
                       controller: quantityController,
@@ -924,6 +1034,26 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                         decimal: true,
                       ),
                     ),
+                    if (transactionType == '매도' && sellableQuantity > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: MoneyfyPercentageShortcutButtons(
+                          keyPrefix: 'sell-quantity-shortcut',
+                          onSelected: (ratio) =>
+                              _applySellQuantityRatio(sellableQuantity, ratio),
+                        ),
+                      ),
+                    if (transactionType == '매수' && buyableCash > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: MoneyfyPercentageShortcutButtons(
+                          keyPrefix: 'buy-cash-shortcut',
+                          enabled: canUseBuyShortcuts,
+                          onSelected: (ratio) =>
+                              _applyBuyCashRatio(buyableCash, ratio),
+                        ),
+                      ),
+                  ],
                   MoneyfyLedgerPreview(
                     rows: [
                       MoneyfyLedgerPreviewRow(
