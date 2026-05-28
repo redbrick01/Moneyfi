@@ -257,6 +257,29 @@ void main() {
     expect(sourceRow.read<String>('flow_category'), 'external_deposit');
   });
 
+  test('cash withdrawal can use full source balance', () async {
+    final assetId = await createAsset('현금');
+    final cashHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '생활비',
+      note: '',
+      balance: 1000,
+    );
+
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: cashHoldingId,
+      date: '2026.05.21',
+      type: '출금',
+      name: '전액 출금',
+      amount: '1000',
+      quantity: '',
+    );
+
+    expect((await findHolding(cashHoldingId)).quantity, 0);
+  });
+
   test(
     'cash transfer updates both linked accounts and deletes as a pair',
     () async {
@@ -724,6 +747,32 @@ void main() {
     },
   );
 
+  test('cash exchange can use full source balance', () async {
+    final assetId = await createAsset('현금');
+    final krwHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '원화',
+      note: '',
+      balance: 3000,
+    );
+
+    await db.createCashExchange(
+      assetId: assetId,
+      sourceHoldingId: krwHoldingId,
+      date: '2026.05.21',
+      name: '전액 환전',
+      amount: '3000',
+      exchangeRate: 1500,
+    );
+
+    final usdHolding = (await db.fetchAssetById(
+      assetId,
+    ))!.holdings.singleWhere((holding) => holding.currencyCode == 'USD');
+    expect((await findHolding(krwHoldingId)).quantity, 0);
+    expect(usdHolding.quantity, 2);
+  });
+
   test('cash exchange create writes one active paired ledger event', () async {
     final assetId = await createAsset('현금');
     final krwHoldingId = await db.createCashAccount(
@@ -882,6 +931,273 @@ void main() {
         ),
         throwsA(isA<StateError>()),
       );
+    },
+  );
+
+  test('buy can use full first settlement cash balance', () async {
+    final assetId = await createAsset('가상화폐');
+    final holdingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '매수 테스트 코인',
+      symbol: 'BUY',
+      quantity: 0,
+      averagePrice: 0,
+      currentPrice: 100,
+      note: '',
+    );
+    final firstCashHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '첫 결제 현금',
+      note: '',
+      balance: 1000,
+    );
+    final secondCashHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '둘째 결제 현금',
+      note: '',
+      balance: 500,
+    );
+
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: holdingId,
+      date: '2026.05.21',
+      type: '매수',
+      name: '전액 매수',
+      amount: '100',
+      quantity: '10',
+    );
+
+    expect((await findHolding(holdingId)).quantity, 10);
+    expect((await findHolding(firstCashHoldingId)).quantity, 0);
+    expect((await findHolding(secondCashHoldingId)).quantity, 500);
+  });
+
+  test(
+    'crypto-scale quantity can be fully sold without precision loss',
+    () async {
+      final assetId = await createAsset('가상화폐');
+      final holdingId = await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '테스트 코인',
+        symbol: 'TCOIN',
+        quantity: 0,
+        averagePrice: 0,
+        currentPrice: 100,
+        note: '',
+      );
+      await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '결제 현금',
+        note: '',
+        balance: 1000,
+      );
+
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.21',
+        type: '매수',
+        name: '소수 매수',
+        amount: '100',
+        quantity: '0.12345678',
+      );
+
+      final boughtHolding = await findHolding(holdingId);
+      expect(boughtHolding.quantity, closeTo(0.12345678, 0.000000000001));
+      expect(
+        boughtHolding.transactions
+            .singleWhere((transaction) => transaction.type == '매수')
+            .quantity,
+        '0.12345678',
+      );
+
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.22',
+        type: '매도',
+        name: '소수 전량 매도',
+        amount: '110',
+        quantity: '0.12345678',
+      );
+
+      final soldHolding = await findHolding(holdingId);
+      expect(soldHolding.quantity, 0);
+      expect(
+        soldHolding.transactions
+            .singleWhere((transaction) => transaction.type == '매도')
+            .quantity,
+        '0.12345678',
+      );
+    },
+  );
+
+  test('crypto-scale sell rejects quantities above tolerance', () async {
+    final assetId = await createAsset('가상화폐');
+    final holdingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '초과 테스트 코인',
+      symbol: 'OVER',
+      quantity: 0,
+      averagePrice: 0,
+      currentPrice: 100,
+      note: '',
+    );
+    await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '결제 현금',
+      note: '',
+      balance: 1000,
+    );
+
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: holdingId,
+      date: '2026.05.21',
+      type: '매수',
+      name: '소수 매수',
+      amount: '100',
+      quantity: '0.12345678',
+    );
+
+    expect(
+      () => db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.22',
+        type: '매도',
+        name: '허용 오차 초과 매도',
+        amount: '100',
+        quantity: '0.12345678001',
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test('full sell clears floating point dust quantity', () async {
+    final assetId = await createAsset('가상화폐');
+    final holdingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '잔량 테스트 코인',
+      symbol: 'DUST',
+      quantity: 0,
+      averagePrice: 0,
+      currentPrice: 100,
+      note: '',
+    );
+    await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '결제 현금',
+      note: '',
+      balance: 1000,
+    );
+
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: holdingId,
+      date: '2026.05.21',
+      type: '매수',
+      name: '0.1 매수',
+      amount: '100',
+      quantity: '0.1',
+    );
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: holdingId,
+      date: '2026.05.22',
+      type: '매수',
+      name: '0.2 매수',
+      amount: '100',
+      quantity: '0.2',
+    );
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: holdingId,
+      date: '2026.05.23',
+      type: '매도',
+      name: '0.3 매도',
+      amount: '100',
+      quantity: '0.3',
+    );
+
+    expect((await findHolding(holdingId)).quantity, 0);
+  });
+
+  test(
+    'sell edit can use current quantity plus existing sell quantity',
+    () async {
+      final assetId = await createAsset('가상화폐');
+      final holdingId = await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '수정 테스트 코인',
+        symbol: 'EDIT',
+        quantity: 0,
+        averagePrice: 0,
+        currentPrice: 100,
+        note: '',
+      );
+      await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '결제 현금',
+        note: '',
+        balance: 1000,
+      );
+
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.21',
+        type: '매수',
+        name: '소수 매수',
+        amount: '100',
+        quantity: '0.12345678',
+      );
+      final sellId = await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.22',
+        type: '매도',
+        name: '일부 매도',
+        amount: '100',
+        quantity: '0.05',
+      );
+
+      expect(
+        (await findHolding(holdingId)).quantity,
+        closeTo(0.07345678, 0.000000000001),
+      );
+
+      await db.updateTransactionItem(
+        TransactionItem(
+          id: sellId,
+          assetId: assetId,
+          holdingId: holdingId,
+          date: '2026.05.22',
+          type: '매도',
+          name: '전량 매도로 수정',
+          amount: '100',
+          quantity: '0.12345678',
+        ),
+      );
+
+      expect((await findHolding(holdingId)).quantity, 0);
     },
   );
 
