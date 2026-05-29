@@ -1,6 +1,6 @@
 # Document Inventory
 
-이 문서는 MONEYFY 저장소의 Markdown 문서를 한곳에서 찾기 위한 전체 색인입니다. 문서 파일을 물리적으로 이동하지 않고, 기존 폴더 구조를 기준으로 읽는 순서와 보관 위치를 정리합니다.
+이 문서는 MONEYFY 저장소의 Markdown 문서를 한곳에서 찾기 위한 전체 색인입니다. 현재 폴더 구조를 기준으로 읽는 순서와 보관 위치를 정리합니다.
 
 ## Reading Order
 
@@ -10,7 +10,7 @@
 | 2 | [Folder Guide](folder_guide.md) | 저장소 폴더별 책임 파악 |
 | 3 | [Data & Sync Flow](data_and_sync.md) | 로컬 DB, 원장, Supabase sync 흐름 파악 |
 | 4 | [Supabase Overview](supabase_overview.md) | 원격 schema, Edge Functions, 운영 포인트 파악 |
-| 5 | [Design System](design_system.md) | MONEYFY UI 원칙과 재사용 컴포넌트 규칙 파악 |
+| 5 | [Design System](design_system.md) | MONEYFY UI/UX 단일 기준 파악 |
 | 6 | [Feature Work Docs](features/README.md) | 기능/패치/버그 수정 작업 기록 탐색 |
 
 ## Repository-Level Docs
@@ -18,7 +18,6 @@
 | 경로 | 역할 |
 | --- | --- |
 | [../README.md](../README.md) | 프로젝트 소개, 실행 방법, 주요 문서 진입점 |
-| [../DESIGN.md](../DESIGN.md) | 외부 디자인 레퍼런스 기반 visual spec |
 | [../assets/README.md](../assets/README.md) | 앱 asset과 로컬 config 예시 안내 |
 | [../lib/README.md](../lib/README.md) | Flutter 앱 소스 구조, 화면/서비스 map |
 | [../supabase/README.md](../supabase/README.md) | Supabase 폴더 구조, 함수 그룹, 운영 명령 |
@@ -46,12 +45,9 @@
 
 | 문서 | 역할 |
 | --- | --- |
-| [Design System](design_system.md) | UI 원칙, 색상, typography, component 규칙 |
-| [getdesign Application Plan](design/getdesign_application_plan.md) | 디자인 레퍼런스 적용 계획 |
-| [Main Asset Card Format](design/main_asset_card_format.md) | 메인 자산 카드 표시 포맷 |
+| [Design System](design_system.md) | UI/UX 단일 기준: 방향, 토큰, typography, component, 상태, 화면 패턴, 메인 자산 카드, QA |
 | [Transaction Ledger Redesign](design/transaction_ledger_redesign.md) | 거래 내역 화면 개편 방향 |
-| [UI Snapshot Targets](design/ui_snapshot_targets.md) | UI 회귀 확인 화면 목록 |
-| [Final Polish Pass](design/final_polish_pass.md) | 최종 UI polish checklist |
+| [Transaction History UI/UX Improvement Plan](design/transaction_history_ui_ux_improvement_plan.md) | 거래 내역 필터/목록 UX 개선 계획 |
 
 ## Process Guides
 
@@ -68,7 +64,7 @@
 | 분류 | 인덱스 | 작업 폴더 |
 | --- | --- | --- |
 | 새로운 기능 개발 | [new_feature_development/README](features/new_feature_development/README.md) | `investment_performance`, `portfolio_diagnosis`, `profile_management_minimum`, `risk_adjusted_benchmark_performance`, `sell_quantity_percentage_shortcuts`, `transaction_event_flow_classification`, `transaction_event_rows`, `transaction_form_ledger_layout`, `transaction_management_page`, `transaction_percentage_shortcuts_expansion` |
-| 단순 패치 | [simple_patches/README](features/simple_patches/README.md) | `app_database_modularization`, `ci_cd_minimum`, `edge_function_auth`, `input_validation_hardening`, `ledger_numeric_regression`, `supabase_frontend_only_hidden`, `supabase_rls_hardening`, `sync_conflict_policy`, `transaction_tab_ui_density` |
+| 단순 패치 | [simple_patches/README](features/simple_patches/README.md) | `app_database_modularization`, `ci_cd_minimum`, `design_token_unification`, `edge_function_auth`, `input_validation_hardening`, `ledger_numeric_regression`, `supabase_frontend_only_hidden`, `supabase_rls_hardening`, `sync_conflict_policy`, `transaction_tab_ui_density` |
 | 버그 픽스 | [bug_fixes/README](features/bug_fixes/README.md) | `analysis_detail_back_navigation`, `cash_snapshot_profit_fix`, `crypto_sell_quantity_precision`, `external_api_fallbacks`, `ledger_realized_pnl_moving_average_recompute`, `login_initial_stale_tab_data`, `login_sync_failure_ux`, `login_sync_overlay_layout`, `logout_stale_tab_data`, `news_cache_staleness`, `optional_local_config`, `record_only_remote_state_reconcile`, `snapshot_detail_holdings_fix`, `transaction_pull_refresh_remote_sync`, `transaction_record_only_calculation_sync`, `transaction_tab_null_row_crash`, `usd_realized_pnl_currency_basis` |
 | 수동 테스트 | `features/manual_tests/` | macOS 거래 흐름, 분석 페이지 수동 테스트 계획/보고서 |
 | 통합 보고서 | `reports/` | [Implementation Report 2026-05-24](reports/implementation_report_20260524.md) |

@@ -13,9 +13,13 @@ This pass covers two completed workstreams:
 Updated:
 
 - `docs/design_system.md`
-- `docs/design/getdesign_application_plan.md`
 - `lib/components/buttons/app_buttons.dart`
 - `lib/components/chips/delta_chip.dart`
+
+Note:
+
+- The former `docs/design/getdesign_application_plan.md` content has since been
+  consolidated into `docs/design_system.md`.
 
 Changes:
 

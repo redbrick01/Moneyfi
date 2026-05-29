@@ -65,7 +65,7 @@
 
 | 경로 | 역할 |
 | --- | --- |
-| `docs/design/` | 디자인 적용 계획, UI snapshot 대상, 화면 포맷, polish 문서 |
+| `docs/design/` | 기능별 화면 리디자인 계획. 일반 UI/UX 규칙은 `docs/design_system.md`로 통합 |
 | `docs/features/` | 기능 개발, 단순 패치, 버그 픽스, 수동 테스트 작업 기록 |
 | `docs/guides/` | 작업 유형별 개발 프로세스 가이드 |
 | `docs/reports/` | 여러 작업을 묶은 통합 구현 보고서 |

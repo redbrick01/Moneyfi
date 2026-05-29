@@ -19,12 +19,9 @@
 
 | 문서 | 내용 |
 | --- | --- |
-| [Design System](design_system.md) | MONEYFY UI 원칙, 색상, 컴포넌트 사용 규칙 |
-| [getdesign Application Plan](design/getdesign_application_plan.md) | getdesign.md 기반 디자인 레퍼런스 적용 계획 |
-| [Main Asset Card Format](design/main_asset_card_format.md) | 메인 자산 카드 표시 포맷 |
+| [Design System](design_system.md) | MONEYFY UI/UX 단일 기준 문서: 원칙, 토큰, 컴포넌트, 화면 패턴, QA, 메인 자산 카드 포맷 |
 | [Transaction Ledger Redesign](design/transaction_ledger_redesign.md) | 거래 내역 화면 개편 방향 |
-| [UI Snapshot Targets](design/ui_snapshot_targets.md) | UI 회귀 확인용 주요 화면 목록 |
-| [Final Polish Pass](design/final_polish_pass.md) | 최종 UI 다듬기 체크리스트 |
+| [Transaction History UI/UX Improvement Plan](design/transaction_history_ui_ux_improvement_plan.md) | 거래 내역 필터와 목록 UX 개선 계획 |
 
 ## Backend & Operations
 
@@ -80,6 +77,11 @@
 
 | 문서 | 내용 |
 | --- | --- |
+| [Design Token Unification Docs](features/simple_patches/design_token_unification/README.md) | 디자인 토큰 통일화 최종 계획서 리스트와 구현 시작점 |
+| [Design Token Unification Plan](features/simple_patches/design_token_unification/plan.md) | 디자인 수치와 legacy UI 스타일을 공통 토큰으로 점진 통일하는 계획 |
+| [Design Token Unification Coverage Matrix](features/simple_patches/design_token_unification/plan_parts/00_coverage_matrix.md) | 전체 UI-bearing file, native/web visual asset의 stage 배정표 |
+| [Design Token Unification Pre-Implementation Check](features/simple_patches/design_token_unification/pre_implementation_check_20260529.md) | 구현 전 커버리지, legacy 패턴, 첫 batch 범위 점검 |
+| [Design Token Unification Verification Plan](features/simple_patches/design_token_unification/verification_test_plan.md) | 디자인 토큰 통일화 batch별 검증 기준 |
 | [Sync Conflict Policy Plan](features/simple_patches/sync_conflict_policy/plan.md) | 여러 기기 수정 충돌 기준과 sync 정책 |
 | [Sync Conflict Policy Verification Plan](features/simple_patches/sync_conflict_policy/verification_test_plan.md) | sync 충돌 정책 검증 절차 |
 | [Sync Conflict Policy Test Report 2026-05-24](features/simple_patches/sync_conflict_policy/test_report_20260524.md) | sync 충돌 정책 구현 결과 |

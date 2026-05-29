@@ -148,7 +148,6 @@ git push -u origin main
 - [Supabase Overview](docs/supabase_overview.md)
 - [Design System](docs/design_system.md)
 - [Supabase CLI Runbook](docs/supabase_cli_runbook.md)
-- [UI Snapshot Targets](docs/design/ui_snapshot_targets.md)
 
 ## Security Notes
 
