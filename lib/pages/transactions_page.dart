@@ -626,7 +626,7 @@ class _TransactionFilterButton extends StatelessWidget {
                   '$activeCount',
                   style: context.typography.meta.copyWith(
                     color: colorScheme.onPrimary,
-                    fontSize: context.fontSizes.s10,
+                    fontSize: context.fontSizes.s12,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

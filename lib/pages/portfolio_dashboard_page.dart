@@ -250,7 +250,7 @@ class _AssetSectionBasePlate extends StatelessWidget {
                   Text(
                     '자산',
                     style: context.typography.cardTitle.copyWith(
-                      fontSize: context.fontSizes.s20,
+                      fontSize: context.fontSizes.s18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -446,7 +446,7 @@ class _AnalysisSectionBasePlate extends StatelessWidget {
                   Text(
                     'AI 포트폴리오 분석',
                     style: context.typography.cardTitle.copyWith(
-                      fontSize: context.fontSizes.s20,
+                      fontSize: context.fontSizes.s18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -607,7 +607,7 @@ class _SummaryCardState extends State<_SummaryCard> {
                                     child: Text(
                                       '총 자산',
                                       style: context.typography.body.copyWith(
-                                        fontSize: context.fontSizes.s20,
+                                        fontSize: context.fontSizes.s18,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),

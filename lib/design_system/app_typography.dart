@@ -68,7 +68,7 @@ class AppTypography extends ThemeExtension<AppTypography> {
       ),
       caption: TextStyle(
         fontFamily: '.SF Pro Text',
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: FontWeight.w400,
         height: 1.3,
         letterSpacing: 0,
