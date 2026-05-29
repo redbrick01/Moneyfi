@@ -70,7 +70,7 @@ class SectionCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: borderRadius,
         child: Material(
-          color: Colors.transparent,
+          color: VisualSpec.surface.transparent,
           child: Padding(
             padding: resolvedPadding,
             child: Column(

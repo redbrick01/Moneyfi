@@ -23,7 +23,6 @@ import '../models/asset_item.dart';
 import '../services/auth_service.dart';
 import '../services/market_data_service.dart';
 import '../services/portfolio_diagnosis_service.dart';
-import '../theme/moneyfy_theme.dart';
 import '../ui_scaffold/app_page_scaffold.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
@@ -649,7 +648,7 @@ class _SummaryCardState extends State<_SummaryCard> {
                                     textAlign: TextAlign.right,
                                     style: context.typography.heroNumber
                                         .copyWith(
-                                          fontSize: 32,
+                                          fontSize: context.fontSizes.s32,
                                           fontWeight: FontWeight.w600,
                                           height: 1,
                                           color: Theme.of(
@@ -711,11 +710,14 @@ class _SummaryCardState extends State<_SummaryCard> {
                                                   label: '평가 손익',
                                                   valueText:
                                                       valuationDisplayValue,
-                                                  valueColor: moneyfyValueColor(
-                                                    valuationDisplayValue,
-                                                    defaultColor: MoneyfyPalette
-                                                        .secondaryText,
-                                                  ),
+                                                  valueColor:
+                                                      _signedDisplayColor(
+                                                        context,
+                                                        valuationDisplayValue,
+                                                        defaultColor: context
+                                                            .colors
+                                                            .neutralTextMuted,
+                                                      ),
                                                   chip: DeltaChip(
                                                     value: valuationProfit,
                                                     percent:
@@ -758,11 +760,13 @@ class _SummaryCardState extends State<_SummaryCard> {
                                                               label: '전월 대비 수익',
                                                               valueText:
                                                                   monthlyDisplayValue,
-                                                              valueColor: moneyfyValueColor(
+                                                              valueColor: _signedDisplayColor(
+                                                                context,
                                                                 monthlyDisplayValue,
                                                                 defaultColor:
-                                                                    MoneyfyPalette
-                                                                        .secondaryText,
+                                                                    context
+                                                                        .colors
+                                                                        .neutralTextMuted,
                                                               ),
                                                               chip: DeltaChip(
                                                                 value:
@@ -784,11 +788,13 @@ class _SummaryCardState extends State<_SummaryCard> {
                                                               label: '전일 대비 수익',
                                                               valueText:
                                                                   dailyDisplayValue,
-                                                              valueColor: moneyfyValueColor(
+                                                              valueColor: _signedDisplayColor(
+                                                                context,
                                                                 dailyDisplayValue,
                                                                 defaultColor:
-                                                                    MoneyfyPalette
-                                                                        .secondaryText,
+                                                                    context
+                                                                        .colors
+                                                                        .neutralTextMuted,
                                                               ),
                                                               chip:
                                                                   hasDailyComparison
@@ -917,17 +923,20 @@ class _SummaryDashChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      constraints: BoxConstraints(minHeight: context.spacing.md),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.xs,
+        vertical: context.spacing.xs / 2,
+      ),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surface,
-        border: Border.all(color: MoneyfyPalette.border),
+        color: context.surfaces.surfaceBase,
+        border: Border.all(color: context.colors.neutralOutline),
         borderRadius: BorderRadius.circular(context.radius.rPill),
       ),
       child: Text(
         '-',
         style: context.typography.meta.copyWith(
-          color: MoneyfyPalette.secondaryText,
+          color: context.colors.neutralTextMuted,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -1839,7 +1848,7 @@ class _AssetRow extends StatelessWidget {
         icon: item.isHidden
             ? VisualSpec.icon.visibilityOn
             : VisualSpec.icon.visibilityOff,
-        iconColor: MoneyfyPalette.tertiaryText,
+        iconColor: context.colors.neutralTextMuted,
       ),
       child: visibleRow,
     );
@@ -1858,9 +1867,10 @@ class _AssetProfitLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profitText = _formatSignedCurrency(profitAmount);
-    final amountColor = moneyfyValueColor(
+    final amountColor = _signedDisplayColor(
+      context,
       profitText,
-      defaultColor: MoneyfyPalette.secondaryText,
+      defaultColor: context.colors.neutralTextMuted,
     );
 
     return Row(
@@ -2047,9 +2057,9 @@ class _DashboardDiagnosisBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color color = switch (riskLevel) {
-      '낮음' => MoneyfyPalette.positive,
-      '높음' => MoneyfyPalette.negative,
-      _ => MoneyfyPalette.accent,
+      '낮음' => context.colors.positiveOn,
+      '높음' => context.colors.negativeOn,
+      _ => context.colors.warningOn,
     };
     return Container(
       padding: EdgeInsets.symmetric(
@@ -2082,23 +2092,23 @@ class _DiagnosisScoreDonut extends StatelessWidget {
   Widget build(BuildContext context) {
     final normalizedScore = (score.clamp(0, 100)) / 100;
     final color = switch (riskLevel) {
-      '낮음' => MoneyfyPalette.positive,
-      '높음' => MoneyfyPalette.negative,
-      _ => MoneyfyPalette.accent,
+      '낮음' => context.colors.positiveOn,
+      '높음' => context.colors.negativeOn,
+      _ => context.colors.warningOn,
     };
 
     return SizedBox(
-      width: 56,
-      height: 56,
+      width: VisualSpec.icon.iconSizeLarge,
+      height: VisualSpec.icon.iconSizeLarge,
       child: Stack(
         alignment: Alignment.center,
         children: [
           SizedBox(
-            width: 56,
-            height: 56,
+            width: VisualSpec.icon.iconSizeLarge,
+            height: VisualSpec.icon.iconSizeLarge,
             child: CircularProgressIndicator(
               value: normalizedScore.toDouble(),
-              strokeWidth: 6,
+              strokeWidth: context.spacing.xs - 2,
               strokeCap: StrokeCap.round,
               backgroundColor: Theme.of(
                 context,
@@ -2170,4 +2180,14 @@ String _formatCurrency(double amount) {
 
 String _formatSignedCurrency(double amount) {
   return MoneyfyDisplayCurrencySettings.formatSignedAmountFromKrw(amount);
+}
+
+Color _signedDisplayColor(
+  BuildContext context,
+  String valueText, {
+  required Color defaultColor,
+}) {
+  if (valueText.startsWith('+')) return context.colors.positiveOn;
+  if (valueText.startsWith('-')) return context.colors.negativeOn;
+  return defaultColor;
 }

@@ -18,11 +18,11 @@ class AppSpacing extends ThemeExtension<AppSpacing> {
   AppSpacing.standard()
     : xs = 8,
       sm = 12,
-      md = VisualSpec.surface.paddingCard,
+      md = 20,
       lg = 24,
       xl = VisualSpec.surface.sectionGap,
       xxl = 48,
-      xxxl = 80,
+      xxxl = 96,
       pageTop = 24,
       pageBottomInset = 132;
 
@@ -101,6 +101,7 @@ class AppFontSizes extends ThemeExtension<AppFontSizes> {
     required this.s20,
     required this.s22,
     required this.s24,
+    required this.s32,
   });
 
   const AppFontSizes.standard()
@@ -111,7 +112,8 @@ class AppFontSizes extends ThemeExtension<AppFontSizes> {
       s18 = 18,
       s20 = 20,
       s22 = 22,
-      s24 = 24;
+      s24 = 24,
+      s32 = 32;
 
   final double s10;
   final double s12;
@@ -121,6 +123,7 @@ class AppFontSizes extends ThemeExtension<AppFontSizes> {
   final double s20;
   final double s22;
   final double s24;
+  final double s32;
 
   @override
   AppFontSizes copyWith({
@@ -132,6 +135,7 @@ class AppFontSizes extends ThemeExtension<AppFontSizes> {
     double? s20,
     double? s22,
     double? s24,
+    double? s32,
   }) {
     return AppFontSizes(
       s10: s10 ?? this.s10,
@@ -142,6 +146,7 @@ class AppFontSizes extends ThemeExtension<AppFontSizes> {
       s20: s20 ?? this.s20,
       s22: s22 ?? this.s22,
       s24: s24 ?? this.s24,
+      s32: s32 ?? this.s32,
     );
   }
 
@@ -157,6 +162,7 @@ class AppFontSizes extends ThemeExtension<AppFontSizes> {
       s20: lerpDouble(s20, other.s20, t),
       s22: lerpDouble(s22, other.s22, t),
       s24: lerpDouble(s24, other.s24, t),
+      s32: lerpDouble(s32, other.s32, t),
     );
   }
 }
@@ -224,7 +230,7 @@ class AppRadius extends ThemeExtension<AppRadius> {
     required this.rPill,
   });
 
-  const AppRadius.standard() : rSm = 8, rMd = 11, rLg = 18, rPill = 9999;
+  const AppRadius.standard() : rSm = 8, rMd = 12, rLg = 16, rPill = 100;
 
   final double rSm;
   final double rMd;

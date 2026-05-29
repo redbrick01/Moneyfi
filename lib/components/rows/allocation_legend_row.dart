@@ -114,9 +114,9 @@ class AllocationLegendRow extends StatelessWidget {
                     ),
                   if (amountText != null) SizedBox(width: context.spacing.xs),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.spacing.xs,
+                      vertical: context.spacing.xs / 2,
                     ),
                     decoration: BoxDecoration(
                       color: colorScheme.surface,

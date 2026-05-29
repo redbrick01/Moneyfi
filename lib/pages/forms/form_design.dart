@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/moneyfy_theme.dart';
-import '../../widgets/moneyfy_ui.dart';
+import '../../design_system/context_extensions.dart';
 
 class MoneyfyFormScaffold extends StatelessWidget {
   const MoneyfyFormScaffold({
@@ -26,10 +25,11 @@ class MoneyfyFormScaffold extends StatelessWidget {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
+      backgroundColor: context.colors.neutralBackground,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(title),
-        backgroundColor: MoneyfyPalette.background,
+        backgroundColor: context.colors.neutralBackground,
       ),
       body: SafeArea(
         child: GestureDetector(
@@ -38,10 +38,10 @@ class MoneyfyFormScaffold extends StatelessWidget {
           child: ListView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: EdgeInsets.fromLTRB(
-              MoneyfySpacing.pageHorizontal,
-              16,
-              MoneyfySpacing.pageHorizontal,
-              120 + bottomInset,
+              context.contentHorizontalPadding,
+              context.spacing.md,
+              context.contentHorizontalPadding,
+              context.spacing.xxxl + context.spacing.xl + bottomInset,
             ),
             children: children,
           ),
@@ -51,10 +51,10 @@ class MoneyfyFormScaffold extends StatelessWidget {
         top: false,
         child: Padding(
           padding: EdgeInsets.fromLTRB(
-            MoneyfySpacing.pageHorizontal,
-            12,
-            MoneyfySpacing.pageHorizontal,
-            20 + bottomInset,
+            context.contentHorizontalPadding,
+            context.spacing.sm,
+            context.contentHorizontalPadding,
+            context.spacing.md + context.spacing.xs / 2 + bottomInset,
           ),
           child: FilledButton(
             onPressed: actionEnabled && !isSaving
@@ -64,13 +64,11 @@ class MoneyfyFormScaffold extends StatelessWidget {
                   }
                 : null,
             style: FilledButton.styleFrom(
-              backgroundColor: MoneyfyPalette.primary,
-              foregroundColor: MoneyfyPalette.onPrimary,
+              backgroundColor: context.colors.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               minimumSize: const Size.fromHeight(44),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(
-                  MoneyfySpacing.controlRadius,
-                ),
+                borderRadius: BorderRadius.circular(context.radius.rPill),
               ),
               textStyle: Theme.of(
                 context,
@@ -101,7 +99,7 @@ class MoneyfyFormSection extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: context.spacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -111,7 +109,7 @@ class MoneyfyFormSection extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: context.spacing.sm),
           child,
         ],
       ),
@@ -137,17 +135,19 @@ class MoneyfyFormInfoPanel extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.primarySoft,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: MoneyfyPalette.accentSoft),
+        color: context.colors.primaryContainer,
+        borderRadius: BorderRadius.circular(context.radius.rLg),
+        border: Border.all(
+          color: context.colors.primary.withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: MoneyfyPalette.primary, size: 20),
-          const SizedBox(width: 10),
+          Icon(icon, color: context.colors.primary, size: 20),
+          SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,15 +155,15 @@ class MoneyfyFormInfoPanel extends StatelessWidget {
                 Text(
                   title,
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: MoneyfyPalette.ink,
+                    color: context.colors.neutralText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.spacing.xs / 2),
                 Text(
                   body,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: MoneyfyPalette.secondaryText,
+                    color: context.colors.neutralText,
                     height: 1.45,
                   ),
                 ),
@@ -185,20 +185,22 @@ class MoneyfyLedgerPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: MoneyfyPalette.border),
+        color: context.colors.neutralSurfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rLg),
+        border: Border.all(color: context.colors.neutralOutline),
       ),
       child: Column(
         children: [
           for (var index = 0; index < rows.length; index++) ...[
             _MoneyfyLedgerPreviewRowView(row: rows[index]),
             if (index != rows.length - 1)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 10),
-                child: Divider(height: 1),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  vertical: context.spacing.xs + context.spacing.xs / 4,
+                ),
+                child: const Divider(height: 1),
               ),
           ],
         ],
@@ -229,19 +231,19 @@ class _MoneyfyLedgerPreviewRowView extends StatelessWidget {
           child: Text(
             row.label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: context.spacing.sm),
         Expanded(
           flex: 2,
           child: Text(
             row.value,
             textAlign: TextAlign.right,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: MoneyfyPalette.ink,
+              color: context.colors.neutralText,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -272,18 +274,20 @@ class MoneyfyFormField extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.only(
+        bottom: context.spacing.sm + context.spacing.xs / 4,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.xs),
           TextField(
             controller: controller,
             maxLines: maxLines,
@@ -296,23 +300,25 @@ class MoneyfyFormField extends StatelessWidget {
             decoration: InputDecoration(
               hintText: label,
               filled: true,
-              fillColor: MoneyfyPalette.surface,
+              fillColor: context.colors.neutralSurfaceBase,
               contentPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: maxLines == 1 ? 14 : 16,
+                horizontal: context.spacing.md,
+                vertical: maxLines == 1
+                    ? context.spacing.sm + context.spacing.xs / 4
+                    : context.spacing.md,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(9999),
-                borderSide: const BorderSide(color: MoneyfyPalette.border),
+                borderRadius: BorderRadius.circular(context.radius.rPill),
+                borderSide: BorderSide(color: context.colors.neutralOutline),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(9999),
-                borderSide: const BorderSide(color: MoneyfyPalette.border),
+                borderRadius: BorderRadius.circular(context.radius.rPill),
+                borderSide: BorderSide(color: context.colors.neutralOutline),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(9999),
-                borderSide: const BorderSide(
-                  color: MoneyfyPalette.accent,
+                borderRadius: BorderRadius.circular(context.radius.rPill),
+                borderSide: BorderSide(
+                  color: context.colors.primary,
                   width: 1.4,
                 ),
               ),
@@ -360,26 +366,30 @@ class MoneyfySelectionField<T> extends StatelessWidget {
     final selected = _selectedOption;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.only(
+        bottom: context.spacing.sm + context.spacing.xs / 4,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.xs),
           InkWell(
-            borderRadius: BorderRadius.circular(9999),
+            borderRadius: BorderRadius.circular(context.radius.rPill),
             onTap: options.isEmpty
                 ? null
                 : () async {
                     final selectedValue = await showModalBottomSheet<T>(
                       context: context,
-                      backgroundColor: MoneyfyPalette.transparent,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surface.withValues(alpha: 0),
                       builder: (context) => _MoneyfySelectionSheet<T>(
                         title: label,
                         options: options,
@@ -389,11 +399,14 @@ class MoneyfySelectionField<T> extends StatelessWidget {
                     if (selectedValue != null) onChanged(selectedValue);
                   },
             child: Ink(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing.md + context.spacing.xs / 4,
+                vertical: context.spacing.sm + context.spacing.xs / 2 + 1,
+              ),
               decoration: BoxDecoration(
-                color: MoneyfyPalette.surface,
-                borderRadius: BorderRadius.circular(9999),
-                border: Border.all(color: MoneyfyPalette.border),
+                color: context.colors.neutralSurfaceBase,
+                borderRadius: BorderRadius.circular(context.radius.rPill),
+                border: Border.all(color: context.colors.neutralOutline),
               ),
               child: Row(
                 children: [
@@ -407,26 +420,26 @@ class MoneyfySelectionField<T> extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: selected == null
-                                ? MoneyfyPalette.tertiaryText
-                                : MoneyfyPalette.ink,
+                                ? context.colors.neutralTextMuted
+                                : context.colors.neutralText,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         if (selected?.subtitle case final subtitle?) ...[
-                          const SizedBox(height: 2),
+                          SizedBox(height: context.spacing.xs / 4),
                           Text(
                             subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: MoneyfyPalette.tertiaryText,
+                              color: context.colors.neutralTextMuted,
                             ),
                           ),
                         ],
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: context.spacing.sm),
                   const Icon(Icons.expand_more_rounded),
                 ],
               ),
@@ -464,12 +477,19 @@ class _MoneyfySelectionSheet<T> extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
-          color: MoneyfyPalette.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        decoration: BoxDecoration(
+          color: context.colors.neutralBackground,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(context.radius.rLg),
+          ),
         ),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + bottomInset),
+          padding: EdgeInsets.fromLTRB(
+            context.contentHorizontalPadding,
+            context.spacing.sm,
+            context.contentHorizontalPadding,
+            context.spacing.lg + bottomInset,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,20 +499,21 @@ class _MoneyfySelectionSheet<T> extends StatelessWidget {
                   width: 42,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: MoneyfyPalette.border,
-                    borderRadius: BorderRadius.circular(999),
+                    color: context.colors.neutralOutline,
+                    borderRadius: BorderRadius.circular(context.radius.rPill),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: context.spacing.md + context.spacing.xs / 4),
               Text(title, style: theme.textTheme.titleLarge),
-              const SizedBox(height: 18),
+              SizedBox(height: context.spacing.md + context.spacing.xs / 4),
               Flexible(
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: options.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 10),
+                  separatorBuilder: (context, index) => SizedBox(
+                    height: context.spacing.xs + context.spacing.xs / 4,
+                  ),
                   itemBuilder: (context, index) {
                     final option = options[index];
                     return _MoneyfySelectionOptionTile<T>(
@@ -524,17 +545,22 @@ class _MoneyfySelectionOptionTile<T> extends StatelessWidget {
     final theme = Theme.of(context);
 
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(context.radius.rLg),
       onTap: () => Navigator.of(context).pop(option.value),
       child: Ink(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.md + context.spacing.xs / 4,
+          vertical: context.spacing.sm + context.spacing.xs / 2 + 1,
+        ),
         decoration: BoxDecoration(
           color: isSelected
-              ? MoneyfyPalette.accentSoft
-              : MoneyfyPalette.surface,
-          borderRadius: BorderRadius.circular(18),
+              ? context.colors.primaryContainer
+              : context.colors.neutralSurfaceBase,
+          borderRadius: BorderRadius.circular(context.radius.rLg),
           border: Border.all(
-            color: isSelected ? MoneyfyPalette.accent : MoneyfyPalette.border,
+            color: isSelected
+                ? context.colors.primary
+                : context.colors.neutralOutline,
           ),
         ),
         child: Row(
@@ -548,18 +574,18 @@ class _MoneyfySelectionOptionTile<T> extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: MoneyfyPalette.ink,
+                      color: context.colors.neutralText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   if (option.subtitle case final subtitle?) ...[
-                    const SizedBox(height: 3),
+                    SizedBox(height: context.spacing.xs / 2 - 1),
                     Text(
                       subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: MoneyfyPalette.tertiaryText,
+                        color: context.colors.neutralTextMuted,
                       ),
                     ),
                   ],
@@ -567,21 +593,21 @@ class _MoneyfySelectionOptionTile<T> extends StatelessWidget {
               ),
             ),
             if (option.meta case final meta?) ...[
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.sm),
               Text(
                 meta,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.secondaryText,
+                  color: context.colors.neutralText,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.sm),
             Icon(
               isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
               color: isSelected
-                  ? MoneyfyPalette.accent
-                  : MoneyfyPalette.tertiaryText,
+                  ? context.colors.primary
+                  : context.colors.neutralTextMuted,
             ),
           ],
         ),
@@ -611,24 +637,27 @@ class MoneyfyChoiceWrap<T> extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: context.spacing.xs + context.spacing.xs / 4,
+      runSpacing: context.spacing.xs + context.spacing.xs / 4,
       children: [
         for (final option in options)
           InkWell(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(context.radius.rPill),
             onTap: () => onChanged(option),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing.sm + context.spacing.xs / 4,
+                vertical: context.spacing.xs + context.spacing.xs / 4,
+              ),
               decoration: BoxDecoration(
                 color: option == value
-                    ? MoneyfyPalette.primary
-                    : MoneyfyPalette.surface,
-                borderRadius: BorderRadius.circular(999),
+                    ? context.colors.primary
+                    : context.colors.neutralSurfaceBase,
+                borderRadius: BorderRadius.circular(context.radius.rPill),
                 border: Border.all(
                   color: option == value
-                      ? MoneyfyPalette.primary
-                      : MoneyfyPalette.border,
+                      ? context.colors.primary
+                      : context.colors.neutralOutline,
                 ),
               ),
               child: Row(
@@ -636,14 +665,14 @@ class MoneyfyChoiceWrap<T> extends StatelessWidget {
                 children: [
                   if (iconBuilder?.call(option) case final icon?) ...[
                     icon,
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.spacing.xs),
                   ],
                   Text(
                     labelBuilder(option),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: option == value
-                          ? MoneyfyPalette.onPrimary
-                          : MoneyfyPalette.secondaryText,
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : context.colors.neutralText,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -677,20 +706,20 @@ class MoneyfyPercentageShortcutButtons extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: context.spacing.xs,
+        runSpacing: context.spacing.xs,
         children: [
           for (final ratio in _options)
             OutlinedButton(
               key: ValueKey('$keyPrefix-${(ratio * 100).round()}'),
               onPressed: enabled ? () => onSelected(ratio) : null,
               style: OutlinedButton.styleFrom(
-                foregroundColor: MoneyfyPalette.primary,
-                side: const BorderSide(color: MoneyfyPalette.border),
+                foregroundColor: context.colors.primary,
+                side: BorderSide(color: context.colors.neutralOutline),
                 minimumSize: const Size(56, 36),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.sm,
+                  vertical: context.spacing.xs,
                 ),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 textStyle: theme.textTheme.bodySmall?.copyWith(

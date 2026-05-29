@@ -146,10 +146,10 @@ class _ButtonContent extends StatelessWidget {
         ),
         if (isLoading)
           SizedBox(
-            width: 16,
-            height: 16,
+            width: VisualSpec.icon.progressIndicatorSize,
+            height: VisualSpec.icon.progressIndicatorSize,
             child: CircularProgressIndicator(
-              strokeWidth: 2.2,
+              strokeWidth: VisualSpec.icon.progressIndicatorStroke,
               color: spinnerColor,
             ),
           ),
@@ -170,8 +170,8 @@ ButtonStyle _buttonStyle(
   final background = switch (variant) {
     _ButtonVariant.primary => colorScheme.primary,
     _ButtonVariant.secondary => colorScheme.surface,
-    _ButtonVariant.ghost => Colors.transparent,
-    _ButtonVariant.destructive => Colors.transparent,
+    _ButtonVariant.ghost => VisualSpec.surface.transparent,
+    _ButtonVariant.destructive => VisualSpec.surface.transparent,
   };
   final foreground = switch (variant) {
     _ButtonVariant.primary => colorScheme.onPrimary,
@@ -183,7 +183,7 @@ ButtonStyle _buttonStyle(
       ? colorScheme.onSurfaceVariant
       : foreground.withValues(alpha: 0.72);
   final disabledBackground = isGhost || isDestructive
-      ? Colors.transparent
+      ? VisualSpec.surface.transparent
       : background.withValues(alpha: 0.55);
   final overlayBase = colorScheme.primary;
   final pressedAlpha = Theme.of(context).brightness == Brightness.dark
@@ -191,9 +191,12 @@ ButtonStyle _buttonStyle(
       : VisualSpec.brand.lightOverlayPressedAlpha;
 
   return ButtonStyle(
-    minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
+    minimumSize: WidgetStatePropertyAll(Size(0, VisualSpec.icon.minTapTarget)),
     padding: WidgetStatePropertyAll(
-      EdgeInsets.symmetric(horizontal: context.spacing.md, vertical: 12),
+      EdgeInsets.symmetric(
+        horizontal: context.spacing.md,
+        vertical: context.spacing.sm,
+      ),
     ),
     textStyle: WidgetStatePropertyAll(context.typography.button),
     shape: WidgetStatePropertyAll(

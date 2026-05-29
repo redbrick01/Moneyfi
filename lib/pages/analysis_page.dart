@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../components/icons/app_icon.dart';
 import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../db/app_database.dart';
 import '../services/company_news_summary_service.dart';
-import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
 import '../widgets/company_news_summary_card.dart';
 import '../widgets/market_news_summary_card.dart';
@@ -175,14 +175,14 @@ class _AnalysisEntryCard extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: VisualSpec.icon.badgeBox,
+                height: VisualSpec.icon.badgeBox,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: colorScheme.primaryContainer.withValues(alpha: 0.55),
                   borderRadius: BorderRadius.circular(context.radius.rMd),
                 ),
-                child: Icon(
+                child: AppIcon.raw(
                   icon,
                   color: colorScheme.primary,
                   size: VisualSpec.icon.sizeDefault,
@@ -207,8 +207,8 @@ class _AnalysisEntryCard extends StatelessWidget {
                 ),
               ),
               SizedBox(width: context.spacing.sm),
-              Icon(
-                Icons.chevron_right_rounded,
+              AppIcon(
+                AppIconName.chevronRight,
                 color: colorScheme.onSurfaceVariant,
               ),
             ],
@@ -238,6 +238,7 @@ class SnapshotCalendarCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final firstDay = DateTime(focusedMonth.year, focusedMonth.month, 1);
     final lastDay = DateTime(focusedMonth.year, focusedMonth.month + 1, 0);
     final leadingEmpty = firstDay.weekday % 7;
@@ -292,8 +293,8 @@ class SnapshotCalendarCard extends StatelessWidget {
                       child: Center(
                         child: Text(
                           label,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: MoneyfyPalette.tertiaryText,
+                          style: context.typography.meta.copyWith(
+                            color: context.colors.neutralTextMuted,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -302,7 +303,7 @@ class SnapshotCalendarCard extends StatelessWidget {
                   )
                   .toList(),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.sm),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -330,27 +331,27 @@ class SnapshotCalendarCard extends StatelessWidget {
                 final hasTransaction = transactionDates.contains(dateKey);
                 final isPivotDay = day == 20;
                 final pivotColor = Color.lerp(
-                  MoneyfyPalette.accent,
-                  MoneyfyPalette.negative,
+                  context.colors.primary,
+                  context.colors.negativeOn,
                   0.58,
                 )!;
                 final dayColor = isPivotDay
                     ? pivotColor
                     : hasSnapshot
-                    ? MoneyfyPalette.accent
-                    : MoneyfyPalette.secondaryText;
+                    ? context.colors.primary
+                    : context.colors.neutralTextMuted;
                 final borderColor = isPivotDay
                     ? pivotColor.withValues(alpha: 0.34)
                     : hasSnapshot
-                    ? MoneyfyPalette.accent
-                    : MoneyfyPalette.border;
+                    ? context.colors.primary
+                    : context.colors.neutralOutline;
                 final snapshotItems = snapshot == null
                     ? const <DailyPortfolioSnapshotItem>[]
                     : (itemsBySnapshotId[snapshot.id] ??
                           const <DailyPortfolioSnapshotItem>[]);
 
                 return InkWell(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(context.radius.rMd),
                   onTap: !hasSnapshot
                       ? null
                       : () {
@@ -365,8 +366,8 @@ class SnapshotCalendarCard extends StatelessWidget {
                         },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: MoneyfyPalette.surfaceMuted,
-                      borderRadius: BorderRadius.circular(16),
+                      color: context.colors.neutralSurfaceRaised,
+                      borderRadius: BorderRadius.circular(context.radius.rMd),
                       border: Border.all(color: borderColor),
                     ),
                     child: Column(
@@ -381,14 +382,16 @@ class SnapshotCalendarCard extends StatelessWidget {
                                 : FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(
+                          height: context.spacing.xs - context.spacing.xs / 4,
+                        ),
                         Container(
                           width: 6,
                           height: 6,
                           decoration: BoxDecoration(
                             color: hasTransaction
-                                ? MoneyfyPalette.accent
-                                : MoneyfyPalette.transparent,
+                                ? context.colors.primary
+                                : colorScheme.surface.withValues(alpha: 0),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -426,7 +429,7 @@ class YearlyAssetAnalysisCard extends StatelessWidget {
           ..sort((a, b) => b.compareTo(a));
 
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(context.radius.rLg),
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -445,13 +448,13 @@ class YearlyAssetAnalysisCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('연도별 자산분석', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 8),
+                  SizedBox(height: context.spacing.xs),
                   Text(
                     years.isEmpty
                         ? '데이터 없음'
                         : years.map((year) => '$year년').join(' · '),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+                    style: context.typography.meta.copyWith(
+                      color: context.colors.neutralTextMuted,
                     ),
                   ),
                 ],
@@ -626,6 +629,7 @@ class _MonthlyClosingAssetsCardState extends State<MonthlyClosingAssetsCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final dividerColor = context.colors.neutralOutline;
     final fixedItems = widget.items.take(3).toList(growable: false);
     final expandedItems = widget.items.skip(3).take(9).toList(growable: false);
     final canExpand = widget.items.length > 3;
@@ -636,60 +640,73 @@ class _MonthlyClosingAssetsCardState extends State<MonthlyClosingAssetsCard> {
         children: [
           Text('월별 최종 자산', style: theme.textTheme.titleLarge),
           if (widget.items.isEmpty) ...[
-            const SizedBox(height: 18),
+            SizedBox(height: context.spacing.md + context.spacing.xs / 4),
             Container(
               width: double.infinity,
               constraints: const BoxConstraints(minHeight: 140),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing.md + context.spacing.xs / 2,
+                vertical: context.spacing.lg,
+              ),
               decoration: BoxDecoration(
-                color: MoneyfyPalette.surfaceMuted,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: MoneyfyPalette.border),
+                color: context.colors.neutralSurfaceRaised,
+                borderRadius: BorderRadius.circular(context.radius.rLg),
+                border: Border.all(color: context.colors.neutralOutline),
               ),
               child: Center(
                 child: Text(
                   '표시할 스냅샷 데이터가 없습니다.',
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: MoneyfyPalette.tertiaryText,
+                  style: context.typography.body.copyWith(
+                    color: context.colors.neutralTextMuted,
                   ),
                 ),
               ),
             ),
           ] else ...[
-            const SizedBox(height: 18),
+            SizedBox(height: context.spacing.md + context.spacing.xs / 4),
             for (final item in fixedItems) ...[
               _MonthlyClosingAssetRow(item: item),
               if (item != fixedItems.last) ...[
-                const SizedBox(height: 14),
-                Divider(color: MoneyfyPalette.border, height: 1),
-                const SizedBox(height: 14),
+                SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
+                Divider(color: dividerColor, height: 1),
+                SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
               ],
             ],
             if (canExpand) ...[
               AnimatedSize(
-                duration: const Duration(milliseconds: 220),
+                duration: context.motion.normal,
                 curve: Curves.easeOutCubic,
                 alignment: Alignment.topLeft,
                 child: _expanded
                     ? Column(
                         children: [
-                          const SizedBox(height: 14),
-                          Divider(color: MoneyfyPalette.border, height: 1),
-                          const SizedBox(height: 14),
+                          SizedBox(
+                            height: context.spacing.sm + context.spacing.xs / 4,
+                          ),
+                          Divider(color: dividerColor, height: 1),
+                          SizedBox(
+                            height: context.spacing.sm + context.spacing.xs / 4,
+                          ),
                           for (final item in expandedItems) ...[
                             _MonthlyClosingAssetRow(item: item),
                             if (item != expandedItems.last) ...[
-                              const SizedBox(height: 14),
-                              Divider(color: MoneyfyPalette.border, height: 1),
-                              const SizedBox(height: 14),
+                              SizedBox(
+                                height:
+                                    context.spacing.sm + context.spacing.xs / 4,
+                              ),
+                              Divider(color: dividerColor, height: 1),
+                              SizedBox(
+                                height:
+                                    context.spacing.sm + context.spacing.xs / 4,
+                              ),
                             ],
                           ],
                         ],
                       )
                     : const SizedBox.shrink(),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
               Center(
                 child: IconButton(
                   onPressed: () => setState(() => _expanded = !_expanded),
@@ -717,10 +734,8 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(context.radius.rMd),
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -730,7 +745,7 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
         );
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: EdgeInsets.symmetric(vertical: context.spacing.xs / 2),
         child: Row(
           children: [
             Expanded(
@@ -739,8 +754,8 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
                 child: Text(
                   item.date,
                   textAlign: TextAlign.left,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: MoneyfyPalette.tertiaryText,
+                  style: context.typography.meta.copyWith(
+                    color: context.colors.neutralTextMuted,
                   ),
                 ),
               ),
@@ -750,43 +765,41 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
               children: [
                 Text(
                   item.totalAsset,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: MoneyfyPalette.ink,
+                  style: context.typography.cardTitle.copyWith(
+                    color: context.colors.neutralText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.spacing.xs / 2),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       item.change,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: moneyfyValueColor(
-                          item.change,
-                          defaultColor: MoneyfyPalette.secondaryText,
-                        ),
+                      style: context.typography.meta.copyWith(
+                        color: _analysisValueColor(context, item.change),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.spacing.xs),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.spacing.xs,
+                        vertical: context.spacing.xs / 2,
                       ),
                       decoration: BoxDecoration(
-                        color: MoneyfyPalette.surface,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: MoneyfyPalette.border),
+                        color: context.colors.neutralSurfaceBase,
+                        borderRadius: BorderRadius.circular(
+                          context.radius.rPill,
+                        ),
+                        border: Border.all(
+                          color: context.colors.neutralOutline,
+                        ),
                       ),
                       child: Text(
                         item.changeRate,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: moneyfyValueColor(
-                            item.changeRate,
-                            defaultColor: MoneyfyPalette.secondaryText,
-                          ),
+                        style: context.typography.caption.copyWith(
+                          color: _analysisValueColor(context, item.changeRate),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -795,7 +808,7 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.sm),
             Icon(Icons.chevron_right_rounded, size: VisualSpec.icon.sizeSmall),
           ],
         ),
@@ -849,6 +862,19 @@ String _formatSignedCurrency(double amount) {
 String _formatSignedPercent(double value) {
   final prefix = value >= 0 ? '+' : '';
   return '$prefix${value.toStringAsFixed(1)}%';
+}
+
+Color _analysisValueColor(BuildContext context, String value) {
+  final trimmed = value.trim();
+  if (trimmed.startsWith('+')) return context.colors.positiveOn;
+  if (trimmed.startsWith('-') || trimmed.startsWith('−')) {
+    return context.colors.negativeOn;
+  }
+  if (trimmed.contains('-') || trimmed.contains('−')) {
+    return context.colors.negativeOn;
+  }
+  if (trimmed.contains('+')) return context.colors.positiveOn;
+  return context.colors.neutralTextMuted;
 }
 
 class _AnalysisSnapshotBundle {

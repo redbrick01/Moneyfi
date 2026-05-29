@@ -6,6 +6,10 @@ import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../theme/moneyfy_theme.dart';
 
+@Deprecated(
+  'Use context.spacing, context.radius, and VisualSpec instead. '
+  'This compatibility API will be removed after legacy screens are migrated.',
+)
 class MoneyfySpacing {
   static const double pageHorizontal = 20;
   static const double pageTop = 24;
@@ -186,7 +190,7 @@ class MoneyfyCardHeader extends StatelessWidget {
               children: [
                 Text(title, style: context.typography.sectionTitle),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.spacing.xs / 2),
                   Text(
                     subtitle!,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -200,9 +204,9 @@ class MoneyfyCardHeader extends StatelessWidget {
           ...?trailing == null
               ? null
               : [
-                  const SizedBox(width: 10),
+                  SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
                   Container(width: 1, height: 24, color: dividerColor),
-                  const SizedBox(width: 10),
+                  SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
                   trailing!,
                 ],
         ],
@@ -262,14 +266,14 @@ class MoneyfyIconButtonSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(MoneyfySpacing.controlRadius),
+      borderRadius: BorderRadius.circular(context.radius.rPill),
       child: Ink(
-        width: 44,
-        height: 44,
+        width: context.spacing.xl + context.spacing.sm,
+        height: context.spacing.xl + context.spacing.sm,
         decoration: BoxDecoration(
-          color: MoneyfyPalette.surface,
-          borderRadius: BorderRadius.circular(MoneyfySpacing.controlRadius),
-          border: Border.all(color: MoneyfyPalette.border),
+          color: context.colors.neutralSurfaceBase,
+          borderRadius: BorderRadius.circular(context.radius.rPill),
+          border: Border.all(color: context.colors.neutralOutline),
         ),
         child: Icon(icon),
       ),
@@ -289,7 +293,7 @@ ActionPane moneyfySingleSlideActionPane({
     children: [
       CustomSlidableAction(
         onPressed: (_) => onPressed(),
-        backgroundColor: Colors.transparent,
+        backgroundColor: backgroundColor ?? VisualSpec.surface.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         borderRadius: BorderRadius.zero,
         child: Align(
@@ -305,6 +309,10 @@ ActionPane moneyfySingleSlideActionPane({
   );
 }
 
+@Deprecated(
+  'Use context.colors.positiveOn/negativeOn or a local signed-value helper. '
+  'This compatibility API will be removed after legacy screens are migrated.',
+)
 Color moneyfyValueColor(
   String value, {
   Color defaultColor = MoneyfyPalette.ink,

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import '../components/buttons/app_buttons.dart';
 import '../components/chips/delta_chip.dart';
 import '../components/rows/asset_row.dart';
 import '../components/separators/app_divider.dart';
@@ -12,7 +13,6 @@ import '../db/app_database.dart';
 import '../models/asset_item.dart';
 import '../services/market_data_service.dart';
 import '../services/sync_service.dart';
-import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
 import 'cash_account_detail_page.dart';
@@ -126,13 +126,16 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
         title: Text(title),
         content: Text(message),
         actions: [
-          TextButton(
+          AppGhostButton(
+            expand: false,
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('취소'),
+            label: '취소',
           ),
-          TextButton(
+          AppDestructiveButton(
+            expand: false,
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('삭제'),
+            label: '삭제',
+            icon: Icons.delete_outline_rounded,
           ),
         ],
       ),
@@ -433,7 +436,11 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(backgroundColor: MoneyfyPalette.background, elevation: 0),
+      backgroundColor: context.colors.neutralBackground,
+      appBar: AppBar(
+        backgroundColor: context.colors.neutralBackground,
+        elevation: 0,
+      ),
       body: FutureBuilder<_AssetDetailData?>(
         future: _detailFuture,
         builder: (context, snapshot) {
@@ -452,7 +459,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('자산 정보를 불러오지 못했습니다.'),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
                   TextButton(
                     onPressed: () => _reloadDetail(resetMissingRetry: true),
                     child: const Text('다시 시도'),
@@ -473,7 +480,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('자산 정보를 찾을 수 없습니다.'),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
                   TextButton(
                     onPressed: () => _reloadDetail(resetMissingRetry: true),
                     child: const Text('다시 시도'),
@@ -540,7 +547,12 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
               onRefresh: _refreshPage,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                padding: EdgeInsets.fromLTRB(
+                  context.contentHorizontalPadding,
+                  context.spacing.sm,
+                  context.contentHorizontalPadding,
+                  context.spacing.sectionGap,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -557,7 +569,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: MoneyfyPalette.surfaceMuted,
+                                  color: context.colors.neutralSurfaceRaised,
                                   borderRadius: BorderRadius.circular(
                                     VisualSpec.surface.radiusCard,
                                   ),
@@ -567,12 +579,11 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                   color: _iconTone(context),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: context.spacing.sm),
                               Expanded(
                                 child: Text(
                                   item.displayName,
-                                  style: context.typography.body.copyWith(
-                                    fontSize: context.fontSizes.s20,
+                                  style: context.typography.cardTitle.copyWith(
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -591,7 +602,10 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                 ),
                                 padding: EdgeInsets.zero,
                               ),
-                              const SizedBox(width: 10),
+                              SizedBox(
+                                width:
+                                    context.spacing.xs + context.spacing.xs / 4,
+                              ),
                               Container(
                                 width: 1,
                                 height: 24,
@@ -600,7 +614,10 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                     .outlineVariant
                                     .withValues(alpha: 0.7),
                               ),
-                              const SizedBox(width: 10),
+                              SizedBox(
+                                width:
+                                    context.spacing.xs + context.spacing.xs / 4,
+                              ),
                               IconButton(
                                 onPressed: () => _deleteAsset(item),
                                 icon: Icon(
@@ -636,7 +653,6 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                       totalValuationAmount,
                                     ),
                               style: context.typography.heroNumber.copyWith(
-                                fontSize: 32,
                                 fontWeight: FontWeight.w600,
                                 height: 1,
                               ),
@@ -745,7 +761,9 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: context.spacing.md + context.spacing.xs / 2,
+                    ),
                     if (!isCashAssetGroup) ...[
                       _DetailSection(
                         title: '보유 정보',
@@ -809,7 +827,10 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                   .outlineVariant
                                   .withValues(alpha: 0.7),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(
+                              width:
+                                  context.spacing.xs + context.spacing.xs / 4,
+                            ),
                             IconButton(
                               onPressed: () =>
                                   _openHoldingForm(assetId: item.id),
@@ -832,7 +853,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                 hiddenHoldings: hiddenInvestmentHoldings,
                               ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: context.spacing.md),
                     ],
                     _DetailSection(
                       title: '현금 계좌',
@@ -853,7 +874,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                               hiddenHoldings: hiddenCashLikeHoldings,
                             ),
                     ),
-                    if (true) ...[const SizedBox(height: 16)],
+                    if (true) ...[SizedBox(height: context.spacing.md)],
                     _DetailSection(
                       title: '메모',
                       trailing: IconButton(
@@ -1204,7 +1225,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
         child: Text(
           message,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: MoneyfyPalette.tertiaryText,
+            color: context.colors.neutralTextMuted,
           ),
         ),
       ),
@@ -1288,31 +1309,26 @@ class _HeroMetricRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: context.spacing.xs / 2),
       child: Row(
         children: [
           Expanded(
             child: Text(
               label,
-              style: context.typography.caption.copyWith(
-                fontSize: context.fontSizes.s16,
+              style: context.typography.meta.copyWith(
                 fontWeight: FontWeight.w600,
-                color: MoneyfyPalette.secondaryText,
+                color: context.colors.neutralText,
               ),
             ),
           ),
           Text(
             value,
-            style: context.typography.caption.copyWith(
-              fontSize: context.fontSizes.s16,
-              color: moneyfyValueColor(
-                value,
-                defaultColor: MoneyfyPalette.secondaryText,
-              ),
+            style: context.typography.meta.copyWith(
+              color: _valueStringColor(context, value),
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
           if (showDeltaChip)
             DeltaChip(
               value: rawValue,
@@ -1335,16 +1351,19 @@ class _HeroDashChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.xs,
+        vertical: context.spacing.xs / 2,
+      ),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surface,
-        border: Border.all(color: MoneyfyPalette.border),
+        color: context.colors.neutralSurfaceBase,
+        border: Border.all(color: context.colors.neutralOutline),
         borderRadius: BorderRadius.circular(context.radius.rPill),
       ),
       child: Text(
         '-',
         style: context.typography.meta.copyWith(
-          color: MoneyfyPalette.secondaryText,
+          color: context.colors.neutralText,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -1390,15 +1409,19 @@ class _DetailSection extends StatelessWidget {
                 ),
                 if (trailing != null) ...[
                   if (showHeaderTrailingDivider) ...[
-                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: context.spacing.xs + context.spacing.xs / 4,
+                    ),
                     Container(width: 1, height: 24, color: dividerColor),
-                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: context.spacing.xs + context.spacing.xs / 4,
+                    ),
                   ],
                   trailing!,
                 ],
               ],
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
             if (wrapBodyWithInnerCard)
               SizedBox(
                 width: double.infinity,
@@ -1597,10 +1620,7 @@ class _HoldingProfitLine extends StatelessWidget {
     final profitText = MoneyfyDisplayCurrencySettings.formatSignedAmountFromKrw(
       profitAmount,
     );
-    final amountColor = moneyfyValueColor(
-      profitText,
-      defaultColor: MoneyfyPalette.secondaryText,
-    );
+    final amountColor = _valueStringColor(context, profitText);
     return Row(
       mainAxisSize: MainAxisSize.max,
       mainAxisAlignment: MainAxisAlignment.end,
@@ -1633,6 +1653,25 @@ class _HoldingProfitLine extends StatelessWidget {
       ],
     );
   }
+}
+
+Color _valueStringColor(BuildContext context, String value) {
+  final normalized = value.trim();
+  if (normalized.isEmpty || normalized == '-') {
+    return context.colors.neutralText;
+  }
+  if (normalized.startsWith('-') || normalized.startsWith('−')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.startsWith('+')) return context.colors.positiveOn;
+  if (normalized.startsWith('(') && normalized.endsWith(')')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.contains('-') || normalized.contains('−')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.contains('+')) return context.colors.positiveOn;
+  return context.colors.neutralText;
 }
 
 class _CashAccountCard extends StatelessWidget {

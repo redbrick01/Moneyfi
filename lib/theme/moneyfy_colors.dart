@@ -4,67 +4,67 @@ import '../design_system/spec.dart';
 
 class MoneyfyPalette {
   // Core
-  static const Color primary = Color(0xFF0066CC);
-  static const Color primarySoft = Color(0xFFEAF2FF);
-  static const Color link = Color(0xFF0066CC);
+  static const Color primary = Color(0xFF0052FF);
+  static const Color primarySoft = Color(0xFFEEF0F3);
+  static const Color primaryActive = Color(0xFF003ECC);
+  static const Color primaryDisabled = Color(0xFFA8B8CC);
+  static const Color link = Color(0xFF0052FF);
   static const Color onPrimary = Color(0xFFFFFFFF);
 
   // Semantic
-  static const Color success = Color(0xFF30D158);
-  static const Color successStrong = Color(0xFF1F7A3A);
-  static const Color successBg = Color(0xFFE7F6EC);
-  static const Color warning = Color(0xFFFF9F0A);
-  static const Color warningStrong = Color(0xFFFF9F0A);
-  static const Color error = Color(0xFFFF453A);
-  static const Color errorStrong = Color(0xFFC83C3C);
-  static const Color errorSoft = Color(0xFFD05A3A);
-  static const Color errorBg = Color(0xFFFDECEC);
-  static const Color info = Color(0xFF0066CC);
-  static const Color infoBg = Color(0xFFEAF2FF);
-  static const Color accentPurple = Color(0xFF5E5CE6);
-  static const Color accentPurpleBg = Color(0xFFF0EEFF);
+  static const Color success = Color(0xFF05B169);
+  static const Color successStrong = Color(0xFF05B169);
+  static const Color successBg = Color(0xFFEEF0F3);
+  static const Color warning = Color(0xFFF4B000);
+  static const Color warningStrong = Color(0xFFF4B000);
+  static const Color error = Color(0xFFCF202F);
+  static const Color errorStrong = Color(0xFFCF202F);
+  static const Color errorSoft = Color(0xFFCF202F);
+  static const Color errorBg = Color(0xFFEEF0F3);
+  static const Color info = Color(0xFF0052FF);
+  static const Color infoBg = Color(0xFFEEF0F3);
+  static const Color accentPurple = Color(0xFF0052FF);
+  static const Color accentPurpleBg = Color(0xFFEEF0F3);
 
   // Text
-  static const Color textPrimary = Color(0xFF1D1D1F);
-  static const Color textSecondary = Color(0xFF333333);
-  static const Color textTertiary = Color(0xFF7A7A7A);
-  static const Color textMuted = Color(0xFF7A7A7A);
+  static const Color textPrimary = Color(0xFF0A0B0D);
+  static const Color textSecondary = Color(0xFF5B616E);
+  static const Color textTertiary = Color(0xFF7C828A);
+  static const Color textMuted = Color(0xFF7C828A);
   static const Color textOnDark = Color(0xFFFFFFFF);
-  static const Color textBlack = Color(0xFF1D1D1F);
+  static const Color textBlack = Color(0xFF0A0B0D);
 
   // Surface / Border
-  static const Color bgApp = Color(0xFFF5F5F7);
+  static const Color bgApp = Color(0xFFFFFFFF);
   static const Color bgSurface = Color(0xFFFFFFFF);
-  static const Color bgSurfaceMuted = Color(0xFFFAFAFC);
-  static const Color bgNeutralSoft = Color(0xFFF5F5F7);
-  static const Color border = Color(0xFFE0E0E0);
-  static const Color borderNeutral = Color(0xFFF0F0F0);
-  static const Color borderSuccess = Color(0xFFB7E4C7);
-  static const Color borderError = Color(0xFFF3C4C4);
-  static const Color borderInfo = Color(0xFFC6D9FF);
-  static const Color borderPurple = Color(0xFFD9CCFF);
+  static const Color bgSurfaceMuted = Color(0xFFF7F7F7);
+  static const Color bgNeutralSoft = Color(0xFFEEF0F3);
+  static const Color border = Color(0xFFDEE1E6);
+  static const Color borderNeutral = Color(0xFFEEF0F3);
+  static const Color borderSuccess = Color(0xFFEEF0F3);
+  static const Color borderError = Color(0xFFEEF0F3);
+  static const Color borderInfo = Color(0xFFEEF0F3);
+  static const Color borderPurple = Color(0xFFEEF0F3);
 
   // Overlay / Shadow / Glass
   static const Color transparent = Color(0x00000000);
-  static const Color black28 = Color(0x47000000);
-  static const Color shadowMenu = Color(0x14000000);
+  static const Color black28 = Color(0x470A0B0D);
+  static const Color shadowMenu = Color(0x00000000);
   static const Color shadowCard = Color(0x00000000);
   static const Color shadowFloating = Color(0x00000000);
   static const Color glowFloating = Color(0x33FFFFFF);
-  static const Color glassTop = Color(0xCCF5F5F7);
-  static const Color glassBottom = Color(0xCCF5F5F7);
+  static const Color glassTop = Color(0xCCFFFFFF);
+  static const Color glassBottom = Color(0xCCFFFFFF);
   static const Color glassBorder = Color(0x80FFFFFF);
   static const Color glassHighlight = Color(0xCCFFFFFF);
   static const Color glassSelected = Color(0x33FFFFFF);
 
   // Brand / Asset
-  static const Color brandManifest = Color(0xFF0175C2);
-  static const Color iconBgDark = Color(0xFF0F172A);
-  static const Color iconGradientStart = Color(0xFF0B1220);
-  static const Color iconGradientEnd = Color(0xFF1D4ED8);
-  static const Color iconMint = Color(0xFFAAF0D1);
-  static const Color iconMintSoft = Color(0xFFE8FFF6);
-  static const Color iconGray = Color(0xFFF5F5F5);
+  static const Color brandManifest = Color(0xFF0052FF);
+  static const Color iconInk = Color(0xFF0A0B0D);
+  static const Color iconPositive = Color(0xFF05B169);
+  static const Color iconBgLight = Color(0xFFFFFFFF);
+  static const Color iconGray = Color(0xFFEEF0F3);
 
   // Backward-compatible aliases
   static const Color ink = textPrimary;

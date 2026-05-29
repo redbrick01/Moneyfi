@@ -13,7 +13,6 @@ import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
 import '../models/asset_item.dart';
 import '../services/market_data_service.dart';
-import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
 
@@ -696,7 +695,7 @@ class _SnapshotEmbeddedCashAccountRow extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
+        color: context.surfaces.surfaceBase,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -722,7 +721,7 @@ class _SnapshotEmbeddedCashAccountRow extends StatelessWidget {
           Text(
             account.currencyCode,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
             ),
           ),
         ],
@@ -744,7 +743,7 @@ class _SnapshotSectionLabel extends StatelessWidget {
       child: Text(
         title,
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: MoneyfyPalette.secondaryText,
+          color: context.colors.neutralTextMuted,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -774,7 +773,7 @@ class _SnapshotTransactionsCard extends StatelessWidget {
             Text(
               '해당 날짜의 거래 스냅샷이 없습니다.',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: MoneyfyPalette.tertiaryText,
+                color: context.colors.neutralTextMuted,
               ),
             )
           else ...[
@@ -876,7 +875,9 @@ class _SnapshotNoteCard extends StatelessWidget {
           Text(
             hasNote ? note : '메모를 추가해 보세요',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: hasNote ? MoneyfyPalette.ink : MoneyfyPalette.tertiaryText,
+              color: hasNote
+                  ? context.colors.neutralText
+                  : context.colors.neutralTextMuted,
               height: 1.5,
             ),
           ),
@@ -1004,9 +1005,9 @@ class _ProfitValueWidget extends StatelessWidget {
         child: Text(
           '-',
           textAlign: TextAlign.right,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(color: MoneyfyPalette.tertiaryText),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: context.colors.neutralTextMuted,
+          ),
         ),
       );
     }
@@ -1025,7 +1026,7 @@ class _ProfitValueWidget extends StatelessWidget {
               softWrap: false,
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: _changeColor(amount!),
+                color: _changeColor(context, amount!),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1089,7 +1090,7 @@ class _SnapshotItemRow extends StatelessWidget {
               Text(
                 '${weight.toStringAsFixed(1)}%',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: MoneyfyPalette.tertiaryText,
+                  color: context.colors.neutralTextMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1103,7 +1104,7 @@ class _SnapshotItemRow extends StatelessWidget {
             Text(
               _formatCurrency(item.totalValuationAmount),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: MoneyfyPalette.ink,
+                color: context.colors.neutralText,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1117,8 +1118,8 @@ class _SnapshotItemRow extends StatelessWidget {
                       : _formatSignedCurrency(previousProfitAmount),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: previousProfitAmount == null
-                        ? MoneyfyPalette.tertiaryText
-                        : _changeColor(previousProfitAmount),
+                        ? context.colors.neutralTextMuted
+                        : _changeColor(context, previousProfitAmount),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1173,7 +1174,7 @@ class _ExpandableSnapshotItemRow extends StatelessWidget {
       endActionPane: moneyfySingleSlideActionPane(
         onPressed: onDelete,
         icon: VisualSpec.icon.delete,
-        iconColor: MoneyfyPalette.negative,
+        iconColor: context.colors.negativeOn,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -1257,13 +1258,13 @@ class _SnapshotHoldingRow extends StatelessWidget {
       endActionPane: moneyfySingleSlideActionPane(
         onPressed: onDelete,
         icon: VisualSpec.icon.delete,
-        iconColor: MoneyfyPalette.negative,
+        iconColor: context.colors.negativeOn,
       ),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: MoneyfyPalette.surfaceMuted,
+          color: context.surfaces.surfaceBase,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -1291,14 +1292,16 @@ class _SnapshotHoldingRow extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: MoneyfyPalette.surface,
+                            color: context.surfaces.surfaceRaised,
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: MoneyfyPalette.border),
+                            border: Border.all(
+                              color: context.colors.neutralOutline,
+                            ),
                           ),
                           child: Text(
                             holding.holdingSymbol,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: MoneyfyPalette.secondaryText,
+                              color: context.colors.neutralTextMuted,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1306,7 +1309,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
                       Text(
                         '${holding.quantity}',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: MoneyfyPalette.tertiaryText,
+                          color: context.colors.neutralTextMuted,
                         ),
                       ),
                     ],
@@ -1320,7 +1323,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
                 Text(
                   _formatCurrency(holding.totalValuationAmount),
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: MoneyfyPalette.ink,
+                    color: context.colors.neutralText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1331,7 +1334,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
                     Text(
                       _formatSignedCurrency(holding.profitAmount),
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: _changeColor(holding.profitAmount),
+                        color: _changeColor(context, holding.profitAmount),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1353,10 +1356,10 @@ class _SnapshotHoldingRow extends StatelessWidget {
   }
 }
 
-Color _changeColor(double value) {
-  if (value > 0) return MoneyfyPalette.positive;
-  if (value < 0) return MoneyfyPalette.negative;
-  return MoneyfyPalette.tertiaryText;
+Color _changeColor(BuildContext context, double value) {
+  if (value > 0) return context.colors.positiveOn;
+  if (value < 0) return context.colors.negativeOn;
+  return context.colors.neutralTextMuted;
 }
 
 double _calculateChangeRate({

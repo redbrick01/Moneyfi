@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../data/asset_data.dart';
+import '../../design_system/context_extensions.dart';
 import '../../db/app_database.dart';
 import '../../models/asset_item.dart';
 import '../../services/market_data_service.dart';
 import '../../services/sync_service.dart';
-import '../../theme/moneyfy_theme.dart';
 import '../../utils/input_validators.dart';
 import 'form_design.dart';
 
@@ -459,11 +459,13 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
                     Text(
                       '통화',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: MoneyfyPalette.tertiaryText,
+                        color: context.colors.neutralTextMuted,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: context.spacing.xs + context.spacing.xs / 4,
+                    ),
                     MoneyfyChoiceWrap<String>(
                       options: currencyOptions,
                       value: selectedCurrencyCode,
@@ -475,15 +477,17 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
                       },
                     ),
                     if (!isCashAsset && selectedCurrencyCode == 'USD') ...[
-                      const SizedBox(height: 16),
+                      SizedBox(height: context.spacing.md),
                       Text(
                         '거래소',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: MoneyfyPalette.tertiaryText,
+                          color: context.colors.neutralTextMuted,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: context.spacing.xs + context.spacing.xs / 4,
+                      ),
                       MoneyfyChoiceWrap<String>(
                         options: exchangeOptions.keys.toList(growable: false),
                         value: selectedExchangeCode,
@@ -513,7 +517,7 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
                       onChanged: _queueMarketSearch,
                       onResultSelected: _selectMarketResult,
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: context.spacing.xs / 2),
                   ],
                   if (!canSearchMarketItem)
                     MoneyfyFormField(label: '이름', controller: nameController),
@@ -606,18 +610,20 @@ class _MarketItemSearchField extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.only(
+        bottom: context.spacing.sm + context.spacing.xs / 4,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '종목 검색',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.xs),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -635,37 +641,37 @@ class _MarketItemSearchField extends StatelessWidget {
                     hintText: '예: 005930, AAPL, BTC',
                     prefixIcon: const Icon(Icons.search_rounded, size: 20),
                     hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+                      color: context.colors.neutralTextMuted,
                     ),
                     filled: true,
-                    fillColor: MoneyfyPalette.surfaceMuted,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                    fillColor: context.colors.neutralSurfaceRaised,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: context.spacing.md,
+                      vertical: context.spacing.sm + context.spacing.xs / 4,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: const BorderSide(
-                        color: MoneyfyPalette.border,
+                      borderRadius: BorderRadius.circular(context.radius.rLg),
+                      borderSide: BorderSide(
+                        color: context.colors.neutralOutline,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: const BorderSide(
-                        color: MoneyfyPalette.border,
+                      borderRadius: BorderRadius.circular(context.radius.rLg),
+                      borderSide: BorderSide(
+                        color: context.colors.neutralOutline,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: const BorderSide(
-                        color: MoneyfyPalette.accent,
+                      borderRadius: BorderRadius.circular(context.radius.rLg),
+                      borderSide: BorderSide(
+                        color: context.colors.primary,
                         width: 1.4,
                       ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
               SizedBox(
                 height: 50,
                 child: IconButton.filled(
@@ -679,13 +685,14 @@ class _MarketItemSearchField extends StatelessWidget {
                         )
                       : const Icon(Icons.search_rounded),
                   style: IconButton.styleFrom(
-                    backgroundColor: MoneyfyPalette.ink,
-                    foregroundColor: MoneyfyPalette.background,
-                    disabledBackgroundColor: MoneyfyPalette.surfaceMuted,
-                    disabledForegroundColor: MoneyfyPalette.tertiaryText,
+                    backgroundColor: context.colors.neutralText,
+                    foregroundColor: context.colors.neutralBackground,
+                    disabledBackgroundColor:
+                        context.colors.neutralSurfaceRaised,
+                    disabledForegroundColor: context.colors.neutralTextMuted,
                     fixedSize: const Size(50, 50),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(context.radius.rMd),
                     ),
                   ),
                 ),
@@ -693,23 +700,23 @@ class _MarketItemSearchField extends StatelessWidget {
             ],
           ),
           if (results.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.xs),
             _MarketSearchDropdown(
               results: results,
               onSelected: onResultSelected,
             ),
           ] else if (selectedResult != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.xs),
             _SelectedMarketResultView(result: selectedResult!),
           ],
           if (message != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.xs),
             Text(
               message!,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: message!.startsWith('선택됨')
-                    ? MoneyfyPalette.primary
-                    : MoneyfyPalette.tertiaryText,
+                    ? context.colors.primary
+                    : context.colors.neutralTextMuted,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -733,9 +740,9 @@ class _MarketSearchDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: MoneyfyPalette.border),
+        color: context.colors.neutralSurfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(color: context.colors.neutralOutline),
       ),
       child: Column(
         children: [
@@ -745,7 +752,7 @@ class _MarketSearchDropdown extends StatelessWidget {
               onTap: () => onSelected(results[index]),
             ),
             if (index != results.length - 1)
-              const Divider(height: 1, color: MoneyfyPalette.border),
+              Divider(height: 1, color: context.colors.neutralOutline),
           ],
         ],
       ),
@@ -765,9 +772,12 @@ class _MarketSearchResultTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(context.radius.rMd),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.sm + context.spacing.xs / 4,
+          vertical: context.spacing.sm,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -777,26 +787,26 @@ class _MarketSearchResultTile extends StatelessWidget {
                   Text(
                     result.name,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: MoneyfyPalette.ink,
+                      color: context.colors.neutralText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  SizedBox(height: context.spacing.xs / 2 - 1),
                   Text(
                     result.subtitle,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+                      color: context.colors.neutralTextMuted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.sm),
             Text(
               result.priceLabel,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: MoneyfyPalette.primary,
+                color: context.colors.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -816,11 +826,13 @@ class _SelectedMarketResultView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.primarySoft,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: MoneyfyPalette.accentSoft),
+        color: context.colors.primaryContainer,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(
+          color: context.colors.primary.withValues(alpha: 0.2),
+        ),
       ),
       child: _MarketSearchResultTile(result: result, onTap: () {}),
     );

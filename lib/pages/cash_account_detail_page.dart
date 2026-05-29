@@ -10,7 +10,6 @@ import '../design_system/spec.dart';
 import '../db/app_database.dart';
 import '../models/asset_item.dart';
 import '../services/sync_service.dart';
-import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
 import 'forms/cash_account_form_page.dart';
@@ -206,6 +205,7 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.colors.neutralBackground,
       body: FutureBuilder<HoldingItem?>(
         future: _holdingFuture,
         builder: (context, snapshot) {
@@ -238,7 +238,7 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
                   MoneyfySurfaceCard(
                     variant: MoneyfySurfaceCardVariant.raised,
                     padding: EdgeInsets.all(context.cardPadding()),
@@ -252,7 +252,7 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: MoneyfyPalette.surfaceMuted,
+                                color: context.colors.neutralSurfaceRaised,
                                 borderRadius: BorderRadius.circular(
                                   VisualSpec.surface.radiusCard,
                                 ),
@@ -265,12 +265,11 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                                 size: VisualSpec.icon.sizeSmall,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: context.spacing.sm),
                             Expanded(
                               child: Text(
                                 holding.name,
-                                style: context.typography.body.copyWith(
-                                  fontSize: context.fontSizes.s20,
+                                style: context.typography.cardTitle.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -279,7 +278,10 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                               onPressed: () => _editHolding(holding),
                               icon: Icons.edit_outlined,
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(
+                              width:
+                                  context.spacing.xs + context.spacing.xs / 4,
+                            ),
                             Container(
                               width: 1,
                               height: 24,
@@ -288,7 +290,10 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                                   .outlineVariant
                                   .withValues(alpha: 0.7),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(
+                              width:
+                                  context.spacing.xs + context.spacing.xs / 4,
+                            ),
                             _CashTopActionButton(
                               onPressed: () => _deleteHolding(holding),
                               icon: Icons.delete_outline_rounded,
@@ -301,7 +306,6 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                           child: Text(
                             holding.value,
                             style: context.typography.heroNumber.copyWith(
-                              fontSize: 32,
                               fontWeight: FontWeight.w600,
                               height: 1,
                             ),
@@ -426,7 +430,7 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                     trailing: IconButton(
                       onPressed: () => _openTransactionForm(holding),
                       icon: const Icon(Icons.add_rounded),
-                      color: MoneyfyPalette.tertiaryText,
+                      color: context.colors.neutralTextMuted,
                     ),
                     child: SlidableAutoCloseBehavior(
                       child: TransactionHistoryList(
@@ -459,6 +463,7 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                                   exchangeRate: holding.exchangeRate,
                                 ),
                             amountColor: _cashTransactionAmountColor(
+                              context,
                               holding.transactions[index],
                             ),
                             metaText: _ledgerLineMeta(
@@ -575,14 +580,14 @@ class _CashCardSection extends StatelessWidget {
                   child: Text(title, style: context.typography.sectionTitle),
                 ),
                 if (trailing != null) ...[
-                  const SizedBox(width: 10),
+                  SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
                   Container(width: 1, height: 24, color: dividerColor),
-                  const SizedBox(width: 10),
+                  SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
                   trailing!,
                 ],
               ],
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
             SizedBox(
               width: double.infinity,
               child: Container(
@@ -606,11 +611,14 @@ class _CashCardSection extends StatelessWidget {
   }
 }
 
-Color _cashTransactionAmountColor(TransactionItem transaction) {
+Color _cashTransactionAmountColor(
+  BuildContext context,
+  TransactionItem transaction,
+) {
   return switch (TransactionFlowCategory.normalize(transaction.flowCategory)) {
-    TransactionFlowCategory.externalDeposit => MoneyfyPalette.positive,
-    TransactionFlowCategory.externalWithdrawal => MoneyfyPalette.negative,
-    _ => MoneyfyPalette.ink,
+    TransactionFlowCategory.externalDeposit => context.colors.positiveOn,
+    TransactionFlowCategory.externalWithdrawal => context.colors.negativeOn,
+    _ => context.colors.neutralText,
   };
 }
 
@@ -636,25 +644,20 @@ class _CashHeroDeltaMetricRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: context.typography.caption.copyWith(
-              fontSize: context.fontSizes.s16,
+            style: context.typography.meta.copyWith(
               fontWeight: FontWeight.w600,
-              color: MoneyfyPalette.secondaryText,
+              color: context.colors.neutralText,
             ),
           ),
         ),
         Text(
           value,
-          style: context.typography.caption.copyWith(
-            fontSize: context.fontSizes.s16,
+          style: context.typography.meta.copyWith(
             fontWeight: FontWeight.w600,
-            color: moneyfyValueColor(
-              value,
-              defaultColor: MoneyfyPalette.secondaryText,
-            ),
+            color: _cashValueStringColor(context, value),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
         if (showDeltaChip)
           DeltaChip(
             value: rawValue,
@@ -676,16 +679,19 @@ class _CashHeroDashChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.xs,
+        vertical: context.spacing.xs / 2,
+      ),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surface,
-        border: Border.all(color: MoneyfyPalette.border),
+        color: context.colors.neutralSurfaceBase,
+        border: Border.all(color: context.colors.neutralOutline),
         borderRadius: BorderRadius.circular(context.radius.rPill),
       ),
       child: Text(
         '-',
         style: context.typography.meta.copyWith(
-          color: MoneyfyPalette.secondaryText,
+          color: context.colors.neutralText,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -726,6 +732,25 @@ class _CashComparisonMetrics {
   final double dailyProfitRate;
   final bool hasMonthlyComparison;
   final bool hasDailyComparison;
+}
+
+Color _cashValueStringColor(BuildContext context, String value) {
+  final normalized = value.trim();
+  if (normalized.isEmpty || normalized == '-') {
+    return context.colors.neutralText;
+  }
+  if (normalized.startsWith('-') || normalized.startsWith('−')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.startsWith('+')) return context.colors.positiveOn;
+  if (normalized.startsWith('(') && normalized.endsWith(')')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.contains('-') || normalized.contains('−')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.contains('+')) return context.colors.positiveOn;
+  return context.colors.neutralText;
 }
 
 String _cashPreviousMonthComparisonDate(DateTime date) {

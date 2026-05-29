@@ -54,10 +54,14 @@ class DeltaChip extends StatelessWidget {
     };
 
     return Container(
-      constraints: BoxConstraints(minHeight: compact ? 20 : 24),
+      constraints: BoxConstraints(
+        minHeight: compact
+            ? context.spacing.sm + context.spacing.xs
+            : context.spacing.lg,
+      ),
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 6 : 8,
-        vertical: compact ? 2 : 4,
+        horizontal: compact ? context.spacing.xs - 2 : context.spacing.xs,
+        vertical: compact ? context.spacing.xs / 4 : context.spacing.xs / 2,
       ),
       decoration: BoxDecoration(
         color: backgroundColor,

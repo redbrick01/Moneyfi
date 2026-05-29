@@ -797,8 +797,8 @@ class _RebalancingSectionCard extends StatelessWidget {
               value:
                   '${entries[i].deltaAmount >= 0 ? '+' : '-'}${_formatCurrency(entries[i].deltaAmount.abs())}',
               valueColor: entries[i].deltaAmount >= 0
-                  ? MoneyfyPalette.positive
-                  : MoneyfyPalette.negative,
+                  ? context.colors.positiveOn
+                  : context.colors.negativeOn,
               singleLine: true,
             ),
             if (i != entries.length - 1) AppDivider(),
@@ -993,9 +993,11 @@ class _DiagnosisBlockCard extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(context.spacing.md),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: MoneyfyPalette.border.withValues(alpha: 0.9)),
+        color: context.surfaces.surfaceBase,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(
+          color: context.colors.neutralOutline.withValues(alpha: 0.9),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1041,9 +1043,9 @@ class _RiskBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color color = switch (riskLevel) {
-      '낮음' => MoneyfyPalette.positive,
-      '높음' => MoneyfyPalette.negative,
-      _ => MoneyfyPalette.accent,
+      '낮음' => context.colors.positiveOn,
+      '높음' => context.colors.negativeOn,
+      _ => context.colors.warningOn,
     };
     return Container(
       padding: EdgeInsets.symmetric(
@@ -1075,10 +1077,10 @@ class _ScoreRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final normalized = (score / 100).clamp(0, 1).toDouble();
     final tone = score >= 70
-        ? MoneyfyPalette.positive
+        ? context.colors.positiveOn
         : score >= 50
-        ? MoneyfyPalette.accent
-        : MoneyfyPalette.negative;
+        ? context.colors.warningOn
+        : context.colors.negativeOn;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

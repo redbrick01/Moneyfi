@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../design_system/context_extensions.dart';
+import '../design_system/spec.dart';
 import 'icons/app_icon.dart';
 
 class SectionHeader extends StatelessWidget {
@@ -31,7 +32,7 @@ class SectionHeader extends StatelessWidget {
     }).toList();
 
     return SizedBox(
-      height: 48,
+      height: VisualSpec.icon.minTapTarget,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

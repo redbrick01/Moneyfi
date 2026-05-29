@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../design_system/context_extensions.dart';
 import '../../db/app_database.dart';
 import '../../models/asset_item.dart';
 import '../../services/sync_service.dart';
-import '../../theme/moneyfy_theme.dart';
 import '../../utils/display_currency.dart';
 import '../../utils/input_validators.dart';
 import 'form_design.dart';
@@ -558,11 +558,11 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
               Text(
                 '거래 유형',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.tertiaryText,
+                  color: context.colors.neutralTextMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
               MoneyfyChoiceWrap<String>(
                 options: _cashTransactionTypes,
                 value: typeController.text.trim(),
@@ -576,7 +576,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
                   });
                 },
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
               _CashCalculationToggle(
                 value: includeInCalculations,
                 onChanged: (value) {
@@ -631,7 +631,9 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
               ),
               if (shortcutBalance > 0)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: EdgeInsets.only(
+                    bottom: context.spacing.sm + context.spacing.xs / 4,
+                  ),
                   child: MoneyfyPercentageShortcutButtons(
                     keyPrefix: 'cash-amount-shortcut',
                     onSelected: (ratio) =>
@@ -658,7 +660,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
               if (includeInCalculations && transactionType == '환전') ...[
                 MoneyfyFormField(
                   label: '환율',

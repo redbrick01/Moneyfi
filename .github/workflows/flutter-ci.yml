@@ -44,5 +44,9 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
+      - name: Design token guardrail report
+        continue-on-error: true
+        run: tools/check_design_token_guardrails.sh
+
       - name: Test
         run: flutter test

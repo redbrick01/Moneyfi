@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+import '../design_system/context_extensions.dart';
+import '../design_system/spec.dart';
 import '../db/app_database.dart';
 import '../services/app_data_lifecycle_service.dart';
 import '../services/auth_service.dart';
@@ -380,10 +382,15 @@ class _AccountDataReplacementPage extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final bottomInset = MediaQuery.of(context).padding.bottom;
     return ColoredBox(
-      color: colorScheme.surface,
+      color: context.colors.neutralBackground,
       child: SafeArea(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(24, 32, 24, 96 + bottomInset),
+          padding: EdgeInsets.fromLTRB(
+            context.contentHorizontalPadding,
+            context.spacing.sectionGap,
+            context.contentHorizontalPadding,
+            context.spacing.xxxl + context.spacing.md + bottomInset,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -394,14 +401,15 @@ class _AccountDataReplacementPage extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
-                      width: 28,
-                      height: 28,
+                      width: VisualSpec.icon.progressIndicatorSizeLarge,
+                      height: VisualSpec.icon.progressIndicatorSizeLarge,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
+                        strokeWidth:
+                            VisualSpec.icon.progressIndicatorStrokeLarge,
                         color: colorScheme.primary,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: context.spacing.md),
                     Text(
                       message,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -445,21 +453,24 @@ class _FloatingTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colors = context.colors;
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Material(
-          color: colorScheme.surface.withValues(alpha: 0.92),
+          color: colors.neutralSurfaceOverlay.withValues(alpha: 0.92),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
-            side: BorderSide(color: colorScheme.outlineVariant),
+            borderRadius: BorderRadius.circular(context.radius.rPill),
+            side: BorderSide(color: colors.neutralOutline),
           ),
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.xs - context.spacing.xs / 4,
+                  vertical: context.spacing.xs - 1,
+                ),
                 child: Row(
                   children: [
                     for (var i = 0; i < items.length; i++)
@@ -495,8 +506,8 @@ class _FloatingTabBarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final labelStyle = TextStyle(
-      fontSize: 11,
+    final colors = context.colors;
+    final labelStyle = context.typography.caption.copyWith(
       height: 1.2,
       letterSpacing: 0,
       color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
@@ -504,15 +515,20 @@ class _FloatingTabBarItem extends StatelessWidget {
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 1),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.xs / 8),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacing.xs - 3,
+            vertical: context.spacing.xs,
+          ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            color: isSelected ? colorScheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(context.radius.rPill),
+            color: isSelected
+                ? colors.primary
+                : colorScheme.surface.withValues(alpha: 0),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -521,18 +537,20 @@ class _FloatingTabBarItem extends StatelessWidget {
                 width: 34,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: isSelected ? colorScheme.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
+                  color: isSelected
+                      ? colors.primary
+                      : colorScheme.surface.withValues(alpha: 0),
+                  borderRadius: BorderRadius.circular(context.radius.rMd),
                 ),
                 child: Icon(
                   isSelected ? item.selectedIcon : item.icon,
-                  size: 19,
+                  size: VisualSpec.icon.sizeSmall,
                   color: isSelected
                       ? colorScheme.onPrimary
                       : colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: context.spacing.xs / 2),
               SizedBox(
                 height: 14,
                 child: Center(

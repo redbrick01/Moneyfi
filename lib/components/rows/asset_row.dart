@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 import '../../design_system/context_extensions.dart';
+import '../../design_system/spec.dart';
 import '../icons/app_icon.dart';
 
 class AssetRow extends StatelessWidget {
@@ -170,7 +171,7 @@ class AssetRow extends StatelessWidget {
     );
 
     return Material(
-      color: Colors.transparent,
+      color: VisualSpec.surface.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(context.radius.rMd),

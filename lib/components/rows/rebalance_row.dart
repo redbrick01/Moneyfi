@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../design_system/context_extensions.dart';
 import '../../design_system/spec.dart';
-import '../../theme/moneyfy_theme.dart';
 
 class RebalanceRow extends StatelessWidget {
   const RebalanceRow({
@@ -26,7 +26,10 @@ class RebalanceRow extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.md,
+        vertical: context.spacing.sm + context.spacing.xs / 2,
+      ),
       child: Row(
         crossAxisAlignment: singleLine
             ? CrossAxisAlignment.center
@@ -36,12 +39,12 @@ class RebalanceRow extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: MoneyfyPalette.surfaceMuted,
-              borderRadius: BorderRadius.circular(14),
+              color: context.colors.neutralSurfaceRaised,
+              borderRadius: BorderRadius.circular(context.radius.rMd),
             ),
             child: Icon(icon, size: VisualSpec.icon.sizeSmall),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: context.spacing.sm),
           Expanded(
             child: singleLine
                 ? Text.rich(
@@ -50,15 +53,15 @@ class RebalanceRow extends StatelessWidget {
                         TextSpan(
                           text: title,
                           style: theme.textTheme.titleMedium?.copyWith(
-                            color: MoneyfyPalette.ink,
+                            color: context.colors.neutralText,
                           ),
                         ),
                         if (helper != null)
                           TextSpan(
                             text: '  $helper',
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: MoneyfyPalette.tertiaryText,
-                              fontSize: 12,
+                              color: context.colors.neutralTextMuted,
+                              fontSize: context.fontSizes.s12,
                             ),
                           ),
                       ],
@@ -69,23 +72,23 @@ class RebalanceRow extends StatelessWidget {
                     children: [
                       Text(title, style: theme.textTheme.bodyMedium),
                       if (helper != null) ...[
-                        const SizedBox(height: 4),
+                        SizedBox(height: context.spacing.xs / 2),
                         Text(
                           helper!,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: MoneyfyPalette.tertiaryText,
-                            fontSize: 12,
+                            color: context.colors.neutralTextMuted,
+                            fontSize: context.fontSizes.s12,
                           ),
                         ),
                       ],
                     ],
                   ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: context.spacing.sm),
           Text(
             value,
             style: theme.textTheme.titleMedium?.copyWith(
-              color: valueColor ?? MoneyfyPalette.ink,
+              color: valueColor ?? context.colors.neutralText,
             ),
             textAlign: TextAlign.right,
           ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../chips/delta_chip.dart';
 import '../../design_system/context_extensions.dart';
-import '../../theme/moneyfy_theme.dart';
 import '../icons/app_icon.dart';
 
 class SnapshotRow extends StatelessWidget {
@@ -29,8 +28,9 @@ class SnapshotRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final deltaColor = _moneyfyValueColor(
+      context,
       deltaText,
-      defaultColor: MoneyfyPalette.secondaryText,
+      defaultColor: context.colors.neutralTextMuted,
     );
     final trailingMinWidth = singleLineDelta
         ? 192.0
@@ -117,15 +117,17 @@ class SnapshotRow extends StatelessWidget {
                           if (deltaPercent != null) ...[
                             SizedBox(width: context.spacing.xs / 2),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: context.spacing.xs,
+                                vertical: context.spacing.xs / 2,
                               ),
                               decoration: BoxDecoration(
-                                color: MoneyfyPalette.surface,
-                                borderRadius: BorderRadius.circular(999),
+                                color: context.colors.neutralSurfaceBase,
+                                borderRadius: BorderRadius.circular(
+                                  context.radius.rPill,
+                                ),
                                 border: Border.all(
-                                  color: MoneyfyPalette.border,
+                                  color: context.colors.neutralOutline,
                                 ),
                               ),
                               child: Text(
@@ -135,9 +137,10 @@ class SnapshotRow extends StatelessWidget {
                                 style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(
                                       color: _moneyfyValueColor(
+                                        context,
                                         _formatPercent(deltaPercent!),
                                         defaultColor:
-                                            MoneyfyPalette.secondaryText,
+                                            context.colors.neutralTextMuted,
                                       ),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -180,13 +183,14 @@ class SnapshotRow extends StatelessWidget {
   }
 
   Color _moneyfyValueColor(
+    BuildContext context,
     String value, {
-    Color defaultColor = MoneyfyPalette.ink,
+    Color? defaultColor,
   }) {
     final trimmed = value.trimLeft();
-    if (trimmed.startsWith('+')) return MoneyfyPalette.positive;
-    if (trimmed.startsWith('-')) return MoneyfyPalette.negative;
-    return defaultColor;
+    if (trimmed.startsWith('+')) return context.colors.positiveOn;
+    if (trimmed.startsWith('-')) return context.colors.negativeOn;
+    return defaultColor ?? context.colors.neutralText;
   }
 
   String _formatPercent(double value) {

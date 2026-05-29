@@ -4,7 +4,6 @@ import '../components/section_card.dart';
 import '../components/transaction_history_list.dart';
 import '../db/app_database.dart';
 import '../design_system/context_extensions.dart';
-import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
 
@@ -58,7 +57,7 @@ class _IncomeSummaryCard extends StatelessWidget {
           Text(
             _formatCurrency(report.totalIncome),
             style: context.typography.pageTitle.copyWith(
-              color: MoneyfyPalette.ink,
+              color: context.colors.neutralText,
             ),
           ),
           SizedBox(height: context.spacing.md),
@@ -132,7 +131,9 @@ class _MonthlyIncomeTrendCard extends StatelessWidget {
                         ),
                   ),
                   if (index != recentMonths.length - 1)
-                    const SizedBox(height: 14),
+                    SizedBox(
+                      height: context.spacing.sm + context.spacing.xs / 4,
+                    ),
                 ],
               ],
             ),
@@ -232,7 +233,7 @@ class _IncomeSectionCard extends StatelessWidget {
             Text(
               subtitle!,
               style: context.typography.meta.copyWith(
-                color: MoneyfyPalette.tertiaryText,
+                color: context.colors.neutralTextMuted,
               ),
             ),
             SizedBox(height: context.spacing.md),
@@ -258,9 +259,9 @@ class _MiniMetric extends StatelessWidget {
         vertical: context.spacing.sm,
       ),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
+        color: context.colors.neutralSurfaceRaised,
         borderRadius: BorderRadius.circular(context.radius.rMd),
-        border: Border.all(color: MoneyfyPalette.border),
+        border: Border.all(color: context.colors.neutralOutline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,14 +269,14 @@ class _MiniMetric extends StatelessWidget {
           Text(
             label,
             style: context.typography.meta.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
             ),
           ),
           SizedBox(height: context.spacing.xs),
           Text(
             value,
             style: context.typography.cardTitle.copyWith(
-              color: MoneyfyPalette.ink,
+              color: context.colors.neutralText,
             ),
           ),
         ],
@@ -317,21 +318,21 @@ class _IncomeBarRow extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacing.xs),
         ClipRRect(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(context.radius.rPill),
           child: LinearProgressIndicator(
             minHeight: 8,
             value: ratio,
-            color: MoneyfyPalette.accent,
-            backgroundColor: MoneyfyPalette.surfaceMuted,
+            color: context.colors.primary,
+            backgroundColor: context.colors.neutralSurfaceRaised,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
         Text(
           '배당 ${_formatCurrency(dividend)} · 이자 ${_formatCurrency(interest)}',
           style: theme.textTheme.bodySmall?.copyWith(
-            color: MoneyfyPalette.tertiaryText,
+            color: context.colors.neutralTextMuted,
           ),
         ),
       ],
@@ -354,11 +355,11 @@ class _IncomePeriodRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(item.label, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 4),
+              SizedBox(height: context.spacing.xs / 2),
               Text(
                 '배당 ${_formatCurrency(item.dividend)} · 이자 ${_formatCurrency(item.interest)}',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.tertiaryText,
+                  color: context.colors.neutralTextMuted,
                 ),
               ),
             ],
@@ -390,7 +391,7 @@ class _IncomeSourceRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(item.name, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 4),
+              SizedBox(height: context.spacing.xs / 2),
               Text(
                 [
                   item.assetName,
@@ -398,7 +399,7 @@ class _IncomeSourceRow extends StatelessWidget {
                   '${item.count}건',
                 ].join(' · '),
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.tertiaryText,
+                  color: context.colors.neutralTextMuted,
                 ),
               ),
             ],
@@ -427,37 +428,40 @@ class _IncomeTransactionRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacing.xs + context.spacing.xs / 4,
+            vertical: context.spacing.xs / 2,
+          ),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF3E0),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFFFD08A)),
+            color: context.colors.warningContainer,
+            borderRadius: BorderRadius.circular(context.radius.rPill),
+            border: Border.all(color: context.colors.warningOn),
           ),
           child: Text(
             item.type,
             style: theme.textTheme.labelMedium?.copyWith(
-              color: const Color(0xFFB56A00),
+              color: context.colors.warningOn,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: context.spacing.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(item.name, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 4),
+              SizedBox(height: context.spacing.xs / 2),
               Text(
                 '${item.date} · ${item.assetName}',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.tertiaryText,
+                  color: context.colors.neutralTextMuted,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: context.spacing.sm),
         Text(
           _formatCurrency(item.amountKrw),
           style: theme.textTheme.titleMedium?.copyWith(
@@ -476,9 +480,9 @@ class _EmptyIncomeText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       '배당/이자 거래를 추가하면 여기에 표시됩니다.',
-      style: Theme.of(
-        context,
-      ).textTheme.bodyMedium?.copyWith(color: MoneyfyPalette.tertiaryText),
+      style: context.typography.body.copyWith(
+        color: context.colors.neutralTextMuted,
+      ),
     );
   }
 }

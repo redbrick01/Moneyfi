@@ -64,7 +64,7 @@ class _ImpactChip extends StatelessWidget {
         : colorScheme.onSurfaceVariant;
 
     return Container(
-      height: 28,
+      height: context.spacing.lg + context.spacing.xs / 2,
       padding: EdgeInsets.symmetric(
         horizontal: context.spacing.sm - 2,
         vertical: context.spacing.xs - 2,
@@ -77,7 +77,11 @@ class _ImpactChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppIcon.raw(item.icon, size: 18, color: foreground),
+          AppIcon.raw(
+            item.icon,
+            size: VisualSpec.icon.chipIcon,
+            color: foreground,
+          ),
           SizedBox(width: context.spacing.xs / 2),
           Text(
             item.label,

@@ -538,7 +538,12 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
                 SizedBox(
                   width: 44,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 12, 0, 28),
+                    padding: EdgeInsets.fromLTRB(
+                      0,
+                      VisualSpec.chart.chartPadding,
+                      0,
+                      VisualSpec.icon.progressIndicatorSizeLarge,
+                    ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,7 +552,7 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
                           Text(
                             label,
                             style: context.typography.caption.copyWith(
-                              fontSize: 12,
+                              fontSize: context.fontSizes.s12,
                               color: colorScheme.onSurfaceVariant,
                             ),
                           ),
@@ -577,6 +582,7 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
                                   ? VisualSpec.chart.gridAlphaDark
                                   : VisualSpec.chart.gridAlphaLight,
                             ),
+                            pointStrokeColor: colorScheme.surface,
                             indicatorColor: colorScheme.onSurfaceVariant
                                 .withValues(
                                   alpha: theme.brightness == Brightness.dark
@@ -585,7 +591,12 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
                                 ),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+                            padding: EdgeInsets.fromLTRB(
+                              context.spacing.xs,
+                              VisualSpec.chart.chartPadding,
+                              context.spacing.xs,
+                              context.spacing.xs,
+                            ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
@@ -597,7 +608,7 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
                                         widget.months[i],
                                         style: context.typography.caption
                                             .copyWith(
-                                              fontSize: 12,
+                                              fontSize: context.fontSizes.s12,
                                               color:
                                                   colorScheme.onSurfaceVariant,
                                               fontWeight: _selectedIndex == i
@@ -661,12 +672,12 @@ class _SelectedMonthStrip extends StatelessWidget {
         ? null
         : MoneyfyDisplayCurrencySettings.formatSignedAmountFromKrw(deltaKrw);
     final deltaColor = deltaText == null
-        ? MoneyfyPalette.secondaryText
+        ? context.colors.neutralTextMuted
         : deltaText.startsWith('+')
-        ? MoneyfyPalette.positive
+        ? context.colors.positiveOn
         : deltaText.startsWith('-')
-        ? MoneyfyPalette.negative
-        : MoneyfyPalette.secondaryText;
+        ? context.colors.negativeOn
+        : context.colors.neutralTextMuted;
 
     return Container(
       width: double.infinity,
@@ -691,7 +702,7 @@ class _SelectedMonthStrip extends StatelessWidget {
               child: Text(
                 _formatYearMonth(monthKey),
                 style: context.typography.meta.copyWith(
-                  fontSize: 13,
+                  fontSize: context.fontSizes.s14,
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -708,7 +719,7 @@ class _SelectedMonthStrip extends StatelessWidget {
                 ),
                 textAlign: TextAlign.right,
                 style: context.typography.cardTitle.copyWith(
-                  fontSize: 16,
+                  fontSize: context.fontSizes.s16,
                   color: colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
@@ -722,7 +733,7 @@ class _SelectedMonthStrip extends StatelessWidget {
                       deltaText,
                       textAlign: TextAlign.right,
                       style: context.typography.caption.copyWith(
-                        fontSize: 13,
+                        fontSize: context.fontSizes.s14,
                         color: deltaColor,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1144,7 +1155,7 @@ class _CalendarLegendRow extends StatelessWidget {
               width: 12,
               height: 12,
               decoration: BoxDecoration(
-                color: Colors.transparent,
+                color: colorScheme.surface.withValues(alpha: 0),
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
                   color: colorScheme.primary.withValues(alpha: 0.28),
@@ -1320,12 +1331,14 @@ class _MonthlyTrendPainter extends CustomPainter {
     required this.series,
     required this.selectedIndex,
     required this.gridColor,
+    required this.pointStrokeColor,
     required this.indicatorColor,
   });
 
   final List<_MonthlyAssetSeries> series;
   final int? selectedIndex;
   final Color gridColor;
+  final Color pointStrokeColor;
   final Color indicatorColor;
 
   @override
@@ -1390,7 +1403,7 @@ class _MonthlyTrendPainter extends CustomPainter {
         ..color = item.color
         ..style = PaintingStyle.fill;
       final pointStrokePaint = Paint()
-        ..color = Colors.white
+        ..color = pointStrokeColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.2;
 
@@ -1424,7 +1437,7 @@ class _MonthlyTrendPainter extends CustomPainter {
             fillPaint,
           );
           final strokePaint = Paint()
-            ..color = Colors.white
+            ..color = pointStrokeColor
             ..style = PaintingStyle.stroke
             ..strokeWidth = VisualSpec.chart.pointStrokeSelected;
           canvas.drawCircle(
@@ -1444,6 +1457,7 @@ class _MonthlyTrendPainter extends CustomPainter {
     return oldDelegate.series != series ||
         oldDelegate.selectedIndex != selectedIndex ||
         oldDelegate.gridColor != gridColor ||
+        oldDelegate.pointStrokeColor != pointStrokeColor ||
         oldDelegate.indicatorColor != indicatorColor;
   }
 }

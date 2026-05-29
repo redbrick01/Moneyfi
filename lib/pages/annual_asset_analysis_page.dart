@@ -2,9 +2,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../components/icons/app_icon.dart';
 import '../db/app_database.dart';
+import '../design_system/context_extensions.dart';
+import '../design_system/spec.dart';
 import '../services/market_data_service.dart';
-import '../theme/moneyfy_theme.dart';
+import '../theme/moneyfy_colors.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
 import 'snapshot_detail_page.dart';
@@ -76,9 +79,10 @@ class _AnnualAssetAnalysisPageState extends State<AnnualAssetAnalysisPage> {
     );
 
     return Scaffold(
+      backgroundColor: context.colors.neutralBackground,
       appBar: AppBar(
         title: const Text('연도별 자산분석'),
-        backgroundColor: MoneyfyPalette.background,
+        backgroundColor: context.colors.neutralBackground,
       ),
       body: SafeArea(
         child: GestureDetector(
@@ -95,7 +99,9 @@ class _AnnualAssetAnalysisPageState extends State<AnnualAssetAnalysisPage> {
             onRefresh: _refreshPage,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(
+                context.spacing.md + context.spacing.xs / 2,
+              ),
               children: [
                 _YearHeader(
                   year: selectedYear,
@@ -104,13 +110,13 @@ class _AnnualAssetAnalysisPageState extends State<AnnualAssetAnalysisPage> {
                   onPrev: () => _moveYear(1),
                   onNext: () => _moveYear(-1),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.md),
                 _AnnualTrendCard(bundle: bundle),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.md),
                 _AnnualGrowthSummaryCard(bundle: bundle),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.md),
                 _AssetAverageCard(bundle: bundle),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.md),
                 _MonthlyNavigationCard(bundle: bundle),
               ],
             ),
@@ -144,7 +150,7 @@ class _YearHeader extends StatelessWidget {
       children: [
         IconButton(
           onPressed: canMovePrev ? onPrev : null,
-          icon: const Icon(Icons.chevron_left_rounded),
+          icon: const AppIcon(AppIconName.chevronLeft),
         ),
         Expanded(
           child: Center(
@@ -153,7 +159,7 @@ class _YearHeader extends StatelessWidget {
         ),
         IconButton(
           onPressed: canMoveNext ? onNext : null,
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const AppIcon(AppIconName.chevronRight),
         ),
       ],
     );
@@ -206,8 +212,9 @@ class _AnnualTrendCardState extends State<_AnnualTrendCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = context.colors;
     final chartSeries = [
-      widget.bundle.totalSeries,
+      widget.bundle.totalSeries.copyWith(color: colors.neutralText),
       ...widget.bundle.assetSeries,
     ];
     final yAxisLabels = _buildYAxisLabels(chartSeries);
@@ -218,7 +225,7 @@ class _AnnualTrendCardState extends State<_AnnualTrendCard> {
         children: [
           Text('월별 자산 변화', style: theme.textTheme.titleLarge),
           if (selectedIndex != null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.sm),
             _SelectedValueRow(
               month: widget.bundle.monthLabels[selectedIndex!],
               values: [
@@ -231,7 +238,7 @@ class _AnnualTrendCardState extends State<_AnnualTrendCard> {
               ],
             ),
           ],
-          const SizedBox(height: 20),
+          SizedBox(height: context.spacing.md + context.spacing.xs / 2),
           SizedBox(
             height: 220,
             child: Row(
@@ -239,7 +246,12 @@ class _AnnualTrendCardState extends State<_AnnualTrendCard> {
                 SizedBox(
                   width: 44,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 12, 0, 28),
+                    padding: EdgeInsets.fromLTRB(
+                      0,
+                      VisualSpec.chart.chartPadding,
+                      0,
+                      context.spacing.lg + context.spacing.xs / 2,
+                    ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,9 +259,8 @@ class _AnnualTrendCardState extends State<_AnnualTrendCard> {
                         for (final label in yAxisLabels)
                           Text(
                             label,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontSize: 11,
-                              color: MoneyfyPalette.tertiaryText,
+                            style: context.typography.caption.copyWith(
+                              color: colors.neutralTextMuted,
                             ),
                           ),
                       ],
@@ -273,9 +284,18 @@ class _AnnualTrendCardState extends State<_AnnualTrendCard> {
                           painter: _MonthlyTrendPainter(
                             series: chartSeries,
                             selectedIndex: selectedIndex,
+                            gridColor: colors.neutralOutline,
+                            crosshairColor: colors.neutralTextMuted.withValues(
+                              alpha: VisualSpec.chart.crosshairAlphaLight,
+                            ),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+                            padding: EdgeInsets.fromLTRB(
+                              context.spacing.xs,
+                              VisualSpec.chart.chartPadding,
+                              context.spacing.xs,
+                              context.spacing.xs,
+                            ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
@@ -289,12 +309,11 @@ class _AnnualTrendCardState extends State<_AnnualTrendCard> {
                                       alignment: Alignment.bottomCenter,
                                       child: Text(
                                         widget.bundle.monthLabels[i],
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                              fontSize: 12,
+                                        style: context.typography.caption
+                                            .copyWith(
                                               color: selectedIndex == i
-                                                  ? MoneyfyPalette.ink
-                                                  : MoneyfyPalette.tertiaryText,
+                                                  ? colors.neutralText
+                                                  : colors.neutralTextMuted,
                                               fontWeight: selectedIndex == i
                                                   ? FontWeight.w600
                                                   : FontWeight.w400,
@@ -313,12 +332,12 @@ class _AnnualTrendCardState extends State<_AnnualTrendCard> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.md),
           Center(
             child: Wrap(
               alignment: WrapAlignment.center,
-              spacing: 12,
-              runSpacing: 8,
+              spacing: context.spacing.sm,
+              runSpacing: context.spacing.xs,
               children: [
                 for (final item in chartSeries)
                   _LegendTextItem(color: item.color, label: item.label),
@@ -345,14 +364,14 @@ class _AssetAverageCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('자산별 연평균', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.md),
           for (var i = 0; i < bundle.assetAverages.length; i++) ...[
             _ValueRow(
               label: bundle.assetAverages[i].label,
               value: _formatCurrency(bundle.assetAverages[i].averageValue),
             ),
             if (i != bundle.assetAverages.length - 1)
-              const SizedBox(height: 10),
+              SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
           ],
         ],
       ),
@@ -375,11 +394,11 @@ class _AnnualGrowthSummaryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('연 자산 증가 요약', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.sm),
             Text(
               '연도 비교를 위한 스냅샷 데이터가 부족합니다.',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: MoneyfyPalette.tertiaryText,
+                color: context.colors.neutralTextMuted,
               ),
             ),
           ],
@@ -387,30 +406,30 @@ class _AnnualGrowthSummaryCard extends StatelessWidget {
       );
     }
 
-    final growthColor = _valueColor(bundle.annualGrowthAmount);
+    final growthColor = _valueTextColor(context, bundle.annualGrowthAmount);
     return MoneyfySurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('연 자산 증가 요약', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 14),
+          SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
           _ValueRow(
             label: '연초 총자산',
             value: _formatCurrency(bundle.startTotalValue),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
           _ValueRow(
             label: '연말 총자산',
             value: _formatCurrency(bundle.endTotalValue),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
           Row(
             children: [
               Expanded(
                 child: Text(
                   '연 증가 금액',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: MoneyfyPalette.tertiaryText,
+                    color: context.colors.neutralTextMuted,
                   ),
                 ),
               ),
@@ -423,14 +442,14 @@ class _AnnualGrowthSummaryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
           Row(
             children: [
               Expanded(
                 child: Text(
                   '연 증가율',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: MoneyfyPalette.tertiaryText,
+                    color: context.colors.neutralTextMuted,
                   ),
                 ),
               ),
@@ -463,10 +482,10 @@ class _MonthlyNavigationCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('월별 정리', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacing.md),
           for (var i = 0; i < bundle.monthRows.length; i++) ...[
             InkWell(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(context.radius.rMd),
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -478,7 +497,7 @@ class _MonthlyNavigationCard extends StatelessWidget {
                 );
               },
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: EdgeInsets.symmetric(vertical: context.spacing.xs / 2),
                 child: Row(
                   children: [
                     Expanded(
@@ -491,16 +510,17 @@ class _MonthlyNavigationCard extends StatelessWidget {
                       _formatCurrency(bundle.monthRows[i].value),
                       style: theme.textTheme.titleMedium,
                     ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: MoneyfyPalette.tertiaryText,
+                    SizedBox(width: context.spacing.xs),
+                    AppIcon(
+                      AppIconName.chevronRight,
+                      color: context.colors.neutralTextMuted,
                     ),
                   ],
                 ),
               ),
             ),
-            if (i != bundle.monthRows.length - 1) const SizedBox(height: 10),
+            if (i != bundle.monthRows.length - 1)
+              SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
           ],
         ],
       ),
@@ -570,7 +590,7 @@ _YearBundle _buildYearBundle({
       color: MoneyfyChartPalette.colorForAsset(
         label,
         assetId: assetIdByKey[assetKey],
-        fallback: MoneyfyPalette.secondaryText,
+        fallback: VisualSpec.brand.chart04,
       ),
       values: values,
     );
@@ -578,7 +598,7 @@ _YearBundle _buildYearBundle({
 
   final totalSeries = _MonthlyAssetSeries(
     label: '총자산',
-    color: MoneyfyPalette.ink,
+    color: VisualSpec.brand.chart03,
     values: trendSnapshots.map((snapshot) {
       final total =
           (snapshotIdToItems[snapshot.id] ??
@@ -665,10 +685,13 @@ class _SelectedValueRow extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: VisualSpec.chart.tooltipPaddingH,
+        vertical: VisualSpec.chart.tooltipPaddingV,
+      ),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(14),
+        color: context.colors.neutralSurfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -676,20 +699,20 @@ class _SelectedValueRow extends StatelessWidget {
           Text(
             month,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: MoneyfyPalette.ink,
+              color: context.colors.neutralText,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.xs),
           Wrap(
-            spacing: 12,
-            runSpacing: 8,
+            spacing: context.spacing.sm,
+            runSpacing: context.spacing.xs,
             children: [
               for (final item in values)
                 RichText(
                   text: TextSpan(
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: MoneyfyPalette.secondaryText,
+                      color: context.colors.neutralTextMuted,
                     ),
                     children: [
                       TextSpan(
@@ -701,8 +724,8 @@ class _SelectedValueRow extends StatelessWidget {
                       ),
                       TextSpan(
                         text: item.value,
-                        style: const TextStyle(
-                          color: MoneyfyPalette.ink,
+                        style: TextStyle(
+                          color: context.colors.neutralText,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -749,11 +772,11 @@ class _LegendTextItem extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: context.spacing.xs / 2),
         Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: MoneyfyPalette.ink,
+            color: context.colors.neutralText,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -778,14 +801,14 @@ class _ValueRow extends StatelessWidget {
           child: Text(
             label,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
             ),
           ),
         ),
         Text(
           value,
           style: theme.textTheme.titleMedium?.copyWith(
-            color: moneyfyValueColor(value),
+            color: _valueStringColor(context, value),
           ),
         ),
       ],
@@ -794,10 +817,17 @@ class _ValueRow extends StatelessWidget {
 }
 
 class _MonthlyTrendPainter extends CustomPainter {
-  _MonthlyTrendPainter({required this.series, required this.selectedIndex});
+  _MonthlyTrendPainter({
+    required this.series,
+    required this.selectedIndex,
+    required this.gridColor,
+    required this.crosshairColor,
+  });
 
   final List<_MonthlyAssetSeries> series;
   final int? selectedIndex;
+  final Color gridColor;
+  final Color crosshairColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -819,8 +849,8 @@ class _MonthlyTrendPainter extends CustomPainter {
     final range = math.max(maxValue - minValue, 1.0);
 
     final gridPaint = Paint()
-      ..color = MoneyfyPalette.border
-      ..strokeWidth = 1;
+      ..color = gridColor
+      ..strokeWidth = VisualSpec.chart.gridThickness;
 
     for (var i = 0; i < 4; i++) {
       final y = chartRect.top + (chartRect.height / 3) * i;
@@ -838,8 +868,8 @@ class _MonthlyTrendPainter extends CustomPainter {
           chartRect.left +
           (chartRect.width / (series.first.values.length - 1)) * selectedIndex!;
       final indicatorPaint = Paint()
-        ..color = MoneyfyPalette.tertiaryText.withValues(alpha: 0.35)
-        ..strokeWidth = 1;
+        ..color = crosshairColor
+        ..strokeWidth = VisualSpec.chart.crosshairThickness;
       canvas.drawLine(
         Offset(selectedDx, chartRect.top),
         Offset(selectedDx, chartRect.bottom),
@@ -881,7 +911,9 @@ class _MonthlyTrendPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MonthlyTrendPainter oldDelegate) {
     return oldDelegate.series != series ||
-        oldDelegate.selectedIndex != selectedIndex;
+        oldDelegate.selectedIndex != selectedIndex ||
+        oldDelegate.gridColor != gridColor ||
+        oldDelegate.crosshairColor != crosshairColor;
   }
 }
 
@@ -895,6 +927,14 @@ class _MonthlyAssetSeries {
   final String label;
   final Color color;
   final List<double> values;
+
+  _MonthlyAssetSeries copyWith({Color? color}) {
+    return _MonthlyAssetSeries(
+      label: label,
+      color: color ?? this.color,
+      values: values,
+    );
+  }
 }
 
 class _YearBundle {
@@ -973,8 +1013,25 @@ String _formatSignedPercent(double value) {
   return '$prefix${value.toStringAsFixed(1)}%';
 }
 
-Color _valueColor(double value) {
-  if (value > 0) return MoneyfyPalette.positive;
-  if (value < 0) return MoneyfyPalette.negative;
-  return MoneyfyPalette.secondaryText;
+Color _valueTextColor(BuildContext context, double value) {
+  if (value > 0) return context.colors.positiveOn;
+  if (value < 0) return context.colors.negativeOn;
+  return context.colors.neutralTextMuted;
+}
+
+Color _valueStringColor(BuildContext context, String value) {
+  final normalized = value.trim();
+  if (normalized.isEmpty) return context.colors.neutralText;
+  if (normalized.startsWith('-') || normalized.startsWith('−')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.startsWith('+')) return context.colors.positiveOn;
+  if (normalized.startsWith('(') && normalized.endsWith(')')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.contains('-') || normalized.contains('−')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.contains('+')) return context.colors.positiveOn;
+  return context.colors.neutralText;
 }

@@ -762,6 +762,16 @@ class _LoggedInViewState extends State<_LoggedInView> {
     }
   }
 
+  Widget _inlineProgressIndicator(BuildContext context) {
+    return SizedBox(
+      width: VisualSpec.icon.progressIndicatorSize,
+      height: VisualSpec.icon.progressIndicatorSize,
+      child: CircularProgressIndicator(
+        strokeWidth: VisualSpec.icon.progressIndicatorStroke,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasSyncError = _syncBannerState == _SyncBannerState.failed;
@@ -831,13 +841,7 @@ class _LoggedInViewState extends State<_LoggedInView> {
                 enabled: !_isUpdatingProfile && !_isUpdatingPassword,
                 onTap: () => _showEditNameDialog(resolvedName),
                 trailing: _isUpdatingProfile
-                    ? SizedBox(
-                        width: context.spacing.md,
-                        height: context.spacing.md,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                        ),
-                      )
+                    ? _inlineProgressIndicator(context)
                     : null,
               ),
               AppDivider(),
@@ -848,13 +852,7 @@ class _LoggedInViewState extends State<_LoggedInView> {
                 enabled: !_isUpdatingPassword && !_isUpdatingProfile,
                 onTap: _showChangePasswordDialog,
                 trailing: _isUpdatingPassword
-                    ? SizedBox(
-                        width: context.spacing.md,
-                        height: context.spacing.md,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                        ),
-                      )
+                    ? _inlineProgressIndicator(context)
                     : null,
               ),
               AppDivider(),
@@ -864,15 +862,7 @@ class _LoggedInViewState extends State<_LoggedInView> {
                 subtitle: _isSyncing ? '동기화 진행 중' : '로컬 변경사항을 서버와 동기화',
                 enabled: !_isSyncing && !_isPullingCoreData,
                 onTap: _confirmAndHandleSync,
-                trailing: _isSyncing
-                    ? SizedBox(
-                        width: context.spacing.md,
-                        height: context.spacing.md,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                        ),
-                      )
-                    : null,
+                trailing: _isSyncing ? _inlineProgressIndicator(context) : null,
               ),
               AppDivider(),
               SettingsActionRow(
@@ -884,13 +874,7 @@ class _LoggedInViewState extends State<_LoggedInView> {
                 enabled: !_isPullingCoreData && !_isSyncing,
                 onTap: _confirmAndHandleCorePull,
                 trailing: _isPullingCoreData
-                    ? SizedBox(
-                        width: context.spacing.md,
-                        height: context.spacing.md,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                        ),
-                      )
+                    ? _inlineProgressIndicator(context)
                     : null,
               ),
               AppDivider(),
@@ -903,13 +887,7 @@ class _LoggedInViewState extends State<_LoggedInView> {
                 enabled: !_isCopyingDbSummary,
                 onTap: _copyInternalDbSummaryForGpt,
                 trailing: _isCopyingDbSummary
-                    ? SizedBox(
-                        width: context.spacing.md,
-                        height: context.spacing.md,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                        ),
-                      )
+                    ? _inlineProgressIndicator(context)
                     : null,
               ),
               AppDivider(),

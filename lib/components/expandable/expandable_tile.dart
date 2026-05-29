@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../design_system/context_extensions.dart';
+import '../../design_system/spec.dart';
 import '../icons/app_icon.dart';
 
 class ExpandableTile extends StatefulWidget {
@@ -124,7 +125,7 @@ class _ExpandableTileState extends State<ExpandableTile>
                               duration: context.motion.normal,
                               child: AppIcon(
                                 AppIconName.expandMore,
-                                size: 24,
+                                size: VisualSpec.icon.sizeDefault,
                                 color: colorScheme.onSurfaceVariant,
                               ),
                             ),

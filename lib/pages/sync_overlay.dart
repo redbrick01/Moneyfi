@@ -252,9 +252,12 @@ class _SyncStatusMark extends StatelessWidget {
       ),
       child: isRunning
           ? SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2.4, color: color),
+              width: VisualSpec.icon.progressIndicatorSize,
+              height: VisualSpec.icon.progressIndicatorSize,
+              child: CircularProgressIndicator(
+                strokeWidth: VisualSpec.icon.progressIndicatorStrokeLarge,
+                color: color,
+              ),
             )
           : AppIcon(
               hasFailed
@@ -282,10 +285,10 @@ class _SyncStepRow extends StatelessWidget {
         color: colorScheme.onSurfaceVariant,
       ),
       SyncStepState.active => SizedBox(
-        width: 20,
-        height: 20,
+        width: VisualSpec.icon.progressIndicatorSize,
+        height: VisualSpec.icon.progressIndicatorSize,
         child: CircularProgressIndicator(
-          strokeWidth: 2.2,
+          strokeWidth: VisualSpec.icon.progressIndicatorStroke,
           color: colorScheme.primary,
         ),
       ),

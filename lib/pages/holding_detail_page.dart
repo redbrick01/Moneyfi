@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import '../components/buttons/app_buttons.dart';
 import '../components/chips/delta_chip.dart';
 import '../components/transaction_history_list.dart';
 import '../design_system/context_extensions.dart';
@@ -11,7 +12,6 @@ import '../models/market_snapshot.dart';
 import '../services/company_news_summary_service.dart';
 import '../services/market_data_service.dart';
 import '../services/sync_service.dart';
-import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
 import '../widgets/company_news_summary_card.dart';
 import '../widgets/moneyfy_ui.dart';
@@ -245,13 +245,16 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
         title: Text(title),
         content: Text(message),
         actions: [
-          TextButton(
+          AppGhostButton(
+            expand: false,
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('취소'),
+            label: '취소',
           ),
-          TextButton(
+          AppDestructiveButton(
+            expand: false,
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('삭제'),
+            label: '삭제',
+            icon: Icons.delete_outline_rounded,
           ),
         ],
       ),
@@ -263,6 +266,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: context.colors.neutralBackground,
       body: FutureBuilder<HoldingItem?>(
         future: _holdingFuture,
         builder: (context, snapshot) {
@@ -280,7 +284,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('보유 정보를 불러오지 못했습니다.'),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
                   TextButton(
                     onPressed: () => _reloadHolding(resetMissingRetry: true),
                     child: const Text('다시 시도'),
@@ -301,7 +305,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('보유 정보를 찾을 수 없습니다.'),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
                   TextButton(
                     onPressed: () => _reloadHolding(resetMissingRetry: true),
                     child: const Text('다시 시도'),
@@ -331,7 +335,12 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                   onRefresh: _refreshPage,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                    padding: EdgeInsets.fromLTRB(
+                      context.contentHorizontalPadding,
+                      context.spacing.sm,
+                      context.contentHorizontalPadding,
+                      context.spacing.sectionGap,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -344,7 +353,9 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: context.spacing.xs + context.spacing.xs / 4,
+                        ),
                         MoneyfySurfaceCard(
                           variant: MoneyfySurfaceCardVariant.raised,
                           padding: EdgeInsets.all(context.cardPadding()),
@@ -358,7 +369,8 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                     width: 40,
                                     height: 40,
                                     decoration: BoxDecoration(
-                                      color: MoneyfyPalette.surfaceMuted,
+                                      color:
+                                          context.colors.neutralSurfaceRaised,
                                       borderRadius: BorderRadius.circular(
                                         VisualSpec.surface.radiusCard,
                                       ),
@@ -373,14 +385,14 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                       size: VisualSpec.icon.sizeSmall,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  SizedBox(width: context.spacing.sm),
                                   Expanded(
                                     child: Text(
                                       displayHolding.name,
-                                      style: context.typography.body.copyWith(
-                                        fontSize: context.fontSizes.s20,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      style: context.typography.cardTitle
+                                          .copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                   ),
                                   _TopActionButton(
@@ -388,7 +400,11 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                         _editHolding(displayHolding),
                                     icon: Icons.edit_outlined,
                                   ),
-                                  const SizedBox(width: 10),
+                                  SizedBox(
+                                    width:
+                                        context.spacing.xs +
+                                        context.spacing.xs / 4,
+                                  ),
                                   Container(
                                     width: 1,
                                     height: 24,
@@ -397,7 +413,11 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                         .outlineVariant
                                         .withValues(alpha: 0.7),
                                   ),
-                                  const SizedBox(width: 10),
+                                  SizedBox(
+                                    width:
+                                        context.spacing.xs +
+                                        context.spacing.xs / 4,
+                                  ),
                                   _TopActionButton(
                                     onPressed: () =>
                                         _deleteHolding(displayHolding),
@@ -411,7 +431,6 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                 child: Text(
                                   displayHolding.value,
                                   style: context.typography.heroNumber.copyWith(
-                                    fontSize: 32,
                                     fontWeight: FontWeight.w600,
                                     height: 1,
                                   ),
@@ -562,7 +581,9 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                         ),
                         if (displayHolding.symbol.trim().isNotEmpty &&
                             displayHolding.quantity > 0) ...[
-                          const SizedBox(height: 20),
+                          SizedBox(
+                            height: context.spacing.md + context.spacing.xs / 2,
+                          ),
                           FutureBuilder<CompanyNewsSummaryItem?>(
                             future: _companyNewsForSymbol(
                               displayHolding.symbol,
@@ -586,7 +607,9 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                             },
                           ),
                         ],
-                        const SizedBox(height: 20),
+                        SizedBox(
+                          height: context.spacing.md + context.spacing.xs / 2,
+                        ),
                         for (
                           var index = 0;
                           index < detailSections.length;
@@ -608,7 +631,11 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                         if (detailSections[index]
                                             .items
                                             .isNotEmpty)
-                                          const SizedBox(height: 14),
+                                          SizedBox(
+                                            height:
+                                                context.spacing.sm +
+                                                context.spacing.xs / 4,
+                                          ),
                                       ],
                                       if (detailSections[index]
                                           .items
@@ -619,7 +646,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                     ],
                                   ),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: context.spacing.md),
                         ],
                         _CardSection(
                           title: '거래 내역',
@@ -627,7 +654,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                             onPressed: () =>
                                 _openTransactionForm(displayHolding),
                             icon: const Icon(Icons.add_rounded),
-                            color: MoneyfyPalette.tertiaryText,
+                            color: context.colors.neutralTextMuted,
                           ),
                           child: SlidableAutoCloseBehavior(
                             child: TransactionHistoryList(
@@ -646,7 +673,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: context.spacing.md),
                         _CardSection(
                           title: '메모',
                           trailing: IconButton(
@@ -756,14 +783,14 @@ class _CardSection extends StatelessWidget {
                   child: Text(title, style: context.typography.sectionTitle),
                 ),
                 if (trailing != null) ...[
-                  const SizedBox(width: 10),
+                  SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
                   Container(width: 1, height: 24, color: dividerColor),
-                  const SizedBox(width: 10),
+                  SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
                   trailing!,
                 ],
               ],
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
             SizedBox(
               width: double.infinity,
               child: Container(
@@ -828,25 +855,20 @@ class _HoldingHeroDeltaMetricRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: context.typography.caption.copyWith(
-              fontSize: context.fontSizes.s16,
+            style: context.typography.meta.copyWith(
               fontWeight: FontWeight.w600,
-              color: MoneyfyPalette.secondaryText,
+              color: context.colors.neutralText,
             ),
           ),
         ),
         Text(
           value,
-          style: context.typography.caption.copyWith(
-            fontSize: context.fontSizes.s16,
+          style: context.typography.meta.copyWith(
             fontWeight: FontWeight.w600,
-            color: moneyfyValueColor(
-              value,
-              defaultColor: MoneyfyPalette.secondaryText,
-            ),
+            color: _holdingValueStringColor(context, value),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
         if (showDeltaChip)
           DeltaChip(
             value: rawValue,
@@ -868,16 +890,19 @@ class _HoldingHeroDashChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.xs,
+        vertical: context.spacing.xs / 2,
+      ),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surface,
-        border: Border.all(color: MoneyfyPalette.border),
+        color: context.colors.neutralSurfaceBase,
+        border: Border.all(color: context.colors.neutralOutline),
         borderRadius: BorderRadius.circular(context.radius.rPill),
       ),
       child: Text(
         '-',
         style: context.typography.meta.copyWith(
-          color: MoneyfyPalette.secondaryText,
+          color: context.colors.neutralText,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -1396,15 +1421,20 @@ class _WeekRangeBar extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+      padding: EdgeInsets.fromLTRB(
+        context.spacing.xs,
+        context.spacing.sm,
+        context.spacing.xs,
+        context.spacing.xs,
+      ),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(16),
+        color: context.colors.neutralSurfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 4),
+          SizedBox(height: context.spacing.xs / 2),
           LayoutBuilder(
             builder: (context, constraints) {
               final markerWidth = 84.0;
@@ -1422,8 +1452,10 @@ class _WeekRangeBar extends StatelessWidget {
                       child: Container(
                         height: 8,
                         decoration: BoxDecoration(
-                          color: MoneyfyPalette.border,
-                          borderRadius: BorderRadius.circular(999),
+                          color: context.colors.neutralOutline,
+                          borderRadius: BorderRadius.circular(
+                            context.radius.rPill,
+                          ),
                         ),
                       ),
                     ),
@@ -1437,16 +1469,16 @@ class _WeekRangeBar extends StatelessWidget {
                           Container(
                             width: 10,
                             height: 10,
-                            decoration: const BoxDecoration(
-                              color: MoneyfyPalette.secondaryText,
+                            decoration: BoxDecoration(
+                              color: context.colors.neutralText,
                               shape: BoxShape.circle,
                             ),
                           ),
                           Container(
                             width: 10,
                             height: 10,
-                            decoration: const BoxDecoration(
-                              color: MoneyfyPalette.secondaryText,
+                            decoration: BoxDecoration(
+                              color: context.colors.neutralText,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -1463,13 +1495,15 @@ class _WeekRangeBar extends StatelessWidget {
                           alignment: Alignment.topCenter,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: context.spacing.xs,
+                                vertical: context.spacing.xs / 2,
                               ),
                               decoration: BoxDecoration(
-                                color: MoneyfyPalette.ink,
-                                borderRadius: BorderRadius.circular(999),
+                                color: context.colors.neutralText,
+                                borderRadius: BorderRadius.circular(
+                                  context.radius.rPill,
+                                ),
                               ),
                               child: Text(
                                 currentLabel,
@@ -1478,19 +1512,19 @@ class _WeekRangeBar extends StatelessWidget {
                                 overflow: TextOverflow.visible,
                                 softWrap: false,
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: MoneyfyPalette.white,
+                                  color: context.colors.neutralSurfaceBase,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
-                            const Positioned(
+                            Positioned(
                               top: 30,
                               child: SizedBox(
                                 width: 12,
                                 height: 12,
                                 child: DecoratedBox(
                                   decoration: BoxDecoration(
-                                    color: MoneyfyPalette.ink,
+                                    color: context.colors.neutralText,
                                     shape: BoxShape.circle,
                                   ),
                                 ),
@@ -1505,21 +1539,21 @@ class _WeekRangeBar extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: context.spacing.xs / 2),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 lowLabel,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.secondaryText,
+                  color: context.colors.neutralText,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 highLabel,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.secondaryText,
+                  color: context.colors.neutralText,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1570,35 +1604,35 @@ class _FundComponentRow extends StatelessWidget {
               Text(
                 item.code,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: MoneyfyPalette.tertiaryText,
+                  color: context.colors.neutralTextMuted,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: context.spacing.sm),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
               item.weight,
               style: theme.textTheme.titleMedium?.copyWith(
-                color: MoneyfyPalette.ink,
+                color: context.colors.neutralText,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: context.spacing.xs / 2),
             Text(
               item.changeRate,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: moneyfyValueColor(item.changeRate),
+                color: _holdingValueStringColor(context, item.changeRate),
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: context.spacing.xs / 2),
             Text(
               item.valuationAmount,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: MoneyfyPalette.secondaryText,
+                color: context.colors.neutralText,
               ),
             ),
           ],
@@ -1620,10 +1654,10 @@ class _MetricTile extends StatelessWidget {
 
     return Container(
       constraints: const BoxConstraints(minHeight: 92),
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(16),
+        color: context.colors.neutralSurfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1631,14 +1665,14 @@ class _MetricTile extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.xs),
           Text(
             value,
             style: theme.textTheme.titleMedium?.copyWith(
-              color: moneyfyValueColor(value),
+              color: _holdingValueStringColor(context, value),
               fontWeight: FontWeight.w600,
             ),
             maxLines: 2,
@@ -1666,7 +1700,7 @@ class _TransactionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final typeStyle = _holdingTransactionTypeStyle(transaction.type);
+    final typeStyle = _holdingTransactionTypeStyle(context, transaction.type);
     final amountValue = _holdingTransactionDisplayAmountValue(transaction);
     final formattedAmount =
         MoneyfyDisplayCurrencySettings.formatAmountFromSource(
@@ -1681,13 +1715,15 @@ class _TransactionRow extends StatelessWidget {
       endActionPane: moneyfySingleSlideActionPane(
         onPressed: () => onDelete(),
         icon: Icons.delete_outline_rounded,
-        iconColor: MoneyfyPalette.negative,
+        iconColor: context.colors.negativeOn,
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(context.radius.rMd),
         onTap: onEdit,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: EdgeInsets.symmetric(
+            vertical: context.spacing.xs - context.spacing.xs / 4,
+          ),
           child: Row(
             children: [
               Expanded(
@@ -1695,7 +1731,7 @@ class _TransactionRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(transaction.name, style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 4),
+                    SizedBox(height: context.spacing.xs / 2),
                     Wrap(
                       spacing: 8,
                       runSpacing: 6,
@@ -1704,17 +1740,20 @@ class _TransactionRow extends StatelessWidget {
                         Text(
                           transaction.date,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: MoneyfyPalette.tertiaryText,
+                            color: context.colors.neutralTextMuted,
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
+                          padding: EdgeInsets.symmetric(
+                            horizontal:
+                                context.spacing.xs + context.spacing.xs / 4,
+                            vertical: context.spacing.xs / 2 + 1,
                           ),
                           decoration: BoxDecoration(
                             color: typeStyle.backgroundColor,
-                            borderRadius: BorderRadius.circular(999),
+                            borderRadius: BorderRadius.circular(
+                              context.radius.rPill,
+                            ),
                             border: Border.all(color: typeStyle.borderColor),
                           ),
                           child: Text(
@@ -1730,22 +1769,25 @@ class _TransactionRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.sm),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     formattedAmount,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: _holdingTransactionAmountColor(transaction),
+                      color: _holdingTransactionAmountColor(
+                        context,
+                        transaction,
+                      ),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.spacing.xs / 2),
                   Text(
                     _holdingLedgerLineMeta(transaction),
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+                      color: context.colors.neutralTextMuted,
                     ),
                   ),
                 ],
@@ -1758,11 +1800,14 @@ class _TransactionRow extends StatelessWidget {
   }
 }
 
-Color _holdingTransactionAmountColor(TransactionItem transaction) {
+Color _holdingTransactionAmountColor(
+  BuildContext context,
+  TransactionItem transaction,
+) {
   return switch (TransactionFlowCategory.normalize(transaction.flowCategory)) {
-    TransactionFlowCategory.externalDeposit => MoneyfyPalette.positive,
-    TransactionFlowCategory.externalWithdrawal => MoneyfyPalette.negative,
-    _ => MoneyfyPalette.ink,
+    TransactionFlowCategory.externalDeposit => context.colors.positiveOn,
+    TransactionFlowCategory.externalWithdrawal => context.colors.negativeOn,
+    _ => context.colors.neutralText,
   };
 }
 
@@ -1819,34 +1864,56 @@ class _HoldingTransactionTypeStyle {
   final Color textColor;
 }
 
-_HoldingTransactionTypeStyle _holdingTransactionTypeStyle(String type) {
+_HoldingTransactionTypeStyle _holdingTransactionTypeStyle(
+  BuildContext context,
+  String type,
+) {
   switch (type.trim()) {
     case '매수':
-      return const _HoldingTransactionTypeStyle(
-        backgroundColor: Color(0xFFFDECEC),
-        borderColor: Color(0xFFF3C4C4),
-        textColor: Color(0xFFC83C3C),
+      return _HoldingTransactionTypeStyle(
+        backgroundColor: context.colors.negativeContainer,
+        borderColor: context.colors.negativeOn.withValues(alpha: 0.28),
+        textColor: context.colors.negativeOn,
       );
     case '매도':
-      return const _HoldingTransactionTypeStyle(
-        backgroundColor: Color(0xFFE8F7EF),
-        borderColor: Color(0xFFB7E4C7),
-        textColor: Color(0xFF1E8E5A),
+      return _HoldingTransactionTypeStyle(
+        backgroundColor: context.colors.positiveContainer,
+        borderColor: context.colors.positiveOn.withValues(alpha: 0.28),
+        textColor: context.colors.positiveOn,
       );
     case '배당':
     case '이자':
-      return const _HoldingTransactionTypeStyle(
-        backgroundColor: Color(0xFFFFF3E0),
-        borderColor: Color(0xFFFFD08A),
-        textColor: Color(0xFFB56A00),
+      return _HoldingTransactionTypeStyle(
+        backgroundColor: context.colors.warningContainer,
+        borderColor: context.colors.warningOn.withValues(alpha: 0.28),
+        textColor: context.colors.warningOn,
       );
     default:
-      return const _HoldingTransactionTypeStyle(
-        backgroundColor: Color(0xFFF3F4F6),
-        borderColor: Color(0xFFE5E7EB),
-        textColor: MoneyfyPalette.secondaryText,
+      return _HoldingTransactionTypeStyle(
+        backgroundColor: context.colors.neutralSurfaceRaised,
+        borderColor: context.colors.neutralOutline,
+        textColor: context.colors.neutralText,
       );
   }
+}
+
+Color _holdingValueStringColor(BuildContext context, String value) {
+  final normalized = value.trim();
+  if (normalized.isEmpty || normalized == '-') {
+    return context.colors.neutralText;
+  }
+  if (normalized.startsWith('-') || normalized.startsWith('−')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.startsWith('+')) return context.colors.positiveOn;
+  if (normalized.startsWith('(') && normalized.endsWith(')')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.contains('-') || normalized.contains('−')) {
+    return context.colors.negativeOn;
+  }
+  if (normalized.contains('+')) return context.colors.positiveOn;
+  return context.colors.neutralText;
 }
 
 double? _parseDisplayNumber(String text) {
