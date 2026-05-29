@@ -359,14 +359,13 @@ void main() {
   ) async {
     await pumpInteractivePage(tester, const InvestmentPerformancePage());
 
-    expect(find.text('고급 성과'), findsOneWidget);
-    expect(find.text('입출금 보정 기간 수익률'), findsOneWidget);
-    expect(find.text('입금과 출금을 제외하고 투자 자체가 만든 기간 수익률입니다.'), findsOneWidget);
-    expect(find.text('벤치마크'), findsOneWidget);
-    expect(find.text('선택한 기간의 시작값과 끝값으로 계산한 시장 기준 수익률입니다.'), findsOneWidget);
-    expect(find.text('무위험수익률'), findsOneWidget);
-    expect(find.text('Sharpe Ratio'), findsOneWidget);
-    expect(find.textContaining('변동성 대비 성과를 보는 지표입니다.'), findsOneWidget);
+    expect(find.text('시장 비교와 위험'), findsOneWidget);
+    expect(find.text('기간 수익률'), findsOneWidget);
+    expect(find.text('입출금 보정'), findsOneWidget);
+    expect(find.text('S&P 500'), findsOneWidget);
+    expect(find.text('선택 기간'), findsOneWidget);
+    expect(find.text('Sharpe'), findsOneWidget);
+    expect(find.text('위험 대비 성과'), findsOneWidget);
   });
 
   for (final pageCase in _standalonePageCases) {

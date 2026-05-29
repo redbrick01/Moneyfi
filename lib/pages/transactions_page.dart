@@ -11,6 +11,7 @@ import '../components/states/retry_row.dart';
 import '../components/states/skeletons.dart';
 import '../db/app_database.dart';
 import '../design_system/context_extensions.dart';
+import '../design_system/spec.dart';
 import '../models/asset_item.dart';
 import '../services/sync_service.dart';
 import '../ui_scaffold/app_page_scaffold.dart';
@@ -41,6 +42,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   late final TextEditingController _searchController;
   _TransactionPeriodFilter _selectedPeriod = _TransactionPeriodFilter.all;
   _TransactionCategoryFilter _selectedCategory = _TransactionCategoryFilter.all;
+  _TransactionQuickFilter _selectedQuickFilter = _TransactionQuickFilter.all;
   _TransactionSortMode _sortMode = _TransactionSortMode.dateDesc;
 
   @override
@@ -154,8 +156,12 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final kind = await showModalBottomSheet<_TransactionCreateKind>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.62),
+      backgroundColor: Theme.of(
+        context,
+      ).colorScheme.surface.withValues(alpha: 0),
+      barrierColor: Theme.of(context).colorScheme.scrim.withValues(
+        alpha: VisualSpec.surface.modalBarrierAlpha,
+      ),
       builder: (context) =>
           _TransactionKindPickerSheet(accounts: data.accounts),
     );
@@ -176,7 +182,43 @@ class _TransactionsPageState extends State<TransactionsPage> {
     setState(() {
       _selectedPeriod = _TransactionPeriodFilter.all;
       _selectedCategory = _TransactionCategoryFilter.all;
+      _selectedQuickFilter = _TransactionQuickFilter.all;
       _sortMode = _TransactionSortMode.dateDesc;
+    });
+  }
+
+  Future<void> _openFilterSheet() async {
+    final result = await showModalBottomSheet<_TransactionFilterDraft>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(
+        context,
+      ).colorScheme.surface.withValues(alpha: 0),
+      barrierColor: Theme.of(context).colorScheme.scrim.withValues(
+        alpha: VisualSpec.surface.modalBarrierAlpha,
+      ),
+      builder: (context) => _TransactionFilterSheet(
+        initialPeriod: _selectedPeriod,
+        initialCategory: _selectedCategory,
+        initialSortMode: _sortMode,
+      ),
+    );
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _selectedPeriod = result.period;
+      _selectedCategory = result.category;
+      _selectedQuickFilter = _TransactionQuickFilter.fromCategory(
+        result.category,
+      );
+      _sortMode = result.sortMode;
+    });
+  }
+
+  void _selectQuickFilter(_TransactionQuickFilter filter) {
+    setState(() {
+      _selectedQuickFilter = filter;
+      _selectedCategory = filter.category;
     });
   }
 
@@ -312,6 +354,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         .where((entry) {
           if (!_selectedPeriod.matches(entry)) return false;
           if (!_selectedCategory.matches(entry)) return false;
+          if (!_selectedQuickFilter.matches(entry)) return false;
           if (query.isEmpty) return true;
           return entry.searchText.contains(query);
         })
@@ -360,22 +403,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
           searchController: _searchController,
           selectedPeriod: _selectedPeriod,
           selectedCategory: _selectedCategory,
+          selectedQuickFilter: _selectedQuickFilter,
           sortMode: _sortMode,
-          onPeriodChanged: (period) {
-            setState(() {
-              _selectedPeriod = period;
-            });
-          },
-          onCategoryChanged: (category) {
-            setState(() {
-              _selectedCategory = category;
-            });
-          },
-          onSortChanged: (mode) {
-            setState(() {
-              _sortMode = mode;
-            });
-          },
+          onQuickFilterChanged: _selectQuickFilter,
+          onFilterPressed: _openFilterSheet,
+          onReset: _resetQuery,
         ),
         SizedBox(height: context.spacing.md),
         if (visibleEntries.isEmpty)
@@ -424,23 +456,32 @@ class _TransactionQueryPanel extends StatelessWidget {
     required this.searchController,
     required this.selectedPeriod,
     required this.selectedCategory,
+    required this.selectedQuickFilter,
     required this.sortMode,
-    required this.onPeriodChanged,
-    required this.onCategoryChanged,
-    required this.onSortChanged,
+    required this.onQuickFilterChanged,
+    required this.onFilterPressed,
+    required this.onReset,
   });
 
   final TextEditingController searchController;
   final _TransactionPeriodFilter selectedPeriod;
   final _TransactionCategoryFilter selectedCategory;
+  final _TransactionQuickFilter selectedQuickFilter;
   final _TransactionSortMode sortMode;
-  final ValueChanged<_TransactionPeriodFilter> onPeriodChanged;
-  final ValueChanged<_TransactionCategoryFilter> onCategoryChanged;
-  final ValueChanged<_TransactionSortMode> onSortChanged;
+  final ValueChanged<_TransactionQuickFilter> onQuickFilterChanged;
+  final VoidCallback onFilterPressed;
+  final VoidCallback onReset;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final summary = _activeFilterSummary(
+      searchText: searchController.text,
+      period: selectedPeriod,
+      category: selectedCategory,
+      quickFilter: selectedQuickFilter,
+      sortMode: sortMode,
+    );
     return SectionCard(
       dense: true,
       child: Column(
@@ -498,81 +539,451 @@ class _TransactionQueryPanel extends StatelessWidget {
                 ),
               ),
               SizedBox(width: context.spacing.xs),
-              _TransactionSortButton(
-                sortMode: sortMode,
-                onSortChanged: onSortChanged,
+              _TransactionFilterButton(
+                activeCount: _activeFilterCount(
+                  period: selectedPeriod,
+                  category: selectedCategory,
+                  quickFilter: selectedQuickFilter,
+                  sortMode: sortMode,
+                ),
+                onPressed: onFilterPressed,
               ),
             ],
           ),
           SizedBox(height: context.spacing.sm),
-          _FilterStrip<_TransactionPeriodFilter>(
-            values: _TransactionPeriodFilter.values,
-            selected: selectedPeriod,
-            labelBuilder: (period) => period.label,
-            onChanged: onPeriodChanged,
+          _QuickFilterStrip(
+            selected: selectedQuickFilter,
+            onChanged: onQuickFilterChanged,
           ),
-          SizedBox(height: context.spacing.xs),
-          _FilterStrip<_TransactionCategoryFilter>(
-            values: _TransactionCategoryFilter.values,
-            selected: selectedCategory,
-            labelBuilder: (category) => category.label,
-            onChanged: onCategoryChanged,
-          ),
+          if (summary != null) ...[
+            SizedBox(height: context.spacing.sm),
+            _ActiveFilterSummary(summary: summary, onReset: onReset),
+          ],
         ],
       ),
     );
   }
 }
 
-class _TransactionSortButton extends StatelessWidget {
-  const _TransactionSortButton({
-    required this.sortMode,
-    required this.onSortChanged,
+class _TransactionFilterButton extends StatelessWidget {
+  const _TransactionFilterButton({
+    required this.activeCount,
+    required this.onPressed,
   });
 
-  final _TransactionSortMode sortMode;
-  final ValueChanged<_TransactionSortMode> onSortChanged;
+  final int activeCount;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return PopupMenuButton<_TransactionSortMode>(
-      tooltip: '정렬',
-      initialValue: sortMode,
-      onSelected: onSortChanged,
-      itemBuilder: (context) => [
-        for (final mode in _TransactionSortMode.values)
-          PopupMenuItem<_TransactionSortMode>(
-            value: mode,
-            child: Row(
-              children: [
-                Expanded(child: Text(mode.label)),
-                if (mode == sortMode)
-                  Icon(Icons.check_rounded, color: colorScheme.primary),
-              ],
+    final isActive = activeCount > 0;
+    return Semantics(
+      button: true,
+      label: '거래 상세 필터',
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          OutlinedButton.icon(
+            onPressed: onPressed,
+            icon: const Icon(Icons.tune_rounded, size: 20),
+            label: const Text('필터'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: Size(0, context.spacing.xxl),
+              padding: EdgeInsets.symmetric(horizontal: context.spacing.sm),
+              foregroundColor: isActive
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+              side: BorderSide(
+                color: isActive
+                    ? colorScheme.primary
+                    : colorScheme.outlineVariant,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(context.radius.rPill),
+              ),
             ),
           ),
-      ],
-      child: Container(
-        width: context.spacing.xxl,
-        height: context.spacing.xxl,
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(context.radius.rPill),
-          border: Border.all(color: colorScheme.outlineVariant),
-        ),
-        child: Icon(
-          Icons.sort_rounded,
-          size: 24,
-          color: colorScheme.onSurfaceVariant,
-        ),
+          if (isActive)
+            Positioned(
+              right: -2,
+              top: -4,
+              child: Container(
+                constraints: BoxConstraints(
+                  minWidth: VisualSpec.icon.sizeBadge - context.spacing.xs / 4,
+                  minHeight: VisualSpec.icon.sizeBadge - context.spacing.xs / 4,
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.xs - context.spacing.xs / 4,
+                ),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: BorderRadius.circular(context.radius.rPill),
+                  border: Border.all(color: colorScheme.surface, width: 2),
+                ),
+                child: Text(
+                  '$activeCount',
+                  style: context.typography.meta.copyWith(
+                    color: colorScheme.onPrimary,
+                    fontSize: context.fontSizes.s10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
+    );
+  }
+}
+
+class _QuickFilterStrip extends StatelessWidget {
+  const _QuickFilterStrip({required this.selected, required this.onChanged});
+
+  final _TransactionQuickFilter selected;
+  final ValueChanged<_TransactionQuickFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _FilterStrip<_TransactionQuickFilter>(
+      values: _TransactionQuickFilter.values,
+      selected: selected,
+      labelBuilder: (filter) => filter.label,
+      leadingIconBuilder: (filter) =>
+          filter == selected ? Icons.check_rounded : null,
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _ActiveFilterSummary extends StatelessWidget {
+  const _ActiveFilterSummary({required this.summary, required this.onReset});
+
+  final String summary;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            summary,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.typography.meta.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        SizedBox(width: context.spacing.xs),
+        TextButton(
+          onPressed: onReset,
+          style: TextButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.xs),
+            minimumSize: Size(0, context.spacing.xl),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: const Text('초기화'),
+        ),
+      ],
     );
   }
 }
 
 class _FilterStrip<T> extends StatelessWidget {
   const _FilterStrip({
+    required this.values,
+    required this.selected,
+    required this.labelBuilder,
+    this.leadingIconBuilder,
+    required this.onChanged,
+  });
+
+  final List<T> values;
+  final T selected;
+  final String Function(T value) labelBuilder;
+  final IconData? Function(T value)? leadingIconBuilder;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final value in values) ...[
+            Builder(
+              builder: (context) {
+                final icon = leadingIconBuilder?.call(value);
+                return RawChip(
+                  avatar: icon == null ? null : Icon(icon, size: 16),
+                  label: Text(labelBuilder(value)),
+                  selected: selected == value,
+                  onPressed: () => onChanged(value),
+                  showCheckmark: false,
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: EdgeInsets.symmetric(horizontal: context.spacing.xs),
+                  labelPadding: EdgeInsets.zero,
+                  side: BorderSide(
+                    color: selected == value
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  labelStyle: context.typography.meta.copyWith(
+                    fontWeight: selected == value
+                        ? FontWeight.w700
+                        : FontWeight.w400,
+                  ),
+                );
+              },
+            ),
+            if (value != values.last) SizedBox(width: context.spacing.xs),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TransactionFilterDraft {
+  const _TransactionFilterDraft({
+    required this.period,
+    required this.category,
+    required this.sortMode,
+  });
+
+  final _TransactionPeriodFilter period;
+  final _TransactionCategoryFilter category;
+  final _TransactionSortMode sortMode;
+}
+
+class _TransactionFilterSheet extends StatefulWidget {
+  const _TransactionFilterSheet({
+    required this.initialPeriod,
+    required this.initialCategory,
+    required this.initialSortMode,
+  });
+
+  final _TransactionPeriodFilter initialPeriod;
+  final _TransactionCategoryFilter initialCategory;
+  final _TransactionSortMode initialSortMode;
+
+  @override
+  State<_TransactionFilterSheet> createState() =>
+      _TransactionFilterSheetState();
+}
+
+class _TransactionFilterSheetState extends State<_TransactionFilterSheet> {
+  late _TransactionPeriodFilter _period;
+  late _TransactionCategoryFilter _category;
+  late _TransactionSortMode _sortMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _period = widget.initialPeriod;
+    _category = widget.initialCategory;
+    _sortMode = widget.initialSortMode;
+  }
+
+  void _reset() {
+    setState(() {
+      _period = _TransactionPeriodFilter.all;
+      _category = _TransactionCategoryFilter.all;
+      _sortMode = _TransactionSortMode.dateDesc;
+    });
+  }
+
+  void _apply() {
+    Navigator.of(context).pop(
+      _TransactionFilterDraft(
+        period: _period,
+        category: _category,
+        sortMode: _sortMode,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    return FractionallySizedBox(
+      heightFactor: 0.82,
+      alignment: Alignment.bottomCenter,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(context.radius.rLg),
+            ),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  context.spacing.md,
+                  context.spacing.sm,
+                  context.spacing.md,
+                  context.spacing.sm,
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: context.spacing.xl + context.spacing.xs,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(
+                          context.radius.rPill,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: context.spacing.md),
+                    Row(
+                      children: [
+                        Text('상세 필터', style: context.typography.sectionTitle),
+                        const Spacer(),
+                        TextButton(onPressed: _reset, child: const Text('초기화')),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    context.spacing.md,
+                    0,
+                    context.spacing.md,
+                    context.spacing.md,
+                  ),
+                  children: [
+                    _FilterSheetSection(
+                      title: '기간',
+                      child: _FilterOptionWrap<_TransactionPeriodFilter>(
+                        values: _TransactionPeriodFilter.values,
+                        selected: _period,
+                        labelBuilder: (period) => period.label,
+                        onChanged: (period) {
+                          setState(() {
+                            _period = period;
+                          });
+                        },
+                      ),
+                    ),
+                    _FilterSheetSection(
+                      title: '거래 유형',
+                      child: _FilterOptionWrap<_TransactionCategoryFilter>(
+                        values: _TransactionCategoryFilter.values,
+                        selected: _category,
+                        labelBuilder: (category) => category.label,
+                        onChanged: (category) {
+                          setState(() {
+                            _category = category;
+                          });
+                        },
+                      ),
+                    ),
+                    _FilterSheetSection(
+                      title: '계좌',
+                      child: _DisabledFilterNotice(
+                        text: '계좌별 필터는 다음 단계에서 추가합니다.',
+                      ),
+                    ),
+                    _FilterSheetSection(
+                      title: '자산',
+                      child: _DisabledFilterNotice(
+                        text: '자산별 필터는 다음 단계에서 추가합니다.',
+                      ),
+                    ),
+                    _FilterSheetSection(
+                      title: '정렬',
+                      child: _FilterOptionWrap<_TransactionSortMode>(
+                        values: _TransactionSortMode.values,
+                        selected: _sortMode,
+                        labelBuilder: (mode) => mode.label,
+                        onChanged: (mode) {
+                          setState(() {
+                            _sortMode = mode;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.fromLTRB(
+                  context.spacing.md,
+                  context.spacing.sm,
+                  context.spacing.md,
+                  context.spacing.md + bottomInset,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  border: Border(
+                    top: BorderSide(color: colorScheme.outlineVariant),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _reset,
+                        child: const Text('초기화'),
+                      ),
+                    ),
+                    SizedBox(width: context.spacing.sm),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: _apply,
+                        child: const Text('결과 보기'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterSheetSection extends StatelessWidget {
+  const _FilterSheetSection({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.spacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: context.typography.cardTitle),
+          SizedBox(height: context.spacing.sm),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterOptionWrap<T> extends StatelessWidget {
+  const _FilterOptionWrap({
     required this.values,
     required this.selected,
     required this.labelBuilder,
@@ -586,32 +997,62 @@ class _FilterStrip<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final value in values) ...[
-            RawChip(
-              label: Text(labelBuilder(value)),
-              selected: selected == value,
-              onPressed: () => onChanged(value),
-              showCheckmark: false,
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              padding: EdgeInsets.symmetric(horizontal: context.spacing.xs),
-              labelPadding: EdgeInsets.zero,
-              side: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-              labelStyle: context.typography.meta.copyWith(
-                fontWeight: selected == value
-                    ? FontWeight.w600
-                    : FontWeight.w400,
-              ),
+    final colorScheme = Theme.of(context).colorScheme;
+    return Wrap(
+      spacing: context.spacing.xs,
+      runSpacing: context.spacing.xs,
+      children: [
+        for (final value in values)
+          RawChip(
+            avatar: value == selected
+                ? Icon(
+                    Icons.check_rounded,
+                    size: 16,
+                    color: colorScheme.primary,
+                  )
+                : null,
+            label: Text(labelBuilder(value)),
+            selected: value == selected,
+            showCheckmark: false,
+            onPressed: () => onChanged(value),
+            side: BorderSide(
+              color: value == selected
+                  ? colorScheme.primary
+                  : colorScheme.outlineVariant,
             ),
-            if (value != values.last) SizedBox(width: context.spacing.xs),
-          ],
-        ],
+            labelStyle: context.typography.meta.copyWith(
+              fontWeight: value == selected ? FontWeight.w700 : FontWeight.w400,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _DisabledFilterNotice extends StatelessWidget {
+  const _DisabledFilterNotice({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.sm,
+        vertical: context.spacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Text(
+        text,
+        style: context.typography.meta.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -1103,6 +1544,42 @@ enum _TransactionPeriodFilter {
   }
 }
 
+enum _TransactionQuickFilter {
+  all('전체', _TransactionCategoryFilter.all),
+  buy('매수', _TransactionCategoryFilter.buy),
+  sell('매도', _TransactionCategoryFilter.sell),
+  dividend('배당', _TransactionCategoryFilter.dividend),
+  cashFlow('입출금', _TransactionCategoryFilter.all);
+
+  const _TransactionQuickFilter(this.label, this.category);
+
+  final String label;
+  final _TransactionCategoryFilter category;
+
+  static _TransactionQuickFilter fromCategory(
+    _TransactionCategoryFilter category,
+  ) {
+    return switch (category) {
+      _TransactionCategoryFilter.buy => _TransactionQuickFilter.buy,
+      _TransactionCategoryFilter.sell => _TransactionQuickFilter.sell,
+      _TransactionCategoryFilter.dividend => _TransactionQuickFilter.dividend,
+      _ => _TransactionQuickFilter.all,
+    };
+  }
+
+  bool matches(_TransactionEntry entry) {
+    return switch (this) {
+      _TransactionQuickFilter.all ||
+      _TransactionQuickFilter.buy ||
+      _TransactionQuickFilter.sell ||
+      _TransactionQuickFilter.dividend => true,
+      _TransactionQuickFilter.cashFlow =>
+        _TransactionCategoryFilter.deposit.matches(entry) ||
+            _TransactionCategoryFilter.withdrawal.matches(entry),
+    };
+  }
+}
+
 enum _TransactionCategoryFilter {
   all('전체 유형', {}),
   buy('매수', {'buy', '매수'}),
@@ -1129,6 +1606,43 @@ enum _TransactionCategoryFilter {
     return actions.contains(action) ||
         actions.contains(transaction.type.trim());
   }
+}
+
+int _activeFilterCount({
+  required _TransactionPeriodFilter period,
+  required _TransactionCategoryFilter category,
+  required _TransactionQuickFilter quickFilter,
+  required _TransactionSortMode sortMode,
+}) {
+  var count = 0;
+  if (period != _TransactionPeriodFilter.all) count++;
+  if (category != _TransactionCategoryFilter.all ||
+      quickFilter != _TransactionQuickFilter.all) {
+    count++;
+  }
+  if (sortMode != _TransactionSortMode.dateDesc) count++;
+  return count;
+}
+
+String? _activeFilterSummary({
+  required String searchText,
+  required _TransactionPeriodFilter period,
+  required _TransactionCategoryFilter category,
+  required _TransactionQuickFilter quickFilter,
+  required _TransactionSortMode sortMode,
+}) {
+  final parts = <String>[];
+  final query = searchText.trim();
+  if (query.isNotEmpty) parts.add('검색어: $query');
+  if (period != _TransactionPeriodFilter.all) parts.add(period.label);
+  if (category != _TransactionCategoryFilter.all) {
+    parts.add(category.label);
+  } else if (quickFilter != _TransactionQuickFilter.all) {
+    parts.add(quickFilter.label);
+  }
+  if (sortMode != _TransactionSortMode.dateDesc) parts.add(sortMode.label);
+  if (parts.isEmpty) return null;
+  return parts.join(' · ');
 }
 
 enum _TransactionSortMode {
@@ -1236,14 +1750,8 @@ String _formatTransactionAmountInKrw(
 Color _transactionTypeColor(BuildContext context, String type) {
   final colors = context.colors;
   return switch (type.trim()) {
-    '매수' ||
-    '출금' ||
-    '이체' ||
-    '환전' => colors.negativeContainer.withValues(alpha: 0.72),
-    '매도' ||
-    '배당' ||
-    '이자' ||
-    '입금' => colors.positiveContainer.withValues(alpha: 0.78),
+    '매수' || '출금' || '이체' || '환전' => colors.neutralSurfaceOverlay,
+    '매도' || '배당' || '이자' || '입금' => colors.neutralSurfaceOverlay,
     _ => colors.neutralSurfaceOverlay,
   };
 }

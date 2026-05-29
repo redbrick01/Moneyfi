@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../design_system/context_extensions.dart';
-import '../theme/moneyfy_theme.dart';
 
 class TransactionHistoryList extends StatefulWidget {
   const TransactionHistoryList({
@@ -53,7 +52,7 @@ class _TransactionHistoryListState extends State<TransactionHistoryList> {
           if (index != visibleCount - 1) separator,
         ],
         if (hasMore) ...[
-          const SizedBox(height: 10),
+          SizedBox(height: context.spacing.xs),
           Align(
             alignment: Alignment.center,
             child: TextButton.icon(
@@ -69,7 +68,7 @@ class _TransactionHistoryListState extends State<TransactionHistoryList> {
               ),
               label: Text(_expanded ? '접기' : '전체 ${widget.itemCount}건 보기'),
               style: TextButton.styleFrom(
-                foregroundColor: MoneyfyPalette.tertiaryText,
+                foregroundColor: context.colors.neutralTextMuted,
                 textStyle: context.typography.meta.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
