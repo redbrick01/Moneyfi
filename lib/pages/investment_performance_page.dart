@@ -5,7 +5,6 @@ import '../db/app_database.dart';
 import '../design_system/context_extensions.dart';
 import '../models/asset_item.dart';
 import '../services/benchmark_price_service.dart';
-import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
 import '../utils/risk_adjusted_performance_calculator.dart';
 import '../widgets/moneyfy_ui.dart';
@@ -22,6 +21,7 @@ class _InvestmentPerformancePageState extends State<InvestmentPerformancePage> {
   late _PerformanceDateRange _selectedRange;
   late Future<_InvestmentPerformanceReport> _reportFuture;
   _HoldingSortMode _holdingSortMode = _HoldingSortMode.totalDesc;
+  _HoldingFilterMode _holdingFilterMode = _HoldingFilterMode.all;
 
   @override
   void initState() {
@@ -42,11 +42,6 @@ class _InvestmentPerformancePageState extends State<InvestmentPerformancePage> {
     return MoneyfyPage(
       title: '투자성과 분석',
       children: [
-        _DateRangeSelector(
-          selectedRange: _selectedRange,
-          onSelected: _selectRange,
-        ),
-        SizedBox(height: context.spacing.sectionGap),
         FutureBuilder<_InvestmentPerformanceReport>(
           future: _reportFuture,
           builder: (context, snapshot) {
@@ -54,29 +49,32 @@ class _InvestmentPerformancePageState extends State<InvestmentPerformancePage> {
                 snapshot.data ?? const _InvestmentPerformanceReport.empty();
             return Column(
               children: [
-                _PerformanceSummaryCard(
+                _PerformanceCockpitCard(
                   report: report,
-                  rangeLabel: _selectedRange.label,
+                  selectedRange: _selectedRange,
+                  onRangeSelected: _selectRange,
                 ),
                 SizedBox(height: context.spacing.sectionGap),
-                _PerformanceBreakdownCard(report: report),
+                _PerformanceAttributionCard(report: report),
                 SizedBox(height: context.spacing.sectionGap),
-                _AdvancedPerformanceCard(report: report.advancedPerformance),
+                _MarketAndRiskCard(report: report.advancedPerformance),
                 SizedBox(height: context.spacing.sectionGap),
-                _CashFlowExclusionCard(report: report),
+                _MonthlyTrendCard(items: report.monthlyPerformance),
                 SizedBox(height: context.spacing.sectionGap),
-                _MonthlyPerformanceCard(items: report.monthlyPerformance),
-                SizedBox(height: context.spacing.sectionGap),
-                _RealizedProfitRankingCard(items: report.realizedRankings),
-                SizedBox(height: context.spacing.sectionGap),
-                _HoldingPerformanceCard(
+                _HoldingContributionCard(
                   items: report.holdings,
                   totalPerformanceBasis: report.pureInvestmentPerformance,
+                  filterMode: _holdingFilterMode,
                   sortMode: _holdingSortMode,
+                  onFilterModeChanged: (mode) {
+                    setState(() => _holdingFilterMode = mode);
+                  },
                   onSortModeChanged: (mode) {
                     setState(() => _holdingSortMode = mode);
                   },
                 ),
+                SizedBox(height: context.spacing.sectionGap),
+                _CashFlowExclusionCard(report: report),
               ],
             );
           },
@@ -116,14 +114,16 @@ class _DateRangeSelector extends StatelessWidget {
   }
 }
 
-class _PerformanceSummaryCard extends StatelessWidget {
-  const _PerformanceSummaryCard({
+class _PerformanceCockpitCard extends StatelessWidget {
+  const _PerformanceCockpitCard({
     required this.report,
-    required this.rangeLabel,
+    required this.selectedRange,
+    required this.onRangeSelected,
   });
 
   final _InvestmentPerformanceReport report;
-  final String rangeLabel;
+  final _PerformanceDateRange selectedRange;
+  final ValueChanged<_PerformanceDateRange> onRangeSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -133,66 +133,71 @@ class _PerformanceSummaryCard extends StatelessWidget {
     final performanceRateText = _formatSignedPercent(
       report.pureInvestmentPerformanceRate,
     );
+    final benchmarkText = _benchmarkNarrative(report.advancedPerformance);
+
     return SectionCard(
-      title: '순 투자성과',
-      headerTrailing: Text(
-        rangeLabel,
-        style: context.typography.meta.copyWith(
-          color: MoneyfyPalette.tertiaryText,
-        ),
-      ),
+      variant: SectionCardVariant.raised,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            performanceText,
-            style: context.typography.pageTitle.copyWith(
-              color: moneyfyValueColor(
-                performanceText,
-                defaultColor: MoneyfyPalette.ink,
-              ),
-            ),
-          ),
-          if (performanceRateText != null) ...[
-            SizedBox(height: context.spacing.xs),
-            Text(
-              performanceRateText,
-              style: context.typography.sectionTitle.copyWith(
-                color: moneyfyValueColor(
-                  performanceRateText,
-                  defaultColor: MoneyfyPalette.ink,
-                ),
-              ),
-            ),
-          ],
-          SizedBox(height: context.spacing.xs),
-          Text(
-            '입출금과 내부 이동 제외 · 매수 원금 대비',
-            style: context.typography.meta.copyWith(
-              color: MoneyfyPalette.tertiaryText,
-            ),
+          _DateRangeSelector(
+            selectedRange: selectedRange,
+            onSelected: onRangeSelected,
           ),
           SizedBox(height: context.spacing.md),
+          Text(
+            '순 투자성과',
+            style: context.typography.meta.copyWith(
+              color: context.colors.neutralTextMuted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: context.spacing.xs),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              performanceText,
+              maxLines: 1,
+              style: context.typography.heroNumber.copyWith(
+                color: _valueColor(context, report.pureInvestmentPerformance),
+              ),
+            ),
+          ),
+          SizedBox(height: context.spacing.xs),
           Wrap(
             spacing: context.spacing.sm,
             runSpacing: context.spacing.xs,
             children: [
-              _SummaryMetricChip(
-                label: '실현',
-                value: _formatSignedCurrency(report.pureRealizedPerformance),
+              _StatusPill(
+                label: performanceRateText == null
+                    ? '매수 원금 대비 수익률 데이터 부족'
+                    : '$performanceRateText 매수 원금 대비',
+                value: report.pureInvestmentPerformanceRate,
               ),
-              _SummaryMetricChip(
-                label: '미실현',
-                value: _formatSignedCurrency(report.unrealizedProfit),
+              _StatusPill(
+                label: benchmarkText,
+                value: report.advancedPerformance.excessReturn,
               ),
-              _SummaryMetricChip(
-                label: '배당/이자',
-                value: _formatSignedCurrency(report.incomeAmount),
+            ],
+          ),
+          SizedBox(height: context.spacing.xs),
+          Text(
+            '입출금과 내부 이동 제외 기준',
+            style: context.typography.meta.copyWith(
+              color: context.colors.neutralTextMuted,
+            ),
+          ),
+          SizedBox(height: context.spacing.md),
+          _MiniMetricGrid(
+            metrics: [
+              _MiniMetricData(
+                label: '순 실현',
+                value: report.pureRealizedPerformance,
               ),
-              _SummaryMetricChip(
-                label: '비용',
-                value: _formatSignedCurrency(-report.totalExpenseAmount),
-              ),
+              _MiniMetricData(label: '미실현', value: report.unrealizedProfit),
+              _MiniMetricData(label: '배당/이자', value: report.incomeAmount),
+              _MiniMetricData(label: '비용', value: -report.totalExpenseAmount),
             ],
           ),
         ],
@@ -201,82 +206,165 @@ class _PerformanceSummaryCard extends StatelessWidget {
   }
 }
 
-class _SummaryMetricChip extends StatelessWidget {
-  const _SummaryMetricChip({required this.label, required this.value});
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.label, this.value});
 
   final String label;
-  final String value;
+  final double? value;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final hasValue = value != null;
+    final color = hasValue
+        ? _valueColor(context, value!)
+        : context.colors.neutralTextMuted;
     return Container(
+      constraints: const BoxConstraints(minHeight: 28),
       padding: EdgeInsets.symmetric(
         horizontal: context.spacing.sm,
-        vertical: context.spacing.xs,
+        vertical: context.spacing.xs / 2,
       ),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.52),
-        borderRadius: BorderRadius.circular(context.radius.rSm),
+        color: context.colors.neutralSurfaceOverlay.withValues(alpha: 0.56),
+        borderRadius: BorderRadius.circular(context.radius.rPill),
+        border: Border.all(
+          color: context.colors.neutralOutline.withValues(alpha: 0.52),
+        ),
       ),
       child: Text(
-        '$label $value',
+        label,
         style: context.typography.meta.copyWith(
-          color: moneyfyValueColor(value, defaultColor: colorScheme.onSurface),
+          color: color,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 }
 
-class _PerformanceBreakdownCard extends StatelessWidget {
-  const _PerformanceBreakdownCard({required this.report});
+class _MiniMetricGrid extends StatelessWidget {
+  const _MiniMetricGrid({required this.metrics});
+
+  final List<_MiniMetricData> metrics;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth < 360 ? 1 : 2;
+        final gap = context.spacing.sm;
+        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final metric in metrics)
+              SizedBox(
+                width: width,
+                child: _MiniMetricTile(metric: metric),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MiniMetricTile extends StatelessWidget {
+  const _MiniMetricTile({required this.metric});
+
+  final _MiniMetricData metric;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(context.spacing.sm),
+      decoration: BoxDecoration(
+        color: context.colors.neutralSurfaceBase,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(
+          color: context.colors.neutralOutline.withValues(alpha: 0.44),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            metric.label,
+            style: context.typography.caption.copyWith(
+              color: context.colors.neutralTextMuted,
+            ),
+          ),
+          SizedBox(height: context.spacing.xs / 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _formatSignedCurrency(metric.value),
+              maxLines: 1,
+              style: context.typography.cardTitle.copyWith(
+                color: _valueColor(context, metric.value),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniMetricData {
+  const _MiniMetricData({required this.label, required this.value});
+
+  final String label;
+  final double value;
+}
+
+class _PerformanceAttributionCard extends StatelessWidget {
+  const _PerformanceAttributionCard({required this.report});
 
   final _InvestmentPerformanceReport report;
 
   @override
   Widget build(BuildContext context) {
+    final entries = [
+      _AttributionData(label: '실현손익', amount: report.realizedProfit),
+      _AttributionData(label: '미실현손익', amount: report.unrealizedProfit),
+      _AttributionData(label: '배당/이자', amount: report.incomeAmount),
+      _AttributionData(label: '수수료', amount: -report.feeAmount),
+      _AttributionData(label: '세금', amount: -report.taxAmount),
+    ];
+    final maxAbsComponent = entries.fold<double>(
+      0,
+      (maxValue, item) =>
+          item.amount.abs() > maxValue ? item.amount.abs() : maxValue,
+    );
+
     return SectionCard(
-      title: '성과 구성',
+      title: '성과 원인',
       child: Column(
         children: [
-          _MetricRow(
-            label: '실현손익',
-            value: _formatSignedCurrency(report.realizedProfit),
-          ),
-          const Divider(height: 20),
-          _MetricRow(
-            label: '미실현손익',
-            value: _formatSignedCurrency(report.unrealizedProfit),
-          ),
-          const Divider(height: 20),
-          _MetricRow(
-            label: '배당/이자',
-            value: _formatSignedCurrency(report.incomeAmount),
-          ),
-          const Divider(height: 20),
-          _MetricRow(
-            label: '수수료',
-            value: _formatSignedCurrency(-report.feeAmount),
-          ),
-          const Divider(height: 20),
-          _MetricRow(
-            label: '세금',
-            value: _formatSignedCurrency(-report.taxAmount),
-          ),
-          const Divider(height: 20),
-          _MetricRow(
-            label: '순 실현성과',
-            value: _formatSignedCurrency(report.pureRealizedPerformance),
-            trailing: _formatSignedPercent(report.pureRealizedPerformanceRate),
-          ),
-          const Divider(height: 20),
+          for (var index = 0; index < entries.length; index++) ...[
+            _AttributionRow(
+              item: entries[index],
+              basis: report.pureInvestmentPerformance,
+              maxAbsComponent: maxAbsComponent,
+            ),
+            if (index != entries.length - 1) const Divider(height: 22),
+          ],
+          const Divider(height: 28),
           _MetricRow(
             label: '순 투자성과',
             value: _formatSignedCurrency(report.pureInvestmentPerformance),
             trailing: _formatSignedPercent(
               report.pureInvestmentPerformanceRate,
             ),
+          ),
+          const Divider(height: 20),
+          _MetricRow(
+            label: '순 실현성과',
+            value: _formatSignedCurrency(report.pureRealizedPerformance),
+            trailing: _formatSignedPercent(report.pureRealizedPerformanceRate),
           ),
           const Divider(height: 20),
           _MetricRow(label: '매수 원금', value: _formatCurrency(report.buyAmount)),
@@ -291,63 +379,208 @@ class _PerformanceBreakdownCard extends StatelessWidget {
   }
 }
 
-class _AdvancedPerformanceCard extends StatelessWidget {
-  const _AdvancedPerformanceCard({required this.report});
+class _AttributionRow extends StatelessWidget {
+  const _AttributionRow({
+    required this.item,
+    required this.basis,
+    required this.maxAbsComponent,
+  });
+
+  final _AttributionData item;
+  final double basis;
+  final double maxAbsComponent;
+
+  @override
+  Widget build(BuildContext context) {
+    final valueText = _formatSignedCurrency(item.amount);
+    final shareText = _formatContribution(item.amount, basis);
+    final fraction = maxAbsComponent <= 0
+        ? 0.0
+        : (item.amount.abs() / maxAbsComponent).clamp(0.0, 1.0);
+    final color = _valueColor(context, item.amount);
+    final backgroundColor = item.amount == 0
+        ? context.colors.neutralSurfaceOverlay
+        : item.amount > 0
+        ? context.colors.positiveContainer
+        : context.colors.negativeContainer;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text(item.label, style: context.typography.meta)),
+            SizedBox(width: context.spacing.sm),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  valueText,
+                  textAlign: TextAlign.right,
+                  style: context.typography.cardTitle.copyWith(color: color),
+                ),
+                if (shareText != null)
+                  Text(
+                    shareText,
+                    style: context.typography.caption.copyWith(
+                      color: context.colors.neutralTextMuted,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        SizedBox(height: context.spacing.xs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(context.radius.rPill),
+          child: Container(
+            height: 8,
+            color: context.colors.neutralSurfaceOverlay.withValues(alpha: 0.52),
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: fraction,
+              child: Container(color: backgroundColor),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AttributionData {
+  const _AttributionData({required this.label, required this.amount});
+
+  final String label;
+  final double amount;
+}
+
+class _MarketAndRiskCard extends StatelessWidget {
+  const _MarketAndRiskCard({required this.report});
 
   final _AdvancedPerformanceReport report;
 
   @override
   Widget build(BuildContext context) {
+    final metrics = [
+      _RiskMetricData(
+        label: '기간 수익률',
+        value: _formatSignedRatePercent(report.periodReturn),
+        numericValue: report.periodReturn,
+        caption: '입출금 보정',
+      ),
+      _RiskMetricData(
+        label: report.benchmarkLabel,
+        value: _formatSignedRatePercent(report.benchmarkReturn),
+        numericValue: report.benchmarkReturn,
+        caption: '선택 기간',
+      ),
+      _RiskMetricData(
+        label: '초과수익률',
+        value: _formatSignedPercentagePoint(report.excessReturn),
+        numericValue: report.excessReturn,
+        caption: '시장 대비',
+      ),
+      _RiskMetricData(
+        label: '변동성',
+        value: _formatAnnualizedPercent(report.annualizedVolatility),
+        numericValue: report.annualizedVolatility,
+        caption: '연율화',
+      ),
+      _RiskMetricData(
+        label: 'Sharpe',
+        value: _formatDecimal(report.sharpeRatio),
+        numericValue: report.sharpeRatio,
+        caption: '위험 대비 성과',
+      ),
+      _RiskMetricData(
+        label: '최대 낙폭',
+        value: _formatSignedRatePercent(report.maxDrawdown),
+        numericValue: report.maxDrawdown,
+        caption: '고점 대비',
+      ),
+    ];
+
     return SectionCard(
-      title: '고급 성과',
+      title: '시장 비교와 위험',
+      footer: Text(
+        report.isRiskFreeRateFallback
+            ? '금리 데이터를 가져오지 못해 0% 기준으로 Sharpe Ratio를 계산했습니다.'
+            : '${report.riskFreeRateLabel} 기준 Sharpe Ratio입니다.',
+        style: context.typography.caption.copyWith(
+          color: context.colors.neutralTextMuted,
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth < 360 ? 1 : 2;
+          final gap = context.spacing.sm;
+          final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final metric in metrics)
+                SizedBox(
+                  width: width,
+                  child: _RiskMetricTile(metric: metric),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _RiskMetricTile extends StatelessWidget {
+  const _RiskMetricTile({required this.metric});
+
+  final _RiskMetricData metric;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = metric.value ?? '데이터 부족';
+    final color = metric.numericValue == null
+        ? context.colors.neutralTextMuted
+        : _valueColor(context, metric.numericValue!);
+    return Container(
+      padding: EdgeInsets.all(context.spacing.sm),
+      decoration: BoxDecoration(
+        color: context.colors.neutralSurfaceBase,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(
+          color: context.colors.neutralOutline.withValues(alpha: 0.44),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _AdvancedMetricRow(
-            label: '입출금 보정 기간 수익률',
-            value: _formatSignedRatePercent(report.periodReturn),
-            description: '입금과 출금을 제외하고 투자 자체가 만든 기간 수익률입니다.',
+          Text(
+            metric.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.typography.meta.copyWith(
+              color: context.colors.neutralTextMuted,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const Divider(height: 22),
-          _AdvancedMetricRow(
-            label: '벤치마크',
-            value: report.benchmarkReturn == null
-                ? null
-                : '${report.benchmarkLabel} ${_formatSignedRatePercent(report.benchmarkReturn)}',
-            description: '선택한 기간의 시작값과 끝값으로 계산한 시장 기준 수익률입니다.',
+          SizedBox(height: context.spacing.xs),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: context.typography.cardTitle.copyWith(color: color),
+            ),
           ),
-          const Divider(height: 22),
-          _AdvancedMetricRow(
-            label: '초과수익률',
-            value: _formatSignedPercentagePoint(report.excessReturn),
-            description: '내 포트폴리오가 기준 시장보다 얼마나 더 높거나 낮았는지 보여줍니다.',
-          ),
-          const Divider(height: 22),
-          _AdvancedMetricRow(
-            label: '변동성',
-            value: _formatAnnualizedPercent(report.annualizedVolatility),
-            description: '기간 중 수익률이 얼마나 크게 흔들렸는지 나타냅니다.',
-          ),
-          const Divider(height: 22),
-          _AdvancedMetricRow(
-            label: '무위험수익률',
-            value: _formatAnnualizedPercent(report.riskFreeRate),
-            description: report.isRiskFreeRateFallback
-                ? '금리 데이터를 가져오지 못해 0% 기준으로 Sharpe Ratio를 계산했습니다.'
-                : '미국 13주 T-Bill 금리를 무위험수익률 기준으로 반영했습니다.',
-          ),
-          const Divider(height: 22),
-          _AdvancedMetricRow(
-            label: 'Sharpe Ratio',
-            value: _formatDecimal(report.sharpeRatio),
-            description:
-                '변동성 대비 성과를 보는 지표입니다. ${report.riskFreeRateLabel}을 제외한 초과성과 기준입니다.',
-          ),
-          const Divider(height: 22),
-          _AdvancedMetricRow(
-            label: '최대 낙폭',
-            value: _formatSignedRatePercent(report.maxDrawdown),
-            description: '기간 중 고점에서 가장 깊게 하락했던 비율입니다.',
+          SizedBox(height: context.spacing.xs / 2),
+          Text(
+            metric.caption,
+            style: context.typography.caption.copyWith(
+              color: context.colors.neutralTextMuted,
+            ),
           ),
         ],
       ),
@@ -355,56 +588,18 @@ class _AdvancedPerformanceCard extends StatelessWidget {
   }
 }
 
-class _AdvancedMetricRow extends StatelessWidget {
-  const _AdvancedMetricRow({
+class _RiskMetricData {
+  const _RiskMetricData({
     required this.label,
     required this.value,
-    required this.description,
+    required this.numericValue,
+    required this.caption,
   });
 
   final String label;
   final String? value;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final displayValue = value ?? '데이터 부족';
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.secondaryText,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          displayValue,
-          textAlign: TextAlign.right,
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: value == null
-                ? MoneyfyPalette.tertiaryText
-                : moneyfyValueColor(
-                    displayValue,
-                    defaultColor: MoneyfyPalette.ink,
-                  ),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
+  final double? numericValue;
+  final String caption;
 }
 
 class _CashFlowExclusionCard extends StatelessWidget {
@@ -448,37 +643,205 @@ class _CashFlowExclusionCard extends StatelessWidget {
   }
 }
 
-class _HoldingPerformanceCard extends StatelessWidget {
-  const _HoldingPerformanceCard({
-    required this.items,
-    required this.totalPerformanceBasis,
-    required this.sortMode,
-    required this.onSortModeChanged,
-  });
+class _MonthlyTrendCard extends StatelessWidget {
+  const _MonthlyTrendCard({required this.items});
 
-  final List<_HoldingPerformance> items;
-  final double totalPerformanceBasis;
-  final _HoldingSortMode sortMode;
-  final ValueChanged<_HoldingSortMode> onSortModeChanged;
+  final List<_MonthlyPerformance> items;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     if (items.isEmpty) {
       return SectionCard(
-        title: '보유 항목별 성과',
+        title: '월별 실현성과',
         child: Text(
-          '분석할 투자 거래가 아직 없습니다.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: MoneyfyPalette.tertiaryText,
+          '월별로 집계할 실현 손익이 아직 없습니다.',
+          style: context.typography.meta.copyWith(
+            color: context.colors.neutralTextMuted,
           ),
         ),
       );
     }
 
-    final sortedItems = _sortHoldingPerformance(items, sortMode);
+    final visibleItems = items.take(12).toList(growable: false);
+    final chartItems = visibleItems.reversed.toList(growable: false);
     return SectionCard(
-      title: '보유 항목별 성과',
+      title: '월별 실현성과',
+      headerTrailing: Text(
+        '최근 ${visibleItems.length}개월',
+        style: context.typography.meta.copyWith(
+          color: context.colors.neutralTextMuted,
+        ),
+      ),
+      child: Column(
+        children: [
+          _MonthlyBarStrip(items: chartItems),
+          SizedBox(height: context.spacing.md),
+          for (var index = 0; index < visibleItems.length; index++) ...[
+            _MonthlyTrendRow(item: visibleItems[index]),
+            if (index != visibleItems.length - 1) const Divider(height: 24),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthlyBarStrip extends StatelessWidget {
+  const _MonthlyBarStrip({required this.items});
+
+  final List<_MonthlyPerformance> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxAbs = items.fold<double>(
+      0,
+      (maxValue, item) => item.pureRealizedPerformance.abs() > maxValue
+          ? item.pureRealizedPerformance.abs()
+          : maxValue,
+    );
+    return SizedBox(
+      height: 72,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var index = 0; index < items.length; index++) ...[
+            Expanded(
+              child: _MonthlyBar(
+                item: items[index],
+                fraction: maxAbs <= 0
+                    ? 0
+                    : (items[index].pureRealizedPerformance.abs() / maxAbs)
+                          .clamp(0.0, 1.0),
+              ),
+            ),
+            if (index != items.length - 1) SizedBox(width: context.spacing.xs),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthlyBar extends StatelessWidget {
+  const _MonthlyBar({required this.item, required this.fraction});
+
+  final _MonthlyPerformance item;
+  final double fraction;
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = item.pureRealizedPerformance;
+    final color = amount > 0
+        ? context.colors.positiveContainer
+        : amount < 0
+        ? context.colors.negativeContainer
+        : context.colors.neutralSurfaceOverlay;
+    final monthLabel = item.month.length >= 7 ? item.month.substring(5, 7) : '';
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: FractionallySizedBox(
+              heightFactor: fraction <= 0 ? 0.04 : fraction,
+              widthFactor: 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(context.radius.rSm),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: context.spacing.xs),
+        Text(
+          monthLabel,
+          style: context.typography.caption.copyWith(
+            color: context.colors.neutralTextMuted,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthlyTrendRow extends StatelessWidget {
+  const _MonthlyTrendRow({required this.item});
+
+  final _MonthlyPerformance item;
+
+  @override
+  Widget build(BuildContext context) {
+    final resultText = _formatSignedCurrency(item.pureRealizedPerformance);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item.month, style: context.typography.cardTitle),
+              SizedBox(height: context.spacing.xs / 2),
+              Text(
+                '실현 ${_formatSignedCurrency(item.realizedProfit)} · 수입 ${_formatSignedCurrency(item.incomeAmount)} · 비용 ${_formatSignedCurrency(-item.totalExpenseAmount)}',
+                style: context.typography.meta.copyWith(
+                  color: context.colors.neutralTextMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: context.spacing.sm),
+        Text(
+          resultText,
+          textAlign: TextAlign.right,
+          style: context.typography.cardTitle.copyWith(
+            color: _valueColor(context, item.pureRealizedPerformance),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HoldingContributionCard extends StatelessWidget {
+  const _HoldingContributionCard({
+    required this.items,
+    required this.totalPerformanceBasis,
+    required this.filterMode,
+    required this.sortMode,
+    required this.onFilterModeChanged,
+    required this.onSortModeChanged,
+  });
+
+  final List<_HoldingPerformance> items;
+  final double totalPerformanceBasis;
+  final _HoldingFilterMode filterMode;
+  final _HoldingSortMode sortMode;
+  final ValueChanged<_HoldingFilterMode> onFilterModeChanged;
+  final ValueChanged<_HoldingSortMode> onSortModeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return SectionCard(
+        title: '종목별 성과',
+        child: Text(
+          '분석할 투자 거래가 아직 없습니다.',
+          style: context.typography.meta.copyWith(
+            color: context.colors.neutralTextMuted,
+          ),
+        ),
+      );
+    }
+
+    final filteredItems = _filterHoldingPerformance(items, filterMode);
+    final sortedItems = _sortHoldingPerformance(filteredItems, sortMode);
+
+    return SectionCard(
+      title: '종목별 성과',
       headerTrailing: DropdownButtonHideUnderline(
         child: DropdownButton<_HoldingSortMode>(
           value: sortMode,
@@ -493,199 +856,53 @@ class _HoldingPerformanceCard extends StatelessWidget {
         ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var index = 0; index < sortedItems.length; index++) ...[
-            _HoldingPerformanceRow(
-              item: sortedItems[index],
-              totalPerformanceBasis: totalPerformanceBasis,
-            ),
-            if (index != sortedItems.length - 1) const Divider(height: 24),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _RealizedProfitRankingCard extends StatelessWidget {
-  const _RealizedProfitRankingCard({required this.items});
-
-  final List<_HoldingPerformance> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (items.isEmpty) {
-      return SectionCard(
-        title: '종목별 실현손익',
-        child: Text(
-          '실현손익이 발생한 매도 거래가 아직 없습니다.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: MoneyfyPalette.tertiaryText,
-          ),
-        ),
-      );
-    }
-
-    final visibleItems = items.take(10).toList(growable: false);
-    return SectionCard(
-      title: '종목별 실현손익',
-      child: Column(
-        children: [
-          for (var index = 0; index < visibleItems.length; index++) ...[
-            _RealizedProfitRankingRow(
-              rank: index + 1,
-              item: visibleItems[index],
-            ),
-            if (index != visibleItems.length - 1) const Divider(height: 24),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _RealizedProfitRankingRow extends StatelessWidget {
-  const _RealizedProfitRankingRow({required this.rank, required this.item});
-
-  final int rank;
-  final _HoldingPerformance item;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final resultText = _formatSignedCurrency(item.realizedProfit);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 28,
-          child: Text(
-            '$rank',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: MoneyfyPalette.tertiaryText,
-              fontWeight: FontWeight.w600,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (
+                  var index = 0;
+                  index < _HoldingFilterMode.values.length;
+                  index++
+                ) ...[
+                  ChoiceChip(
+                    label: Text(_HoldingFilterMode.values[index].label),
+                    selected: _HoldingFilterMode.values[index] == filterMode,
+                    onSelected: (_) =>
+                        onFilterModeChanged(_HoldingFilterMode.values[index]),
+                  ),
+                  if (index != _HoldingFilterMode.values.length - 1)
+                    SizedBox(width: context.spacing.xs),
+                ],
+              ],
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(item.name, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                [
-                  item.assetName,
-                  if (item.symbol.trim().isNotEmpty) item.symbol,
-                  item.currencyCode,
-                ].join(' · '),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.secondaryText,
-                ),
+          SizedBox(height: context.spacing.md),
+          if (sortedItems.isEmpty)
+            Text(
+              _emptyHoldingFilterText(filterMode),
+              style: context.typography.meta.copyWith(
+                color: context.colors.neutralTextMuted,
               ),
+            )
+          else
+            for (var index = 0; index < sortedItems.length; index++) ...[
+              _HoldingContributionRow(
+                item: sortedItems[index],
+                totalPerformanceBasis: totalPerformanceBasis,
+              ),
+              if (index != sortedItems.length - 1) const Divider(height: 24),
             ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          resultText,
-          textAlign: TextAlign.right,
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: moneyfyValueColor(
-              resultText,
-              defaultColor: MoneyfyPalette.ink,
-            ),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MonthlyPerformanceCard extends StatelessWidget {
-  const _MonthlyPerformanceCard({required this.items});
-
-  final List<_MonthlyPerformance> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (items.isEmpty) {
-      return SectionCard(
-        title: '월별 실현성과',
-        child: Text(
-          '월별로 집계할 실현 손익이 아직 없습니다.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: MoneyfyPalette.tertiaryText,
-          ),
-        ),
-      );
-    }
-
-    final visibleItems = items.take(12).toList(growable: false);
-    return SectionCard(
-      title: '월별 실현성과',
-      child: Column(
-        children: [
-          for (var index = 0; index < visibleItems.length; index++) ...[
-            _MonthlyPerformanceRow(item: visibleItems[index]),
-            if (index != visibleItems.length - 1) const Divider(height: 24),
-          ],
         ],
       ),
     );
   }
 }
 
-class _MonthlyPerformanceRow extends StatelessWidget {
-  const _MonthlyPerformanceRow({required this.item});
-
-  final _MonthlyPerformance item;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final resultText = _formatSignedCurrency(item.pureRealizedPerformance);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(item.month, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                '실현 ${_formatSignedCurrency(item.realizedProfit)} · 수입 ${_formatSignedCurrency(item.incomeAmount)} · 비용 ${_formatSignedCurrency(-item.totalExpenseAmount)}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.secondaryText,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          resultText,
-          textAlign: TextAlign.right,
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: moneyfyValueColor(
-              resultText,
-              defaultColor: MoneyfyPalette.ink,
-            ),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HoldingPerformanceRow extends StatelessWidget {
-  const _HoldingPerformanceRow({
+class _HoldingContributionRow extends StatelessWidget {
+  const _HoldingContributionRow({
     required this.item,
     required this.totalPerformanceBasis,
   });
@@ -695,7 +912,6 @@ class _HoldingPerformanceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final resultText = _formatSignedCurrency(item.totalPerformance);
     final contributionText = _formatContribution(
       item.totalPerformance,
@@ -708,55 +924,85 @@ class _HoldingPerformanceRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item.name, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 4),
+              Text(item.name, style: context.typography.cardTitle),
+              SizedBox(height: context.spacing.xs / 2),
               Text(
                 [
                   item.assetName,
                   if (item.symbol.trim().isNotEmpty) item.symbol,
                   item.currencyCode,
                 ].join(' · '),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: MoneyfyPalette.tertiaryText,
+                style: context.typography.meta.copyWith(
+                  color: context.colors.neutralTextMuted,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                '실현 ${_formatSignedCurrency(item.realizedProfit)} · 미실현 ${_formatSignedCurrency(item.unrealizedProfit)} · 수입 ${_formatSignedCurrency(item.incomeAmount)}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.secondaryText,
-                ),
+              SizedBox(height: context.spacing.xs),
+              Wrap(
+                spacing: context.spacing.xs,
+                runSpacing: context.spacing.xs,
+                children: [
+                  _MetricPill(label: '실현', value: item.realizedProfit),
+                  _MetricPill(label: '미실현', value: item.unrealizedProfit),
+                  _MetricPill(label: '수입', value: item.incomeAmount),
+                ],
               ),
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: context.spacing.sm),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              resultText,
-              textAlign: TextAlign.right,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: moneyfyValueColor(
-                  resultText,
-                  defaultColor: MoneyfyPalette.ink,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                resultText,
+                textAlign: TextAlign.right,
+                style: context.typography.cardTitle.copyWith(
+                  color: _valueColor(context, item.totalPerformance),
                 ),
-                fontWeight: FontWeight.w600,
               ),
             ),
             if (contributionText != null) ...[
-              const SizedBox(height: 4),
+              SizedBox(height: context.spacing.xs / 2),
               Text(
                 contributionText,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: MoneyfyPalette.tertiaryText,
+                style: context.typography.caption.copyWith(
+                  color: context.colors.neutralTextMuted,
                 ),
               ),
             ],
           ],
         ),
       ],
+    );
+  }
+}
+
+class _MetricPill extends StatelessWidget {
+  const _MetricPill({required this.label, required this.value});
+
+  final String label;
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.xs,
+        vertical: context.spacing.xs / 2,
+      ),
+      decoration: BoxDecoration(
+        color: context.colors.neutralSurfaceOverlay.withValues(alpha: 0.56),
+        borderRadius: BorderRadius.circular(context.radius.rPill),
+      ),
+      child: Text(
+        '$label ${_formatSignedCurrency(value)}',
+        style: context.typography.caption.copyWith(
+          color: _valueColor(context, value),
+        ),
+      ),
     );
   }
 }
@@ -780,7 +1026,7 @@ class _MetricRow extends StatelessWidget {
             children: [Text(label, style: theme.textTheme.titleMedium)],
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: context.spacing.sm),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -788,22 +1034,20 @@ class _MetricRow extends StatelessWidget {
               value,
               textAlign: TextAlign.right,
               style: theme.textTheme.titleMedium?.copyWith(
-                color: moneyfyValueColor(
-                  value,
-                  defaultColor: MoneyfyPalette.ink,
-                ),
+                color: _valueTextColor(context, value),
                 fontWeight: FontWeight.w600,
               ),
             ),
             if (trailing != null) ...[
-              const SizedBox(height: 3),
+              SizedBox(height: context.spacing.xs / 2),
               Text(
                 trailing!,
                 textAlign: TextAlign.right,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: moneyfyValueColor(
+                  color: _valueTextColor(
+                    context,
                     trailing!,
-                    defaultColor: MoneyfyPalette.tertiaryText,
+                    defaultColor: context.colors.neutralTextMuted,
                   ),
                 ),
               ),
@@ -1333,6 +1577,48 @@ enum _HoldingSortMode {
   final String label;
 }
 
+enum _HoldingFilterMode {
+  all('전체'),
+  realized('실현'),
+  loss('손실'),
+  income('수입');
+
+  const _HoldingFilterMode(this.label);
+
+  final String label;
+}
+
+List<_HoldingPerformance> _filterHoldingPerformance(
+  List<_HoldingPerformance> items,
+  _HoldingFilterMode filterMode,
+) {
+  switch (filterMode) {
+    case _HoldingFilterMode.all:
+      return items;
+    case _HoldingFilterMode.realized:
+      return items
+          .where((item) => item.realizedProfit.abs() > 0.000001)
+          .toList(growable: false);
+    case _HoldingFilterMode.loss:
+      return items
+          .where((item) => item.totalPerformance < -0.000001)
+          .toList(growable: false);
+    case _HoldingFilterMode.income:
+      return items
+          .where((item) => item.incomeAmount.abs() > 0.000001)
+          .toList(growable: false);
+  }
+}
+
+String _emptyHoldingFilterText(_HoldingFilterMode filterMode) {
+  return switch (filterMode) {
+    _HoldingFilterMode.all => '분석할 투자 거래가 아직 없습니다.',
+    _HoldingFilterMode.realized => '실현손익이 발생한 매도 거래가 아직 없습니다.',
+    _HoldingFilterMode.loss => '손실이 발생한 종목이 없습니다.',
+    _HoldingFilterMode.income => '배당이나 이자가 발생한 종목이 없습니다.',
+  };
+}
+
 double _toKrw(double amount, String currencyCode, double exchangeRate) {
   return currencyCode.toUpperCase() == 'USD' ? amount * exchangeRate : amount;
 }
@@ -1422,6 +1708,44 @@ String? _formatContribution(double amount, double basis) {
   if (basis.abs() < 0.000001) return null;
   final percent = amount / basis * 100;
   return '${percent.toStringAsFixed(1)}%';
+}
+
+Color _valueColor(BuildContext context, double value) {
+  if (value > 0) return context.colors.positiveOn;
+  if (value < 0) return context.colors.negativeOn;
+  return context.colors.neutralTextMuted;
+}
+
+Color _valueTextColor(
+  BuildContext context,
+  String value, {
+  Color? defaultColor,
+}) {
+  final trimmed = value.trim();
+  if (trimmed.startsWith('+')) return context.colors.positiveOn;
+  if (trimmed.startsWith('-') || trimmed.startsWith('−')) {
+    return context.colors.negativeOn;
+  }
+  if (trimmed.contains('-') || trimmed.contains('−')) {
+    return context.colors.negativeOn;
+  }
+  if (trimmed.contains('+')) return context.colors.positiveOn;
+  return defaultColor ?? context.colors.neutralText;
+}
+
+String _benchmarkNarrative(_AdvancedPerformanceReport report) {
+  final excessReturnText = _formatSignedPercentagePoint(report.excessReturn);
+  if (excessReturnText != null) {
+    return '${report.benchmarkLabel}보다 $excessReturnText';
+  }
+
+  final benchmarkReturnText = _formatSignedRatePercent(report.benchmarkReturn);
+  if (benchmarkReturnText != null) {
+    return '${report.benchmarkLabel} $benchmarkReturnText';
+  }
+
+  if (report.periodReturn == null) return '입출금 보정 수익률 데이터 부족';
+  return '시장 비교 데이터 부족';
 }
 
 String? _formatSignedPercent(double? percent) {
