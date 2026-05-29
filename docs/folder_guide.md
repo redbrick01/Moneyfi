@@ -59,6 +59,16 @@
 | `supabase_overview.md` | Supabase schema와 함수 구성 |
 | `design_system.md` | MONEYFY UI 원칙과 컴포넌트 규칙 |
 | `supabase_cli_runbook.md` | CLI로 원격 Supabase 운영하는 절차 |
+| `document_inventory.md` | 저장소 전체 Markdown 문서 색인 |
+
+`docs/` 안의 세부 문서는 아래 하위 폴더에 둡니다.
+
+| 경로 | 역할 |
+| --- | --- |
+| `docs/design/` | 디자인 적용 계획, UI snapshot 대상, 화면 포맷, polish 문서 |
+| `docs/features/` | 기능 개발, 단순 패치, 버그 픽스, 수동 테스트 작업 기록 |
+| `docs/guides/` | 작업 유형별 개발 프로세스 가이드 |
+| `docs/reports/` | 여러 작업을 묶은 통합 구현 보고서 |
 
 ## Platform Folders
 

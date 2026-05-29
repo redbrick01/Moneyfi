@@ -9,7 +9,7 @@
 관련 계획:
 
 - `docs/features/new_feature_development/investment_performance/plan.md`
-- `docs/transaction_ledger_redesign.md`
+- `docs/design/transaction_ledger_redesign.md`
 - `docs/data_and_sync.md`
 
 ## Scope

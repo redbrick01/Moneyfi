@@ -141,13 +141,14 @@ git push -u origin main
 ## Documentation
 
 - [Docs Index](docs/README.md)
+- [Document Inventory](docs/document_inventory.md)
 - [Project Overview](docs/project_overview.md)
 - [Folder Guide](docs/folder_guide.md)
 - [Data & Sync Flow](docs/data_and_sync.md)
 - [Supabase Overview](docs/supabase_overview.md)
 - [Design System](docs/design_system.md)
 - [Supabase CLI Runbook](docs/supabase_cli_runbook.md)
-- [UI Snapshot Targets](docs/ui_snapshot_targets.md)
+- [UI Snapshot Targets](docs/design/ui_snapshot_targets.md)
 
 ## Security Notes
 

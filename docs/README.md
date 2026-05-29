@@ -8,6 +8,7 @@
 | --- | --- |
 | [Project Overview](project_overview.md) | 앱 목적, 주요 기능, 런타임 구조, 개발 흐름 |
 | [Folder Guide](folder_guide.md) | 루트 및 주요 하위 폴더별 역할 |
+| [Document Inventory](document_inventory.md) | 저장소 전체 Markdown 문서 색인과 보관 규칙 |
 | [Development Process Guidelines](guides/development_process_guidelines.md) | 기능 설계, 구현, 검증, 보고서 작성 개발 규칙 |
 | [Simple Patch Process Guidelines](guides/simple_patch_process_guidelines.md) | 구조 개선, 보안/품질 강화, 테스트/CI 보강용 단순 패치 절차 |
 | [Bug Fix Process Guidelines](guides/bug_fix_process_guidelines.md) | 재현, 원인 분석, 회귀 테스트 중심 버그 픽스 절차 |
@@ -19,11 +20,11 @@
 | 문서 | 내용 |
 | --- | --- |
 | [Design System](design_system.md) | MONEYFY UI 원칙, 색상, 컴포넌트 사용 규칙 |
-| [getdesign Application Plan](getdesign_application_plan.md) | getdesign.md 기반 디자인 레퍼런스 적용 계획 |
-| [Main Asset Card Format](main_asset_card_format.md) | 메인 자산 카드 표시 포맷 |
-| [Transaction Ledger Redesign](transaction_ledger_redesign.md) | 거래 내역 화면 개편 방향 |
-| [UI Snapshot Targets](ui_snapshot_targets.md) | UI 회귀 확인용 주요 화면 목록 |
-| [Final Polish Pass](final_polish_pass.md) | 최종 UI 다듬기 체크리스트 |
+| [getdesign Application Plan](design/getdesign_application_plan.md) | getdesign.md 기반 디자인 레퍼런스 적용 계획 |
+| [Main Asset Card Format](design/main_asset_card_format.md) | 메인 자산 카드 표시 포맷 |
+| [Transaction Ledger Redesign](design/transaction_ledger_redesign.md) | 거래 내역 화면 개편 방향 |
+| [UI Snapshot Targets](design/ui_snapshot_targets.md) | UI 회귀 확인용 주요 화면 목록 |
+| [Final Polish Pass](design/final_polish_pass.md) | 최종 UI 다듬기 체크리스트 |
 
 ## Backend & Operations
 
@@ -32,8 +33,8 @@
 | [Data & Sync Flow](data_and_sync.md) | 데이터 모델과 앱/서버 간 동기화 설계 |
 | [Supabase Overview](supabase_overview.md) | Supabase 폴더와 원격 프로젝트 구성 요약 |
 | [Supabase CLI Runbook](supabase_cli_runbook.md) | Supabase CLI, 환경 변수, 마이그레이션 운영 절차 |
-| [Implementation Report 2026-05-24](implementation_report_20260524.md) | 디자인 시스템 적용, 스냅샷 계산 보정, 배포/검증 전체 보고서 |
-| [Cash Snapshot Profit Fix Report](cash_snapshot_profit_fix_report.md) | 현금 평가손익 0원 규칙 적용과 보정 검증 보고서 |
+| [Implementation Report 2026-05-24](reports/implementation_report_20260524.md) | 디자인 시스템 적용, 스냅샷 계산 보정, 배포/검증 전체 보고서 |
+| [Cash Snapshot Profit Fix Report](features/bug_fixes/cash_snapshot_profit_fix/test_report_20260524.md) | 현금 평가손익 0원 규칙 적용과 보정 검증 보고서 |
 
 ## Feature Work Docs
 
@@ -70,6 +71,10 @@
 | [Profile Management Minimum Plan](features/new_feature_development/profile_management_minimum/plan.md) | My 화면 이름 수정/비밀번호 변경 최소 계정 관리 계획 |
 | [Profile Management Minimum Verification Plan](features/new_feature_development/profile_management_minimum/verification_test_plan.md) | 프로필 관리 최소 구현 검증 절차 |
 | [Profile Management Minimum Test Report 2026-05-24](features/new_feature_development/profile_management_minimum/test_report_20260524.md) | 프로필 관리 최소 구현 검증 결과 |
+| [Risk-Adjusted Benchmark Performance Plan](features/new_feature_development/risk_adjusted_benchmark_performance/plan.md) | 리스크 조정 성과와 benchmark 비교 기능 계획 |
+| [Risk-Adjusted Benchmark Performance Verification Plan](features/new_feature_development/risk_adjusted_benchmark_performance/verification_test_plan.md) | 리스크 조정 성과 기능 검증 계획 |
+| [Sell Quantity Percentage Shortcuts Plan](features/new_feature_development/sell_quantity_percentage_shortcuts/plan.md) | 매도 수량 비율 shortcut 확장 계획 |
+| [Transaction Percentage Shortcuts Expansion Plan](features/new_feature_development/transaction_percentage_shortcuts_expansion/plan.md) | 거래 비율 shortcut 확장 계획 |
 
 ### Simple Patches
 
@@ -137,10 +142,17 @@
 | [Transaction Tab Null Row Crash Plan](features/bug_fixes/transaction_tab_null_row_crash/plan.md) | 거래 탭 목록 렌더링 중 nullable 원장 행으로 발생한 크래시 수정 계획 |
 | [Transaction Tab Null Row Crash Verification Plan](features/bug_fixes/transaction_tab_null_row_crash/verification_test_plan.md) | 거래 탭 null 행 크래시 회귀 검증 절차 |
 | [Transaction Tab Null Row Crash Test Report 2026-05-25](features/bug_fixes/transaction_tab_null_row_crash/test_report_20260525.md) | 거래 탭 null 행 크래시 수정 검증 결과 |
+| [Crypto Sell Quantity Precision Plan](features/bug_fixes/crypto_sell_quantity_precision/plan.md) | 암호화폐 매도 수량 정밀도 수정 계획 |
+| [Snapshot Detail Holdings Fix Report](features/bug_fixes/snapshot_detail_holdings_fix/implementation_report.md) | 스냅샷 상세 보유 행 표시 수정 보고서 |
+| [Analysis Detail Back Navigation Report](features/bug_fixes/analysis_detail_back_navigation/implementation_report_20260526.md) | 분석 상세 화면 뒤로가기 수정 보고서 |
+| [Ledger Realized PnL Moving Average Recompute Plan](features/bug_fixes/ledger_realized_pnl_moving_average_recompute/plan.md) | 이동평균 기준 실현손익 재계산 수정 계획 |
+| [USD Realized PnL Currency Basis Plan](features/bug_fixes/usd_realized_pnl_currency_basis/plan.md) | USD 실현손익 통화 기준 보정 계획 |
+| [USD Realized PnL Currency Basis Runbook](features/bug_fixes/usd_realized_pnl_currency_basis/operational_runbook.md) | USD 실현손익 보정 운영 절차 |
 
 ## Maintenance Rules
 
 - 새 문서를 추가하면 이 인덱스에 링크를 함께 추가합니다.
+- 저장소 전체 문서 위치를 바꾸거나 새 작업 묶음을 추가하면 [Document Inventory](document_inventory.md)도 함께 갱신합니다.
 - 기능별 문서는 작업 성격에 따라 `docs/features/new_feature_development/<work>/`, `docs/features/simple_patches/<work>/`, `docs/features/bug_fixes/<work>/` 아래에 모읍니다.
 - 공통 개발 규칙과 가이드는 `docs/guides/` 아래에 둡니다.
 - 임시 문서는 관련 기능 폴더 안에서 `tmp_` prefix를 붙이고, 루트 인덱스에는 직접 연결하지 않습니다.
