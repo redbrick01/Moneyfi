@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../services/company_news_summary_service.dart';
-import '../theme/moneyfy_theme.dart';
 
 class CompanyNewsSummaryCard extends StatelessWidget {
   const CompanyNewsSummaryCard({
@@ -20,7 +19,6 @@ class CompanyNewsSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final stockItems = items
         .where((item) => item.assetType == '주식')
         .toList(growable: false);
@@ -50,48 +48,54 @@ class CompanyNewsSummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(fontSize: 22),
-                  ),
+                  child: Text(title, style: context.typography.sectionTitle),
                 ),
                 if (hasHeaderMeta)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (latestSummaryDate != null)
-                        Text(
-                          latestSummaryDate,
-                          textAlign: TextAlign.right,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 11,
-                            color: MoneyfyPalette.tertiaryText,
+                  Flexible(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (latestSummaryDate != null)
+                          Flexible(
+                            child: Text(
+                              latestSummaryDate,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.right,
+                              style: context.typography.caption.copyWith(
+                                color: context.colors.neutralTextMuted,
+                              ),
+                            ),
                           ),
-                        ),
-                      if (latestSummaryDate != null && latestModel != null)
-                        const SizedBox(width: 8),
-                      if (latestModel != null)
-                        Text(
-                          latestModel,
-                          textAlign: TextAlign.right,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 11,
-                            color: MoneyfyPalette.tertiaryText,
+                        if (latestSummaryDate != null && latestModel != null)
+                          SizedBox(width: context.spacing.xs),
+                        if (latestModel != null)
+                          Flexible(
+                            child: Text(
+                              latestModel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.right,
+                              style: context.typography.caption.copyWith(
+                                color: context.colors.neutralTextMuted,
+                              ),
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.md),
             if (items.isEmpty)
               SizedBox(
                 width: double.infinity,
                 child: Text(
                   emptyMessage,
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: MoneyfyPalette.tertiaryText,
+                  style: context.typography.body.copyWith(
+                    color: context.colors.neutralTextMuted,
                   ),
                 ),
               )
@@ -110,10 +114,10 @@ class CompanyNewsSummaryCard extends StatelessWidget {
                     item: sections[sectionIndex].items[itemIndex],
                   ),
                   if (itemIndex != sections[sectionIndex].items.length - 1)
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.spacing.sm),
                 ],
                 if (sectionIndex != sections.length - 1)
-                  const SizedBox(height: 18),
+                  SizedBox(height: context.spacing.md + context.spacing.xs / 4),
               ],
           ],
         ),
@@ -194,7 +198,6 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final item = widget.item;
     final summaryText = '${item.summary?['company_summary'] ?? ''}'.trim();
     final issues = item.summary?['issues'] is List
@@ -224,7 +227,7 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
       onTap: () => setState(() => _isExpanded = !_isExpanded),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
         decoration: _companyInnerNewsCardDecoration(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,65 +235,63 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.xs + context.spacing.xs / 4,
+                    vertical: context.spacing.xs / 2,
                   ),
                   decoration: BoxDecoration(
                     color: context.surfaces.surfaceRaised,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(context.radius.rPill),
                   ),
                   child: Text(
                     item.symbol,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: MoneyfyPalette.ink,
+                    style: context.typography.caption.copyWith(
+                      color: context.colors.neutralText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
                 Expanded(
                   child: Text(
                     collapsedTitle.isEmpty ? item.symbol : collapsedTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: MoneyfyPalette.ink,
-                      fontSize: 15,
+                    style: context.typography.cardTitle.copyWith(
+                      color: context.colors.neutralText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.spacing.xs),
                 if ((item.summaryDate ?? '').isNotEmpty)
                   Text(
                     item.summaryDate!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+                    style: context.typography.caption.copyWith(
+                      color: context.colors.neutralTextMuted,
                     ),
                   ),
-                const SizedBox(width: 4),
+                SizedBox(width: context.spacing.xs / 2),
                 AnimatedRotation(
                   turns: _isExpanded ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
+                  duration: context.motion.fast,
                   child: const Icon(Icons.keyboard_arrow_down_rounded),
                 ),
               ],
             ),
             if (_isExpanded) ...[
               if (summaryText.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: context.spacing.sm),
                 Text(
                   summaryText,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontSize: 14,
-                    color: MoneyfyPalette.secondaryText,
+                  style: context.typography.body.copyWith(
+                    color: context.colors.neutralTextMuted,
                     height: 1.45,
                   ),
                 ),
               ],
               if (sortedIssues.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: context.spacing.sm),
                 for (var index = 0; index < sortedIssues.length; index++) ...[
                   _CompanyIssueRow(
                     issue: Map<String, dynamic>.from(
@@ -300,21 +301,23 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
                     ),
                   ),
                   if (index != sortedIssues.length - 1)
-                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: context.spacing.xs + context.spacing.xs / 4,
+                    ),
                 ],
               ],
               if (outlook.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: context.spacing.sm),
                 _CompanyOutlookRow(
                   label: '사업 영향',
                   value: '${outlook['business_impact'] ?? ''}'.trim(),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.spacing.xs),
                 _CompanyOutlookRow(
                   label: '시장 시각',
                   value: '${outlook['market_view'] ?? ''}'.trim(),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.spacing.xs),
                 _CompanyOutlookRow(
                   label: '체크 포인트',
                   value: '${outlook['watchpoint'] ?? ''}'.trim(),
@@ -335,15 +338,14 @@ class _CompanyIssueRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final title = '${issue['title'] ?? ''}'.trim();
     final summary = '${issue['summary'] ?? ''}'.trim();
     final importance = '${issue['importance'] ?? ''}'.trim();
-    final importanceStyle = _companyImportanceStyle(importance);
+    final importanceStyle = _companyImportanceStyle(context, importance);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(context.spacing.sm),
       decoration: BoxDecoration(
         color: context.surfaces.surfaceRaised,
         borderRadius: BorderRadius.circular(context.radius.rMd),
@@ -355,29 +357,33 @@ class _CompanyIssueRow extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(Icons.circle, size: 8, color: importanceStyle.color),
-                const SizedBox(width: 8),
+                Icon(
+                  Icons.circle,
+                  size: VisualSpec.icon.chipIcon / 2,
+                  color: importanceStyle.color,
+                ),
+                SizedBox(width: context.spacing.xs),
                 Expanded(
                   child: Text(
                     title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: MoneyfyPalette.ink,
+                    style: context.typography.body.copyWith(
+                      color: context.colors.neutralText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.xs,
+                    vertical: context.spacing.xs / 2,
                   ),
                   decoration: BoxDecoration(
                     color: importanceStyle.background,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(context.radius.rPill),
                   ),
                   child: Text(
                     importanceStyle.label,
-                    style: theme.textTheme.labelSmall?.copyWith(
+                    style: context.typography.caption.copyWith(
                       color: importanceStyle.color,
                       fontWeight: FontWeight.w600,
                     ),
@@ -386,11 +392,11 @@ class _CompanyIssueRow extends StatelessWidget {
               ],
             ),
           if (title.isNotEmpty && summary.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
             Text(
               summary,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: MoneyfyPalette.secondaryText,
+              style: context.typography.caption.copyWith(
+                color: context.colors.neutralTextMuted,
                 height: 1.45,
               ),
             ),
@@ -398,8 +404,8 @@ class _CompanyIssueRow extends StatelessWidget {
           if (title.isEmpty && summary.isNotEmpty)
             Text(
               summary,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: MoneyfyPalette.secondaryText,
+              style: context.typography.caption.copyWith(
+                color: context.colors.neutralTextMuted,
                 height: 1.45,
               ),
             ),
@@ -409,33 +415,36 @@ class _CompanyIssueRow extends StatelessWidget {
   }
 }
 
-_CompanyIssueImportanceStyle _companyImportanceStyle(String value) {
+_CompanyIssueImportanceStyle _companyImportanceStyle(
+  BuildContext context,
+  String value,
+) {
   final numeric = int.tryParse(value);
   if (numeric == 3) {
-    return const _CompanyIssueImportanceStyle(
+    return _CompanyIssueImportanceStyle(
       label: '높음',
-      color: MoneyfyPalette.errorStrong,
-      background: MoneyfyPalette.errorBg,
+      color: context.colors.negativeOn,
+      background: context.colors.neutralSurfaceBase,
     );
   }
   if (numeric == 2) {
-    return const _CompanyIssueImportanceStyle(
+    return _CompanyIssueImportanceStyle(
       label: '보통',
-      color: MoneyfyPalette.warningStrong,
-      background: Color(0xFFFFF3E0),
+      color: context.colors.warningOn,
+      background: context.colors.neutralSurfaceBase,
     );
   }
   if (numeric == 1) {
-    return const _CompanyIssueImportanceStyle(
+    return _CompanyIssueImportanceStyle(
       label: '낮음',
-      color: MoneyfyPalette.info,
-      background: MoneyfyPalette.infoBg,
+      color: context.colors.primary,
+      background: context.colors.neutralSurfaceBase,
     );
   }
-  return const _CompanyIssueImportanceStyle(
+  return _CompanyIssueImportanceStyle(
     label: '미정',
-    color: MoneyfyPalette.tertiaryText,
-    background: MoneyfyPalette.surface,
+    color: context.colors.neutralTextMuted,
+    background: context.colors.neutralSurfaceBase,
   );
 }
 
@@ -463,16 +472,15 @@ class _CompanyOutlookRow extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final theme = Theme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 74,
+          width: context.spacing.xxxl - context.spacing.xs + 2,
           child: Text(
             label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+            style: context.typography.caption.copyWith(
+              color: context.colors.neutralTextMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -480,8 +488,8 @@ class _CompanyOutlookRow extends StatelessWidget {
         Expanded(
           child: Text(
             value,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: MoneyfyPalette.secondaryText,
+            style: context.typography.caption.copyWith(
+              color: context.colors.neutralTextMuted,
               height: 1.45,
             ),
           ),

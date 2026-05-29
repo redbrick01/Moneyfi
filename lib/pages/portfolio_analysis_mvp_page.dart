@@ -6,7 +6,6 @@ import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
 import '../models/asset_item.dart';
-import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
 
@@ -186,7 +185,8 @@ class _HoldingConcentrationMetric {
   final double topHoldingRatio;
   final int hhiScore;
 
-  _HhiLevel get level => _HhiLevel.fromScore(hhiScore);
+  _HhiLevel level(BuildContext context) =>
+      _HhiLevel.fromScore(context, hhiScore);
 
   static _HoldingConcentrationMetric? fromAsset(AssetItem asset) {
     final holdings = asset.visibleHoldings
@@ -268,9 +268,10 @@ class _OverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final diagnosis = _PortfolioDiagnosis.fromData(data);
+    final diagnosis = _PortfolioDiagnosis.fromData(context, data);
     final drawdown = _calculateMaxDrawdown(data.riskSnapshots);
     final maxTargetGap = _maxTargetGap(data.assetMetrics);
+    final colors = context.colors;
 
     return _AnalysisSectionCard(
       title: '진단 요약',
@@ -286,12 +287,12 @@ class _OverviewCard extends StatelessWidget {
               _MetricTileData(
                 label: '총자산',
                 value: _formatAmount(data.totalValue),
-                accent: MoneyfyPalette.info,
+                accent: colors.primary,
               ),
               _MetricTileData(
                 label: '수익률',
                 value: _formatSignedPercent(data.totalProfitRate),
-                accent: _valueColor(data.totalProfit),
+                accent: _valueColor(context, data.totalProfit),
               ),
               _MetricTileData(
                 label: '목표 이탈',
@@ -299,10 +300,10 @@ class _OverviewCard extends StatelessWidget {
                     ? '미설정'
                     : '${maxTargetGap.abs().toStringAsFixed(1)}%p',
                 accent: maxTargetGap == null
-                    ? MoneyfyPalette.tertiaryText
+                    ? colors.neutralTextMuted
                     : maxTargetGap.abs() >= 5
-                    ? MoneyfyPalette.warningStrong
-                    : MoneyfyPalette.positive,
+                    ? colors.warningOn
+                    : colors.positiveOn,
               ),
               _MetricTileData(
                 label: '최대 낙폭',
@@ -310,8 +311,8 @@ class _OverviewCard extends StatelessWidget {
                     ? '데이터 부족'
                     : '${drawdown.percent.toStringAsFixed(1)}%',
                 accent: drawdown == null
-                    ? MoneyfyPalette.tertiaryText
-                    : MoneyfyPalette.negative,
+                    ? colors.neutralTextMuted
+                    : colors.negativeOn,
               ),
             ],
           ),
@@ -328,7 +329,7 @@ class _AttentionItemsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = _buildAttentionItems(data);
+    final items = _buildAttentionItems(context, data);
 
     return _AnalysisSectionCard(
       title: '주의가 필요한 항목',
@@ -500,7 +501,7 @@ class _DrawdownCard extends StatelessWidget {
     final drawdown = _calculateMaxDrawdown(data.riskSnapshots);
     final drawdownLevel = drawdown == null
         ? null
-        : _MddLevel.fromPercent(drawdown.percent);
+        : _MddLevel.fromPercent(context, drawdown.percent);
     return _AnalysisSectionCard(
       title: '최대 낙폭 MDD',
       subtitle: '스냅샷 고점 대비 가장 크게 하락한 구간',
@@ -518,7 +519,7 @@ class _DrawdownCard extends StatelessWidget {
                       '선택된 스냅샷 기간에서 고점 이후 가장 크게 내려간 구간을 계산합니다. 앱에서는 5%, 15%, 30%를 기준으로 체감 위험 구간을 나눕니다.',
                 ),
                 _MddGauge(percent: drawdown.percent, level: drawdownLevel!),
-                const SizedBox(height: 14),
+                SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
                 _MddDetailGrid(drawdown: drawdown),
               ],
             ),
@@ -551,7 +552,7 @@ class _ConcentrationCardState extends State<_ConcentrationCard> {
       (sum, item) => sum + math.pow(item.ratio / 100, 2).toDouble(),
     );
     final hhiScore = (hhi * 10000).round();
-    final hhiLevel = _HhiLevel.fromScore(hhiScore);
+    final hhiLevel = _HhiLevel.fromScore(context, hhiScore);
     final holdingMetrics = data.holdingConcentrationMetrics;
 
     return _AnalysisSectionCard(
@@ -565,7 +566,7 @@ class _ConcentrationCardState extends State<_ConcentrationCard> {
                 '미국 DOJ/FTC 시장집중도 기준을 차용해 포트폴리오 쏠림을 해석합니다. 1,000 이하는 낮음, 1,000~1,800은 중간, 1,800 초과는 높은 집중도로 봅니다.',
           ),
           _HhiGauge(score: hhiScore, level: hhiLevel),
-          const SizedBox(height: 18),
+          SizedBox(height: context.spacing.md + context.spacing.xs / 4),
           _MetricGrid(
             metrics: [
               _MetricTileData(
@@ -582,19 +583,19 @@ class _ConcentrationCardState extends State<_ConcentrationCard> {
                 label: '1위 자산',
                 value: '${topOne.toStringAsFixed(1)}%',
                 accent: topOne >= 50
-                    ? MoneyfyPalette.warningStrong
-                    : MoneyfyPalette.info,
+                    ? context.colors.warningOn
+                    : context.colors.primary,
               ),
               _MetricTileData(
                 label: '상위 3개',
                 value: '${topThree.toStringAsFixed(1)}%',
                 accent: topThree >= 70
-                    ? MoneyfyPalette.warningStrong
-                    : MoneyfyPalette.info,
+                    ? context.colors.warningOn
+                    : context.colors.primary,
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          SizedBox(height: context.spacing.md + context.spacing.xs / 4),
           if (holdingMetrics.isNotEmpty) ...[
             _ExpandableSubsectionHeader(
               title: '자산 내부 홀딩 집중도',
@@ -610,7 +611,7 @@ class _ConcentrationCardState extends State<_ConcentrationCard> {
             AnimatedCrossFade(
               firstChild: const SizedBox(width: double.infinity),
               secondChild: Padding(
-                padding: const EdgeInsets.only(top: 12),
+                padding: EdgeInsets.only(top: context.spacing.sm),
                 child: Column(
                   children: holdingMetrics
                       .take(6)
@@ -674,10 +675,10 @@ class _DiagnosisHero extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.spacing.md),
       decoration: BoxDecoration(
         color: diagnosis.background,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(context.radius.rMd),
         border: Border.all(color: diagnosis.color.withValues(alpha: 0.24)),
       ),
       child: Column(
@@ -690,23 +691,23 @@ class _DiagnosisHero extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: MoneyfyPalette.surface,
-                  borderRadius: BorderRadius.circular(14),
+                  color: context.colors.neutralSurfaceBase,
+                  borderRadius: BorderRadius.circular(context.radius.rMd),
                   border: Border.all(
                     color: diagnosis.color.withValues(alpha: 0.18),
                   ),
                 ),
                 child: Icon(diagnosis.icon, color: diagnosis.color),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: context.spacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.xs + context.spacing.xs / 4,
+                  vertical: context.spacing.xs - context.spacing.xs / 4,
                 ),
                 decoration: BoxDecoration(
-                  color: MoneyfyPalette.surface,
-                  borderRadius: BorderRadius.circular(999),
+                  color: context.colors.neutralSurfaceBase,
+                  borderRadius: BorderRadius.circular(context.radius.rPill),
                   border: Border.all(
                     color: diagnosis.color.withValues(alpha: 0.24),
                   ),
@@ -721,11 +722,11 @@ class _DiagnosisHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
           Text(
             diagnosis.message,
             style: context.typography.sectionTitle.copyWith(
-              color: MoneyfyPalette.ink,
+              color: context.colors.neutralText,
             ),
           ),
         ],
@@ -758,14 +759,14 @@ class _AttentionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: context.spacing.sm),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
         decoration: BoxDecoration(
-          color: MoneyfyPalette.surfaceMuted,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: MoneyfyPalette.borderNeutral),
+          color: context.colors.neutralSurfaceRaised,
+          borderRadius: BorderRadius.circular(context.radius.rMd),
+          border: Border.all(color: context.colors.neutralOutline),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -775,13 +776,13 @@ class _AttentionRow extends StatelessWidget {
               height: 38,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: MoneyfyPalette.surface,
-                borderRadius: BorderRadius.circular(13),
+                color: context.colors.neutralSurfaceBase,
+                borderRadius: BorderRadius.circular(context.radius.rMd),
                 border: Border.all(color: item.color.withValues(alpha: 0.20)),
               ),
               child: Icon(item.icon, color: item.color, size: 22),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -792,18 +793,18 @@ class _AttentionRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
                   Text(
                     item.body,
                     style: context.typography.meta.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+                      color: context.colors.neutralTextMuted,
                       height: 1.35,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 108),
               child: FittedBox(
@@ -865,22 +866,22 @@ class _InlineNotice extends StatelessWidget {
           height: 42,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: MoneyfyPalette.infoBg,
-            borderRadius: BorderRadius.circular(14),
+            color: context.colors.primaryContainer,
+            borderRadius: BorderRadius.circular(context.radius.rMd),
           ),
-          child: Icon(icon, color: MoneyfyPalette.info),
+          child: Icon(icon, color: context.colors.primary),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: context.spacing.sm + context.spacing.xs / 4),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: context.typography.cardTitle),
-              const SizedBox(height: 6),
+              SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
               Text(
                 body,
                 style: context.typography.body.copyWith(
-                  color: MoneyfyPalette.tertiaryText,
+                  color: context.colors.neutralTextMuted,
                 ),
               ),
             ],
@@ -899,11 +900,11 @@ class _SectionExplanation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: context.spacing.md),
       child: Text(
         text,
         style: context.typography.body.copyWith(
-          color: MoneyfyPalette.tertiaryText,
+          color: context.colors.neutralTextMuted,
           height: 1.35,
         ),
       ),
@@ -930,14 +931,14 @@ class _ExpandableSubsectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(context.radius.rMd),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
         decoration: BoxDecoration(
-          color: MoneyfyPalette.surfaceMuted,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: MoneyfyPalette.borderNeutral),
+          color: context.colors.neutralSurfaceRaised,
+          borderRadius: BorderRadius.circular(context.radius.rMd),
+          border: Border.all(color: context.colors.neutralOutline),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -956,41 +957,43 @@ class _ExpandableSubsectionHeader extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: context.spacing.xs),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.spacing.xs,
+                          vertical: context.spacing.xs / 2,
                         ),
                         decoration: BoxDecoration(
-                          color: MoneyfyPalette.surface,
-                          borderRadius: BorderRadius.circular(999),
+                          color: context.colors.neutralSurfaceBase,
+                          borderRadius: BorderRadius.circular(
+                            context.radius.rPill,
+                          ),
                           border: Border.all(
-                            color: MoneyfyPalette.borderNeutral,
+                            color: context.colors.neutralOutline,
                           ),
                         ),
                         child: Text(
                           '$count',
                           style: context.typography.meta.copyWith(
-                            color: MoneyfyPalette.tertiaryText,
+                            color: context.colors.neutralTextMuted,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
                   Text(
                     subtitle,
                     style: context.typography.meta.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+                      color: context.colors.neutralTextMuted,
                       height: 1.35,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.sm),
             AnimatedRotation(
               turns: isExpanded ? 0.5 : 0,
               duration: const Duration(milliseconds: 180),
@@ -1013,7 +1016,7 @@ class _MetricGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final gap = 10.0;
+        final gap = context.spacing.xs + context.spacing.xs / 4;
         final columns = ((constraints.maxWidth + gap) / (140 + gap))
             .floor()
             .clamp(1, 3);
@@ -1048,11 +1051,11 @@ class _HhiGauge extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: MoneyfyPalette.borderNeutral),
+        color: context.colors.neutralSurfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(color: context.colors.neutralOutline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1067,10 +1070,10 @@ class _HhiGauge extends StatelessWidget {
                     Text(
                       '현재 HHI',
                       style: context.typography.meta.copyWith(
-                        color: MoneyfyPalette.tertiaryText,
+                        color: context.colors.neutralTextMuted,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: context.spacing.xs / 2),
                     Text(
                       '$score',
                       style: context.typography.pageTitle.copyWith(
@@ -1081,13 +1084,13 @@ class _HhiGauge extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.xs + context.spacing.xs / 4,
+                  vertical: context.spacing.xs - context.spacing.xs / 4,
                 ),
                 decoration: BoxDecoration(
                   color: level.background,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(context.radius.rPill),
                   border: Border.all(
                     color: level.color.withValues(alpha: 0.28),
                   ),
@@ -1102,7 +1105,7 @@ class _HhiGauge extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
           LayoutBuilder(
             builder: (context, constraints) {
               const markerSize = 16.0;
@@ -1124,28 +1127,30 @@ class _HhiGauge extends StatelessWidget {
                       width: trackWidth,
                       top: 17,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: const Row(
+                        borderRadius: BorderRadius.circular(
+                          context.radius.rPill,
+                        ),
+                        child: Row(
                           children: [
                             Expanded(
                               flex: 10,
                               child: ColoredBox(
-                                color: MoneyfyPalette.successBg,
-                                child: SizedBox(height: 10),
+                                color: context.colors.positiveContainer,
+                                child: const SizedBox(height: 10),
                               ),
                             ),
                             Expanded(
                               flex: 8,
                               child: ColoredBox(
-                                color: Color(0xFFFFF4D8),
-                                child: SizedBox(height: 10),
+                                color: context.colors.warningContainer,
+                                child: const SizedBox(height: 10),
                               ),
                             ),
                             Expanded(
                               flex: 82,
                               child: ColoredBox(
-                                color: MoneyfyPalette.errorBg,
-                                child: SizedBox(height: 10),
+                                color: context.colors.negativeContainer,
+                                child: const SizedBox(height: 10),
                               ),
                             ),
                           ],
@@ -1176,7 +1181,7 @@ class _HhiGauge extends StatelessWidget {
                               color: level.color,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: MoneyfyPalette.surface,
+                                color: context.colors.neutralSurfaceBase,
                                 width: 3,
                               ),
                             ),
@@ -1204,13 +1209,13 @@ class _HhiGauge extends StatelessWidget {
           ),
           Row(
             children: [
-              const SizedBox(width: 8),
+              SizedBox(width: context.spacing.xs),
               Expanded(
                 flex: 10,
                 child: Text(
                   '낮음',
                   style: context.typography.meta.copyWith(
-                    color: MoneyfyPalette.positive,
+                    color: context.colors.positiveOn,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1221,7 +1226,7 @@ class _HhiGauge extends StatelessWidget {
                   '중간',
                   textAlign: TextAlign.center,
                   style: context.typography.meta.copyWith(
-                    color: MoneyfyPalette.warningStrong,
+                    color: context.colors.warningOn,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1232,12 +1237,12 @@ class _HhiGauge extends StatelessWidget {
                   '높음',
                   textAlign: TextAlign.right,
                   style: context.typography.meta.copyWith(
-                    color: MoneyfyPalette.negative,
+                    color: context.colors.negativeOn,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.spacing.xs),
             ],
           ),
         ],
@@ -1259,11 +1264,11 @@ class _MddGauge extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: MoneyfyPalette.borderNeutral),
+        color: context.colors.neutralSurfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(color: context.colors.neutralOutline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1278,10 +1283,10 @@ class _MddGauge extends StatelessWidget {
                     Text(
                       '현재 MDD',
                       style: context.typography.meta.copyWith(
-                        color: MoneyfyPalette.tertiaryText,
+                        color: context.colors.neutralTextMuted,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: context.spacing.xs / 2),
                     Text(
                       '${percent.toStringAsFixed(1)}%',
                       style: context.typography.pageTitle.copyWith(
@@ -1292,13 +1297,13 @@ class _MddGauge extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.xs + context.spacing.xs / 4,
+                  vertical: context.spacing.xs - context.spacing.xs / 4,
                 ),
                 decoration: BoxDecoration(
                   color: level.background,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(context.radius.rPill),
                   border: Border.all(
                     color: level.color.withValues(alpha: 0.28),
                   ),
@@ -1313,37 +1318,39 @@ class _MddGauge extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
           LayoutBuilder(
             builder: (context, constraints) {
-              const segments = [
+              final segments = [
                 _GaugeSegment(
                   start: 0,
                   end: 0.10,
                   label: '낮음',
-                  color: MoneyfyPalette.successBg,
-                  textColor: MoneyfyPalette.positive,
+                  color: context.colors.positiveContainer,
+                  textColor: context.colors.positiveOn,
                 ),
                 _GaugeSegment(
                   start: 0.10,
                   end: 0.30,
                   label: '주의',
-                  color: Color(0xFFFFF4D8),
-                  textColor: MoneyfyPalette.warningStrong,
+                  color: context.colors.warningContainer,
+                  textColor: context.colors.warningOn,
                 ),
                 _GaugeSegment(
                   start: 0.30,
                   end: 0.60,
                   label: '높음',
-                  color: Color(0xFFFFE7D6),
-                  textColor: MoneyfyPalette.errorSoft,
+                  color: context.colors.negativeContainer.withValues(
+                    alpha: 0.72,
+                  ),
+                  textColor: context.colors.negativeOn,
                 ),
                 _GaugeSegment(
                   start: 0.60,
                   end: 1,
                   label: '심각',
-                  color: MoneyfyPalette.errorBg,
-                  textColor: MoneyfyPalette.negative,
+                  color: context.colors.negativeContainer,
+                  textColor: context.colors.negativeOn,
                 ),
               ];
               const markerSize = 16.0;
@@ -1389,7 +1396,9 @@ class _MddGauge extends StatelessWidget {
                           width: trackWidth,
                           top: 17,
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
+                            borderRadius: BorderRadius.circular(
+                              context.radius.rPill,
+                            ),
                             child: SizedBox(
                               height: 10,
                               child: Stack(
@@ -1439,7 +1448,7 @@ class _MddGauge extends StatelessWidget {
                                   color: level.color,
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: MoneyfyPalette.surface,
+                                    color: context.colors.neutralSurfaceBase,
                                     width: 3,
                                   ),
                                 ),
@@ -1501,11 +1510,11 @@ class _MddDetailGrid extends StatelessWidget {
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
           decoration: BoxDecoration(
-            color: MoneyfyPalette.surfaceMuted,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: MoneyfyPalette.borderNeutral),
+            color: context.colors.neutralSurfaceRaised,
+            borderRadius: BorderRadius.circular(context.radius.rMd),
+            border: Border.all(color: context.colors.neutralOutline),
           ),
           child: Row(
             children: [
@@ -1515,8 +1524,8 @@ class _MddDetailGrid extends StatelessWidget {
               Container(
                 width: 1,
                 height: 44,
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-                color: MoneyfyPalette.borderNeutral,
+                margin: EdgeInsets.symmetric(horizontal: context.spacing.sm),
+                color: context.colors.neutralOutline,
               ),
               Expanded(
                 child: _DateMetricText(label: '저점', value: drawdown.troughDate),
@@ -1524,11 +1533,11 @@ class _MddDetailGrid extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
         _CompactMetricBlock(
           label: '하락 금액',
           value: _formatSignedAmount(drawdown.amount),
-          color: MoneyfyPalette.negative,
+          color: context.colors.negativeOn,
         ),
       ],
     );
@@ -1565,17 +1574,17 @@ class _DateMetricText extends StatelessWidget {
         Text(
           label,
           style: context.typography.meta.copyWith(
-            color: MoneyfyPalette.tertiaryText,
+            color: context.colors.neutralTextMuted,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
           child: Text(
             value,
             style: context.typography.body.copyWith(
-              color: MoneyfyPalette.secondaryText,
+              color: context.colors.neutralText,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1593,8 +1602,8 @@ class _GaugeThresholdLine extends StatelessWidget {
     return Container(
       width: 2,
       decoration: BoxDecoration(
-        color: MoneyfyPalette.border,
-        borderRadius: BorderRadius.circular(999),
+        color: context.colors.neutralOutline,
+        borderRadius: BorderRadius.circular(context.radius.rPill),
       ),
     );
   }
@@ -1616,10 +1625,9 @@ class _GaugeThresholdLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const labelWidth = 52.0;
-    final resolvedLeft = (left - (labelWidth / 2)).clamp(
-      0.0,
-      math.max(0.0, width - labelWidth),
-    ).toDouble();
+    final resolvedLeft = (left - (labelWidth / 2))
+        .clamp(0.0, math.max(0.0, width - labelWidth))
+        .toDouble();
 
     return Positioned(
       left: resolvedLeft,
@@ -1628,9 +1636,8 @@ class _GaugeThresholdLabel extends StatelessWidget {
       child: Text(
         label,
         textAlign: TextAlign.center,
-        style: context.typography.meta.copyWith(
-          color: MoneyfyPalette.tertiaryText,
-          fontSize: 11,
+        style: context.typography.caption.copyWith(
+          color: context.colors.neutralTextMuted,
         ),
       ),
     );
@@ -1648,25 +1655,25 @@ class _HhiLevel {
   final Color color;
   final Color background;
 
-  static _HhiLevel fromScore(int score) {
+  static _HhiLevel fromScore(BuildContext context, int score) {
     if (score <= 1000) {
-      return const _HhiLevel(
+      return _HhiLevel(
         label: '낮은 집중',
-        color: MoneyfyPalette.positive,
-        background: MoneyfyPalette.successBg,
+        color: context.colors.positiveOn,
+        background: context.colors.neutralSurfaceBase,
       );
     }
     if (score <= 1800) {
-      return const _HhiLevel(
+      return _HhiLevel(
         label: '중간 집중',
-        color: MoneyfyPalette.warningStrong,
-        background: Color(0xFFFFF4D8),
+        color: context.colors.warningOn,
+        background: context.colors.neutralSurfaceBase,
       );
     }
-    return const _HhiLevel(
+    return _HhiLevel(
       label: '높은 집중',
-      color: MoneyfyPalette.negative,
-      background: MoneyfyPalette.errorBg,
+      color: context.colors.negativeOn,
+      background: context.colors.neutralSurfaceBase,
     );
   }
 }
@@ -1682,33 +1689,33 @@ class _MddLevel {
   final Color color;
   final Color background;
 
-  static _MddLevel fromPercent(double percent) {
+  static _MddLevel fromPercent(BuildContext context, double percent) {
     final drawdown = percent.abs();
     if (drawdown <= 5) {
-      return const _MddLevel(
+      return _MddLevel(
         label: '낮은 낙폭',
-        color: MoneyfyPalette.positive,
-        background: MoneyfyPalette.successBg,
+        color: context.colors.positiveOn,
+        background: context.colors.neutralSurfaceBase,
       );
     }
     if (drawdown <= 15) {
-      return const _MddLevel(
+      return _MddLevel(
         label: '주의 구간',
-        color: MoneyfyPalette.warningStrong,
-        background: Color(0xFFFFF4D8),
+        color: context.colors.warningOn,
+        background: context.colors.neutralSurfaceBase,
       );
     }
     if (drawdown <= 30) {
-      return const _MddLevel(
+      return _MddLevel(
         label: '높은 낙폭',
-        color: MoneyfyPalette.errorSoft,
-        background: Color(0xFFFFE7D6),
+        color: context.colors.negativeOn,
+        background: context.colors.neutralSurfaceBase,
       );
     }
-    return const _MddLevel(
+    return _MddLevel(
       label: '심각한 낙폭',
-      color: MoneyfyPalette.negative,
-      background: MoneyfyPalette.errorBg,
+      color: context.colors.negativeOn,
+      background: context.colors.neutralSurfaceBase,
     );
   }
 }
@@ -1734,11 +1741,14 @@ class _MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 86),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.sm,
+        vertical: context.spacing.xs + context.spacing.xs / 4,
+      ),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: MoneyfyPalette.borderNeutral),
+        color: context.colors.neutralSurfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(color: context.colors.neutralOutline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1747,12 +1757,12 @@ class _MetricTile extends StatelessWidget {
           Text(
             data.label,
             style: context.typography.meta.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -1782,10 +1792,10 @@ class _RebalanceRow extends StatelessWidget {
         ? '축소 후보'
         : '확대 후보';
     final color = item.targetGap.abs() < 1
-        ? MoneyfyPalette.tertiaryText
+        ? context.colors.neutralTextMuted
         : item.targetGap > 0
-        ? MoneyfyPalette.warningStrong
-        : MoneyfyPalette.info;
+        ? context.colors.warningOn
+        : context.colors.primary;
     return _AnalysisRowShell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1796,13 +1806,13 @@ class _RebalanceRow extends StatelessWidget {
             valueColor: color,
             dense: true,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.xs),
           _ProgressLine(gapPercent: item.targetGap, color: color),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.xs),
           Text(
             '현재 ${item.ratio.toStringAsFixed(1)}% · 목표 ${item.targetRatio!.toStringAsFixed(1)}% · 차이 ${item.targetGap >= 0 ? '+' : ''}${item.targetGap.toStringAsFixed(1)}%p (${_formatSignedAmount(gapAmount)})',
             style: context.typography.meta.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
             ),
           ),
         ],
@@ -1828,16 +1838,16 @@ class _ContributionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _valueColor(value);
+    final color = _valueColor(context, value);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: context.spacing.sm),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
         decoration: BoxDecoration(
-          color: MoneyfyPalette.surfaceMuted,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: MoneyfyPalette.borderNeutral),
+          color: context.colors.neutralSurfaceRaised,
+          borderRadius: BorderRadius.circular(context.radius.rMd),
+          border: Border.all(color: context.colors.neutralOutline),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1850,31 +1860,31 @@ class _ContributionRow extends StatelessWidget {
                   height: 32,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: MoneyfyPalette.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: MoneyfyPalette.borderNeutral),
+                    color: context.colors.neutralSurfaceBase,
+                    borderRadius: BorderRadius.circular(context.radius.rSm),
+                    border: Border.all(color: context.colors.neutralOutline),
                   ),
                   child: Text(
                     '$rank',
                     style: context.typography.meta.copyWith(
-                      color: MoneyfyPalette.secondaryText,
+                      color: context.colors.neutralText,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.sm),
                 Expanded(
                   child: Text(
                     label,
                     style: context.typography.body.copyWith(
-                      color: MoneyfyPalette.secondaryText,
+                      color: context.colors.neutralText,
                       fontWeight: FontWeight.w700,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.sm),
                 Text(
                   _formatSignedAmount(value),
                   style: context.typography.body.copyWith(
@@ -1884,7 +1894,7 @@ class _ContributionRow extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.sm),
             Row(
               children: [
                 Expanded(
@@ -1894,7 +1904,7 @@ class _ContributionRow extends StatelessWidget {
                     color: color,
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
                 Expanded(
                   child: _CompactMetricBlock(
                     label: '기여율',
@@ -1904,11 +1914,11 @@ class _ContributionRow extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.xs),
             Text(
               value >= 0 ? '전체 손익을 끌어올린 자산입니다.' : '전체 손익을 낮춘 자산입니다.',
               style: context.typography.meta.copyWith(
-                color: MoneyfyPalette.tertiaryText,
+                color: context.colors.neutralTextMuted,
               ),
             ),
           ],
@@ -1931,16 +1941,18 @@ class _CauseRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _valueColor(value);
+    final color = _valueColor(context, value);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(
+        bottom: context.spacing.xs + context.spacing.xs / 4,
+      ),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
         decoration: BoxDecoration(
-          color: MoneyfyPalette.surfaceMuted,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: MoneyfyPalette.borderNeutral),
+          color: context.colors.neutralSurfaceRaised,
+          borderRadius: BorderRadius.circular(context.radius.rMd),
+          border: Border.all(color: context.colors.neutralOutline),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1948,20 +1960,20 @@ class _CauseRow extends StatelessWidget {
             Text(
               label,
               style: context.typography.body.copyWith(
-                color: MoneyfyPalette.secondaryText,
+                color: context.colors.neutralText,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.spacing.xs),
             Text(
               _formatSignedAmount(value),
               style: context.typography.cardTitle.copyWith(color: color),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
             Text(
               note,
               style: context.typography.meta.copyWith(
-                color: MoneyfyPalette.tertiaryText,
+                color: context.colors.neutralTextMuted,
               ),
             ),
           ],
@@ -1978,19 +1990,19 @@ class _HoldingConcentrationRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final level = metric.level;
+    final level = metric.level(context);
     final topHoldingColor = metric.topHoldingRatio >= 50
-        ? MoneyfyPalette.warningStrong
-        : MoneyfyPalette.info;
+        ? context.colors.warningOn
+        : context.colors.primary;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: context.spacing.sm),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.spacing.md),
         decoration: BoxDecoration(
-          color: MoneyfyPalette.surfaceMuted,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: MoneyfyPalette.borderNeutral),
+          color: context.colors.neutralSurfaceRaised,
+          borderRadius: BorderRadius.circular(context.radius.rMd),
+          border: Border.all(color: context.colors.neutralOutline),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2002,22 +2014,22 @@ class _HoldingConcentrationRow extends StatelessWidget {
                   child: Text(
                     metric.assetLabel,
                     style: context.typography.body.copyWith(
-                      color: MoneyfyPalette.secondaryText,
+                      color: context.colors.neutralText,
                       fontWeight: FontWeight.w700,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 5,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.xs + 1,
+                    vertical: context.spacing.xs / 2 + 1,
                   ),
                   decoration: BoxDecoration(
                     color: level.background,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(context.radius.rPill),
                     border: Border.all(
                       color: level.color.withValues(alpha: 0.28),
                     ),
@@ -2032,7 +2044,7 @@ class _HoldingConcentrationRow extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
             Row(
               children: [
                 Expanded(
@@ -2042,7 +2054,7 @@ class _HoldingConcentrationRow extends StatelessWidget {
                     color: level.color,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: context.spacing.sm),
                 Expanded(
                   child: _CompactMetricBlock(
                     label: '1위 비중',
@@ -2052,14 +2064,17 @@ class _HoldingConcentrationRow extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.sm),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing.sm,
+                vertical: context.spacing.xs + context.spacing.xs / 4,
+              ),
               decoration: BoxDecoration(
-                color: MoneyfyPalette.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: MoneyfyPalette.borderNeutral),
+                color: context.colors.neutralSurfaceBase,
+                borderRadius: BorderRadius.circular(context.radius.rMd),
+                border: Border.all(color: context.colors.neutralOutline),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2067,14 +2082,14 @@ class _HoldingConcentrationRow extends StatelessWidget {
                   Text(
                     '1위 홀딩',
                     style: context.typography.meta.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+                      color: context.colors.neutralTextMuted,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.spacing.xs / 2),
                   Text(
                     metric.topHoldingLabel,
                     style: context.typography.body.copyWith(
-                      color: MoneyfyPalette.secondaryText,
+                      color: context.colors.neutralText,
                       fontWeight: FontWeight.w700,
                     ),
                     maxLines: 1,
@@ -2083,11 +2098,11 @@ class _HoldingConcentrationRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
             Text(
               '홀딩 ${metric.holdingCount}개 기준으로 계산',
               style: context.typography.meta.copyWith(
-                color: MoneyfyPalette.tertiaryText,
+                color: context.colors.neutralTextMuted,
               ),
             ),
           ],
@@ -2111,11 +2126,14 @@ class _CompactMetricBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.sm,
+        vertical: context.spacing.xs + context.spacing.xs / 4,
+      ),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: MoneyfyPalette.borderNeutral),
+        color: context.colors.neutralSurfaceBase,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(color: context.colors.neutralOutline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2123,12 +2141,12 @@ class _CompactMetricBlock extends StatelessWidget {
           Text(
             label,
             style: context.typography.meta.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -2152,7 +2170,12 @@ class _AnalysisRowShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: Padding(padding: const EdgeInsets.only(bottom: 14), child: child),
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: context.spacing.sm + context.spacing.xs / 4,
+        ),
+        child: child,
+      ),
     );
   }
 }
@@ -2173,10 +2196,10 @@ class _InfoPairRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final labelStyle = context.typography.body.copyWith(
-      color: MoneyfyPalette.secondaryText,
+      color: context.colors.neutralText,
     );
     final valueStyle = context.typography.body.copyWith(
-      color: valueColor ?? MoneyfyPalette.ink,
+      color: valueColor ?? context.colors.neutralText,
       fontWeight: FontWeight.w700,
     );
 
@@ -2192,7 +2215,7 @@ class _InfoPairRow extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: context.spacing.xs / 2),
               Text(value, style: valueStyle, maxLines: 2),
             ],
           );
@@ -2209,7 +2232,7 @@ class _InfoPairRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
             Flexible(
               child: Text(
                 value,
@@ -2250,10 +2273,10 @@ class _ProgressLine extends StatelessWidget {
                 right: 0,
                 top: 3,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: const ColoredBox(
-                    color: MoneyfyPalette.borderNeutral,
-                    child: SizedBox(height: 8),
+                  borderRadius: BorderRadius.circular(context.radius.rPill),
+                  child: ColoredBox(
+                    color: context.colors.neutralOutline,
+                    child: const SizedBox(height: 8),
                   ),
                 ),
               ),
@@ -2262,7 +2285,7 @@ class _ProgressLine extends StatelessWidget {
                 top: 3,
                 width: fillWidth,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(context.radius.rPill),
                   child: ColoredBox(
                     color: color,
                     child: const SizedBox(height: 8),
@@ -2276,8 +2299,8 @@ class _ProgressLine extends StatelessWidget {
                 child: Container(
                   width: 2,
                   decoration: BoxDecoration(
-                    color: MoneyfyPalette.secondaryText.withValues(alpha: 0.42),
-                    borderRadius: BorderRadius.circular(999),
+                    color: context.colors.neutralText.withValues(alpha: 0.42),
+                    borderRadius: BorderRadius.circular(context.radius.rPill),
                   ),
                 ),
               ),
@@ -2306,64 +2329,68 @@ class _PortfolioDiagnosis {
   final Color color;
   final Color background;
 
-  static _PortfolioDiagnosis fromData(_PortfolioAnalysisMvpData data) {
+  static _PortfolioDiagnosis fromData(
+    BuildContext context,
+    _PortfolioAnalysisMvpData data,
+  ) {
     final topThreeRatio = _topThreeRatio(data.assetMetrics);
     final hhiScore = _hhiScore(data.assetMetrics);
     final drawdown = _calculateMaxDrawdown(data.riskSnapshots);
     final maxTargetGap = _maxTargetGap(data.assetMetrics)?.abs();
     final drawdownAbs = drawdown?.percent.abs() ?? 0;
+    final colors = context.colors;
 
     if (topThreeRatio >= 80 || hhiScore > 2500 || drawdownAbs >= 30) {
-      return const _PortfolioDiagnosis(
+      return _PortfolioDiagnosis(
         label: '위험',
         message: '포트폴리오 쏠림이나 낙폭을 먼저 점검해야 해요.',
         reason: '상위 자산 비중, 집중도, 최근 낙폭 중 하나 이상이 높은 구간에 있어요.',
         icon: Icons.warning_amber_rounded,
-        color: MoneyfyPalette.negative,
-        background: MoneyfyPalette.errorBg,
+        color: colors.negativeOn,
+        background: colors.neutralSurfaceRaised,
       );
     }
 
     if (topThreeRatio >= 70 || hhiScore > 1800 || drawdownAbs >= 15) {
-      return const _PortfolioDiagnosis(
+      return _PortfolioDiagnosis(
         label: '주의',
         message: '상위 자산 비중이 높아 변동성에 취약할 수 있어요.',
         reason: '집중도와 낙폭 지표를 함께 보고, 목표 비중과 크게 벗어난 자산이 있는지 확인해 보세요.',
         icon: Icons.report_problem_outlined,
-        color: MoneyfyPalette.warningStrong,
-        background: Color(0xFFFFF4D8),
+        color: colors.warningOn,
+        background: colors.neutralSurfaceRaised,
       );
     }
 
     if (maxTargetGap != null && maxTargetGap >= 5) {
-      return const _PortfolioDiagnosis(
+      return _PortfolioDiagnosis(
         label: '주의',
         message: '목표 비중과 크게 벗어난 자산이 있어요.',
         reason: '전체 위험은 높지 않지만, 목표 대비 초과 또는 부족한 자산을 조정 후보로 점검할 수 있어요.',
         icon: Icons.tune_rounded,
-        color: MoneyfyPalette.warningStrong,
-        background: Color(0xFFFFF4D8),
+        color: colors.warningOn,
+        background: colors.neutralSurfaceRaised,
       );
     }
 
     if (data.totalProfit < 0) {
-      return const _PortfolioDiagnosis(
+      return _PortfolioDiagnosis(
         label: '점검',
         message: '손실 자산이 전체 성과를 낮추고 있어요.',
         reason: '집중도 위험은 제한적이지만, 성과 기여도에서 손실 영향이 큰 자산을 확인해 보세요.',
         icon: Icons.query_stats_rounded,
-        color: MoneyfyPalette.info,
-        background: MoneyfyPalette.infoBg,
+        color: colors.primary,
+        background: colors.neutralSurfaceRaised,
       );
     }
 
-    return const _PortfolioDiagnosis(
+    return _PortfolioDiagnosis(
       label: '양호',
       message: '큰 위험 신호는 낮은 편이에요.',
       reason: '현재 기준으로 집중도와 낙폭이 과도하지 않습니다. 목표 비중을 설정해두면 조정 후보를 더 정확히 볼 수 있어요.',
       icon: Icons.check_circle_outline_rounded,
-      color: MoneyfyPalette.positive,
-      background: MoneyfyPalette.successBg,
+      color: colors.positiveOn,
+      background: colors.neutralSurfaceRaised,
     );
   }
 }
@@ -2422,7 +2449,10 @@ _DrawdownResult? _calculateMaxDrawdown(List<DailyPortfolioSnapshot> snapshots) {
   );
 }
 
-List<_AttentionItem> _buildAttentionItems(_PortfolioAnalysisMvpData data) {
+List<_AttentionItem> _buildAttentionItems(
+  BuildContext context,
+  _PortfolioAnalysisMvpData data,
+) {
   final metrics = data.assetMetrics;
   final topOne = metrics.isEmpty ? 0.0 : metrics.first.ratio;
   final topThree = _topThreeRatio(metrics);
@@ -2432,23 +2462,24 @@ List<_AttentionItem> _buildAttentionItems(_PortfolioAnalysisMvpData data) {
   final worstAsset = metrics.isEmpty
       ? null
       : ([...metrics]..sort((a, b) => a.profit.compareTo(b.profit))).first;
+  final colors = context.colors;
 
   final concentrationColor = topThree >= 70 || hhi > 1800
-      ? MoneyfyPalette.warningStrong
-      : MoneyfyPalette.positive;
+      ? colors.warningOn
+      : colors.positiveOn;
   final drawdownColor = drawdown == null
-      ? MoneyfyPalette.tertiaryText
+      ? colors.neutralTextMuted
       : drawdown.percent.abs() >= 15
-      ? MoneyfyPalette.warningStrong
-      : MoneyfyPalette.positive;
+      ? colors.warningOn
+      : colors.positiveOn;
   final targetColor = maxGap == null
-      ? MoneyfyPalette.tertiaryText
+      ? colors.neutralTextMuted
       : maxGap.abs() >= 5
-      ? MoneyfyPalette.warningStrong
-      : MoneyfyPalette.positive;
+      ? colors.warningOn
+      : colors.positiveOn;
   final performanceColor = worstAsset == null
-      ? MoneyfyPalette.tertiaryText
-      : _valueColor(worstAsset.profit);
+      ? colors.neutralTextMuted
+      : _valueColor(context, worstAsset.profit);
 
   return [
     _AttentionItem(
@@ -2496,7 +2527,7 @@ List<_AttentionItem> _buildAttentionItems(_PortfolioAnalysisMvpData data) {
           ? '단일 자산 비중이 높아 포트폴리오 체감 변동이 커질 수 있어요.'
           : '단일 자산 비중은 관리 가능한 수준이에요.',
       value: '${topOne.toStringAsFixed(1)}%',
-      color: topOne >= 50 ? MoneyfyPalette.warningStrong : MoneyfyPalette.info,
+      color: topOne >= 50 ? colors.warningOn : colors.primary,
     ),
   ];
 }
@@ -2522,10 +2553,10 @@ double? _maxTargetGap(List<_AssetMetric> metrics) {
   return entries.first.targetGap;
 }
 
-Color _valueColor(double value) {
-  if (value > 0) return MoneyfyPalette.positive;
-  if (value < 0) return MoneyfyPalette.negative;
-  return MoneyfyPalette.tertiaryText;
+Color _valueColor(BuildContext context, double value) {
+  if (value > 0) return context.colors.positiveOn;
+  if (value < 0) return context.colors.negativeOn;
+  return context.colors.neutralTextMuted;
 }
 
 String _formatAmount(double amount) {

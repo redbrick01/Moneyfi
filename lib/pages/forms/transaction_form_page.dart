@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../data/asset_data.dart';
+import '../../design_system/context_extensions.dart';
 import '../../db/app_database.dart';
 import '../../models/asset_item.dart';
 import '../../services/market_data_service.dart';
 import '../../services/sync_service.dart';
-import '../../theme/moneyfy_theme.dart';
 import '../../utils/display_currency.dart';
 import '../../utils/input_validators.dart';
 import '../../utils/number_formatters.dart';
@@ -1047,11 +1047,11 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                   Text(
                     '거래 유형',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+                      color: context.colors.neutralTextMuted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
                   MoneyfyChoiceWrap<String>(
                     options: _transactionTypes,
                     value: typeController.text.trim(),
@@ -1062,7 +1062,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                       });
                     },
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
                   _CalculationToggle(
                     value: includeInCalculations,
                     onChanged: (value) {
@@ -1096,7 +1096,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                     ),
                   if (widget.item == null) ...[
                     if (_selectedMarketResult == null)
-                      const SizedBox(height: 12),
+                      SizedBox(height: context.spacing.sm),
                     _TransactionMarketSearchField(
                       controller: searchController,
                       isSearching: isSearching,
@@ -1108,7 +1108,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                           _selectMarketResult(assets, result),
                     ),
                     if (_selectedMarketResult != null) ...[
-                      const SizedBox(height: 12),
+                      SizedBox(height: context.spacing.sm),
                       MoneyfySelectionField<int>(
                         label: '자산군',
                         options: marketAssetOptions,
@@ -1156,7 +1156,9 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                       ),
                     if (transactionType == '매도' && sellableQuantity > 0)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
+                        padding: EdgeInsets.only(
+                          bottom: context.spacing.sm + context.spacing.xs / 4,
+                        ),
                         child: MoneyfyPercentageShortcutButtons(
                           keyPrefix: 'sell-quantity-shortcut',
                           onSelected: (ratio) =>
@@ -1165,7 +1167,9 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                       ),
                     if (transactionType == '매수' && buyableCash > 0)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
+                        padding: EdgeInsets.only(
+                          bottom: context.spacing.sm + context.spacing.xs / 4,
+                        ),
                         child: MoneyfyPercentageShortcutButtons(
                           keyPrefix: 'buy-cash-shortcut',
                           enabled: canUseBuyShortcuts,
@@ -1251,18 +1255,20 @@ class _RealizedProfitInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.only(
+        bottom: context.spacing.sm + context.spacing.xs / 4,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '실현손익',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: MoneyfyPalette.tertiaryText,
+              color: context.colors.neutralTextMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
           MoneyfyChoiceWrap<bool>(
             options: const [false, true],
             value: useManualValue,
@@ -1270,7 +1276,7 @@ class _RealizedProfitInput extends StatelessWidget {
             onChanged: onModeChanged,
           ),
           if (useManualValue) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.sm),
             MoneyfyFormField(
               label: '실현손익 금액',
               controller: controller,
@@ -1315,11 +1321,11 @@ class _TransactionMarketSearchField extends StatelessWidget {
         Text(
           '새 종목 검색',
           style: theme.textTheme.bodySmall?.copyWith(
-            color: MoneyfyPalette.tertiaryText,
+            color: context.colors.neutralTextMuted,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: context.spacing.xs),
         Row(
           children: [
             Expanded(
@@ -1333,33 +1339,37 @@ class _TransactionMarketSearchField extends StatelessWidget {
                   hintText: '예: 005930, AAPL, BTC',
                   prefixIcon: const Icon(Icons.search_rounded, size: 20),
                   hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                    color: MoneyfyPalette.tertiaryText,
+                    color: context.colors.neutralTextMuted,
                   ),
                   filled: true,
-                  fillColor: MoneyfyPalette.surfaceMuted,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+                  fillColor: context.colors.neutralSurfaceRaised,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: context.spacing.md,
+                    vertical: context.spacing.sm + context.spacing.xs / 4,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(color: MoneyfyPalette.border),
+                    borderRadius: BorderRadius.circular(context.radius.rLg),
+                    borderSide: BorderSide(
+                      color: context.colors.neutralOutline,
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(color: MoneyfyPalette.border),
+                    borderRadius: BorderRadius.circular(context.radius.rLg),
+                    borderSide: BorderSide(
+                      color: context.colors.neutralOutline,
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(
-                      color: MoneyfyPalette.accent,
+                    borderRadius: BorderRadius.circular(context.radius.rLg),
+                    borderSide: BorderSide(
+                      color: context.colors.primary,
                       width: 1.4,
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
             SizedBox(
               height: 50,
               child: IconButton.filled(
@@ -1373,13 +1383,14 @@ class _TransactionMarketSearchField extends StatelessWidget {
                       )
                     : const Icon(Icons.search_rounded),
                 style: IconButton.styleFrom(
-                  backgroundColor: MoneyfyPalette.ink,
-                  foregroundColor: MoneyfyPalette.background,
-                  disabledBackgroundColor: MoneyfyPalette.surfaceMuted,
-                  disabledForegroundColor: MoneyfyPalette.tertiaryText,
+                  backgroundColor: context.colors.neutralSurfaceOverlay,
+                  foregroundColor: context.colors.neutralText,
+                  disabledBackgroundColor: context.colors.neutralSurfaceRaised,
+                  disabledForegroundColor: context.colors.neutralTextMuted,
                   fixedSize: const Size(50, 50),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(context.radius.rMd),
+                    side: BorderSide(color: context.colors.neutralOutline),
                   ),
                 ),
               ),
@@ -1387,23 +1398,23 @@ class _TransactionMarketSearchField extends StatelessWidget {
           ],
         ),
         if (results.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.xs),
           _TransactionMarketSearchDropdown(
             results: results,
             onSelected: onResultSelected,
           ),
         ] else if (selectedResult != null) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.xs),
           _SelectedTransactionMarketResultView(result: selectedResult!),
         ],
         if (message != null) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacing.xs),
           Text(
             message!,
             style: theme.textTheme.bodySmall?.copyWith(
               color: message!.startsWith('선택됨')
-                  ? MoneyfyPalette.primary
-                  : MoneyfyPalette.tertiaryText,
+                  ? context.colors.primary
+                  : context.colors.neutralTextMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1426,9 +1437,9 @@ class _TransactionMarketSearchDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: MoneyfyPalette.surfaceMuted,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: MoneyfyPalette.border),
+        color: context.colors.neutralSurfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(color: context.colors.neutralOutline),
       ),
       child: Column(
         children: [
@@ -1438,7 +1449,7 @@ class _TransactionMarketSearchDropdown extends StatelessWidget {
               onTap: () => onSelected(results[index]),
             ),
             if (index != results.length - 1)
-              const Divider(height: 1, color: MoneyfyPalette.border),
+              Divider(height: 1, color: context.colors.neutralOutline),
           ],
         ],
       ),
@@ -1461,9 +1472,12 @@ class _TransactionMarketSearchResultTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(context.radius.rMd),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacing.sm + context.spacing.xs / 4,
+          vertical: context.spacing.sm,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -1473,26 +1487,26 @@ class _TransactionMarketSearchResultTile extends StatelessWidget {
                   Text(
                     result.name,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: MoneyfyPalette.ink,
+                      color: context.colors.neutralText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  SizedBox(height: context.spacing.xs / 2 - 1),
                   Text(
                     result.subtitle,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: MoneyfyPalette.tertiaryText,
+                      color: context.colors.neutralTextMuted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.spacing.sm),
             Text(
               result.priceLabel,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: MoneyfyPalette.primary,
+                color: context.colors.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1512,11 +1526,13 @@ class _SelectedTransactionMarketResultView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
       decoration: BoxDecoration(
-        color: MoneyfyPalette.primarySoft,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: MoneyfyPalette.accentSoft),
+        color: context.colors.primaryContainer,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(
+          color: context.colors.primary.withValues(alpha: 0.2),
+        ),
       ),
       child: _TransactionMarketSearchResultTile(result: result, onTap: () {}),
     );

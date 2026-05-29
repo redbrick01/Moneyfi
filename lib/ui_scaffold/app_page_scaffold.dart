@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../design_system/context_extensions.dart';
+import '../components/icons/app_icon.dart';
 import 'app_insets.dart';
 
 class AppPageScaffold extends StatelessWidget {
@@ -64,7 +65,10 @@ class AppPageScaffold extends StatelessWidget {
     }
 
     final content = _buildScrollableContent(context);
-    return SafeArea(child: content);
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(child: content),
+    );
   }
 
   Widget _buildScrollableContent(BuildContext context) {
@@ -231,7 +235,7 @@ class _Header extends StatelessWidget {
       ...actions.take(2),
       PopupMenuButton<int>(
         tooltip: '더보기',
-        icon: const Icon(Icons.more_horiz_rounded),
+        icon: const AppIcon(AppIconName.more),
         itemBuilder: (context) => [
           for (var i = 0; i < overflowLabels.length; i++)
             PopupMenuItem<int>(

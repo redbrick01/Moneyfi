@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../services/market_news_summary_service.dart';
-import '../theme/moneyfy_theme.dart';
 
 Future<MarketNewsSummary?> fetchMarketNewsSummary({
   String category = 'general',
@@ -146,7 +145,6 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final summary = widget.summary;
     final hasDetails =
         summary != null &&
@@ -166,17 +164,13 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    '종합 뉴스',
-                    style: theme.textTheme.titleMedium?.copyWith(fontSize: 22),
-                  ),
+                  child: Text('종합 뉴스', style: context.typography.sectionTitle),
                 ),
                 if (summary?.newsCount != null)
                   Text(
                     '${summary!.newsCount}건',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 11,
-                      color: MoneyfyPalette.tertiaryText,
+                    style: context.typography.caption.copyWith(
+                      color: context.colors.neutralTextMuted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -184,56 +178,53 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
             ),
             if (summary?.updatedAt != null ||
                 (summary?.model ?? '').trim().isNotEmpty) ...[
-              const SizedBox(height: 6),
+              SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
               Wrap(
-                spacing: 8,
-                runSpacing: 4,
+                spacing: context.spacing.xs,
+                runSpacing: context.spacing.xs / 2,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   if (summary?.updatedAt != null)
                     Text(
                       '업데이트 ${_formatSummaryDate(summary!.updatedAt!)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: MoneyfyPalette.tertiaryText,
+                      style: context.typography.caption.copyWith(
+                        color: context.colors.neutralTextMuted,
                       ),
                     ),
                   if ((summary?.model ?? '').trim().isNotEmpty)
                     Text(
                       '(${summary!.model})',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: MoneyfyPalette.tertiaryText,
+                      style: context.typography.caption.copyWith(
+                        color: context.colors.neutralTextMuted,
                       ),
                     ),
                 ],
               ),
             ],
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacing.md),
             if (summary == null)
               SizedBox(
                 width: double.infinity,
                 child: Text(
                   '시장 뉴스 요약을 불러오지 못했어요. 저장된 캐시가 없거나 외부 API가 일시적으로 응답하지 않습니다.',
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: MoneyfyPalette.tertiaryText,
+                  style: context.typography.body.copyWith(
+                    color: context.colors.neutralTextMuted,
                   ),
                 ),
               )
             else ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 18,
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.sm + context.spacing.xs / 4,
+                  vertical: context.spacing.md + context.spacing.xs / 4,
                 ),
                 decoration: _innerNewsCardDecoration(context),
                 child: Text(
                   summary.marketSummary,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontSize: 15,
-                    color: MoneyfyPalette.ink,
+                  style: context.typography.cardTitle.copyWith(
+                    color: context.colors.neutralText,
                     fontWeight: FontWeight.w600,
                     height: 1.4,
                   ),
@@ -241,40 +232,42 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
               ),
               if (hasDetails) ...[
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  padding: EdgeInsets.symmetric(
+                    vertical: context.spacing.xs / 2,
+                  ),
                   child: Center(
                     child: SizedBox(
-                      width: 28,
-                      height: 28,
+                      width: context.spacing.lg + context.spacing.xs / 2,
+                      height: context.spacing.lg + context.spacing.xs / 2,
                       child: IconButton(
                         onPressed: () =>
                             setState(() => _isExpanded = !_isExpanded),
                         padding: EdgeInsets.zero,
                         visualDensity: VisualDensity.compact,
-                        splashRadius: 16,
-                        iconSize: 20,
+                        splashRadius: context.spacing.md,
+                        iconSize: VisualSpec.icon.sizeSmall,
                         icon: AnimatedRotation(
                           turns: _isExpanded ? 0.5 : 0,
-                          duration: const Duration(milliseconds: 200),
+                          duration: context.motion.fast,
                           child: const Icon(Icons.keyboard_arrow_down_rounded),
                         ),
                         tooltip: _isExpanded ? '세부 기사 요약 접기' : '세부 기사 요약 펼치기',
-                        color: MoneyfyPalette.tertiaryText,
+                        color: context.colors.neutralTextMuted,
                       ),
                     ),
                   ),
                 ),
               ],
               if (_isExpanded && summary.issues.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                SizedBox(height: context.spacing.xs / 2),
                 for (var index = 0; index < summary.issues.length; index++) ...[
                   _MarketIssueTile(item: summary.issues[index]),
                   if (index != summary.issues.length - 1)
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.spacing.sm),
                 ],
               ],
               if (_isExpanded && _hasOverallAssessment(summary)) ...[
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacing.md),
                 _OverallAssessmentCard(summary: summary),
               ],
             ],
@@ -292,8 +285,7 @@ class _MarketIssueTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final importanceStyle = _importanceStyle(item.importance);
+    final importanceStyle = _importanceStyle(context, item.importance);
     final impacts =
         <_ImpactRowData>[
               _ImpactRowData(label: '주식', value: item.stocks),
@@ -310,7 +302,7 @@ class _MarketIssueTile extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
       decoration: _innerNewsCardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,33 +311,35 @@ class _MarketIssueTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Padding(
-                padding: const EdgeInsets.only(right: 8),
+                padding: EdgeInsets.only(right: context.spacing.xs),
                 child: Icon(
                   Icons.circle,
-                  size: 10,
+                  size: context.spacing.xs + context.spacing.xs / 4,
                   color: importanceStyle.color,
                 ),
               ),
               Expanded(
                 child: Text(
                   _formatIssueTitle(item.title),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontSize: 15,
-                    color: MoneyfyPalette.ink,
+                  style: context.typography.cardTitle.copyWith(
+                    color: context.colors.neutralText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.spacing.xs),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.xs,
+                  vertical: context.spacing.xs / 2,
+                ),
                 decoration: BoxDecoration(
                   color: importanceStyle.background,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(context.radius.rPill),
                 ),
                 child: Text(
                   importanceStyle.label,
-                  style: theme.textTheme.labelSmall?.copyWith(
+                  style: context.typography.caption.copyWith(
                     color: importanceStyle.color,
                     fontWeight: FontWeight.w600,
                   ),
@@ -354,23 +348,22 @@ class _MarketIssueTile extends StatelessWidget {
             ],
           ),
           if (item.summary.trim().isNotEmpty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
             Text(
               item.summary,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontSize: 14,
-                color: MoneyfyPalette.secondaryText,
+              style: context.typography.body.copyWith(
+                color: context.colors.neutralTextMuted,
                 height: 1.45,
               ),
             ),
           ],
           if (impacts.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.sm),
             const Divider(height: 1),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.sm),
             for (final impact in impacts) ...[
               _ImpactRow(item: impact),
-              if (impact != impacts.last) const SizedBox(height: 8),
+              if (impact != impacts.last) SizedBox(height: context.spacing.xs),
             ],
           ],
         ],
@@ -393,38 +386,38 @@ class _ImpactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 86,
+          width: context.spacing.xxxl + context.spacing.xs - 2,
           child: Align(
             alignment: Alignment.topLeft,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing.xs + context.spacing.xs / 4,
+                vertical: context.spacing.xs / 2,
+              ),
               decoration: BoxDecoration(
                 color: context.surfaces.surfaceRaised,
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(context.radius.rPill),
               ),
               child: Text(
                 item.label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 11,
-                  color: MoneyfyPalette.ink,
+                style: context.typography.caption.copyWith(
+                  color: context.colors.neutralText,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
         Expanded(
           child: Text(
             item.value ?? '',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontSize: 13,
-              color: MoneyfyPalette.secondaryText,
+            style: context.typography.meta.copyWith(
+              color: context.colors.neutralTextMuted,
               height: 1.45,
             ),
           ),
@@ -441,33 +434,30 @@ class _OverallAssessmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
       decoration: _innerNewsCardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '종합 평가',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontSize: 16,
-              color: MoneyfyPalette.ink,
+            style: context.typography.cardTitle.copyWith(
+              color: context.colors.neutralText,
               fontWeight: FontWeight.w600,
             ),
           ),
           if (summary.keyRisk.trim().isNotEmpty) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacing.sm),
             _AssessmentBlock(label: '핵심 리스크', value: summary.keyRisk),
           ],
           if (summary.riskAssets.trim().isNotEmpty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
             _AssessmentBlock(label: '위험자산', value: summary.riskAssets),
           ],
           if (summary.safeAssets.trim().isNotEmpty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
             _AssessmentBlock(label: '안전자산', value: summary.safeAssets),
           ],
         ],
@@ -484,38 +474,38 @@ class _AssessmentBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 86,
+          width: context.spacing.xxxl + context.spacing.xs - 2,
           child: Align(
             alignment: Alignment.topLeft,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing.xs + context.spacing.xs / 4,
+                vertical: context.spacing.xs / 2,
+              ),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(999),
+                color: context.surfaces.surfaceRaised,
+                borderRadius: BorderRadius.circular(context.radius.rPill),
               ),
               child: Text(
                 label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 11,
-                  color: MoneyfyPalette.ink,
+                style: context.typography.caption.copyWith(
+                  color: context.colors.neutralText,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
         Expanded(
           child: Text(
             value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontSize: 13,
-              color: MoneyfyPalette.secondaryText,
+            style: context.typography.meta.copyWith(
+              color: context.colors.neutralTextMuted,
               height: 1.45,
             ),
           ),
@@ -551,43 +541,43 @@ String _formatIssueTitle(String value) {
   return '$head\n$tail';
 }
 
-Color _importanceColor(String value) {
+Color _importanceColor(BuildContext context, String value) {
   final normalized = value.trim();
   final numeric = int.tryParse(normalized);
-  if (numeric == 3) return MoneyfyPalette.errorStrong;
-  if (numeric == 2) return MoneyfyPalette.warningStrong;
-  if (numeric == 1) return MoneyfyPalette.info;
-  return MoneyfyPalette.tertiaryText;
+  if (numeric == 3) return context.colors.negativeOn;
+  if (numeric == 2) return context.colors.warningOn;
+  if (numeric == 1) return context.colors.primary;
+  return context.colors.neutralTextMuted;
 }
 
-_ImportanceStyle _importanceStyle(String value) {
-  final color = _importanceColor(value);
+_ImportanceStyle _importanceStyle(BuildContext context, String value) {
+  final color = _importanceColor(context, value);
   final numeric = int.tryParse(value.trim());
   if (numeric == 3) {
     return _ImportanceStyle(
       label: '높음',
       color: color,
-      background: MoneyfyPalette.errorBg,
+      background: context.colors.neutralSurfaceBase,
     );
   }
   if (numeric == 2) {
     return _ImportanceStyle(
       label: '보통',
       color: color,
-      background: const Color(0xFFFFF3E0),
+      background: context.colors.neutralSurfaceBase,
     );
   }
   if (numeric == 1) {
     return _ImportanceStyle(
       label: '낮음',
       color: color,
-      background: MoneyfyPalette.infoBg,
+      background: context.colors.neutralSurfaceBase,
     );
   }
   return _ImportanceStyle(
     label: '미정',
-    color: MoneyfyPalette.tertiaryText,
-    background: MoneyfyPalette.surface,
+    color: context.colors.neutralTextMuted,
+    background: context.colors.neutralSurfaceBase,
   );
 }
 
