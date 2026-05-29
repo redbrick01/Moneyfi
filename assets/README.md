@@ -8,8 +8,8 @@
 | --- | --- |
 | `config.example.json` | Supabase client 설정 예시 |
 | `config.json` | 로컬 실행용 실제 Supabase client 설정. 없으면 로그인/동기화 없이 앱이 시작됩니다. git에 올리지 않습니다. |
-| `icon/` | 원본 또는 생성된 앱 아이콘 |
-| `app_icon_flat.svg` | 앱 아이콘 작업용 SVG |
+| `icon/` | `app_icon_flat.svg`에서 복사/생성되는 앱 아이콘 산출물 |
+| `app_icon_flat.svg` | 앱 아이콘 canonical SVG source |
 
 ## Config
 
