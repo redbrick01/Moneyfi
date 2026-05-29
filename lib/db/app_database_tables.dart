@@ -37,6 +37,11 @@ class Holdings extends Table {
   TextColumn get symbol => text()();
   RealColumn get quantity => real()();
   RealColumn get averagePrice => real()();
+  RealColumn get averagePriceSource => real().withDefault(const Constant(0))();
+  RealColumn get averagePriceKrw => real().withDefault(const Constant(0))();
+  RealColumn get averagePurchaseFxRate =>
+      real().withDefault(const Constant(1))();
+  RealColumn get costBasisKrw => real().withDefault(const Constant(0))();
   RealColumn get currentPrice => real()();
   TextColumn get note => text()();
   IntColumn get sortOrder => integer()();
@@ -138,7 +143,11 @@ class TransactionLines extends Table {
   RealColumn get feeAmount => real().withDefault(const Constant(0))();
   RealColumn get taxAmount => real().withDefault(const Constant(0))();
   RealColumn get costBasisDelta => real().withDefault(const Constant(0))();
+  RealColumn get costBasisSourceDelta =>
+      real().withDefault(const Constant(0))();
   RealColumn get realizedPnl => real().withDefault(const Constant(0))();
+  TextColumn get realizedPnlSource =>
+      text().withDefault(const Constant('auto'))();
   RealColumn get fxRate => real().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 }
@@ -222,4 +231,44 @@ class ExchangeRates extends Table {
   RealColumn get rate => real()();
   TextColumn get recordedAt => text()();
   TextColumn get source => text().withDefault(const Constant('manual'))();
+}
+
+class PortfolioDailyReturns extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get localUserId => text()();
+  TextColumn get returnDate => text()();
+  RealColumn get beginningValueKrw => real().nullable()();
+  RealColumn get endingValueKrw => real()();
+  RealColumn get portfolioValueKrw => real()();
+  RealColumn get externalCashFlowKrw => real().withDefault(const Constant(0))();
+  RealColumn get dailyReturn => real().nullable()();
+  TextColumn get dataQuality =>
+      text().withDefault(const Constant('complete'))();
+  IntColumn get calculationVersion =>
+      integer().withDefault(const Constant(1))();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+    {localUserId, returnDate},
+  ];
+}
+
+class BenchmarkPrices extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get benchmarkCode => text()();
+  TextColumn get priceDate => text()();
+  RealColumn get closePrice => real()();
+  RealColumn get adjustedClosePrice => real().nullable()();
+  TextColumn get currencyCode => text().withDefault(const Constant('KRW'))();
+  RealColumn get fxRateToKrw => real().nullable()();
+  TextColumn get source => text().nullable()();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+    {benchmarkCode, priceDate},
+  ];
 }

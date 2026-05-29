@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 import '../models/asset_item.dart';
 import '../utils/display_currency.dart';
 import '../utils/number_formatters.dart';
+import '../utils/risk_adjusted_performance_calculator.dart';
 
 part 'app_database_records.dart';
 part 'app_database_tables.dart';
@@ -36,6 +37,8 @@ const Uuid _uuid = Uuid();
     DailyPortfolioSnapshotHoldingItems,
     AssetAllocationTargets,
     ExchangeRates,
+    PortfolioDailyReturns,
+    BenchmarkPrices,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -46,7 +49,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._internal();
 
   @override
-  int get schemaVersion => 32;
+  int get schemaVersion => 36;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -56,6 +59,8 @@ class AppDatabase extends _$AppDatabase {
       await _ensureLedgerTables();
       await _ensureNewsCacheTables();
       await _ensurePortfolioDiagnosisCacheTable();
+      await _ensurePortfolioDailyReturnsTable();
+      await _ensureBenchmarkPricesTable();
       await customStatement('''
             CREATE TABLE IF NOT EXISTS snapshot_notes (
               snapshot_date TEXT NOT NULL PRIMARY KEY,
@@ -71,6 +76,8 @@ class AppDatabase extends _$AppDatabase {
       await _ensureLedgerTables();
       await _ensureNewsCacheTables();
       await _ensurePortfolioDiagnosisCacheTable();
+      await _ensurePortfolioDailyReturnsTable();
+      await _ensureBenchmarkPricesTable();
 
       if (from < 10 && await _tableExists('assets')) {
         await customStatement(
@@ -263,12 +270,70 @@ class AppDatabase extends _$AppDatabase {
         await _ensureTransactionEventFlowCategoryColumn();
         await _backfillTransactionEventFlowCategories();
       }
+      if (from < 33) {
+        await _ensureLedgerLineRealizedPnlSourceColumn();
+      }
+      if (from < 34) {
+        await _ensureHoldingCurrencyBasisColumns();
+        await _ensureLedgerLineCurrencyBasisColumns();
+      }
+      if (from < 35) {
+        await _ensurePortfolioDailyReturnsTable();
+      }
+      if (from < 36) {
+        await _ensureBenchmarkPricesTable();
+      }
 
       await _ensureSeedExchangeRateIfEmpty();
     },
   );
 
   String _syncTimestamp() => DateTime.now().toIso8601String();
+
+  double _initialAveragePriceSource({
+    required String currencyCode,
+    required double averagePrice,
+  }) {
+    return currencyCode == 'USD' ? 0 : averagePrice;
+  }
+
+  double _initialAveragePurchaseFxRate({
+    required String currencyCode,
+    required double averagePriceSource,
+    required double averagePriceKrw,
+  }) {
+    if (currencyCode != 'USD') return 1;
+    if (averagePriceSource <= 0) return 0;
+    return averagePriceKrw / averagePriceSource;
+  }
+
+  Value<double> _costBasisSourceDeltaValue({
+    required String currencyCode,
+    required double costBasisDelta,
+  }) {
+    return Value(currencyCode == 'USD' ? 0 : costBasisDelta);
+  }
+
+  double _holdingAveragePriceKrw(Holding holding) {
+    return holding.averagePriceKrw > 0
+        ? holding.averagePriceKrw
+        : holding.averagePrice;
+  }
+
+  double _holdingCostBasisKrw(Holding holding) {
+    return holding.costBasisKrw > 0
+        ? holding.costBasisKrw
+        : holding.quantity * _holdingAveragePriceKrw(holding);
+  }
+
+  double _holdingSourceCostBasis(Holding holding) {
+    if (holding.currencyCode != 'USD') {
+      return _holdingCostBasisKrw(holding);
+    }
+    return holding.averagePriceSource > 0
+        ? holding.quantity * holding.averagePriceSource
+        : 0;
+  }
 
   String _transactionFlowCategoryForCashType(String type) {
     return switch (_normalizeTransactionType(type)) {
@@ -353,6 +418,8 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> _ensureLedgerTables() async {
+    await _ensureHoldingCurrencyBasisColumns();
+
     await customStatement('''
       CREATE TABLE IF NOT EXISTS transaction_events (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -394,7 +461,9 @@ class AppDatabase extends _$AppDatabase {
         fee_amount REAL NOT NULL DEFAULT 0,
         tax_amount REAL NOT NULL DEFAULT 0,
         cost_basis_delta REAL NOT NULL DEFAULT 0,
+        cost_basis_source_delta REAL NOT NULL DEFAULT 0,
         realized_pnl REAL NOT NULL DEFAULT 0,
+        realized_pnl_source TEXT NOT NULL DEFAULT 'auto',
         fx_rate REAL,
         sort_order INTEGER NOT NULL DEFAULT 0
       )
@@ -417,6 +486,75 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS transaction_lines_cash_account_id_idx ON transaction_lines(cash_account_id)',
     );
     await _ensureLedgerLineLegacySourceColumns();
+    await _ensureLedgerLineRealizedPnlSourceColumn();
+    await _ensureLedgerLineCurrencyBasisColumns();
+  }
+
+  Future<void> _ensureHoldingCurrencyBasisColumns() async {
+    if (!await _tableExists('holdings')) return;
+    final columns = <String, String>{
+      'average_price_source': 'REAL NOT NULL DEFAULT 0',
+      'average_price_krw': 'REAL NOT NULL DEFAULT 0',
+      'average_purchase_fx_rate': 'REAL NOT NULL DEFAULT 1',
+      'cost_basis_krw': 'REAL NOT NULL DEFAULT 0',
+    };
+    for (final entry in columns.entries) {
+      if (!await _columnExists('holdings', entry.key)) {
+        await customStatement(
+          'ALTER TABLE holdings ADD COLUMN ${entry.key} ${entry.value}',
+        );
+      }
+    }
+    await customStatement('''
+      UPDATE holdings
+      SET
+        average_price_source = CASE
+          WHEN currency_code = 'USD' THEN average_price_source
+          WHEN average_price_source = 0 THEN average_price
+          ELSE average_price_source
+        END,
+        average_price_krw = CASE
+          WHEN average_price_krw = 0 THEN average_price
+          ELSE average_price_krw
+        END,
+        average_purchase_fx_rate = CASE
+          WHEN currency_code = 'USD' AND average_price_source > 0
+            AND average_purchase_fx_rate = 0
+            THEN average_price_krw / average_price_source
+          WHEN currency_code = 'USD' AND average_price_source > 0
+            THEN average_purchase_fx_rate
+          WHEN currency_code = 'USD' THEN 0
+          ELSE 1
+        END,
+        cost_basis_krw = CASE
+          WHEN cost_basis_krw = 0 THEN quantity * average_price
+          ELSE cost_basis_krw
+        END
+    ''');
+  }
+
+  Future<void> _ensureLedgerLineCurrencyBasisColumns() async {
+    if (!await _tableExists('transaction_lines')) return;
+    if (!await _columnExists('transaction_lines', 'cost_basis_source_delta')) {
+      await customStatement(
+        'ALTER TABLE transaction_lines ADD COLUMN cost_basis_source_delta REAL NOT NULL DEFAULT 0',
+      );
+    }
+    await customStatement('''
+      UPDATE transaction_lines
+      SET cost_basis_source_delta = cost_basis_delta
+      WHERE cost_basis_source_delta = 0
+        AND COALESCE(currency_code, 'KRW') <> 'USD'
+    ''');
+  }
+
+  Future<void> _ensureLedgerLineRealizedPnlSourceColumn() async {
+    if (!await _tableExists('transaction_lines')) return;
+    if (!await _columnExists('transaction_lines', 'realized_pnl_source')) {
+      await customStatement(
+        "ALTER TABLE transaction_lines ADD COLUMN realized_pnl_source TEXT NOT NULL DEFAULT 'auto'",
+      );
+    }
   }
 
   Future<void> _ensureTransactionEventFlowCategoryColumn() async {
@@ -428,6 +566,50 @@ class AppDatabase extends _$AppDatabase {
     }
     await customStatement(
       'CREATE INDEX IF NOT EXISTS transaction_events_flow_category_idx ON transaction_events(flow_category)',
+    );
+  }
+
+  Future<void> _ensurePortfolioDailyReturnsTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS portfolio_daily_returns (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        local_user_id TEXT NOT NULL,
+        return_date TEXT NOT NULL,
+        beginning_value_krw REAL,
+        ending_value_krw REAL NOT NULL,
+        portfolio_value_krw REAL NOT NULL,
+        external_cash_flow_krw REAL NOT NULL DEFAULT 0,
+        daily_return REAL,
+        data_quality TEXT NOT NULL DEFAULT 'complete',
+        calculation_version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(local_user_id, return_date)
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS portfolio_daily_returns_user_date_idx ON portfolio_daily_returns(local_user_id, return_date)',
+    );
+  }
+
+  Future<void> _ensureBenchmarkPricesTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS benchmark_prices (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        benchmark_code TEXT NOT NULL,
+        price_date TEXT NOT NULL,
+        close_price REAL NOT NULL,
+        adjusted_close_price REAL,
+        currency_code TEXT NOT NULL DEFAULT 'KRW',
+        fx_rate_to_krw REAL,
+        source TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(benchmark_code, price_date)
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS benchmark_prices_code_date_idx ON benchmark_prices(benchmark_code, price_date)',
     );
   }
 
@@ -1358,6 +1540,10 @@ class AppDatabase extends _$AppDatabase {
           unitPrice: Value(unitPrice),
           grossAmount: Value(grossAmount),
           costBasisDelta: Value(costBasisDelta),
+          costBasisSourceDelta: _costBasisSourceDeltaValue(
+            currencyCode: holding?.currencyCode ?? 'KRW',
+            costBasisDelta: costBasisDelta,
+          ),
           realizedPnl: Value(realizedPnl),
           sortOrder: const Value(0),
         ),
@@ -1978,6 +2164,8 @@ class AppDatabase extends _$AppDatabase {
     required String amount,
     required String quantity,
     required int sortOrder,
+    double? manualRealizedProfitAmount,
+    double? tradeFxRate,
   }) async {
     final holding = await (select(
       holdings,
@@ -1987,11 +2175,20 @@ class AppDatabase extends _$AppDatabase {
     }
 
     final normalizedType = _normalizeTransactionType(type);
+    if (holding.currencyCode == 'USD' &&
+        normalizedType == '매수' &&
+        (tradeFxRate == null || tradeFxRate <= 0)) {
+      throw StateError('USD 매수 거래는 매수 환율을 0보다 크게 입력해야 합니다.');
+    }
+    final averageCostBasis = holding.currencyCode == 'USD'
+        ? holding.averagePriceSource
+        : holding.averagePrice;
     final normalizedValues = _normalizedTransactionValues(
       type: normalizedType,
       amount: amount,
       quantity: quantity,
-      averageCostBasis: holding.averagePrice,
+      averageCostBasis: averageCostBasis,
+      manualRealizedProfitAmount: manualRealizedProfitAmount,
     );
     final eventKind = switch (normalizedType) {
       '초기' => 'opening_balance',
@@ -2012,7 +2209,27 @@ class AppDatabase extends _$AppDatabase {
         : (normalizedType == '초기' || normalizedType == '매수'
               ? normalizedValues.quantityValue
               : 0.0);
+    final isUsdHolding = holding.currencyCode == 'USD';
+    final effectiveTradeFxRate =
+        tradeFxRate ??
+        (holding.averagePurchaseFxRate > 0 ? holding.averagePurchaseFxRate : 1);
+    final fxRateForLine = normalizedType == '매수'
+        ? (isUsdHolding ? tradeFxRate : 1.0)
+        : null;
+    final averagePriceKrw = _holdingAveragePriceKrw(holding);
     final costBasisDelta = switch (normalizedType) {
+      '초기' || '매수' =>
+        isUsdHolding
+            ? normalizedValues.grossAmount * effectiveTradeFxRate
+            : normalizedValues.grossAmount,
+      '매도' =>
+        isUsdHolding
+            ? -(averagePriceKrw * normalizedValues.quantityValue)
+            : -(normalizedValues.grossAmount -
+                  normalizedValues.realizedProfitAmount),
+      _ => 0.0,
+    };
+    final costBasisSourceDelta = switch (normalizedType) {
       '초기' || '매수' => normalizedValues.grossAmount,
       '매도' =>
         -(normalizedValues.grossAmount - normalizedValues.realizedProfitAmount),
@@ -2048,7 +2265,12 @@ class AppDatabase extends _$AppDatabase {
         unitPrice: Value(normalizedValues.unitPrice),
         grossAmount: Value(normalizedValues.grossAmount),
         costBasisDelta: Value(costBasisDelta),
+        costBasisSourceDelta: Value(
+          isUsdHolding ? costBasisSourceDelta : costBasisDelta,
+        ),
         realizedPnl: Value(normalizedValues.realizedProfitAmount),
+        realizedPnlSource: Value(normalizedValues.realizedProfitSource),
+        fxRate: Value(fxRateForLine),
         sortOrder: const Value(0),
       ),
     );
@@ -2101,6 +2323,8 @@ class AppDatabase extends _$AppDatabase {
     required String amount,
     required String quantity,
     required int sortOrder,
+    double? manualRealizedProfitAmount,
+    double? tradeFxRate,
   }) async {
     final holding = await (select(
       holdings,
@@ -2110,11 +2334,18 @@ class AppDatabase extends _$AppDatabase {
     }
 
     final normalizedType = _normalizeTransactionType(type);
+    if (holding.currencyCode == 'USD' &&
+        normalizedType == '매수' &&
+        tradeFxRate != null &&
+        tradeFxRate <= 0) {
+      throw StateError('USD 매수 거래는 매수 환율을 0보다 크게 입력해야 합니다.');
+    }
     final normalizedValues = _normalizedTransactionValues(
       type: normalizedType,
       amount: amount,
       quantity: quantity,
       averageCostBasis: holding.averagePrice,
+      manualRealizedProfitAmount: manualRealizedProfitAmount,
     );
     final action = switch (normalizedType) {
       '초기' => 'opening_quantity',
@@ -2159,7 +2390,14 @@ class AppDatabase extends _$AppDatabase {
         unitPrice: Value(normalizedValues.unitPrice),
         grossAmount: Value(normalizedValues.grossAmount),
         costBasisDelta: const Value(0),
-        realizedPnl: const Value(0),
+        costBasisSourceDelta: const Value(0),
+        realizedPnl: Value(normalizedValues.realizedProfitAmount),
+        realizedPnlSource: Value(normalizedValues.realizedProfitSource),
+        fxRate: Value(
+          normalizedType == '매수'
+              ? (holding.currencyCode == 'USD' ? tradeFxRate : 1.0)
+              : null,
+        ),
         sortOrder: const Value(0),
       ),
     );
@@ -2198,6 +2436,8 @@ class AppDatabase extends _$AppDatabase {
               AND settlement.action = 'settlement'
           ), COALESCE(tl.cash_delta, 0)) AS cash_flow_amount,
           COALESCE(tl.realized_pnl, 0) AS realized_profit_amount,
+          COALESCE(tl.realized_pnl_source, 'auto') AS realized_profit_source,
+          tl.fx_rate AS fx_rate,
           te.sort_order AS event_sort_order,
           tl.sort_order AS line_sort_order
         FROM transaction_lines tl
@@ -2249,6 +2489,8 @@ class AppDatabase extends _$AppDatabase {
         grossAmount: grossAmount,
         cashFlowAmount: row.read<double>('cash_flow_amount'),
         realizedProfitAmount: row.read<double>('realized_profit_amount'),
+        realizedProfitSource: row.read<String>('realized_profit_source'),
+        fxRate: row.read<double?>('fx_rate'),
         ledgerEventId: row.read<int>('event_id'),
         ledgerLineId: row.read<int>('ledger_line_id'),
         ledgerKind: row.read<String>('ledger_kind'),
@@ -2807,6 +3049,10 @@ class AppDatabase extends _$AppDatabase {
         (await maxQuery.getSingleOrNull())?.read(holdings.sortOrder.max()) ??
         -1;
 
+    final averagePriceSource = _initialAveragePriceSource(
+      currencyCode: currencyCode,
+      averagePrice: averagePrice,
+    );
     final insertedId = await into(holdings).insert(
       HoldingsCompanion.insert(
         assetId: assetId,
@@ -2820,6 +3066,16 @@ class AppDatabase extends _$AppDatabase {
         symbol: symbol,
         quantity: quantity,
         averagePrice: averagePrice,
+        averagePriceSource: Value(averagePriceSource),
+        averagePriceKrw: Value(averagePrice),
+        averagePurchaseFxRate: Value(
+          _initialAveragePurchaseFxRate(
+            currencyCode: currencyCode,
+            averagePriceSource: averagePriceSource,
+            averagePriceKrw: averagePrice,
+          ),
+        ),
+        costBasisKrw: Value(quantity * averagePrice),
         currentPrice: currentPrice,
         note: note,
         sortOrder: currentMax + 1,
@@ -3247,6 +3503,12 @@ class AppDatabase extends _$AppDatabase {
     ).getSingle();
     if (existing.read<int>('count') > 0) return;
 
+    final averagePriceKrw = _holdingAveragePriceKrw(holdingRow);
+    final costBasisKrw = _holdingCostBasisKrw(holdingRow);
+    final sourceCostBasis = _holdingSourceCostBasis(holdingRow);
+    final sourceUnitPrice = holdingRow.quantity == 0
+        ? 0.0
+        : sourceCostBasis / holdingRow.quantity;
     final timestamp = _syncTimestamp();
     final eventId = await into(transactionEvents).insert(
       TransactionEventsCompanion.insert(
@@ -3272,9 +3534,20 @@ class AppDatabase extends _$AppDatabase {
         action: 'opening_quantity',
         currencyCode: Value(holdingRow.currencyCode),
         quantityDelta: Value(holdingRow.quantity),
-        unitPrice: Value(holdingRow.averagePrice),
-        grossAmount: Value(holdingRow.quantity * holdingRow.averagePrice),
-        costBasisDelta: Value(holdingRow.quantity * holdingRow.averagePrice),
+        unitPrice: Value(
+          holdingRow.currencyCode == 'USD' && sourceUnitPrice > 0
+              ? sourceUnitPrice
+              : averagePriceKrw,
+        ),
+        grossAmount: Value(
+          holdingRow.currencyCode == 'USD' && sourceCostBasis > 0
+              ? sourceCostBasis
+              : costBasisKrw,
+        ),
+        costBasisDelta: Value(costBasisKrw),
+        costBasisSourceDelta: Value(
+          holdingRow.currencyCode == 'USD' ? sourceCostBasis : costBasisKrw,
+        ),
       ),
     );
   }
@@ -3350,6 +3623,14 @@ class AppDatabase extends _$AppDatabase {
         symbol: Value(item.symbol),
         quantity: Value(item.quantity),
         averagePrice: Value(item.averagePrice),
+        averagePriceSource: item.currencyCode == 'USD'
+            ? const Value.absent()
+            : Value(item.averagePrice),
+        averagePriceKrw: Value(item.averagePrice),
+        averagePurchaseFxRate: item.currencyCode == 'USD'
+            ? const Value.absent()
+            : const Value(1),
+        costBasisKrw: Value(item.quantity * item.averagePrice),
         currentPrice: Value(item.currentPrice),
         note: Value(item.note),
       ),
@@ -3790,6 +4071,8 @@ class AppDatabase extends _$AppDatabase {
     required String amount,
     required String quantity,
     bool includeInCalculations = true,
+    double? manualRealizedProfitAmount,
+    double? tradeFxRate,
   }) async {
     final normalizedDate = _normalizeStoredDateKey(date);
     if (holdingId < 0) {
@@ -3897,6 +4180,8 @@ class AppDatabase extends _$AppDatabase {
           amount: storedAmount,
           quantity: storedQuantity,
           sortOrder: currentMax + 1,
+          manualRealizedProfitAmount: manualRealizedProfitAmount,
+          tradeFxRate: tradeFxRate,
         );
       } else {
         insertedId = await _createRecordOnlyInvestment(
@@ -3908,6 +4193,8 @@ class AppDatabase extends _$AppDatabase {
           amount: storedAmount,
           quantity: storedQuantity,
           sortOrder: currentMax + 1,
+          manualRealizedProfitAmount: manualRealizedProfitAmount,
+          tradeFxRate: tradeFxRate,
         );
       }
     });
@@ -3953,6 +4240,7 @@ class AppDatabase extends _$AppDatabase {
           grossAmount: item.grossAmount,
           cashFlowAmount: item.cashFlowAmount,
           realizedProfitAmount: item.realizedProfitAmount,
+          realizedProfitSource: item.realizedProfitSource,
           ledgerEventId: ledgerEventId,
           ledgerLineId: item.ledgerLineId,
           ledgerKind: item.ledgerKind,
@@ -3962,6 +4250,7 @@ class AppDatabase extends _$AppDatabase {
           counterpartyHoldingId: item.counterpartyHoldingId,
           includeInCalculations: item.includeInCalculations,
           flowCategory: item.flowCategory,
+          fxRate: item.fxRate,
         ),
       );
       return;
@@ -4331,6 +4620,10 @@ class AppDatabase extends _$AppDatabase {
         amount: item.amount,
         quantity: item.quantity,
         includeInCalculations: item.includeInCalculations,
+        manualRealizedProfitAmount: item.realizedProfitSource == 'manual'
+            ? item.realizedProfitAmount
+            : null,
+        tradeFxRate: item.fxRate,
       );
       await markReplacement(newId);
       return;
@@ -4757,6 +5050,14 @@ class AppDatabase extends _$AppDatabase {
             : const Value.absent(),
         quantity: Value(quantity),
         averagePrice: Value(averagePrice),
+        averagePriceSource: isCashLike || holdingRow.currencyCode != 'USD'
+            ? Value(averagePrice)
+            : const Value.absent(),
+        averagePriceKrw: Value(averagePrice),
+        averagePurchaseFxRate: isCashLike || holdingRow.currencyCode != 'USD'
+            ? const Value(1)
+            : const Value.absent(),
+        costBasisKrw: Value(totalCost),
         currentPrice: Value(
           isCashLike && preservedCurrentPrice == 0
               ? 1.0
@@ -4782,7 +5083,8 @@ class AppDatabase extends _$AppDatabase {
         SELECT
           COUNT(*) AS line_count,
           COALESCE(SUM(tl.quantity_delta), 0) AS quantity,
-          COALESCE(SUM(tl.cost_basis_delta), 0) AS cost_basis
+          COALESCE(SUM(tl.cost_basis_delta), 0) AS cost_basis,
+          COALESCE(SUM(tl.cost_basis_source_delta), 0) AS source_cost_basis
         FROM transaction_lines tl
         INNER JOIN transaction_events te ON te.id = tl.event_id
         WHERE tl.deleted_at IS NULL
@@ -4799,9 +5101,16 @@ class AppDatabase extends _$AppDatabase {
 
     final quantity = row.read<double>('quantity');
     final costBasis = row.read<double>('cost_basis');
+    final sourceCostBasis = row.read<double>('source_cost_basis');
     final averagePrice = isEffectivelyZeroQuantity(quantity)
         ? 0.0
         : costBasis / quantity;
+    final averagePriceSource = isEffectivelyZeroQuantity(quantity)
+        ? 0.0
+        : sourceCostBasis / quantity;
+    final averagePurchaseFxRate = sourceCostBasis <= 0
+        ? (holdingRow.currencyCode == 'USD' ? 0.0 : 1.0)
+        : costBasis / sourceCostBasis;
 
     await (update(
       holdings,
@@ -4813,6 +5122,12 @@ class AppDatabase extends _$AppDatabase {
             : const Value.absent(),
         quantity: Value(isEffectivelyZeroQuantity(quantity) ? 0 : quantity),
         averagePrice: Value(averagePrice < 0 ? 0 : averagePrice),
+        averagePriceSource: Value(
+          averagePriceSource < 0 ? 0 : averagePriceSource,
+        ),
+        averagePriceKrw: Value(averagePrice < 0 ? 0 : averagePrice),
+        averagePurchaseFxRate: Value(averagePurchaseFxRate),
+        costBasisKrw: Value(costBasis < 0 ? 0 : costBasis),
       ),
     );
     await _refreshAssetSummary(holdingRow.assetId, markDirty: markDirty);
@@ -5209,6 +5524,473 @@ class AppDatabase extends _$AppDatabase {
     return (select(
       dailyPortfolioSnapshots,
     )..orderBy([(table) => OrderingTerm.asc(table.snapshotDate)])).get();
+  }
+
+  Future<List<PortfolioDailyReturn>> fetchPortfolioDailyReturns({
+    String localUserId = 'local',
+    String? from,
+    String? to,
+  }) {
+    final query = select(portfolioDailyReturns)
+      ..where((table) => table.localUserId.equals(localUserId));
+    final normalizedFrom = from == null
+        ? null
+        : _normalizeSnapshotDateKey(from);
+    final normalizedTo = to == null ? null : _normalizeSnapshotDateKey(to);
+    if (normalizedFrom != null) {
+      query.where(
+        (table) => table.returnDate.isBiggerOrEqualValue(normalizedFrom),
+      );
+    }
+    if (normalizedTo != null) {
+      query.where(
+        (table) => table.returnDate.isSmallerOrEqualValue(normalizedTo),
+      );
+    }
+    query.orderBy([(table) => OrderingTerm.asc(table.returnDate)]);
+    return query.get();
+  }
+
+  Future<void> saveBenchmarkPrice({
+    required String benchmarkCode,
+    required String priceDate,
+    required double closePrice,
+    double? adjustedClosePrice,
+    String currencyCode = 'KRW',
+    double? fxRateToKrw,
+    String? source,
+  }) async {
+    await _ensureBenchmarkPricesTable();
+    final now = _syncTimestamp();
+    await into(benchmarkPrices).insert(
+      BenchmarkPricesCompanion.insert(
+        benchmarkCode: benchmarkCode,
+        priceDate: _normalizeSnapshotDateKey(priceDate),
+        closePrice: closePrice,
+        adjustedClosePrice: Value(adjustedClosePrice),
+        currencyCode: Value(currencyCode),
+        fxRateToKrw: Value(fxRateToKrw),
+        source: Value(source),
+        createdAt: now,
+        updatedAt: now,
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
+
+  Future<List<BenchmarkPrice>> fetchBenchmarkPrices({
+    required String benchmarkCode,
+    String? from,
+    String? to,
+  }) {
+    final query = select(benchmarkPrices)
+      ..where((table) => table.benchmarkCode.equals(benchmarkCode));
+    final normalizedFrom = from == null
+        ? null
+        : _normalizeSnapshotDateKey(from);
+    final normalizedTo = to == null ? null : _normalizeSnapshotDateKey(to);
+    if (normalizedFrom != null) {
+      query.where(
+        (table) => table.priceDate.isBiggerOrEqualValue(normalizedFrom),
+      );
+    }
+    if (normalizedTo != null) {
+      query.where(
+        (table) => table.priceDate.isSmallerOrEqualValue(normalizedTo),
+      );
+    }
+    query.orderBy([(table) => OrderingTerm.asc(table.priceDate)]);
+    return query.get();
+  }
+
+  Future<BenchmarkPeriodComparisonResult?> compareBenchmarkPeriodReturn({
+    required String benchmarkCode,
+    String localUserId = 'local',
+    String? from,
+    String? to,
+  }) async {
+    final portfolioRows = await fetchPortfolioDailyReturns(
+      localUserId: localUserId,
+      from: from,
+      to: to,
+    );
+    final portfolioReturns = portfolioRows
+        .map((row) => row.dailyReturn)
+        .whereType<double>()
+        .toList(growable: false);
+    final portfolioCumulativeReturn = calculateCumulativeReturn(
+      portfolioReturns,
+    );
+    if (portfolioCumulativeReturn == null) return null;
+
+    final benchmarkRows = await fetchBenchmarkPrices(
+      benchmarkCode: benchmarkCode,
+      from: from,
+      to: to,
+    );
+    final boundary = _benchmarkPeriodBoundary(benchmarkRows);
+    if (boundary == null) return null;
+
+    final startValue = _benchmarkEffectiveKrwValue(boundary.start);
+    final endValue = _benchmarkEffectiveKrwValue(boundary.end);
+    if (startValue == null ||
+        endValue == null ||
+        startValue.abs() <= performanceCalculationTolerance) {
+      return null;
+    }
+
+    final benchmarkPeriodReturn = endValue / startValue - 1;
+    return BenchmarkPeriodComparisonResult(
+      benchmarkCode: benchmarkCode,
+      portfolioCumulativeReturn: portfolioCumulativeReturn,
+      benchmarkPeriodReturn: benchmarkPeriodReturn,
+      excessReturn: portfolioCumulativeReturn - benchmarkPeriodReturn,
+      benchmarkStartDate: boundary.start.priceDate,
+      benchmarkEndDate: boundary.end.priceDate,
+      benchmarkStartValue: startValue,
+      benchmarkEndValue: endValue,
+    );
+  }
+
+  Future<BenchmarkComparisonResult?> compareBenchmarkToPortfolioReturns({
+    required String benchmarkCode,
+    String localUserId = 'local',
+    String? from,
+    String? to,
+    int minimumCommonObservations = 20,
+  }) async {
+    if (minimumCommonObservations <= 0) return null;
+
+    final portfolioRows = await fetchPortfolioDailyReturns(
+      localUserId: localUserId,
+      from: from,
+      to: to,
+    );
+    final benchmarkRows = await fetchBenchmarkPrices(
+      benchmarkCode: benchmarkCode,
+      from: from,
+      to: to,
+    );
+    final benchmarkReturnByDate = _benchmarkDailyReturnByDate(benchmarkRows);
+    final portfolioReturns = <double>[];
+    final benchmarkReturns = <double>[];
+
+    for (final portfolioRow in portfolioRows) {
+      final portfolioReturn = portfolioRow.dailyReturn;
+      final benchmarkReturn = benchmarkReturnByDate[portfolioRow.returnDate];
+      if (portfolioReturn == null || benchmarkReturn == null) continue;
+      portfolioReturns.add(portfolioReturn);
+      benchmarkReturns.add(benchmarkReturn);
+    }
+
+    if (portfolioReturns.length < minimumCommonObservations) return null;
+
+    final portfolioCumulativeReturn = calculateCumulativeReturn(
+      portfolioReturns,
+    );
+    final benchmarkCumulativeReturn = calculateCumulativeReturn(
+      benchmarkReturns,
+    );
+    if (portfolioCumulativeReturn == null ||
+        benchmarkCumulativeReturn == null) {
+      return null;
+    }
+
+    return BenchmarkComparisonResult(
+      benchmarkCode: benchmarkCode,
+      commonObservationCount: portfolioReturns.length,
+      portfolioCumulativeReturn: portfolioCumulativeReturn,
+      benchmarkCumulativeReturn: benchmarkCumulativeReturn,
+      excessReturn: portfolioCumulativeReturn - benchmarkCumulativeReturn,
+    );
+  }
+
+  Map<String, double> _benchmarkDailyReturnByDate(List<BenchmarkPrice> prices) {
+    final result = <String, double>{};
+    double? previousValue;
+    for (final price in prices) {
+      final effectiveValue = _benchmarkEffectiveKrwValue(price);
+      if (effectiveValue == null) {
+        previousValue = null;
+        continue;
+      }
+      if (previousValue != null &&
+          previousValue.abs() > performanceCalculationTolerance) {
+        result[price.priceDate] = effectiveValue / previousValue - 1;
+      }
+      previousValue = effectiveValue;
+    }
+    return result;
+  }
+
+  _BenchmarkBoundary? _benchmarkPeriodBoundary(List<BenchmarkPrice> prices) {
+    final usablePrices = prices
+        .where((price) => _benchmarkEffectiveKrwValue(price) != null)
+        .toList(growable: false);
+    if (usablePrices.length < 2) return null;
+    usablePrices.sort((a, b) => a.priceDate.compareTo(b.priceDate));
+    final start = usablePrices.first;
+    final end = usablePrices.last;
+    if (start.priceDate == end.priceDate) return null;
+    return _BenchmarkBoundary(start: start, end: end);
+  }
+
+  double? _benchmarkEffectiveKrwValue(BenchmarkPrice price) {
+    final sourceValue =
+        (price.adjustedClosePrice != null && price.adjustedClosePrice! > 0)
+        ? price.adjustedClosePrice!
+        : price.closePrice;
+    if (sourceValue <= 0) return null;
+    final currencyCode = price.currencyCode.trim().toUpperCase();
+    if (currencyCode == 'KRW' || currencyCode == 'POINTS') return sourceValue;
+    final fxRate = price.fxRateToKrw;
+    if (fxRate == null || fxRate <= 0) return null;
+    return sourceValue * fxRate;
+  }
+
+  Future<int> rebuildPortfolioDailyReturns({
+    String localUserId = 'local',
+    String? from,
+    String? to,
+  }) async {
+    await _ensurePortfolioDailyReturnsTable();
+    final snapshots = await fetchAllPortfolioSnapshots();
+    final normalizedFrom = from == null
+        ? null
+        : _normalizeSnapshotDateKey(from);
+    final normalizedTo = to == null ? null : _normalizeSnapshotDateKey(to);
+    final filteredSnapshots = snapshots
+        .where((snapshot) {
+          final snapshotDate = _normalizeSnapshotDateKey(snapshot.snapshotDate);
+          if (normalizedFrom != null &&
+              snapshotDate.compareTo(normalizedFrom) < 0) {
+            return false;
+          }
+          if (normalizedTo != null &&
+              snapshotDate.compareTo(normalizedTo) > 0) {
+            return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
+
+    await _deletePortfolioDailyReturnsInRange(
+      localUserId: localUserId,
+      from: normalizedFrom,
+      to: normalizedTo,
+    );
+
+    if (filteredSnapshots.isEmpty) return 0;
+
+    final allSnapshotByDate = {
+      for (final snapshot in snapshots)
+        _normalizeSnapshotDateKey(snapshot.snapshotDate): snapshot,
+    };
+    final cashFlowByDate = await _fetchExternalCashFlowKrwByDate(
+      from: normalizedFrom,
+      to: normalizedTo,
+    );
+    final cashFlowUsesFallbackFxByDate =
+        await _fetchExternalCashFlowFallbackFxDates(
+          from: normalizedFrom,
+          to: normalizedTo,
+        );
+    final now = _syncTimestamp();
+    var insertedCount = 0;
+
+    await transaction(() async {
+      for (final snapshot in filteredSnapshots) {
+        final returnDate = _normalizeSnapshotDateKey(snapshot.snapshotDate);
+        final previousDate = _previousDateKey(returnDate);
+        final previousSnapshot = previousDate == null
+            ? null
+            : allSnapshotByDate[previousDate];
+        final beginningValue = previousSnapshot?.totalValuationAmount;
+        final endingValue = snapshot.totalValuationAmount;
+        final externalCashFlow = cashFlowByDate[returnDate] ?? 0;
+        final dailyReturn = beginningValue == null
+            ? null
+            : calculateCashFlowAdjustedDailyReturn(
+                beginningValue: beginningValue,
+                endingValue: endingValue,
+                externalCashFlow: externalCashFlow,
+              );
+        final dataQuality = beginningValue == null
+            ? 'missing_snapshot'
+            : cashFlowUsesFallbackFxByDate.contains(returnDate)
+            ? 'missing_fx'
+            : 'complete';
+
+        await into(portfolioDailyReturns).insert(
+          PortfolioDailyReturnsCompanion.insert(
+            localUserId: localUserId,
+            returnDate: returnDate,
+            beginningValueKrw: Value(beginningValue),
+            endingValueKrw: endingValue,
+            portfolioValueKrw: endingValue,
+            externalCashFlowKrw: Value(externalCashFlow),
+            dailyReturn: Value(dailyReturn),
+            dataQuality: Value(dataQuality),
+            calculationVersion: const Value(1),
+            createdAt: now,
+            updatedAt: now,
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+        insertedCount += 1;
+      }
+    });
+
+    return insertedCount;
+  }
+
+  Future<void> _deletePortfolioDailyReturnsInRange({
+    required String localUserId,
+    String? from,
+    String? to,
+  }) async {
+    final query = delete(portfolioDailyReturns)
+      ..where((table) => table.localUserId.equals(localUserId));
+    if (from != null) {
+      query.where((table) => table.returnDate.isBiggerOrEqualValue(from));
+    }
+    if (to != null) {
+      query.where((table) => table.returnDate.isSmallerOrEqualValue(to));
+    }
+    await query.go();
+  }
+
+  Future<Map<String, double>> _fetchExternalCashFlowKrwByDate({
+    String? from,
+    String? to,
+  }) async {
+    final rows = await _fetchExternalCashFlowRows(from: from, to: to);
+    final result = <String, double>{};
+    for (final row in rows) {
+      final returnDate = row.returnDate;
+      final cashFlowKrw = await _toKrwCashFlow(
+        row.cashDelta,
+        currencyCode: row.currencyCode,
+        fxRate: row.fxRate,
+        date: returnDate,
+      );
+      result[returnDate] = (result[returnDate] ?? 0) + cashFlowKrw;
+    }
+    return result;
+  }
+
+  Future<Set<String>> _fetchExternalCashFlowFallbackFxDates({
+    String? from,
+    String? to,
+  }) async {
+    final rows = await _fetchExternalCashFlowRows(from: from, to: to);
+    final result = <String>{};
+    for (final row in rows) {
+      if (row.currencyCode == 'KRW' || (row.fxRate ?? 0) > 0) continue;
+      result.add(row.returnDate);
+    }
+    return result;
+  }
+
+  Future<List<_ExternalCashFlowRow>> _fetchExternalCashFlowRows({
+    String? from,
+    String? to,
+  }) async {
+    final whereClauses = <String>[
+      'te.deleted_at IS NULL',
+      'tl.deleted_at IS NULL',
+      "te.flow_category IN ('external_deposit', 'external_withdrawal')",
+      "tl.action IN ('deposit', 'withdrawal')",
+    ];
+    final variables = <Variable<Object>>[];
+    if (from != null) {
+      whereClauses.add("REPLACE(SUBSTR(te.occurred_at, 1, 10), '.', '-') >= ?");
+      variables.add(Variable.withString(from));
+    }
+    if (to != null) {
+      whereClauses.add("REPLACE(SUBSTR(te.occurred_at, 1, 10), '.', '-') <= ?");
+      variables.add(Variable.withString(to));
+    }
+
+    final rows = await customSelect(
+      '''
+        SELECT
+          REPLACE(SUBSTR(te.occurred_at, 1, 10), '.', '-') AS return_date,
+          COALESCE(tl.currency_code, 'KRW') AS currency_code,
+          tl.fx_rate AS fx_rate,
+          COALESCE(tl.cash_delta, 0) AS cash_delta
+        FROM transaction_lines tl
+        INNER JOIN transaction_events te ON te.id = tl.event_id
+        WHERE ${whereClauses.join(' AND ')}
+      ''',
+      variables: variables,
+      readsFrom: {transactionEvents, transactionLines},
+    ).get();
+
+    return rows
+        .map(
+          (row) => _ExternalCashFlowRow(
+            returnDate: row.read<String>('return_date'),
+            currencyCode: row.read<String>('currency_code'),
+            fxRate: row.readNullable<double>('fx_rate'),
+            cashDelta: row.read<double>('cash_delta'),
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<double> _toKrwCashFlow(
+    double amount, {
+    required String currencyCode,
+    required double? fxRate,
+    required String date,
+  }) async {
+    if (currencyCode == 'KRW') return amount;
+    final resolvedFxRate = (fxRate != null && fxRate > 0)
+        ? fxRate
+        : await _fetchExchangeRateOnOrBefore(date) ??
+              await fetchLatestExchangeRate() ??
+              1.0;
+    return amount * resolvedFxRate;
+  }
+
+  Future<double?> _fetchExchangeRateOnOrBefore(
+    String date, {
+    String currencyPair = 'USD/KRW',
+  }) async {
+    final normalizedDate = _normalizeSnapshotDateKey(date);
+    final row = await customSelect(
+      '''
+        SELECT rate
+        FROM exchange_rates
+        WHERE currency_pair = ?
+          AND REPLACE(SUBSTR(recorded_at, 1, 10), '.', '-') <= ?
+        ORDER BY recorded_at DESC
+        LIMIT 1
+      ''',
+      variables: [
+        Variable.withString(currencyPair),
+        Variable.withString(normalizedDate),
+      ],
+      readsFrom: {exchangeRates},
+    ).getSingleOrNull();
+    return row?.read<double>('rate');
+  }
+
+  String? _previousDateKey(String date) {
+    final normalizedDate = _normalizeSnapshotDateKey(date);
+    final parsed = DateTime.tryParse(normalizedDate);
+    if (parsed == null) return null;
+    final previousDate = parsed.subtract(const Duration(days: 1));
+    return _dateKey(previousDate);
+  }
+
+  String _dateKey(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    final year = normalized.year.toString().padLeft(4, '0');
+    final month = normalized.month.toString().padLeft(2, '0');
+    final day = normalized.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
   }
 
   Future<List<DailyPortfolioSnapshotItem>> fetchPortfolioSnapshotItemsByDates(
@@ -6303,6 +7085,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(dailyPortfolioSnapshotHoldingItems).go();
       await delete(dailyPortfolioSnapshotItems).go();
       await delete(dailyPortfolioSnapshots).go();
+      await delete(portfolioDailyReturns).go();
       await delete(assetAllocationTargets).go();
       await delete(transactionLines).go();
       await delete(transactionEvents).go();
@@ -6586,6 +7369,10 @@ class AppDatabase extends _$AppDatabase {
             'symbol': row.symbol,
             'quantity': row.quantity,
             'average_price': row.averagePrice,
+            'average_price_source': row.averagePriceSource,
+            'average_price_krw': row.averagePriceKrw,
+            'average_purchase_fx_rate': row.averagePurchaseFxRate,
+            'cost_basis_krw': row.costBasisKrw,
             'current_price': row.currentPrice,
             'note': row.note,
             'sort_order': row.sortOrder,
@@ -6682,7 +7469,9 @@ class AppDatabase extends _$AppDatabase {
             'fee_amount': row.feeAmount,
             'tax_amount': row.taxAmount,
             'cost_basis_delta': row.costBasisDelta,
+            'cost_basis_source_delta': row.costBasisSourceDelta,
             'realized_pnl': row.realizedPnl,
+            'realized_pnl_source': row.realizedPnlSource,
             'fx_rate': row.fxRate,
             'sort_order': row.sortOrder,
           };
@@ -6699,6 +7488,128 @@ class AppDatabase extends _$AppDatabase {
       'transaction_events': transactionEventRows,
       'transaction_lines': transactionLineRows,
     };
+  }
+
+  Future<SyncSafetySnapshot> fetchSyncSafetySnapshot() async {
+    final row = await customSelect(
+      '''
+      SELECT
+        (SELECT COUNT(*) FROM assets WHERE deleted_at IS NULL) AS asset_row_count,
+        COUNT(*) AS holding_row_count,
+        COALESCE(SUM(quantity), 0) AS holding_quantity_sum,
+        COALESCE(SUM(quantity * current_price), 0) AS holding_valuation_sum,
+        COALESCE(SUM(cost_basis_krw), 0) AS holding_purchase_amount_sum,
+        COALESCE(SUM(CASE WHEN ABS(quantity) <= ? THEN 1 ELSE 0 END), 0) AS zero_quantity_count,
+        COALESCE(SUM(CASE WHEN ABS(average_price) <= ? THEN 1 ELSE 0 END), 0) AS zero_average_price_count,
+        COALESCE(SUM(CASE WHEN ABS(quantity * current_price) <= ? THEN 1 ELSE 0 END), 0) AS zero_valuation_count,
+        COALESCE(SUM(CASE WHEN currency_code = 'USD' AND ABS(average_price_source) <= ? THEN 1 ELSE 0 END), 0) AS null_or_zero_source_average_count,
+        COALESCE(SUM(CASE WHEN currency_code = 'USD' AND ABS(average_purchase_fx_rate) <= ? THEN 1 ELSE 0 END), 0) AS null_or_zero_average_fx_count
+      FROM holdings
+      WHERE deleted_at IS NULL
+    ''',
+      variables: [
+        Variable.withReal(performanceCalculationTolerance),
+        Variable.withReal(performanceCalculationTolerance),
+        Variable.withReal(performanceCalculationTolerance),
+        Variable.withReal(performanceCalculationTolerance),
+        Variable.withReal(performanceCalculationTolerance),
+      ],
+      readsFrom: {assets, holdings},
+    ).getSingle();
+
+    return SyncSafetySnapshot(
+      assetRowCount: row.read<int>('asset_row_count'),
+      holdingRowCount: row.read<int>('holding_row_count'),
+      holdingQuantitySum: row.read<double>('holding_quantity_sum'),
+      holdingValuationSum: row.read<double>('holding_valuation_sum'),
+      holdingPurchaseAmountSum: row.read<double>('holding_purchase_amount_sum'),
+      zeroQuantityCount: row.read<int>('zero_quantity_count'),
+      zeroAveragePriceCount: row.read<int>('zero_average_price_count'),
+      zeroValuationCount: row.read<int>('zero_valuation_count'),
+      nullOrZeroSourceAverageCount: row.read<int>(
+        'null_or_zero_source_average_count',
+      ),
+      nullOrZeroAverageFxCount: row.read<int>('null_or_zero_average_fx_count'),
+    );
+  }
+
+  List<SyncSafetyIssue> compareSyncSafetySnapshots({
+    required SyncSafetySnapshot before,
+    required SyncSafetySnapshot after,
+    double tolerance = 0.000001,
+  }) {
+    final issues = <SyncSafetyIssue>[];
+    void compareInt(String metric, int beforeValue, int afterValue) {
+      if (beforeValue != afterValue) {
+        issues.add(
+          SyncSafetyIssue(
+            metric: metric,
+            beforeValue: beforeValue,
+            afterValue: afterValue,
+          ),
+        );
+      }
+    }
+
+    void compareDouble(String metric, double beforeValue, double afterValue) {
+      if ((beforeValue - afterValue).abs() > tolerance) {
+        issues.add(
+          SyncSafetyIssue(
+            metric: metric,
+            beforeValue: beforeValue,
+            afterValue: afterValue,
+          ),
+        );
+      }
+    }
+
+    compareInt('asset_row_count', before.assetRowCount, after.assetRowCount);
+    compareInt(
+      'holding_row_count',
+      before.holdingRowCount,
+      after.holdingRowCount,
+    );
+    compareDouble(
+      'holding_quantity_sum',
+      before.holdingQuantitySum,
+      after.holdingQuantitySum,
+    );
+    compareDouble(
+      'holding_valuation_sum',
+      before.holdingValuationSum,
+      after.holdingValuationSum,
+    );
+    compareDouble(
+      'holding_purchase_amount_sum',
+      before.holdingPurchaseAmountSum,
+      after.holdingPurchaseAmountSum,
+    );
+    compareInt(
+      'zero_quantity_count',
+      before.zeroQuantityCount,
+      after.zeroQuantityCount,
+    );
+    compareInt(
+      'zero_average_price_count',
+      before.zeroAveragePriceCount,
+      after.zeroAveragePriceCount,
+    );
+    compareInt(
+      'zero_valuation_count',
+      before.zeroValuationCount,
+      after.zeroValuationCount,
+    );
+    compareInt(
+      'null_or_zero_source_average_count',
+      before.nullOrZeroSourceAverageCount,
+      after.nullOrZeroSourceAverageCount,
+    );
+    compareInt(
+      'null_or_zero_average_fx_count',
+      before.nullOrZeroAverageFxCount,
+      after.nullOrZeroAverageFxCount,
+    );
+    return issues;
   }
 
   Future<void> markDirtySyncPayloadAsSynced(
@@ -6827,6 +7738,7 @@ class AppDatabase extends _$AppDatabase {
     };
 
     await transaction(() async {
+      await delete(portfolioDailyReturns).go();
       await delete(transactionLines).go();
       await delete(transactionEvents).go();
       await delete(cashTransactions).go();
@@ -6887,6 +7799,19 @@ class AppDatabase extends _$AppDatabase {
             symbol: _stringValue(row['symbol'], ''),
             quantity: _doubleValue(row['quantity']),
             averagePrice: _doubleValue(row['average_price']),
+            averagePriceSource: Value(
+              _doubleValue(row['average_price_source']),
+            ),
+            averagePriceKrw: Value(
+              _doubleValue(
+                row['average_price_krw'],
+                _doubleValue(row['average_price']),
+              ),
+            ),
+            averagePurchaseFxRate: Value(
+              _doubleValue(row['average_purchase_fx_rate'], 1),
+            ),
+            costBasisKrw: Value(_doubleValue(row['cost_basis_krw'])),
             currentPrice: _doubleValue(row['current_price']),
             note: _stringValue(row['note'], ''),
             sortOrder: _intValue(row['sort_order']),
@@ -7093,7 +8018,13 @@ class AppDatabase extends _$AppDatabase {
             feeAmount: Value(_doubleValue(row['fee_amount'])),
             taxAmount: Value(_doubleValue(row['tax_amount'])),
             costBasisDelta: Value(_doubleValue(row['cost_basis_delta'])),
+            costBasisSourceDelta: Value(
+              _doubleValue(row['cost_basis_source_delta']),
+            ),
             realizedPnl: Value(_doubleValue(row['realized_pnl'])),
+            realizedPnlSource: Value(
+              _stringValue(row['realized_pnl_source'], 'auto'),
+            ),
             fxRate: Value(
               row['fx_rate'] == null ? null : _doubleValue(row['fx_rate']),
             ),

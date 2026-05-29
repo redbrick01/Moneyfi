@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:drift/native.dart';
+import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/models/asset_item.dart';
+import 'package:moneyfy/services/benchmark_price_service.dart';
 import 'package:moneyfy/services/market_data_service.dart';
 
 void main() {
@@ -109,6 +112,169 @@ void main() {
       expect(snapshot.targetCurrency, 'ETH');
       expect(snapshot.bestAskPrice, '-');
     });
+  });
+
+  group('Benchmark price API', () {
+    late AppDatabase db;
+
+    setUp(() {
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test(
+      'fetches and persists missing SP500 prices from Yahoo chart',
+      () async {
+        Uri? requestedUri;
+        final service = BenchmarkPriceService.test(
+          database: db,
+          yahooChartBaseUrl: 'https://yahoo.test',
+          client: MockClient((request) async {
+            requestedUri = request.url;
+            expect(request.headers['user-agent'], 'Mozilla/5.0');
+            return jsonResponse({
+              'chart': {
+                'result': [
+                  {
+                    'timestamp': [1777593600, 1777680000],
+                    'indicators': {
+                      'quote': [
+                        {
+                          'close': [100, 102],
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            });
+          }),
+        );
+
+        final saved = await service.ensureBenchmarkPrices(
+          benchmarkCode: 'SP500',
+          from: '2026-05-01',
+          to: '2026-05-31',
+        );
+        final prices = await db.fetchBenchmarkPrices(benchmarkCode: 'SP500');
+
+        expect(saved, 2);
+        expect(requestedUri?.host, 'yahoo.test');
+        expect(requestedUri?.pathSegments, ['v8', 'finance', 'chart', '^GSPC']);
+        expect(requestedUri?.queryParameters['interval'], '1d');
+        expect(requestedUri?.queryParameters['events'], 'history');
+        expect(prices.map((price) => price.priceDate), [
+          '2026-05-01',
+          '2026-05-02',
+        ]);
+        expect(prices.first.closePrice, 100);
+        expect(prices.first.currencyCode, 'POINTS');
+        expect(prices.first.source, 'yahoo');
+      },
+    );
+
+    test('uses cache when boundary prices already exist', () async {
+      var requestCount = 0;
+      await db.saveBenchmarkPrice(
+        benchmarkCode: 'SP500',
+        priceDate: '2026-05-01',
+        closePrice: 100,
+        currencyCode: 'POINTS',
+      );
+      await db.saveBenchmarkPrice(
+        benchmarkCode: 'SP500',
+        priceDate: '2026-05-31',
+        closePrice: 110,
+        currencyCode: 'POINTS',
+      );
+      final service = BenchmarkPriceService.test(
+        database: db,
+        yahooChartBaseUrl: 'https://yahoo.test',
+        client: MockClient((_) async {
+          requestCount += 1;
+          return http.Response('', 500);
+        }),
+      );
+
+      final saved = await service.ensureBenchmarkPrices(
+        benchmarkCode: 'SP500',
+        from: '2026-05-01',
+        to: '2026-05-31',
+      );
+
+      expect(saved, 0);
+      expect(requestCount, 0);
+    });
+
+    test('treats API failure as empty fetch result', () async {
+      final service = BenchmarkPriceService.test(
+        database: db,
+        yahooChartBaseUrl: 'https://yahoo.test',
+        client: MockClient((_) async => http.Response('not-json', 200)),
+      );
+
+      final saved = await service.ensureBenchmarkPrices(
+        benchmarkCode: 'SP500',
+        from: '2026-05-01',
+        to: '2026-05-31',
+      );
+
+      expect(saved, 0);
+      expect(await db.fetchBenchmarkPrices(benchmarkCode: 'SP500'), isEmpty);
+    });
+
+    test(
+      'fetches Yahoo IRX and converts it to annual risk-free rate',
+      () async {
+        Uri? requestedUri;
+        final service = BenchmarkPriceService.test(
+          database: db,
+          yahooChartBaseUrl: 'https://yahoo.test',
+          client: MockClient((request) async {
+            requestedUri = request.url;
+            return jsonResponse({
+              'chart': {
+                'result': [
+                  {
+                    'timestamp': [1777593600, 1777680000],
+                    'indicators': {
+                      'quote': [
+                        {
+                          'close': [5.20, 5.25],
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            });
+          }),
+        );
+
+        final saved = await service.ensureRiskFreeRates(
+          from: '2026-05-01',
+          to: '2026-05-31',
+        );
+        final riskFreeRate = await service.fetchLatestRiskFreeRate(
+          to: '2026-05-31',
+        );
+        final prices = await db.fetchBenchmarkPrices(
+          benchmarkCode: BenchmarkPriceService.usTBill13WeekCode,
+        );
+
+        expect(saved, 2);
+        expect(requestedUri?.pathSegments, ['v8', 'finance', 'chart', '^IRX']);
+        expect(prices.first.currencyCode, 'PERCENT');
+        expect(prices.first.source, 'yahoo:^IRX');
+        expect(riskFreeRate, isNotNull);
+        expect(riskFreeRate!.annualRate, closeTo(0.0525, 1e-12));
+        expect(riskFreeRate.priceDate, '2026-05-02');
+        expect(riskFreeRate.source, 'yahoo:^IRX');
+      },
+    );
   });
 
   group('Korea Investment API', () {

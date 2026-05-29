@@ -4,11 +4,52 @@ import 'package:moneyfy/design_system/app_theme.dart';
 import 'package:moneyfy/models/asset_item.dart';
 import 'package:moneyfy/pages/forms/cash_transaction_form_page.dart';
 import 'package:moneyfy/pages/forms/transaction_form_page.dart';
+import 'package:moneyfy/pages/investment_performance_page.dart';
+import 'package:moneyfy/utils/input_validators.dart';
 
 import 'package:moneyfy/main.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('period unrealized profit subtracts baseline snapshot profit', () {
+    expect(
+      calculatePeriodUnrealizedProfit(
+        currentUnrealizedProfit: 5600000,
+        baselineUnrealizedProfit: 2500000,
+      ),
+      3100000,
+    );
+    expect(
+      calculatePeriodUnrealizedProfit(currentUnrealizedProfit: 5600000),
+      5600000,
+    );
+  });
+
+  test(
+    'manual realized profit validator allows losses only when requested',
+    () {
+      final defaultValidation = MoneyfyInputValidators.decimal(
+        '-1200',
+        fieldName: '실현손익',
+      );
+      final realizedProfitValidation = MoneyfyInputValidators.decimal(
+        '-1200',
+        fieldName: '실현손익',
+        allowNegative: true,
+      );
+
+      expect(defaultValidation.isValid, isFalse);
+      expect(realizedProfitValidation.isValid, isTrue);
+      expect(realizedProfitValidation.value, -1200);
+    },
+  );
+
+  test('performance rate uses buy amount as basis', () {
+    expect(calculatePerformanceRate(250000, 1000000), 25);
+    expect(calculatePerformanceRate(-50000, 1000000), -5);
+    expect(calculatePerformanceRate(250000, 0), isNull);
+  });
 
   HoldingItem holding({
     required int id,
@@ -504,6 +545,34 @@ void main() {
 
     await ensureTextFieldVisible(tester, '매수 수량');
     expect(quantityTextField(tester).controller!.text, '10');
+  });
+
+  testWidgets('record-only sell still shows manual realized profit input', (
+    tester,
+  ) async {
+    await pumpTransactionForm(
+      tester,
+      holdings: [holding(id: 1, name: 'btc', quantity: 5)],
+    );
+
+    await tester.tap(find.text('매도'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('포트폴리오 계산에 반영'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('실현손익'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('실현손익'), findsOneWidget);
+    expect(find.text('자동 계산'), findsOneWidget);
+    await tester.tap(find.text('직접 입력'));
+    await tester.pumpAndSettle();
+
+    await ensureTextFieldVisible(tester, '실현손익 금액');
+    expect(find.widgetWithText(TextField, '실현손익 금액'), findsOneWidget);
   });
 
   testWidgets('buy shortcut is disabled before unit price is entered', (

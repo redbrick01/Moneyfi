@@ -24,6 +24,116 @@ class SnapshotCashAccountRecord {
   final String note;
 }
 
+class _ExternalCashFlowRow {
+  const _ExternalCashFlowRow({
+    required this.returnDate,
+    required this.currencyCode,
+    required this.fxRate,
+    required this.cashDelta,
+  });
+
+  final String returnDate;
+  final String currencyCode;
+  final double? fxRate;
+  final double cashDelta;
+}
+
+class BenchmarkComparisonResult {
+  const BenchmarkComparisonResult({
+    required this.benchmarkCode,
+    required this.commonObservationCount,
+    required this.portfolioCumulativeReturn,
+    required this.benchmarkCumulativeReturn,
+    required this.excessReturn,
+  });
+
+  final String benchmarkCode;
+  final int commonObservationCount;
+  final double portfolioCumulativeReturn;
+  final double benchmarkCumulativeReturn;
+  final double excessReturn;
+}
+
+class BenchmarkPeriodComparisonResult {
+  const BenchmarkPeriodComparisonResult({
+    required this.benchmarkCode,
+    required this.portfolioCumulativeReturn,
+    required this.benchmarkPeriodReturn,
+    required this.excessReturn,
+    required this.benchmarkStartDate,
+    required this.benchmarkEndDate,
+    required this.benchmarkStartValue,
+    required this.benchmarkEndValue,
+  });
+
+  final String benchmarkCode;
+  final double portfolioCumulativeReturn;
+  final double benchmarkPeriodReturn;
+  final double excessReturn;
+  final String benchmarkStartDate;
+  final String benchmarkEndDate;
+  final double benchmarkStartValue;
+  final double benchmarkEndValue;
+}
+
+class _BenchmarkBoundary {
+  const _BenchmarkBoundary({required this.start, required this.end});
+
+  final BenchmarkPrice start;
+  final BenchmarkPrice end;
+}
+
+class SyncSafetySnapshot {
+  const SyncSafetySnapshot({
+    required this.assetRowCount,
+    required this.holdingRowCount,
+    required this.holdingQuantitySum,
+    required this.holdingValuationSum,
+    required this.holdingPurchaseAmountSum,
+    required this.zeroQuantityCount,
+    required this.zeroAveragePriceCount,
+    required this.zeroValuationCount,
+    required this.nullOrZeroSourceAverageCount,
+    required this.nullOrZeroAverageFxCount,
+  });
+
+  final int assetRowCount;
+  final int holdingRowCount;
+  final double holdingQuantitySum;
+  final double holdingValuationSum;
+  final double holdingPurchaseAmountSum;
+  final int zeroQuantityCount;
+  final int zeroAveragePriceCount;
+  final int zeroValuationCount;
+  final int nullOrZeroSourceAverageCount;
+  final int nullOrZeroAverageFxCount;
+
+  Map<String, Object> toJson() => {
+    'asset_row_count': assetRowCount,
+    'holding_row_count': holdingRowCount,
+    'holding_quantity_sum': holdingQuantitySum,
+    'holding_valuation_sum': holdingValuationSum,
+    'holding_purchase_amount_sum': holdingPurchaseAmountSum,
+    'zero_quantity_count': zeroQuantityCount,
+    'zero_average_price_count': zeroAveragePriceCount,
+    'zero_valuation_count': zeroValuationCount,
+    'null_or_zero_source_average_count': nullOrZeroSourceAverageCount,
+    'null_or_zero_average_fx_count': nullOrZeroAverageFxCount,
+  };
+}
+
+class SyncSafetyIssue {
+  const SyncSafetyIssue({
+    required this.metric,
+    required this.beforeValue,
+    required this.afterValue,
+  });
+
+  final String metric;
+  final Object beforeValue;
+  final Object afterValue;
+}
+
 class SnapshotTransactionRecord {
   const SnapshotTransactionRecord({
     required this.id,
@@ -97,6 +207,7 @@ class _NormalizedTransactionValues {
     required this.grossAmount,
     required this.cashFlowAmount,
     required this.realizedProfitAmount,
+    required this.realizedProfitSource,
   });
 
   final double unitPrice;
@@ -104,6 +215,7 @@ class _NormalizedTransactionValues {
   final double grossAmount;
   final double cashFlowAmount;
   final double realizedProfitAmount;
+  final String realizedProfitSource;
 }
 
 class LedgerHoldingPerformanceRecord {

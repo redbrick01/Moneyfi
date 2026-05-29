@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
       supabase
         .from("holdings")
         .select(
-          "id, client_id, last_modified_at, asset_id, currency_code, market_updated_at, exchange_code, name, symbol, quantity, average_price, current_price, note, sort_order",
+          "id, client_id, last_modified_at, asset_id, currency_code, market_updated_at, exchange_code, name, symbol, quantity, average_price, average_price_source, average_price_krw, average_purchase_fx_rate, cost_basis_krw, current_price, note, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
       supabase
         .from("transaction_lines")
         .select(
-          "id, client_id, last_modified_at, event_id, asset_id, holding_id, cash_account_id, legacy_source_table, legacy_source_id, action, currency_code, quantity_delta, cash_delta, unit_price, gross_amount, fee_amount, tax_amount, cost_basis_delta, realized_pnl, fx_rate, sort_order",
+          "id, client_id, last_modified_at, event_id, asset_id, holding_id, cash_account_id, legacy_source_table, legacy_source_id, action, currency_code, quantity_delta, cash_delta, unit_price, gross_amount, fee_amount, tax_amount, cost_basis_delta, cost_basis_source_delta, realized_pnl, realized_pnl_source, fx_rate, sort_order",
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
@@ -236,6 +236,10 @@ Deno.serve(async (req) => {
       symbol: String(row.symbol ?? ""),
       quantity: parseNumber(row.quantity),
       average_price: parseNumber(row.average_price),
+      average_price_source: parseNumber(row.average_price_source),
+      average_price_krw: parseNumber(row.average_price_krw),
+      average_purchase_fx_rate: parseNumber(row.average_purchase_fx_rate, 1),
+      cost_basis_krw: parseNumber(row.cost_basis_krw),
       current_price: parseNumber(row.current_price),
       note: String(row.note ?? ""),
       sort_order: parseNumber(row.sort_order),
@@ -337,7 +341,9 @@ Deno.serve(async (req) => {
       fee_amount: parseNumber(row.fee_amount),
       tax_amount: parseNumber(row.tax_amount),
       cost_basis_delta: parseNumber(row.cost_basis_delta),
+      cost_basis_source_delta: parseNumber(row.cost_basis_source_delta),
       realized_pnl: parseNumber(row.realized_pnl),
+      realized_pnl_source: String(row.realized_pnl_source ?? "auto"),
       fx_rate: row.fx_rate == null ? null : parseNumber(row.fx_rate),
       sort_order: parseNumber(row.sort_order),
     }));

@@ -69,6 +69,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
+const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 const USD_KRW_RATE_URL = Deno.env.get("USD_KRW_RATE_URL") ??
   "https://m.search.naver.com/p/csearch/content/qapirender.nhn?key=calculator&pkid=141&q=%ED%99%98%EC%9C%A8&where=m&u1=keb&u6=standardUnit&u7=0&u3=USD&u4=KRW&u8=down&u2=1";
 const jsonHeaders = { "Content-Type": "application/json" };
@@ -90,6 +91,14 @@ function requireEnv(name: string, value: string) {
   if (!value) {
     throw new Error(`Missing env: ${name}`);
   }
+}
+
+function isAuthorizedCronRequest(req: Request) {
+  if (!CRON_SECRET) {
+    return false;
+  }
+
+  return req.headers.get("x-cron-secret") === CRON_SECRET;
 }
 
 function ensureSupabaseResponse<T>(
@@ -258,8 +267,34 @@ async function fetchLatestExchangeRate(supabase: SupabaseClient<any>) {
   }
 }
 
-function resolveTargetUserIds(authUserId: string) {
-  return [authUserId];
+async function resolveCronTargetUserIds(
+  supabase: SupabaseClient<any>,
+  requestedUserId: string | null,
+) {
+  if (requestedUserId) {
+    return [requestedUserId];
+  }
+
+  const response = ensureSupabaseResponse(
+    await supabase
+      .from("assets")
+      .select("user_id")
+      .is("deleted_at", null),
+    "resolveCronTargetUserIds",
+  );
+  const { data, error } = response;
+
+  if (error) {
+    throw new Error(`Failed to load snapshot target users: ${error.message}`);
+  }
+
+  return Array.from(
+    new Set(
+      (data ?? [])
+        .map((row) => String(row.user_id ?? "").trim())
+        .filter((userId) => userId.length > 0),
+    ),
+  );
 }
 
 async function loadAssets(supabase: SupabaseClient<any>, userId: string) {
@@ -727,12 +762,19 @@ Deno.serve(async (req) => {
     requireEnv("SUPABASE_ANON_KEY", SUPABASE_ANON_KEY);
     requireEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
 
-    const auth = await authenticateUser(
-      req.headers.get("Authorization"),
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY,
-    );
-    if (!auth.userId) {
+    const body = req.method === "POST"
+      ? await req.json().catch(() => ({}))
+      : {};
+    const cronRequest = isAuthorizedCronRequest(req);
+    const auth = cronRequest
+      ? { userId: null as string | null, token: null, reason: "cron_secret" }
+      : await authenticateUser(
+        req.headers.get("Authorization"),
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
+      );
+
+    if (!cronRequest && !auth.userId) {
       return new Response(
         JSON.stringify({
           ok: false,
@@ -755,9 +797,6 @@ Deno.serve(async (req) => {
       },
     );
 
-    const body = req.method === "POST"
-      ? await req.json().catch(() => ({}))
-      : {};
     const targetUserId =
       typeof body?.user_id === "string" && body.user_id.trim()
         ? body.user_id.trim()
@@ -772,9 +811,10 @@ Deno.serve(async (req) => {
       snapshot_date: snapshotDate,
       target_user_id: targetUserId,
       auth_user_id: auth.userId,
+      cron_request: cronRequest,
     });
 
-    if (targetUserId && targetUserId !== auth.userId) {
+    if (!cronRequest && targetUserId && targetUserId !== auth.userId) {
       return new Response(
         JSON.stringify({
           ok: false,
@@ -785,7 +825,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const userIds = resolveTargetUserIds(auth.userId);
+    const userIds = cronRequest
+      ? await resolveCronTargetUserIds(supabase, targetUserId)
+      : [auth.userId as string];
     const usdKrwRate = await fetchLatestExchangeRate(supabase);
 
     logStep("Resolved snapshot targets", {

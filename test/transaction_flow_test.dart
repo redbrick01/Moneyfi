@@ -110,6 +110,159 @@ void main() {
     },
   );
 
+  test('currency basis migration keeps unknown USD source averages at zero', () async {
+    await db.close();
+    final tempDir = Directory.systemTemp.createTempSync(
+      'moneyfy_currency_basis_migration_test_',
+    );
+    try {
+      final file = File('${tempDir.path}/db.sqlite');
+      db = AppDatabase.forTesting(
+        NativeDatabase(
+          file,
+          setup: (sqlite) {
+            sqlite.execute('''
+              CREATE TABLE assets (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                client_id TEXT,
+                dirty INTEGER NOT NULL DEFAULT 0,
+                last_modified_at TEXT,
+                deleted_at TEXT,
+                asset_type TEXT NOT NULL DEFAULT '주식',
+                title TEXT NOT NULL,
+                alias TEXT NOT NULL DEFAULT '',
+                hidden INTEGER NOT NULL DEFAULT 0,
+                currency_code TEXT NOT NULL DEFAULT 'KRW',
+                value TEXT NOT NULL,
+                change TEXT NOT NULL,
+                icon_code_point INTEGER NOT NULL,
+                quantity_label TEXT NOT NULL,
+                quantity_value TEXT NOT NULL,
+                average_label TEXT NOT NULL,
+                average_value TEXT NOT NULL,
+                note TEXT NOT NULL,
+                sort_order INTEGER NOT NULL
+              )
+            ''');
+            sqlite.execute('''
+              CREATE TABLE holdings (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                asset_id INTEGER NOT NULL REFERENCES assets(id),
+                client_id TEXT,
+                dirty INTEGER NOT NULL DEFAULT 0,
+                last_modified_at TEXT,
+                deleted_at TEXT,
+                hidden INTEGER NOT NULL DEFAULT 0,
+                currency_code TEXT NOT NULL DEFAULT 'KRW',
+                market_updated_at TEXT,
+                exchange_code TEXT NOT NULL DEFAULT '',
+                name TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                quantity REAL NOT NULL,
+                average_price REAL NOT NULL,
+                current_price REAL NOT NULL,
+                note TEXT NOT NULL,
+                sort_order INTEGER NOT NULL
+              )
+            ''');
+            sqlite.execute('''
+              CREATE TABLE transaction_events (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                client_id TEXT,
+                dirty INTEGER NOT NULL DEFAULT 0,
+                last_modified_at TEXT,
+                deleted_at TEXT,
+                occurred_at TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                title TEXT NOT NULL DEFAULT '',
+                memo TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT 'manual',
+                flow_category TEXT NOT NULL DEFAULT 'internal',
+                legacy_source_table TEXT,
+                legacy_source_id INTEGER,
+                sort_order INTEGER NOT NULL DEFAULT 0
+              )
+            ''');
+            sqlite.execute('''
+              CREATE TABLE transaction_lines (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER NOT NULL REFERENCES transaction_events(id),
+                asset_id INTEGER REFERENCES assets(id),
+                holding_id INTEGER REFERENCES holdings(id),
+                cash_account_id INTEGER,
+                client_id TEXT,
+                dirty INTEGER NOT NULL DEFAULT 0,
+                last_modified_at TEXT,
+                deleted_at TEXT,
+                legacy_source_table TEXT,
+                legacy_source_id INTEGER,
+                action TEXT NOT NULL,
+                currency_code TEXT NOT NULL DEFAULT 'KRW',
+                quantity_delta REAL NOT NULL DEFAULT 0,
+                cash_delta REAL NOT NULL DEFAULT 0,
+                unit_price REAL NOT NULL DEFAULT 0,
+                gross_amount REAL NOT NULL DEFAULT 0,
+                fee_amount REAL NOT NULL DEFAULT 0,
+                tax_amount REAL NOT NULL DEFAULT 0,
+                cost_basis_delta REAL NOT NULL DEFAULT 0,
+                realized_pnl REAL NOT NULL DEFAULT 0,
+                realized_pnl_source TEXT NOT NULL DEFAULT 'auto',
+                fx_rate REAL,
+                sort_order INTEGER NOT NULL DEFAULT 0
+              )
+            ''');
+            sqlite.execute(
+              "INSERT INTO assets (title, value, change, icon_code_point, quantity_label, quantity_value, average_label, average_value, note, sort_order) VALUES ('주식', '0', '+0.0%', 1, '항목', '0개', '수익률', '+0.0%', '', 0)",
+            );
+            sqlite.execute(
+              "INSERT INTO holdings (asset_id, currency_code, name, symbol, quantity, average_price, current_price, note, sort_order) VALUES (1, 'USD', '새틀로직', 'SATL', 50, 4690, 3.8, '', 0)",
+            );
+            sqlite.execute(
+              "INSERT INTO holdings (asset_id, currency_code, name, symbol, quantity, average_price, current_price, note, sort_order) VALUES (1, 'KRW', '국내주식', 'KRW', 2, 1000, 1200, '', 1)",
+            );
+            sqlite.execute(
+              "INSERT INTO transaction_events (occurred_at, kind) VALUES ('2026-05-01', 'trade')",
+            );
+            sqlite.execute(
+              "INSERT INTO transaction_lines (event_id, action, currency_code, cost_basis_delta) VALUES (1, 'buy', 'KRW', 2000)",
+            );
+            sqlite.execute('PRAGMA user_version = 33');
+          },
+        ),
+      );
+
+      final holdingRows = await db.customSelect('''
+            SELECT symbol, average_price_source, average_price_krw,
+                   average_purchase_fx_rate, cost_basis_krw
+            FROM holdings
+            ORDER BY symbol
+            ''').get();
+      final usdRow = holdingRows.firstWhere(
+        (row) => row.read<String>('symbol') == 'SATL',
+      );
+      final krwRow = holdingRows.firstWhere(
+        (row) => row.read<String>('symbol') == 'KRW',
+      );
+      final krwLine = await db
+          .customSelect('SELECT cost_basis_source_delta FROM transaction_lines')
+          .getSingle();
+
+      expect(usdRow.read<double>('average_price_source'), 0);
+      expect(usdRow.read<double>('average_price_krw'), 4690);
+      expect(usdRow.read<double>('average_purchase_fx_rate'), 0);
+      expect(usdRow.read<double>('cost_basis_krw'), 234500);
+      expect(krwRow.read<double>('average_price_source'), 1000);
+      expect(krwRow.read<double>('average_price_krw'), 1000);
+      expect(krwRow.read<double>('average_purchase_fx_rate'), 1);
+      expect(krwRow.read<double>('cost_basis_krw'), 2000);
+      expect(krwLine.read<double>('cost_basis_source_delta'), 2000);
+    } finally {
+      await db.close();
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      tempDir.deleteSync(recursive: true);
+    }
+  });
+
   test('cash withdrawal normalizes signed input and blocks overdraft', () async {
     final assetId = await createAsset('현금');
     final cashHoldingId = await db.createCashAccount(
@@ -1383,6 +1536,122 @@ void main() {
     },
   );
 
+  test(
+    'manual sell realized profit is stored as manual ledger source',
+    () async {
+      final assetId = await createAsset('주식');
+      final holdingId = await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '수동손익 주식',
+        symbol: 'MANUAL',
+        quantity: 0,
+        averagePrice: 0,
+        currentPrice: 100,
+        note: '',
+      );
+      await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '결제 현금',
+        note: '',
+        balance: 1000,
+      );
+
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.21',
+        type: '매수',
+        name: '매수',
+        amount: '100',
+        quantity: '5',
+      );
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.22',
+        type: '매도',
+        name: '수동 매도',
+        amount: '120',
+        quantity: '2',
+        manualRealizedProfitAmount: 25,
+      );
+
+      final sell = (await findHolding(
+        holdingId,
+      )).transactions.singleWhere((tx) => tx.type == '매도');
+      expect(sell.realizedProfitAmount, 25);
+      expect(sell.realizedProfitSource, 'manual');
+
+      final line = await db
+          .customSelect(
+            '''
+          SELECT realized_pnl, realized_pnl_source, cost_basis_delta
+          FROM transaction_lines
+          WHERE holding_id = ? AND action = 'sell' AND deleted_at IS NULL
+          ''',
+            variables: [Variable.withInt(holdingId)],
+          )
+          .getSingle();
+      expect(line.read<double>('realized_pnl'), 25);
+      expect(line.read<String>('realized_pnl_source'), 'manual');
+      expect(line.read<double>('cost_basis_delta'), -215);
+    },
+  );
+
+  test(
+    'record-only sell can store manual realized profit without changing holding',
+    () async {
+      final assetId = await createAsset('주식');
+      final holdingId = await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '기록전용 손익 주식',
+        symbol: 'RECORD',
+        quantity: 5,
+        averagePrice: 100,
+        currentPrice: 120,
+        note: '',
+      );
+
+      await db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.22',
+        type: '매도',
+        name: '기록전용 수동 매도',
+        amount: '120',
+        quantity: '2',
+        includeInCalculations: false,
+        manualRealizedProfitAmount: 25,
+      );
+
+      final holding = await findHolding(holdingId);
+      expect(holding.quantity, 5);
+      final sell = holding.transactions.singleWhere((tx) => tx.type == '매도');
+      expect(sell.includeInCalculations, isFalse);
+      expect(sell.realizedProfitAmount, 25);
+      expect(sell.realizedProfitSource, 'manual');
+
+      final line = await db
+          .customSelect(
+            '''
+          SELECT realized_pnl, realized_pnl_source, cost_basis_delta
+          FROM transaction_lines
+          WHERE holding_id = ? AND action = 'sell' AND deleted_at IS NULL
+          ''',
+            variables: [Variable.withInt(holdingId)],
+          )
+          .getSingle();
+      expect(line.read<double>('realized_pnl'), 25);
+      expect(line.read<String>('realized_pnl_source'), 'manual');
+      expect(line.read<double>('cost_basis_delta'), 0);
+    },
+  );
+
   test('legacy investment transactions convert to normalized ledger lines', () async {
     final assetId = await createAsset('주식');
     final holdingId = await db.createHolding(
@@ -1739,6 +2008,461 @@ void main() {
     expect(hiddenHolding?.isHidden, isTrue);
     final hiddenCashHolding = await db.fetchHoldingByClientId(cashClientId);
     expect(hiddenCashHolding?.isHidden, isTrue);
+  });
+
+  test('core sync payload excludes derived analysis tables', () async {
+    final assetId = await createAsset('주식');
+    await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '테스트',
+      symbol: 'TST',
+      quantity: 1,
+      averagePrice: 1000,
+      currentPrice: 1100,
+      note: '',
+    );
+    await db.customStatement('''
+      INSERT INTO portfolio_daily_returns (
+        local_user_id,
+        return_date,
+        beginning_value_krw,
+        ending_value_krw,
+        portfolio_value_krw,
+        external_cash_flow_krw,
+        daily_return,
+        data_quality,
+        calculation_version,
+        created_at,
+        updated_at
+      ) VALUES ('local', '2026-05-02', 1000, 1100, 1100, 0, 0.1, 'complete', 1, '2026-05-02T00:00:00', '2026-05-02T00:00:00')
+    ''');
+    await db.saveBenchmarkPrice(
+      benchmarkCode: 'SP500',
+      priceDate: '2026-05-02',
+      closePrice: 100,
+      source: 'fixture',
+    );
+
+    final payload = await db.buildDirtySyncPayload();
+
+    expect(payload.containsKey('portfolio_daily_returns'), isFalse);
+    expect(payload.containsKey('benchmark_prices'), isFalse);
+    expect(payload.keys, containsAll(['assets', 'holdings']));
+  });
+
+  test('sync safety snapshot detects source portfolio mutations', () async {
+    final assetId = await createAsset('주식');
+    final holdingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '테스트',
+      symbol: 'TST',
+      quantity: 10,
+      averagePrice: 1000,
+      currentPrice: 1200,
+      note: '',
+    );
+    final before = await db.fetchSyncSafetySnapshot();
+
+    await db.customStatement(
+      'UPDATE holdings SET quantity = 0, current_price = 0 WHERE id = ?',
+      [holdingId],
+    );
+    final after = await db.fetchSyncSafetySnapshot();
+    final issues = db.compareSyncSafetySnapshots(before: before, after: after);
+
+    expect(
+      issues.map((issue) => issue.metric),
+      contains('holding_quantity_sum'),
+    );
+    expect(
+      issues.map((issue) => issue.metric),
+      contains('holding_valuation_sum'),
+    );
+    expect(
+      issues.map((issue) => issue.metric),
+      contains('zero_quantity_count'),
+    );
+  });
+
+  test(
+    'sync restore invalidates derived local returns without deleting benchmark data',
+    () async {
+      final assetId = await createAsset('주식');
+      await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '테스트',
+        symbol: 'TST',
+        quantity: 1,
+        averagePrice: 1000,
+        currentPrice: 1100,
+        note: '',
+      );
+      final payload = await db.buildDirtySyncPayload();
+      await db.customStatement('''
+      INSERT INTO portfolio_daily_returns (
+        local_user_id,
+        return_date,
+        beginning_value_krw,
+        ending_value_krw,
+        portfolio_value_krw,
+        external_cash_flow_krw,
+        daily_return,
+        data_quality,
+        calculation_version,
+        created_at,
+        updated_at
+      ) VALUES ('local', '2026-05-02', 1000, 1100, 1100, 0, 0.1, 'complete', 1, '2026-05-02T00:00:00', '2026-05-02T00:00:00')
+    ''');
+      await db.saveBenchmarkPrice(
+        benchmarkCode: 'SP500',
+        priceDate: '2026-05-02',
+        closePrice: 100,
+        source: 'fixture',
+      );
+
+      await db.replaceLocalSyncData(Map<String, dynamic>.from(payload));
+
+      expect(await db.fetchPortfolioDailyReturns(), isEmpty);
+      expect(
+        await db.fetchBenchmarkPrices(benchmarkCode: 'SP500'),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'currency basis fields are initialized and survive sync restore',
+    () async {
+      final assetId = await createAsset('주식');
+      final krwHoldingId = await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '국내주식',
+        symbol: 'KRW',
+        quantity: 2,
+        averagePrice: 1000,
+        currentPrice: 1200,
+        note: '',
+      );
+      final usdHoldingId = await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'USD',
+        exchangeCode: 'NASDAQ',
+        name: '미국주식',
+        symbol: 'USD',
+        quantity: 2,
+        averagePrice: 1400,
+        currentPrice: 10,
+        note: '',
+      );
+
+      final rows = await db
+          .customSelect(
+            '''
+          SELECT id, average_price_source, average_price_krw,
+                 average_purchase_fx_rate, cost_basis_krw
+          FROM holdings
+          WHERE id IN (?, ?)
+          ORDER BY id
+          ''',
+            variables: [
+              Variable.withInt(krwHoldingId),
+              Variable.withInt(usdHoldingId),
+            ],
+          )
+          .get();
+      final krwRow = rows.firstWhere(
+        (row) => row.read<int>('id') == krwHoldingId,
+      );
+      final usdRow = rows.firstWhere(
+        (row) => row.read<int>('id') == usdHoldingId,
+      );
+
+      expect(krwRow.read<double>('average_price_source'), 1000);
+      expect(krwRow.read<double>('average_price_krw'), 1000);
+      expect(krwRow.read<double>('average_purchase_fx_rate'), 1);
+      expect(krwRow.read<double>('cost_basis_krw'), 2000);
+      expect(usdRow.read<double>('average_price_source'), 0);
+      expect(usdRow.read<double>('average_price_krw'), 1400);
+      expect(usdRow.read<double>('average_purchase_fx_rate'), 0);
+      expect(usdRow.read<double>('cost_basis_krw'), 2800);
+
+      final payload = await db.buildDirtySyncPayload();
+      final holdingPayload = (payload['holdings'] as List).whereType<Map>();
+      expect(
+        holdingPayload,
+        everyElement(containsPair('average_price_source', anything)),
+      );
+      expect(
+        holdingPayload,
+        everyElement(containsPair('average_price_krw', anything)),
+      );
+      expect(
+        holdingPayload,
+        everyElement(containsPair('average_purchase_fx_rate', anything)),
+      );
+      expect(
+        holdingPayload,
+        everyElement(containsPair('cost_basis_krw', anything)),
+      );
+
+      await db.close();
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      await db.replaceLocalSyncData(Map<String, dynamic>.from(payload));
+      final restoredUsdRow = await db.customSelect('''
+          SELECT average_price_source, average_price_krw,
+                 average_purchase_fx_rate, cost_basis_krw
+          FROM holdings
+          WHERE symbol = 'USD'
+          ''').getSingle();
+
+      expect(restoredUsdRow.read<double>('average_price_source'), 0);
+      expect(restoredUsdRow.read<double>('average_price_krw'), 1400);
+      expect(restoredUsdRow.read<double>('average_purchase_fx_rate'), 0);
+      expect(restoredUsdRow.read<double>('cost_basis_krw'), 2800);
+    },
+  );
+
+  test('USD buy stores trade FX and recomputes weighted average FX', () async {
+    final assetId = await createAsset('주식');
+    final holdingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'USD',
+      exchangeCode: 'NASDAQ',
+      name: '미국주식',
+      symbol: 'USD',
+      quantity: 10,
+      averagePrice: 14000,
+      currentPrice: 10,
+      note: '',
+    );
+    await db.customStatement(
+      '''
+      UPDATE holdings
+      SET average_price_source = 10,
+          average_price_krw = 14000,
+          average_purchase_fx_rate = 1400,
+          cost_basis_krw = 140000
+      WHERE id = ?
+      ''',
+      [holdingId],
+    );
+    await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'USD',
+      name: 'USD cash',
+      note: '',
+      balance: 1000,
+    );
+
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: holdingId,
+      date: '2026.05.29',
+      type: '매수',
+      name: '추가 매수',
+      amount: '20',
+      quantity: '10',
+      tradeFxRate: 1500,
+    );
+
+    final holdingRow = await db
+        .customSelect(
+          '''
+          SELECT quantity, average_price, average_price_source,
+                 average_price_krw, average_purchase_fx_rate, cost_basis_krw
+          FROM holdings
+          WHERE id = ?
+          ''',
+          variables: [Variable.withInt(holdingId)],
+        )
+        .getSingle();
+    final buyLine = await db
+        .customSelect(
+          '''
+          SELECT gross_amount, cost_basis_delta, cost_basis_source_delta, fx_rate
+          FROM transaction_lines
+          WHERE holding_id = ? AND action = 'buy' AND deleted_at IS NULL
+          ORDER BY id DESC
+          LIMIT 1
+          ''',
+          variables: [Variable.withInt(holdingId)],
+        )
+        .getSingle();
+
+    expect(holdingRow.read<double>('quantity'), 20);
+    expect(holdingRow.read<double>('average_price'), 22000);
+    expect(holdingRow.read<double>('average_price_source'), 15);
+    expect(holdingRow.read<double>('average_price_krw'), 22000);
+    expect(
+      holdingRow.read<double>('average_purchase_fx_rate'),
+      closeTo(1466.6666667, 0.0001),
+    );
+    expect(holdingRow.read<double>('cost_basis_krw'), 440000);
+    expect(buyLine.read<double>('gross_amount'), 200);
+    expect(buyLine.read<double>('cost_basis_delta'), 300000);
+    expect(buyLine.read<double>('cost_basis_source_delta'), 200);
+    expect(buyLine.read<double>('fx_rate'), 1500);
+  });
+
+  test('USD automatic sell uses source average for realized PnL', () async {
+    final assetId = await createAsset('주식');
+    final holdingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'USD',
+      exchangeCode: 'NASDAQ',
+      name: '미국주식',
+      symbol: 'USD',
+      quantity: 10,
+      averagePrice: 14000,
+      currentPrice: 10,
+      note: '',
+    );
+    await db.customStatement(
+      '''
+      UPDATE holdings
+      SET average_price_source = 10,
+          average_price_krw = 14000,
+          average_purchase_fx_rate = 1400,
+          cost_basis_krw = 140000
+      WHERE id = ?
+      ''',
+      [holdingId],
+    );
+    final cashAssetId = await createAsset('현금');
+    await db.createCashAccount(
+      assetId: cashAssetId,
+      currencyCode: 'USD',
+      name: 'USD cash',
+      note: '',
+      balance: 0,
+    );
+
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: holdingId,
+      date: '2026.05.29',
+      type: '매도',
+      name: '일부 매도',
+      amount: '30',
+      quantity: '5',
+    );
+
+    final sellLine = await db
+        .customSelect(
+          '''
+          SELECT realized_pnl, cost_basis_delta, cost_basis_source_delta
+          FROM transaction_lines
+          WHERE holding_id = ? AND action = 'sell' AND deleted_at IS NULL
+          ORDER BY id DESC
+          LIMIT 1
+          ''',
+          variables: [Variable.withInt(holdingId)],
+        )
+        .getSingle();
+
+    expect(sellLine.read<double>('realized_pnl'), 100);
+    expect(sellLine.read<double>('cost_basis_delta'), -70000);
+    expect(sellLine.read<double>('cost_basis_source_delta'), -50);
+  });
+
+  test('USD manual sell stores realized PnL in source currency', () async {
+    final assetId = await createAsset('주식');
+    final holdingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'USD',
+      exchangeCode: 'NASDAQ',
+      name: '수동 미국주식',
+      symbol: 'USDM',
+      quantity: 10,
+      averagePrice: 14000,
+      currentPrice: 20,
+      note: '',
+    );
+    await db.customStatement(
+      '''
+      UPDATE holdings
+      SET average_price_source = 10,
+          average_price_krw = 14000,
+          average_purchase_fx_rate = 1400,
+          cost_basis_krw = 140000
+      WHERE id = ?
+      ''',
+      [holdingId],
+    );
+    final cashAssetId = await createAsset('현금');
+    await db.createCashAccount(
+      assetId: cashAssetId,
+      currencyCode: 'USD',
+      name: 'USD cash',
+      note: '',
+      balance: 0,
+    );
+
+    await db.createTransaction(
+      assetId: assetId,
+      holdingId: holdingId,
+      date: '2026.05.29',
+      type: '매도',
+      name: '수동 USD 매도',
+      amount: '30',
+      quantity: '5',
+      manualRealizedProfitAmount: 100,
+    );
+
+    final sellLine = await db
+        .customSelect(
+          '''
+          SELECT realized_pnl, realized_pnl_source,
+                 cost_basis_delta, cost_basis_source_delta
+          FROM transaction_lines
+          WHERE holding_id = ? AND action = 'sell' AND deleted_at IS NULL
+          ORDER BY id DESC
+          LIMIT 1
+          ''',
+          variables: [Variable.withInt(holdingId)],
+        )
+        .getSingle();
+
+    expect(sellLine.read<double>('realized_pnl'), 100);
+    expect(sellLine.read<String>('realized_pnl_source'), 'manual');
+    expect(sellLine.read<double>('cost_basis_delta'), -70000);
+    expect(sellLine.read<double>('cost_basis_source_delta'), -50);
+  });
+
+  test('USD buy requires trade FX when included in calculations', () async {
+    final assetId = await createAsset('주식');
+    final holdingId = await db.createHolding(
+      assetId: assetId,
+      currencyCode: 'USD',
+      exchangeCode: 'NASDAQ',
+      name: '미국주식',
+      symbol: 'USD',
+      quantity: 0,
+      averagePrice: 0,
+      currentPrice: 10,
+      note: '',
+    );
+
+    expect(
+      () => db.createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: '2026.05.29',
+        type: '매수',
+        name: '매수',
+        amount: '10',
+        quantity: '1',
+      ),
+      throwsStateError,
+    );
   });
 
   test(
@@ -2168,6 +2892,7 @@ void main() {
         name: '달러 매수',
         amount: '10',
         quantity: '2',
+        tradeFxRate: 1400,
       );
 
       final summaries = await db.fetchLedgerPortfolioPerformanceByCurrency();

@@ -47,6 +47,7 @@ _NormalizedTransactionValues _normalizedTransactionValues({
   required String amount,
   required String quantity,
   double averageCostBasis = 0,
+  double? manualRealizedProfitAmount,
 }) {
   final normalizedType = _normalizeTransactionType(type);
   final unitPrice = _parseTransactionNumber(amount).abs();
@@ -62,8 +63,12 @@ _NormalizedTransactionValues _normalizedTransactionValues({
     '매도' || '배당' || '이자' => grossAmount,
     _ => 0.0,
   };
+  final usesManualRealizedProfit =
+      normalizedType == '매도' && manualRealizedProfitAmount != null;
   final realizedProfitAmount = normalizedType == '매도'
-      ? (unitPrice - averageCostBasis) * quantityValue
+      ? (usesManualRealizedProfit
+            ? manualRealizedProfitAmount
+            : (unitPrice - averageCostBasis) * quantityValue)
       : 0.0;
 
   return _NormalizedTransactionValues(
@@ -72,6 +77,7 @@ _NormalizedTransactionValues _normalizedTransactionValues({
     grossAmount: grossAmount,
     cashFlowAmount: cashFlowAmount,
     realizedProfitAmount: realizedProfitAmount,
+    realizedProfitSource: usesManualRealizedProfit ? 'manual' : 'auto',
   );
 }
 
@@ -90,6 +96,7 @@ _NormalizedTransactionValues _normalizedCashTransactionValues({
     grossAmount: amountValue,
     cashFlowAmount: cashFlowAmount,
     realizedProfitAmount: 0,
+    realizedProfitSource: 'auto',
   );
 }
 

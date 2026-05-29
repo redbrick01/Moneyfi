@@ -35,6 +35,8 @@ class TransactionItem {
     this.grossAmount,
     this.cashFlowAmount,
     this.realizedProfitAmount,
+    this.realizedProfitSource = 'auto',
+    this.fxRate,
     this.ledgerEventId,
     this.ledgerLineId,
     this.ledgerKind,
@@ -60,6 +62,8 @@ class TransactionItem {
   final double? grossAmount;
   final double? cashFlowAmount;
   final double? realizedProfitAmount;
+  final String realizedProfitSource;
+  final double? fxRate;
   final int? ledgerEventId;
   final int? ledgerLineId;
   final String? ledgerKind;

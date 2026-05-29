@@ -84,6 +84,7 @@ class MoneyfyInputValidators {
     double? min,
     double? max,
     bool allowZero = true,
+    bool allowNegative = false,
   }) {
     final normalized = raw.replaceAll(',', '').trim();
     if (normalized.isEmpty) {
@@ -98,7 +99,7 @@ class MoneyfyInputValidators {
     if (!allowZero && value == 0) {
       return InputValidationResult.invalid('$fieldName은 0보다 커야 합니다.');
     }
-    if (value < 0) {
+    if (!allowNegative && value < 0) {
       return InputValidationResult.invalid('$fieldName은 음수로 입력할 수 없습니다.');
     }
     if (min != null && value < min) {

@@ -4,8 +4,10 @@ import '../components/section_card.dart';
 import '../db/app_database.dart';
 import '../design_system/context_extensions.dart';
 import '../models/asset_item.dart';
+import '../services/benchmark_price_service.dart';
 import '../theme/moneyfy_theme.dart';
 import '../utils/display_currency.dart';
+import '../utils/risk_adjusted_performance_calculator.dart';
 import '../widgets/moneyfy_ui.dart';
 
 class InvestmentPerformancePage extends StatefulWidget {
@@ -58,6 +60,8 @@ class _InvestmentPerformancePageState extends State<InvestmentPerformancePage> {
                 ),
                 SizedBox(height: context.spacing.sectionGap),
                 _PerformanceBreakdownCard(report: report),
+                SizedBox(height: context.spacing.sectionGap),
+                _AdvancedPerformanceCard(report: report.advancedPerformance),
                 SizedBox(height: context.spacing.sectionGap),
                 _CashFlowExclusionCard(report: report),
                 SizedBox(height: context.spacing.sectionGap),
@@ -126,6 +130,9 @@ class _PerformanceSummaryCard extends StatelessWidget {
     final performanceText = _formatSignedCurrency(
       report.pureInvestmentPerformance,
     );
+    final performanceRateText = _formatSignedPercent(
+      report.pureInvestmentPerformanceRate,
+    );
     return SectionCard(
       title: '순 투자성과',
       headerTrailing: Text(
@@ -146,9 +153,21 @@ class _PerformanceSummaryCard extends StatelessWidget {
               ),
             ),
           ),
+          if (performanceRateText != null) ...[
+            SizedBox(height: context.spacing.xs),
+            Text(
+              performanceRateText,
+              style: context.typography.sectionTitle.copyWith(
+                color: moneyfyValueColor(
+                  performanceRateText,
+                  defaultColor: MoneyfyPalette.ink,
+                ),
+              ),
+            ),
+          ],
           SizedBox(height: context.spacing.xs),
           Text(
-            '입출금과 내부 이동 제외 기준',
+            '입출금과 내부 이동 제외 · 매수 원금 대비',
             style: context.typography.meta.copyWith(
               color: MoneyfyPalette.tertiaryText,
             ),
@@ -249,11 +268,15 @@ class _PerformanceBreakdownCard extends StatelessWidget {
           _MetricRow(
             label: '순 실현성과',
             value: _formatSignedCurrency(report.pureRealizedPerformance),
+            trailing: _formatSignedPercent(report.pureRealizedPerformanceRate),
           ),
           const Divider(height: 20),
           _MetricRow(
             label: '순 투자성과',
             value: _formatSignedCurrency(report.pureInvestmentPerformance),
+            trailing: _formatSignedPercent(
+              report.pureInvestmentPerformanceRate,
+            ),
           ),
           const Divider(height: 20),
           _MetricRow(label: '매수 원금', value: _formatCurrency(report.buyAmount)),
@@ -264,6 +287,122 @@ class _PerformanceBreakdownCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AdvancedPerformanceCard extends StatelessWidget {
+  const _AdvancedPerformanceCard({required this.report});
+
+  final _AdvancedPerformanceReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      title: '고급 성과',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _AdvancedMetricRow(
+            label: '입출금 보정 기간 수익률',
+            value: _formatSignedRatePercent(report.periodReturn),
+            description: '입금과 출금을 제외하고 투자 자체가 만든 기간 수익률입니다.',
+          ),
+          const Divider(height: 22),
+          _AdvancedMetricRow(
+            label: '벤치마크',
+            value: report.benchmarkReturn == null
+                ? null
+                : '${report.benchmarkLabel} ${_formatSignedRatePercent(report.benchmarkReturn)}',
+            description: '선택한 기간의 시작값과 끝값으로 계산한 시장 기준 수익률입니다.',
+          ),
+          const Divider(height: 22),
+          _AdvancedMetricRow(
+            label: '초과수익률',
+            value: _formatSignedPercentagePoint(report.excessReturn),
+            description: '내 포트폴리오가 기준 시장보다 얼마나 더 높거나 낮았는지 보여줍니다.',
+          ),
+          const Divider(height: 22),
+          _AdvancedMetricRow(
+            label: '변동성',
+            value: _formatAnnualizedPercent(report.annualizedVolatility),
+            description: '기간 중 수익률이 얼마나 크게 흔들렸는지 나타냅니다.',
+          ),
+          const Divider(height: 22),
+          _AdvancedMetricRow(
+            label: '무위험수익률',
+            value: _formatAnnualizedPercent(report.riskFreeRate),
+            description: report.isRiskFreeRateFallback
+                ? '금리 데이터를 가져오지 못해 0% 기준으로 Sharpe Ratio를 계산했습니다.'
+                : '미국 13주 T-Bill 금리를 무위험수익률 기준으로 반영했습니다.',
+          ),
+          const Divider(height: 22),
+          _AdvancedMetricRow(
+            label: 'Sharpe Ratio',
+            value: _formatDecimal(report.sharpeRatio),
+            description:
+                '변동성 대비 성과를 보는 지표입니다. ${report.riskFreeRateLabel}을 제외한 초과성과 기준입니다.',
+          ),
+          const Divider(height: 22),
+          _AdvancedMetricRow(
+            label: '최대 낙폭',
+            value: _formatSignedRatePercent(report.maxDrawdown),
+            description: '기간 중 고점에서 가장 깊게 하락했던 비율입니다.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdvancedMetricRow extends StatelessWidget {
+  const _AdvancedMetricRow({
+    required this.label,
+    required this.value,
+    required this.description,
+  });
+
+  final String label;
+  final String? value;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final displayValue = value ?? '데이터 부족';
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: theme.textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: MoneyfyPalette.secondaryText,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          displayValue,
+          textAlign: TextAlign.right,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: value == null
+                ? MoneyfyPalette.tertiaryText
+                : moneyfyValueColor(
+                    displayValue,
+                    defaultColor: MoneyfyPalette.ink,
+                  ),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -623,10 +762,11 @@ class _HoldingPerformanceRow extends StatelessWidget {
 }
 
 class _MetricRow extends StatelessWidget {
-  const _MetricRow({required this.label, required this.value});
+  const _MetricRow({required this.label, required this.value, this.trailing});
 
   final String label;
   final String value;
+  final String? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -641,13 +781,34 @@ class _MetricRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Text(
-          value,
-          textAlign: TextAlign.right,
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: moneyfyValueColor(value, defaultColor: MoneyfyPalette.ink),
-            fontWeight: FontWeight.w600,
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              value,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: moneyfyValueColor(
+                  value,
+                  defaultColor: MoneyfyPalette.ink,
+                ),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(height: 3),
+              Text(
+                trailing!,
+                textAlign: TextAlign.right,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: moneyfyValueColor(
+                    trailing!,
+                    defaultColor: MoneyfyPalette.tertiaryText,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );
@@ -669,6 +830,8 @@ Future<_InvestmentPerformanceReport> _loadInvestmentPerformanceReport(
   final ledgerMonthlyPerformanceByCurrency = await db
       .fetchLedgerMonthlyPerformanceByCurrency(from: range.from, to: range.to);
   final usdKrwRate = await db.fetchLatestExchangeRate() ?? 1.0;
+  final baselineUnrealizedByHoldingId =
+      await _fetchBaselineUnrealizedProfitByHoldingId(db, range.from);
   final holdings = assets
       .where((asset) => !asset.isHidden && asset.assetType != '현금')
       .expand((asset) => asset.holdings)
@@ -689,6 +852,8 @@ Future<_InvestmentPerformanceReport> _loadInvestmentPerformanceReport(
             (holding) => _analyzeHoldingPerformance(
               holding,
               ledgerPerformanceByHoldingId[holding.id],
+              baselineUnrealizedProfit:
+                  baselineUnrealizedByHoldingId[holding.id],
             ),
           )
           .toList()
@@ -759,13 +924,77 @@ Future<_InvestmentPerformanceReport> _loadInvestmentPerformanceReport(
       usdKrwRate,
       (record) => record.sellAmount,
     ),
+    advancedPerformance: await _loadAdvancedPerformanceReport(db, range),
+  );
+}
+
+Future<_AdvancedPerformanceReport> _loadAdvancedPerformanceReport(
+  AppDatabase db,
+  _PerformanceDateRange range,
+) async {
+  final from = range.from == null ? null : _dateKey(range.from!);
+  final to = range.to == null ? null : _dateKey(range.to!);
+
+  await db.rebuildPortfolioDailyReturns(from: from, to: to);
+  final rows = await db.fetchPortfolioDailyReturns(from: from, to: to);
+  final dailyReturns = rows
+      .map((row) => row.dailyReturn)
+      .whereType<double>()
+      .toList(growable: false);
+  final portfolioValues = rows
+      .map((row) => row.portfolioValueKrw)
+      .toList(growable: false);
+  final benchmarkFrom = from ?? (rows.isEmpty ? null : rows.first.returnDate);
+  final benchmarkTo = to ?? (rows.isEmpty ? null : rows.last.returnDate);
+  if (benchmarkFrom != null && benchmarkTo != null) {
+    await BenchmarkPriceService.instance.ensureBenchmarkPrices(
+      benchmarkCode: _defaultBenchmarkCode,
+      from: benchmarkFrom,
+      to: benchmarkTo,
+    );
+    await BenchmarkPriceService.instance.ensureRiskFreeRates(
+      from: benchmarkFrom,
+      to: benchmarkTo,
+    );
+  }
+  final benchmarkComparison = await db.compareBenchmarkPeriodReturn(
+    benchmarkCode: _defaultBenchmarkCode,
+    from: from,
+    to: to,
+  );
+  final riskFreeRate = benchmarkTo == null
+      ? null
+      : await BenchmarkPriceService.instance.fetchLatestRiskFreeRate(
+          to: benchmarkTo,
+        );
+  final annualRiskFreeRate = riskFreeRate?.annualRate ?? 0;
+
+  return _AdvancedPerformanceReport(
+    benchmarkCode: _defaultBenchmarkCode,
+    benchmarkLabel: _defaultBenchmarkLabel,
+    periodReturn: calculateCumulativeReturn(dailyReturns),
+    benchmarkReturn: benchmarkComparison?.benchmarkPeriodReturn,
+    excessReturn: benchmarkComparison?.excessReturn,
+    annualizedVolatility: dailyReturns.length < 20
+        ? null
+        : calculateAnnualizedVolatility(dailyReturns),
+    sharpeRatio: calculateSharpeRatio(
+      dailyReturns,
+      riskFreeRate: annualRiskFreeRate,
+    ),
+    riskFreeRate: annualRiskFreeRate,
+    riskFreeRateSource: riskFreeRate?.source,
+    riskFreeRateDate: riskFreeRate?.priceDate,
+    isRiskFreeRateFallback: riskFreeRate == null,
+    maxDrawdown: calculateMaxDrawdown(portfolioValues)?.maxDrawdown,
   );
 }
 
 _HoldingPerformance _analyzeHoldingPerformance(
   HoldingItem holding,
-  LedgerHoldingPerformanceRecord? ledgerPerformance,
-) {
+  LedgerHoldingPerformanceRecord? ledgerPerformance, {
+  double? baselineUnrealizedProfit,
+}) {
   final realizedProfit = _toKrw(
     ledgerPerformance?.realizedPnl ?? 0,
     holding.currencyCode,
@@ -786,7 +1015,10 @@ _HoldingPerformance _analyzeHoldingPerformance(
     holding.currencyCode,
     holding.exchangeRate,
   );
-  final unrealizedProfit = holding.profitAmount;
+  final unrealizedProfit = calculatePeriodUnrealizedProfit(
+    currentUnrealizedProfit: holding.profitAmount,
+    baselineUnrealizedProfit: baselineUnrealizedProfit,
+  );
 
   return _HoldingPerformance(
     assetName: holding.assetTitle ?? '-',
@@ -801,10 +1033,56 @@ _HoldingPerformance _analyzeHoldingPerformance(
   );
 }
 
+Future<Map<int, double>> _fetchBaselineUnrealizedProfitByHoldingId(
+  AppDatabase db,
+  DateTime? from,
+) async {
+  if (from == null) return const {};
+
+  final baselineSnapshot = await db.fetchPreviousPortfolioSnapshot(
+    _dateKey(from),
+  );
+  if (baselineSnapshot == null) return const {};
+
+  final rows = await db.fetchPortfolioSnapshotHoldingItemsByDates([
+    baselineSnapshot.snapshotDate,
+  ]);
+  final result = <int, double>{};
+  for (final row in rows) {
+    final holdingId = row.holdingId;
+    if (holdingId == null) continue;
+    result[holdingId] = (result[holdingId] ?? 0) + row.profitAmount;
+  }
+  return result;
+}
+
+@visibleForTesting
+double calculatePeriodUnrealizedProfit({
+  required double currentUnrealizedProfit,
+  double? baselineUnrealizedProfit,
+}) {
+  return currentUnrealizedProfit - (baselineUnrealizedProfit ?? 0);
+}
+
+@visibleForTesting
+double? calculatePerformanceRate(double performanceAmount, double basisAmount) {
+  if (basisAmount.abs() < 0.000001) return null;
+  return performanceAmount / basisAmount * 100;
+}
+
+String _dateKey(DateTime date) {
+  final normalized = DateUtils.dateOnly(date);
+  final year = normalized.year.toString().padLeft(4, '0');
+  final month = normalized.month.toString().padLeft(2, '0');
+  final day = normalized.day.toString().padLeft(2, '0');
+  return '$year-$month-$day';
+}
+
 class _InvestmentPerformanceReport {
   const _InvestmentPerformanceReport({
     required this.holdings,
     required this.monthlyPerformance,
+    required this.advancedPerformance,
     required this.realizedProfit,
     required this.unrealizedProfit,
     required this.incomeAmount,
@@ -822,6 +1100,7 @@ class _InvestmentPerformanceReport {
   const _InvestmentPerformanceReport.empty()
     : holdings = const [],
       monthlyPerformance = const [],
+      advancedPerformance = const _AdvancedPerformanceReport.empty(),
       realizedProfit = 0,
       unrealizedProfit = 0,
       incomeAmount = 0,
@@ -837,6 +1116,7 @@ class _InvestmentPerformanceReport {
 
   final List<_HoldingPerformance> holdings;
   final List<_MonthlyPerformance> monthlyPerformance;
+  final _AdvancedPerformanceReport advancedPerformance;
   final double realizedProfit;
   final double unrealizedProfit;
   final double incomeAmount;
@@ -856,6 +1136,12 @@ class _InvestmentPerformanceReport {
   double get pureInvestmentPerformance =>
       pureRealizedPerformance + unrealizedProfit;
 
+  double? get pureRealizedPerformanceRate =>
+      calculatePerformanceRate(pureRealizedPerformance, buyAmount);
+
+  double? get pureInvestmentPerformanceRate =>
+      calculatePerformanceRate(pureInvestmentPerformance, buyAmount);
+
   double get totalExpenseAmount => feeAmount + taxAmount;
 
   List<_HoldingPerformance> get realizedRankings {
@@ -863,6 +1149,56 @@ class _InvestmentPerformanceReport {
         .where((item) => item.realizedProfit.abs() > 0.000001)
         .toList(growable: false);
     return items..sort((a, b) => b.realizedProfit.compareTo(a.realizedProfit));
+  }
+}
+
+class _AdvancedPerformanceReport {
+  const _AdvancedPerformanceReport({
+    required this.benchmarkCode,
+    required this.benchmarkLabel,
+    required this.periodReturn,
+    required this.benchmarkReturn,
+    required this.excessReturn,
+    required this.annualizedVolatility,
+    required this.sharpeRatio,
+    required this.riskFreeRate,
+    required this.riskFreeRateSource,
+    required this.riskFreeRateDate,
+    required this.isRiskFreeRateFallback,
+    required this.maxDrawdown,
+  });
+
+  const _AdvancedPerformanceReport.empty()
+    : benchmarkCode = _defaultBenchmarkCode,
+      benchmarkLabel = _defaultBenchmarkLabel,
+      periodReturn = null,
+      benchmarkReturn = null,
+      excessReturn = null,
+      annualizedVolatility = null,
+      sharpeRatio = null,
+      riskFreeRate = 0,
+      riskFreeRateSource = null,
+      riskFreeRateDate = null,
+      isRiskFreeRateFallback = true,
+      maxDrawdown = null;
+
+  final String benchmarkCode;
+  final String benchmarkLabel;
+  final double? periodReturn;
+  final double? benchmarkReturn;
+  final double? excessReturn;
+  final double? annualizedVolatility;
+  final double? sharpeRatio;
+  final double riskFreeRate;
+  final String? riskFreeRateSource;
+  final String? riskFreeRateDate;
+  final bool isRiskFreeRateFallback;
+  final double? maxDrawdown;
+
+  String get riskFreeRateLabel {
+    if (isRiskFreeRateFallback) return '0% 무위험수익률';
+    final dateText = riskFreeRateDate == null ? '' : ' ${riskFreeRateDate!}';
+    return '미국 13주 T-Bill$dateText';
   }
 }
 
@@ -1088,6 +1424,12 @@ String? _formatContribution(double amount, double basis) {
   return '${percent.toStringAsFixed(1)}%';
 }
 
+String? _formatSignedPercent(double? percent) {
+  if (percent == null) return null;
+  final sign = percent >= 0 ? '+' : '';
+  return '$sign${percent.toStringAsFixed(1)}%';
+}
+
 class _MutableMonthlyPerformance {
   _MutableMonthlyPerformance({required this.month});
 
@@ -1098,10 +1440,38 @@ class _MutableMonthlyPerformance {
   double taxAmount = 0;
 }
 
+const String _defaultBenchmarkCode = 'SP500';
+const String _defaultBenchmarkLabel = 'S&P 500';
+
 String _formatCurrency(double amount) {
   return MoneyfyDisplayCurrencySettings.formatAmountFromKrw(amount);
 }
 
 String _formatSignedCurrency(double amount) {
   return MoneyfyDisplayCurrencySettings.formatSignedAmountFromKrw(amount);
+}
+
+String? _formatSignedRatePercent(double? rate) {
+  if (rate == null) return null;
+  return _formatSignedPercent(rate * 100);
+}
+
+String? _formatAnnualizedPercent(double? rate) {
+  final percentText = _formatSignedRatePercent(rate);
+  return percentText == null ? null : '연 $percentText';
+}
+
+String? _formatPercentagePoint(double? rate) {
+  if (rate == null) return null;
+  final percent = rate * 100;
+  final sign = percent >= 0 ? '+' : '';
+  return '$sign${percent.toStringAsFixed(1)}%p';
+}
+
+String? _formatSignedPercentagePoint(double? rate) =>
+    _formatPercentagePoint(rate);
+
+String? _formatDecimal(double? value) {
+  if (value == null) return null;
+  return value.toStringAsFixed(2);
 }

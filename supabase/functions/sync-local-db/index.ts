@@ -22,6 +22,12 @@ type UpsertResult = {
   conflicts: ConflictRow[];
 };
 
+type PreserveSummary = {
+  table: "holdings";
+  client_id: string;
+  fields: string[];
+};
+
 type SyncTable =
   | "assets"
   | "holdings"
@@ -61,6 +67,25 @@ function asTimestamp(value: unknown): string | null {
   if (trimmed.length === 0) return null;
   const millis = Date.parse(trimmed);
   return Number.isFinite(millis) ? new Date(millis).toISOString() : null;
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function shouldPreservePositiveServerValue(
+  incoming: unknown,
+  current: unknown,
+): boolean {
+  const currentNumber = asFiniteNumber(current);
+  if (currentNumber == null || currentNumber <= 0) return false;
+  const incomingNumber = asFiniteNumber(incoming);
+  return incoming == null || incomingNumber == null || incomingNumber <= 0;
 }
 
 function compareTimestamps(
@@ -155,6 +180,76 @@ async function loadIdMap(
     }
   }
   return map;
+}
+
+async function preserveUsdHoldingCurrencyBasis(
+  adminClient: SupabaseClient,
+  rows: JsonRow[],
+  userId: string,
+): Promise<{ rows: JsonRow[]; preserved: PreserveSummary[] }> {
+  const clientIds = compactClientIds(rows);
+  if (clientIds.length === 0) {
+    return { rows, preserved: [] };
+  }
+
+  const { data, error } = await adminClient
+    .from("holdings")
+    .select(
+      "client_id, currency_code, average_price_source, average_price_krw, average_purchase_fx_rate, cost_basis_krw",
+    )
+    .eq("user_id", userId)
+    .in("client_id", clientIds);
+
+  if (error) {
+    throw new Error(
+      `holdings currency-basis preload failed: ${error.message}`,
+    );
+  }
+
+  const currentByClientId = new Map<string, JsonRow>();
+  for (const row of data ?? []) {
+    const clientId = asClientId(row.client_id);
+    if (!clientId) continue;
+    currentByClientId.set(clientId, row as JsonRow);
+  }
+
+  const preserved: PreserveSummary[] = [];
+  const mergedRows = rows.map((row) => {
+    const clientId = asClientId(row["client_id"]);
+    if (!clientId) return row;
+    const current = currentByClientId.get(clientId);
+    if (!current) return row;
+    const incomingCurrency = String(row["currency_code"] ?? "");
+    const currentCurrency = String(current["currency_code"] ?? "");
+    if (incomingCurrency !== "USD" && currentCurrency !== "USD") return row;
+
+    const merged = { ...row };
+    const fields: string[] = [];
+    for (
+      const field of [
+        "average_price_source",
+        "average_price_krw",
+        "average_purchase_fx_rate",
+        "cost_basis_krw",
+      ]
+    ) {
+      if (shouldPreservePositiveServerValue(merged[field], current[field])) {
+        merged[field] = current[field];
+        fields.push(field);
+      }
+    }
+
+    if (fields.length > 0) {
+      preserved.push({
+        table: "holdings",
+        client_id: clientId,
+        fields,
+      });
+    }
+    return merged;
+  });
+
+  return { rows: mergedRows, preserved };
 }
 
 async function upsertRows(
@@ -294,6 +389,7 @@ Deno.serve(async (req) => {
     const rawCashAccountRows = asRows(body.cash_accounts);
     const rawTransactionEventRows = asRows(body.transaction_events);
     const rawTransactionLineRows = asRows(body.transaction_lines);
+    const preservedRows: PreserveSummary[] = [];
     const acceptedClientIds: Record<SyncTable, string[]> = {
       assets: [],
       holdings: [],
@@ -394,6 +490,10 @@ Deno.serve(async (req) => {
             "symbol",
             "quantity",
             "average_price",
+            "average_price_source",
+            "average_price_krw",
+            "average_purchase_fx_rate",
+            "cost_basis_krw",
             "current_price",
             "note",
             "sort_order",
@@ -403,10 +503,17 @@ Deno.serve(async (req) => {
       })
       .filter((row): row is JsonRow => row != null);
 
+    const holdingPreserveResult = await preserveUsdHoldingCurrencyBasis(
+      adminClient,
+      holdingRows,
+      userId,
+    );
+    preservedRows.push(...holdingPreserveResult.preserved);
+
     const holdingUpsert = await upsertRows(
       adminClient,
       "holdings",
-      holdingRows,
+      holdingPreserveResult.rows,
     );
     acceptedClientIds.holdings = holdingUpsert.acceptedClientIds;
     conflicts.push(...holdingUpsert.conflicts);
@@ -613,7 +720,9 @@ Deno.serve(async (req) => {
             "fee_amount",
             "tax_amount",
             "cost_basis_delta",
+            "cost_basis_source_delta",
             "realized_pnl",
+            "realized_pnl_source",
             "fx_rate",
             "sort_order",
             "user_id",
@@ -639,7 +748,7 @@ Deno.serve(async (req) => {
       user_id: userId,
       counts: {
         assets: assetRows.length,
-        holdings: holdingRows.length,
+        holdings: holdingPreserveResult.rows.length,
         cash_accounts: cashAccountRows.length,
         transaction_events: transactionEventRows.length,
         transaction_lines: transactionLineRows.length,
@@ -647,6 +756,7 @@ Deno.serve(async (req) => {
       accepted_client_ids: acceptedClientIds,
       conflict_count: conflicts.length,
       conflicts,
+      preserved_rows: preservedRows,
       relation_failures: relationFailures,
     });
   } catch (error) {

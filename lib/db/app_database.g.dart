@@ -1220,6 +1220,54 @@ class $HoldingsTable extends Holdings with TableInfo<$HoldingsTable, Holding> {
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _averagePriceSourceMeta =
+      const VerificationMeta('averagePriceSource');
+  @override
+  late final GeneratedColumn<double> averagePriceSource =
+      GeneratedColumn<double>(
+        'average_price_source',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
+  static const VerificationMeta _averagePriceKrwMeta = const VerificationMeta(
+    'averagePriceKrw',
+  );
+  @override
+  late final GeneratedColumn<double> averagePriceKrw = GeneratedColumn<double>(
+    'average_price_krw',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _averagePurchaseFxRateMeta =
+      const VerificationMeta('averagePurchaseFxRate');
+  @override
+  late final GeneratedColumn<double> averagePurchaseFxRate =
+      GeneratedColumn<double>(
+        'average_purchase_fx_rate',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(1),
+      );
+  static const VerificationMeta _costBasisKrwMeta = const VerificationMeta(
+    'costBasisKrw',
+  );
+  @override
+  late final GeneratedColumn<double> costBasisKrw = GeneratedColumn<double>(
+    'cost_basis_krw',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _currentPriceMeta = const VerificationMeta(
     'currentPrice',
   );
@@ -1267,6 +1315,10 @@ class $HoldingsTable extends Holdings with TableInfo<$HoldingsTable, Holding> {
     symbol,
     quantity,
     averagePrice,
+    averagePriceSource,
+    averagePriceKrw,
+    averagePurchaseFxRate,
+    costBasisKrw,
     currentPrice,
     note,
     sortOrder,
@@ -1389,6 +1441,42 @@ class $HoldingsTable extends Holdings with TableInfo<$HoldingsTable, Holding> {
     } else if (isInserting) {
       context.missing(_averagePriceMeta);
     }
+    if (data.containsKey('average_price_source')) {
+      context.handle(
+        _averagePriceSourceMeta,
+        averagePriceSource.isAcceptableOrUnknown(
+          data['average_price_source']!,
+          _averagePriceSourceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('average_price_krw')) {
+      context.handle(
+        _averagePriceKrwMeta,
+        averagePriceKrw.isAcceptableOrUnknown(
+          data['average_price_krw']!,
+          _averagePriceKrwMeta,
+        ),
+      );
+    }
+    if (data.containsKey('average_purchase_fx_rate')) {
+      context.handle(
+        _averagePurchaseFxRateMeta,
+        averagePurchaseFxRate.isAcceptableOrUnknown(
+          data['average_purchase_fx_rate']!,
+          _averagePurchaseFxRateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cost_basis_krw')) {
+      context.handle(
+        _costBasisKrwMeta,
+        costBasisKrw.isAcceptableOrUnknown(
+          data['cost_basis_krw']!,
+          _costBasisKrwMeta,
+        ),
+      );
+    }
     if (data.containsKey('current_price')) {
       context.handle(
         _currentPriceMeta,
@@ -1481,6 +1569,22 @@ class $HoldingsTable extends Holdings with TableInfo<$HoldingsTable, Holding> {
         DriftSqlType.double,
         data['${effectivePrefix}average_price'],
       )!,
+      averagePriceSource: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}average_price_source'],
+      )!,
+      averagePriceKrw: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}average_price_krw'],
+      )!,
+      averagePurchaseFxRate: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}average_purchase_fx_rate'],
+      )!,
+      costBasisKrw: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cost_basis_krw'],
+      )!,
       currentPrice: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}current_price'],
@@ -1517,6 +1621,10 @@ class Holding extends DataClass implements Insertable<Holding> {
   final String symbol;
   final double quantity;
   final double averagePrice;
+  final double averagePriceSource;
+  final double averagePriceKrw;
+  final double averagePurchaseFxRate;
+  final double costBasisKrw;
   final double currentPrice;
   final String note;
   final int sortOrder;
@@ -1535,6 +1643,10 @@ class Holding extends DataClass implements Insertable<Holding> {
     required this.symbol,
     required this.quantity,
     required this.averagePrice,
+    required this.averagePriceSource,
+    required this.averagePriceKrw,
+    required this.averagePurchaseFxRate,
+    required this.costBasisKrw,
     required this.currentPrice,
     required this.note,
     required this.sortOrder,
@@ -1564,6 +1676,10 @@ class Holding extends DataClass implements Insertable<Holding> {
     map['symbol'] = Variable<String>(symbol);
     map['quantity'] = Variable<double>(quantity);
     map['average_price'] = Variable<double>(averagePrice);
+    map['average_price_source'] = Variable<double>(averagePriceSource);
+    map['average_price_krw'] = Variable<double>(averagePriceKrw);
+    map['average_purchase_fx_rate'] = Variable<double>(averagePurchaseFxRate);
+    map['cost_basis_krw'] = Variable<double>(costBasisKrw);
     map['current_price'] = Variable<double>(currentPrice);
     map['note'] = Variable<String>(note);
     map['sort_order'] = Variable<int>(sortOrder);
@@ -1594,6 +1710,10 @@ class Holding extends DataClass implements Insertable<Holding> {
       symbol: Value(symbol),
       quantity: Value(quantity),
       averagePrice: Value(averagePrice),
+      averagePriceSource: Value(averagePriceSource),
+      averagePriceKrw: Value(averagePriceKrw),
+      averagePurchaseFxRate: Value(averagePurchaseFxRate),
+      costBasisKrw: Value(costBasisKrw),
       currentPrice: Value(currentPrice),
       note: Value(note),
       sortOrder: Value(sortOrder),
@@ -1620,6 +1740,14 @@ class Holding extends DataClass implements Insertable<Holding> {
       symbol: serializer.fromJson<String>(json['symbol']),
       quantity: serializer.fromJson<double>(json['quantity']),
       averagePrice: serializer.fromJson<double>(json['averagePrice']),
+      averagePriceSource: serializer.fromJson<double>(
+        json['averagePriceSource'],
+      ),
+      averagePriceKrw: serializer.fromJson<double>(json['averagePriceKrw']),
+      averagePurchaseFxRate: serializer.fromJson<double>(
+        json['averagePurchaseFxRate'],
+      ),
+      costBasisKrw: serializer.fromJson<double>(json['costBasisKrw']),
       currentPrice: serializer.fromJson<double>(json['currentPrice']),
       note: serializer.fromJson<String>(json['note']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
@@ -1643,6 +1771,10 @@ class Holding extends DataClass implements Insertable<Holding> {
       'symbol': serializer.toJson<String>(symbol),
       'quantity': serializer.toJson<double>(quantity),
       'averagePrice': serializer.toJson<double>(averagePrice),
+      'averagePriceSource': serializer.toJson<double>(averagePriceSource),
+      'averagePriceKrw': serializer.toJson<double>(averagePriceKrw),
+      'averagePurchaseFxRate': serializer.toJson<double>(averagePurchaseFxRate),
+      'costBasisKrw': serializer.toJson<double>(costBasisKrw),
       'currentPrice': serializer.toJson<double>(currentPrice),
       'note': serializer.toJson<String>(note),
       'sortOrder': serializer.toJson<int>(sortOrder),
@@ -1664,6 +1796,10 @@ class Holding extends DataClass implements Insertable<Holding> {
     String? symbol,
     double? quantity,
     double? averagePrice,
+    double? averagePriceSource,
+    double? averagePriceKrw,
+    double? averagePurchaseFxRate,
+    double? costBasisKrw,
     double? currentPrice,
     String? note,
     int? sortOrder,
@@ -1686,6 +1822,10 @@ class Holding extends DataClass implements Insertable<Holding> {
     symbol: symbol ?? this.symbol,
     quantity: quantity ?? this.quantity,
     averagePrice: averagePrice ?? this.averagePrice,
+    averagePriceSource: averagePriceSource ?? this.averagePriceSource,
+    averagePriceKrw: averagePriceKrw ?? this.averagePriceKrw,
+    averagePurchaseFxRate: averagePurchaseFxRate ?? this.averagePurchaseFxRate,
+    costBasisKrw: costBasisKrw ?? this.costBasisKrw,
     currentPrice: currentPrice ?? this.currentPrice,
     note: note ?? this.note,
     sortOrder: sortOrder ?? this.sortOrder,
@@ -1716,6 +1856,18 @@ class Holding extends DataClass implements Insertable<Holding> {
       averagePrice: data.averagePrice.present
           ? data.averagePrice.value
           : this.averagePrice,
+      averagePriceSource: data.averagePriceSource.present
+          ? data.averagePriceSource.value
+          : this.averagePriceSource,
+      averagePriceKrw: data.averagePriceKrw.present
+          ? data.averagePriceKrw.value
+          : this.averagePriceKrw,
+      averagePurchaseFxRate: data.averagePurchaseFxRate.present
+          ? data.averagePurchaseFxRate.value
+          : this.averagePurchaseFxRate,
+      costBasisKrw: data.costBasisKrw.present
+          ? data.costBasisKrw.value
+          : this.costBasisKrw,
       currentPrice: data.currentPrice.present
           ? data.currentPrice.value
           : this.currentPrice,
@@ -1741,6 +1893,10 @@ class Holding extends DataClass implements Insertable<Holding> {
           ..write('symbol: $symbol, ')
           ..write('quantity: $quantity, ')
           ..write('averagePrice: $averagePrice, ')
+          ..write('averagePriceSource: $averagePriceSource, ')
+          ..write('averagePriceKrw: $averagePriceKrw, ')
+          ..write('averagePurchaseFxRate: $averagePurchaseFxRate, ')
+          ..write('costBasisKrw: $costBasisKrw, ')
           ..write('currentPrice: $currentPrice, ')
           ..write('note: $note, ')
           ..write('sortOrder: $sortOrder')
@@ -1749,7 +1905,7 @@ class Holding extends DataClass implements Insertable<Holding> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     assetId,
     clientId,
@@ -1764,10 +1920,14 @@ class Holding extends DataClass implements Insertable<Holding> {
     symbol,
     quantity,
     averagePrice,
+    averagePriceSource,
+    averagePriceKrw,
+    averagePurchaseFxRate,
+    costBasisKrw,
     currentPrice,
     note,
     sortOrder,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1786,6 +1946,10 @@ class Holding extends DataClass implements Insertable<Holding> {
           other.symbol == this.symbol &&
           other.quantity == this.quantity &&
           other.averagePrice == this.averagePrice &&
+          other.averagePriceSource == this.averagePriceSource &&
+          other.averagePriceKrw == this.averagePriceKrw &&
+          other.averagePurchaseFxRate == this.averagePurchaseFxRate &&
+          other.costBasisKrw == this.costBasisKrw &&
           other.currentPrice == this.currentPrice &&
           other.note == this.note &&
           other.sortOrder == this.sortOrder);
@@ -1806,6 +1970,10 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
   final Value<String> symbol;
   final Value<double> quantity;
   final Value<double> averagePrice;
+  final Value<double> averagePriceSource;
+  final Value<double> averagePriceKrw;
+  final Value<double> averagePurchaseFxRate;
+  final Value<double> costBasisKrw;
   final Value<double> currentPrice;
   final Value<String> note;
   final Value<int> sortOrder;
@@ -1824,6 +1992,10 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
     this.symbol = const Value.absent(),
     this.quantity = const Value.absent(),
     this.averagePrice = const Value.absent(),
+    this.averagePriceSource = const Value.absent(),
+    this.averagePriceKrw = const Value.absent(),
+    this.averagePurchaseFxRate = const Value.absent(),
+    this.costBasisKrw = const Value.absent(),
     this.currentPrice = const Value.absent(),
     this.note = const Value.absent(),
     this.sortOrder = const Value.absent(),
@@ -1843,6 +2015,10 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
     required String symbol,
     required double quantity,
     required double averagePrice,
+    this.averagePriceSource = const Value.absent(),
+    this.averagePriceKrw = const Value.absent(),
+    this.averagePurchaseFxRate = const Value.absent(),
+    this.costBasisKrw = const Value.absent(),
     required double currentPrice,
     required String note,
     required int sortOrder,
@@ -1869,6 +2045,10 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
     Expression<String>? symbol,
     Expression<double>? quantity,
     Expression<double>? averagePrice,
+    Expression<double>? averagePriceSource,
+    Expression<double>? averagePriceKrw,
+    Expression<double>? averagePurchaseFxRate,
+    Expression<double>? costBasisKrw,
     Expression<double>? currentPrice,
     Expression<String>? note,
     Expression<int>? sortOrder,
@@ -1888,6 +2068,12 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
       if (symbol != null) 'symbol': symbol,
       if (quantity != null) 'quantity': quantity,
       if (averagePrice != null) 'average_price': averagePrice,
+      if (averagePriceSource != null)
+        'average_price_source': averagePriceSource,
+      if (averagePriceKrw != null) 'average_price_krw': averagePriceKrw,
+      if (averagePurchaseFxRate != null)
+        'average_purchase_fx_rate': averagePurchaseFxRate,
+      if (costBasisKrw != null) 'cost_basis_krw': costBasisKrw,
       if (currentPrice != null) 'current_price': currentPrice,
       if (note != null) 'note': note,
       if (sortOrder != null) 'sort_order': sortOrder,
@@ -1909,6 +2095,10 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
     Value<String>? symbol,
     Value<double>? quantity,
     Value<double>? averagePrice,
+    Value<double>? averagePriceSource,
+    Value<double>? averagePriceKrw,
+    Value<double>? averagePurchaseFxRate,
+    Value<double>? costBasisKrw,
     Value<double>? currentPrice,
     Value<String>? note,
     Value<int>? sortOrder,
@@ -1928,6 +2118,11 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
       symbol: symbol ?? this.symbol,
       quantity: quantity ?? this.quantity,
       averagePrice: averagePrice ?? this.averagePrice,
+      averagePriceSource: averagePriceSource ?? this.averagePriceSource,
+      averagePriceKrw: averagePriceKrw ?? this.averagePriceKrw,
+      averagePurchaseFxRate:
+          averagePurchaseFxRate ?? this.averagePurchaseFxRate,
+      costBasisKrw: costBasisKrw ?? this.costBasisKrw,
       currentPrice: currentPrice ?? this.currentPrice,
       note: note ?? this.note,
       sortOrder: sortOrder ?? this.sortOrder,
@@ -1979,6 +2174,20 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
     if (averagePrice.present) {
       map['average_price'] = Variable<double>(averagePrice.value);
     }
+    if (averagePriceSource.present) {
+      map['average_price_source'] = Variable<double>(averagePriceSource.value);
+    }
+    if (averagePriceKrw.present) {
+      map['average_price_krw'] = Variable<double>(averagePriceKrw.value);
+    }
+    if (averagePurchaseFxRate.present) {
+      map['average_purchase_fx_rate'] = Variable<double>(
+        averagePurchaseFxRate.value,
+      );
+    }
+    if (costBasisKrw.present) {
+      map['cost_basis_krw'] = Variable<double>(costBasisKrw.value);
+    }
     if (currentPrice.present) {
       map['current_price'] = Variable<double>(currentPrice.value);
     }
@@ -2008,6 +2217,10 @@ class HoldingsCompanion extends UpdateCompanion<Holding> {
           ..write('symbol: $symbol, ')
           ..write('quantity: $quantity, ')
           ..write('averagePrice: $averagePrice, ')
+          ..write('averagePriceSource: $averagePriceSource, ')
+          ..write('averagePriceKrw: $averagePriceKrw, ')
+          ..write('averagePurchaseFxRate: $averagePurchaseFxRate, ')
+          ..write('costBasisKrw: $costBasisKrw, ')
           ..write('currentPrice: $currentPrice, ')
           ..write('note: $note, ')
           ..write('sortOrder: $sortOrder')
@@ -5692,6 +5905,18 @@ class $TransactionLinesTable extends TransactionLines
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _costBasisSourceDeltaMeta =
+      const VerificationMeta('costBasisSourceDelta');
+  @override
+  late final GeneratedColumn<double> costBasisSourceDelta =
+      GeneratedColumn<double>(
+        'cost_basis_source_delta',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
   static const VerificationMeta _realizedPnlMeta = const VerificationMeta(
     'realizedPnl',
   );
@@ -5704,6 +5929,19 @@ class $TransactionLinesTable extends TransactionLines
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _realizedPnlSourceMeta = const VerificationMeta(
+    'realizedPnlSource',
+  );
+  @override
+  late final GeneratedColumn<String> realizedPnlSource =
+      GeneratedColumn<String>(
+        'realized_pnl_source',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('auto'),
+      );
   static const VerificationMeta _fxRateMeta = const VerificationMeta('fxRate');
   @override
   late final GeneratedColumn<double> fxRate = GeneratedColumn<double>(
@@ -5747,7 +5985,9 @@ class $TransactionLinesTable extends TransactionLines
     feeAmount,
     taxAmount,
     costBasisDelta,
+    costBasisSourceDelta,
     realizedPnl,
+    realizedPnlSource,
     fxRate,
     sortOrder,
   ];
@@ -5908,12 +6148,30 @@ class $TransactionLinesTable extends TransactionLines
         ),
       );
     }
+    if (data.containsKey('cost_basis_source_delta')) {
+      context.handle(
+        _costBasisSourceDeltaMeta,
+        costBasisSourceDelta.isAcceptableOrUnknown(
+          data['cost_basis_source_delta']!,
+          _costBasisSourceDeltaMeta,
+        ),
+      );
+    }
     if (data.containsKey('realized_pnl')) {
       context.handle(
         _realizedPnlMeta,
         realizedPnl.isAcceptableOrUnknown(
           data['realized_pnl']!,
           _realizedPnlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('realized_pnl_source')) {
+      context.handle(
+        _realizedPnlSourceMeta,
+        realizedPnlSource.isAcceptableOrUnknown(
+          data['realized_pnl_source']!,
+          _realizedPnlSourceMeta,
         ),
       );
     }
@@ -6018,9 +6276,17 @@ class $TransactionLinesTable extends TransactionLines
         DriftSqlType.double,
         data['${effectivePrefix}cost_basis_delta'],
       )!,
+      costBasisSourceDelta: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cost_basis_source_delta'],
+      )!,
       realizedPnl: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}realized_pnl'],
+      )!,
+      realizedPnlSource: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}realized_pnl_source'],
       )!,
       fxRate: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
@@ -6060,7 +6326,9 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
   final double feeAmount;
   final double taxAmount;
   final double costBasisDelta;
+  final double costBasisSourceDelta;
   final double realizedPnl;
+  final String realizedPnlSource;
   final double? fxRate;
   final int sortOrder;
   const TransactionLine({
@@ -6084,7 +6352,9 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
     required this.feeAmount,
     required this.taxAmount,
     required this.costBasisDelta,
+    required this.costBasisSourceDelta,
     required this.realizedPnl,
+    required this.realizedPnlSource,
     this.fxRate,
     required this.sortOrder,
   });
@@ -6127,7 +6397,9 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
     map['fee_amount'] = Variable<double>(feeAmount);
     map['tax_amount'] = Variable<double>(taxAmount);
     map['cost_basis_delta'] = Variable<double>(costBasisDelta);
+    map['cost_basis_source_delta'] = Variable<double>(costBasisSourceDelta);
     map['realized_pnl'] = Variable<double>(realizedPnl);
+    map['realized_pnl_source'] = Variable<String>(realizedPnlSource);
     if (!nullToAbsent || fxRate != null) {
       map['fx_rate'] = Variable<double>(fxRate);
     }
@@ -6173,7 +6445,9 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
       feeAmount: Value(feeAmount),
       taxAmount: Value(taxAmount),
       costBasisDelta: Value(costBasisDelta),
+      costBasisSourceDelta: Value(costBasisSourceDelta),
       realizedPnl: Value(realizedPnl),
+      realizedPnlSource: Value(realizedPnlSource),
       fxRate: fxRate == null && nullToAbsent
           ? const Value.absent()
           : Value(fxRate),
@@ -6209,7 +6483,11 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
       feeAmount: serializer.fromJson<double>(json['feeAmount']),
       taxAmount: serializer.fromJson<double>(json['taxAmount']),
       costBasisDelta: serializer.fromJson<double>(json['costBasisDelta']),
+      costBasisSourceDelta: serializer.fromJson<double>(
+        json['costBasisSourceDelta'],
+      ),
       realizedPnl: serializer.fromJson<double>(json['realizedPnl']),
+      realizedPnlSource: serializer.fromJson<String>(json['realizedPnlSource']),
       fxRate: serializer.fromJson<double?>(json['fxRate']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
     );
@@ -6238,7 +6516,9 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
       'feeAmount': serializer.toJson<double>(feeAmount),
       'taxAmount': serializer.toJson<double>(taxAmount),
       'costBasisDelta': serializer.toJson<double>(costBasisDelta),
+      'costBasisSourceDelta': serializer.toJson<double>(costBasisSourceDelta),
       'realizedPnl': serializer.toJson<double>(realizedPnl),
+      'realizedPnlSource': serializer.toJson<String>(realizedPnlSource),
       'fxRate': serializer.toJson<double?>(fxRate),
       'sortOrder': serializer.toJson<int>(sortOrder),
     };
@@ -6265,7 +6545,9 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
     double? feeAmount,
     double? taxAmount,
     double? costBasisDelta,
+    double? costBasisSourceDelta,
     double? realizedPnl,
+    String? realizedPnlSource,
     Value<double?> fxRate = const Value.absent(),
     int? sortOrder,
   }) => TransactionLine(
@@ -6297,7 +6579,9 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
     feeAmount: feeAmount ?? this.feeAmount,
     taxAmount: taxAmount ?? this.taxAmount,
     costBasisDelta: costBasisDelta ?? this.costBasisDelta,
+    costBasisSourceDelta: costBasisSourceDelta ?? this.costBasisSourceDelta,
     realizedPnl: realizedPnl ?? this.realizedPnl,
+    realizedPnlSource: realizedPnlSource ?? this.realizedPnlSource,
     fxRate: fxRate.present ? fxRate.value : this.fxRate,
     sortOrder: sortOrder ?? this.sortOrder,
   );
@@ -6339,9 +6623,15 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
       costBasisDelta: data.costBasisDelta.present
           ? data.costBasisDelta.value
           : this.costBasisDelta,
+      costBasisSourceDelta: data.costBasisSourceDelta.present
+          ? data.costBasisSourceDelta.value
+          : this.costBasisSourceDelta,
       realizedPnl: data.realizedPnl.present
           ? data.realizedPnl.value
           : this.realizedPnl,
+      realizedPnlSource: data.realizedPnlSource.present
+          ? data.realizedPnlSource.value
+          : this.realizedPnlSource,
       fxRate: data.fxRate.present ? data.fxRate.value : this.fxRate,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
     );
@@ -6370,7 +6660,9 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
           ..write('feeAmount: $feeAmount, ')
           ..write('taxAmount: $taxAmount, ')
           ..write('costBasisDelta: $costBasisDelta, ')
+          ..write('costBasisSourceDelta: $costBasisSourceDelta, ')
           ..write('realizedPnl: $realizedPnl, ')
+          ..write('realizedPnlSource: $realizedPnlSource, ')
           ..write('fxRate: $fxRate, ')
           ..write('sortOrder: $sortOrder')
           ..write(')'))
@@ -6399,7 +6691,9 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
     feeAmount,
     taxAmount,
     costBasisDelta,
+    costBasisSourceDelta,
     realizedPnl,
+    realizedPnlSource,
     fxRate,
     sortOrder,
   ]);
@@ -6427,7 +6721,9 @@ class TransactionLine extends DataClass implements Insertable<TransactionLine> {
           other.feeAmount == this.feeAmount &&
           other.taxAmount == this.taxAmount &&
           other.costBasisDelta == this.costBasisDelta &&
+          other.costBasisSourceDelta == this.costBasisSourceDelta &&
           other.realizedPnl == this.realizedPnl &&
+          other.realizedPnlSource == this.realizedPnlSource &&
           other.fxRate == this.fxRate &&
           other.sortOrder == this.sortOrder);
 }
@@ -6453,7 +6749,9 @@ class TransactionLinesCompanion extends UpdateCompanion<TransactionLine> {
   final Value<double> feeAmount;
   final Value<double> taxAmount;
   final Value<double> costBasisDelta;
+  final Value<double> costBasisSourceDelta;
   final Value<double> realizedPnl;
+  final Value<String> realizedPnlSource;
   final Value<double?> fxRate;
   final Value<int> sortOrder;
   const TransactionLinesCompanion({
@@ -6477,7 +6775,9 @@ class TransactionLinesCompanion extends UpdateCompanion<TransactionLine> {
     this.feeAmount = const Value.absent(),
     this.taxAmount = const Value.absent(),
     this.costBasisDelta = const Value.absent(),
+    this.costBasisSourceDelta = const Value.absent(),
     this.realizedPnl = const Value.absent(),
+    this.realizedPnlSource = const Value.absent(),
     this.fxRate = const Value.absent(),
     this.sortOrder = const Value.absent(),
   });
@@ -6502,7 +6802,9 @@ class TransactionLinesCompanion extends UpdateCompanion<TransactionLine> {
     this.feeAmount = const Value.absent(),
     this.taxAmount = const Value.absent(),
     this.costBasisDelta = const Value.absent(),
+    this.costBasisSourceDelta = const Value.absent(),
     this.realizedPnl = const Value.absent(),
+    this.realizedPnlSource = const Value.absent(),
     this.fxRate = const Value.absent(),
     this.sortOrder = const Value.absent(),
   }) : eventId = Value(eventId),
@@ -6528,7 +6830,9 @@ class TransactionLinesCompanion extends UpdateCompanion<TransactionLine> {
     Expression<double>? feeAmount,
     Expression<double>? taxAmount,
     Expression<double>? costBasisDelta,
+    Expression<double>? costBasisSourceDelta,
     Expression<double>? realizedPnl,
+    Expression<String>? realizedPnlSource,
     Expression<double>? fxRate,
     Expression<int>? sortOrder,
   }) {
@@ -6553,7 +6857,10 @@ class TransactionLinesCompanion extends UpdateCompanion<TransactionLine> {
       if (feeAmount != null) 'fee_amount': feeAmount,
       if (taxAmount != null) 'tax_amount': taxAmount,
       if (costBasisDelta != null) 'cost_basis_delta': costBasisDelta,
+      if (costBasisSourceDelta != null)
+        'cost_basis_source_delta': costBasisSourceDelta,
       if (realizedPnl != null) 'realized_pnl': realizedPnl,
+      if (realizedPnlSource != null) 'realized_pnl_source': realizedPnlSource,
       if (fxRate != null) 'fx_rate': fxRate,
       if (sortOrder != null) 'sort_order': sortOrder,
     });
@@ -6580,7 +6887,9 @@ class TransactionLinesCompanion extends UpdateCompanion<TransactionLine> {
     Value<double>? feeAmount,
     Value<double>? taxAmount,
     Value<double>? costBasisDelta,
+    Value<double>? costBasisSourceDelta,
     Value<double>? realizedPnl,
+    Value<String>? realizedPnlSource,
     Value<double?>? fxRate,
     Value<int>? sortOrder,
   }) {
@@ -6605,7 +6914,9 @@ class TransactionLinesCompanion extends UpdateCompanion<TransactionLine> {
       feeAmount: feeAmount ?? this.feeAmount,
       taxAmount: taxAmount ?? this.taxAmount,
       costBasisDelta: costBasisDelta ?? this.costBasisDelta,
+      costBasisSourceDelta: costBasisSourceDelta ?? this.costBasisSourceDelta,
       realizedPnl: realizedPnl ?? this.realizedPnl,
+      realizedPnlSource: realizedPnlSource ?? this.realizedPnlSource,
       fxRate: fxRate ?? this.fxRate,
       sortOrder: sortOrder ?? this.sortOrder,
     );
@@ -6674,8 +6985,16 @@ class TransactionLinesCompanion extends UpdateCompanion<TransactionLine> {
     if (costBasisDelta.present) {
       map['cost_basis_delta'] = Variable<double>(costBasisDelta.value);
     }
+    if (costBasisSourceDelta.present) {
+      map['cost_basis_source_delta'] = Variable<double>(
+        costBasisSourceDelta.value,
+      );
+    }
     if (realizedPnl.present) {
       map['realized_pnl'] = Variable<double>(realizedPnl.value);
+    }
+    if (realizedPnlSource.present) {
+      map['realized_pnl_source'] = Variable<String>(realizedPnlSource.value);
     }
     if (fxRate.present) {
       map['fx_rate'] = Variable<double>(fxRate.value);
@@ -6709,7 +7028,9 @@ class TransactionLinesCompanion extends UpdateCompanion<TransactionLine> {
           ..write('feeAmount: $feeAmount, ')
           ..write('taxAmount: $taxAmount, ')
           ..write('costBasisDelta: $costBasisDelta, ')
+          ..write('costBasisSourceDelta: $costBasisSourceDelta, ')
           ..write('realizedPnl: $realizedPnl, ')
+          ..write('realizedPnlSource: $realizedPnlSource, ')
           ..write('fxRate: $fxRate, ')
           ..write('sortOrder: $sortOrder')
           ..write(')'))
@@ -10511,6 +10832,1382 @@ class ExchangeRatesCompanion extends UpdateCompanion<ExchangeRate> {
   }
 }
 
+class $PortfolioDailyReturnsTable extends PortfolioDailyReturns
+    with TableInfo<$PortfolioDailyReturnsTable, PortfolioDailyReturn> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PortfolioDailyReturnsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _localUserIdMeta = const VerificationMeta(
+    'localUserId',
+  );
+  @override
+  late final GeneratedColumn<String> localUserId = GeneratedColumn<String>(
+    'local_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _returnDateMeta = const VerificationMeta(
+    'returnDate',
+  );
+  @override
+  late final GeneratedColumn<String> returnDate = GeneratedColumn<String>(
+    'return_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _beginningValueKrwMeta = const VerificationMeta(
+    'beginningValueKrw',
+  );
+  @override
+  late final GeneratedColumn<double> beginningValueKrw =
+      GeneratedColumn<double>(
+        'beginning_value_krw',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _endingValueKrwMeta = const VerificationMeta(
+    'endingValueKrw',
+  );
+  @override
+  late final GeneratedColumn<double> endingValueKrw = GeneratedColumn<double>(
+    'ending_value_krw',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _portfolioValueKrwMeta = const VerificationMeta(
+    'portfolioValueKrw',
+  );
+  @override
+  late final GeneratedColumn<double> portfolioValueKrw =
+      GeneratedColumn<double>(
+        'portfolio_value_krw',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _externalCashFlowKrwMeta =
+      const VerificationMeta('externalCashFlowKrw');
+  @override
+  late final GeneratedColumn<double> externalCashFlowKrw =
+      GeneratedColumn<double>(
+        'external_cash_flow_krw',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
+  static const VerificationMeta _dailyReturnMeta = const VerificationMeta(
+    'dailyReturn',
+  );
+  @override
+  late final GeneratedColumn<double> dailyReturn = GeneratedColumn<double>(
+    'daily_return',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dataQualityMeta = const VerificationMeta(
+    'dataQuality',
+  );
+  @override
+  late final GeneratedColumn<String> dataQuality = GeneratedColumn<String>(
+    'data_quality',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('complete'),
+  );
+  static const VerificationMeta _calculationVersionMeta =
+      const VerificationMeta('calculationVersion');
+  @override
+  late final GeneratedColumn<int> calculationVersion = GeneratedColumn<int>(
+    'calculation_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    localUserId,
+    returnDate,
+    beginningValueKrw,
+    endingValueKrw,
+    portfolioValueKrw,
+    externalCashFlowKrw,
+    dailyReturn,
+    dataQuality,
+    calculationVersion,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'portfolio_daily_returns';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PortfolioDailyReturn> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('local_user_id')) {
+      context.handle(
+        _localUserIdMeta,
+        localUserId.isAcceptableOrUnknown(
+          data['local_user_id']!,
+          _localUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_localUserIdMeta);
+    }
+    if (data.containsKey('return_date')) {
+      context.handle(
+        _returnDateMeta,
+        returnDate.isAcceptableOrUnknown(data['return_date']!, _returnDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_returnDateMeta);
+    }
+    if (data.containsKey('beginning_value_krw')) {
+      context.handle(
+        _beginningValueKrwMeta,
+        beginningValueKrw.isAcceptableOrUnknown(
+          data['beginning_value_krw']!,
+          _beginningValueKrwMeta,
+        ),
+      );
+    }
+    if (data.containsKey('ending_value_krw')) {
+      context.handle(
+        _endingValueKrwMeta,
+        endingValueKrw.isAcceptableOrUnknown(
+          data['ending_value_krw']!,
+          _endingValueKrwMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_endingValueKrwMeta);
+    }
+    if (data.containsKey('portfolio_value_krw')) {
+      context.handle(
+        _portfolioValueKrwMeta,
+        portfolioValueKrw.isAcceptableOrUnknown(
+          data['portfolio_value_krw']!,
+          _portfolioValueKrwMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_portfolioValueKrwMeta);
+    }
+    if (data.containsKey('external_cash_flow_krw')) {
+      context.handle(
+        _externalCashFlowKrwMeta,
+        externalCashFlowKrw.isAcceptableOrUnknown(
+          data['external_cash_flow_krw']!,
+          _externalCashFlowKrwMeta,
+        ),
+      );
+    }
+    if (data.containsKey('daily_return')) {
+      context.handle(
+        _dailyReturnMeta,
+        dailyReturn.isAcceptableOrUnknown(
+          data['daily_return']!,
+          _dailyReturnMeta,
+        ),
+      );
+    }
+    if (data.containsKey('data_quality')) {
+      context.handle(
+        _dataQualityMeta,
+        dataQuality.isAcceptableOrUnknown(
+          data['data_quality']!,
+          _dataQualityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('calculation_version')) {
+      context.handle(
+        _calculationVersionMeta,
+        calculationVersion.isAcceptableOrUnknown(
+          data['calculation_version']!,
+          _calculationVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {localUserId, returnDate},
+  ];
+  @override
+  PortfolioDailyReturn map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PortfolioDailyReturn(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      localUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_user_id'],
+      )!,
+      returnDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}return_date'],
+      )!,
+      beginningValueKrw: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}beginning_value_krw'],
+      ),
+      endingValueKrw: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}ending_value_krw'],
+      )!,
+      portfolioValueKrw: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}portfolio_value_krw'],
+      )!,
+      externalCashFlowKrw: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}external_cash_flow_krw'],
+      )!,
+      dailyReturn: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}daily_return'],
+      ),
+      dataQuality: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data_quality'],
+      )!,
+      calculationVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}calculation_version'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PortfolioDailyReturnsTable createAlias(String alias) {
+    return $PortfolioDailyReturnsTable(attachedDatabase, alias);
+  }
+}
+
+class PortfolioDailyReturn extends DataClass
+    implements Insertable<PortfolioDailyReturn> {
+  final int id;
+  final String localUserId;
+  final String returnDate;
+  final double? beginningValueKrw;
+  final double endingValueKrw;
+  final double portfolioValueKrw;
+  final double externalCashFlowKrw;
+  final double? dailyReturn;
+  final String dataQuality;
+  final int calculationVersion;
+  final String createdAt;
+  final String updatedAt;
+  const PortfolioDailyReturn({
+    required this.id,
+    required this.localUserId,
+    required this.returnDate,
+    this.beginningValueKrw,
+    required this.endingValueKrw,
+    required this.portfolioValueKrw,
+    required this.externalCashFlowKrw,
+    this.dailyReturn,
+    required this.dataQuality,
+    required this.calculationVersion,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['local_user_id'] = Variable<String>(localUserId);
+    map['return_date'] = Variable<String>(returnDate);
+    if (!nullToAbsent || beginningValueKrw != null) {
+      map['beginning_value_krw'] = Variable<double>(beginningValueKrw);
+    }
+    map['ending_value_krw'] = Variable<double>(endingValueKrw);
+    map['portfolio_value_krw'] = Variable<double>(portfolioValueKrw);
+    map['external_cash_flow_krw'] = Variable<double>(externalCashFlowKrw);
+    if (!nullToAbsent || dailyReturn != null) {
+      map['daily_return'] = Variable<double>(dailyReturn);
+    }
+    map['data_quality'] = Variable<String>(dataQuality);
+    map['calculation_version'] = Variable<int>(calculationVersion);
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    return map;
+  }
+
+  PortfolioDailyReturnsCompanion toCompanion(bool nullToAbsent) {
+    return PortfolioDailyReturnsCompanion(
+      id: Value(id),
+      localUserId: Value(localUserId),
+      returnDate: Value(returnDate),
+      beginningValueKrw: beginningValueKrw == null && nullToAbsent
+          ? const Value.absent()
+          : Value(beginningValueKrw),
+      endingValueKrw: Value(endingValueKrw),
+      portfolioValueKrw: Value(portfolioValueKrw),
+      externalCashFlowKrw: Value(externalCashFlowKrw),
+      dailyReturn: dailyReturn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dailyReturn),
+      dataQuality: Value(dataQuality),
+      calculationVersion: Value(calculationVersion),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PortfolioDailyReturn.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PortfolioDailyReturn(
+      id: serializer.fromJson<int>(json['id']),
+      localUserId: serializer.fromJson<String>(json['localUserId']),
+      returnDate: serializer.fromJson<String>(json['returnDate']),
+      beginningValueKrw: serializer.fromJson<double?>(
+        json['beginningValueKrw'],
+      ),
+      endingValueKrw: serializer.fromJson<double>(json['endingValueKrw']),
+      portfolioValueKrw: serializer.fromJson<double>(json['portfolioValueKrw']),
+      externalCashFlowKrw: serializer.fromJson<double>(
+        json['externalCashFlowKrw'],
+      ),
+      dailyReturn: serializer.fromJson<double?>(json['dailyReturn']),
+      dataQuality: serializer.fromJson<String>(json['dataQuality']),
+      calculationVersion: serializer.fromJson<int>(json['calculationVersion']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'localUserId': serializer.toJson<String>(localUserId),
+      'returnDate': serializer.toJson<String>(returnDate),
+      'beginningValueKrw': serializer.toJson<double?>(beginningValueKrw),
+      'endingValueKrw': serializer.toJson<double>(endingValueKrw),
+      'portfolioValueKrw': serializer.toJson<double>(portfolioValueKrw),
+      'externalCashFlowKrw': serializer.toJson<double>(externalCashFlowKrw),
+      'dailyReturn': serializer.toJson<double?>(dailyReturn),
+      'dataQuality': serializer.toJson<String>(dataQuality),
+      'calculationVersion': serializer.toJson<int>(calculationVersion),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+    };
+  }
+
+  PortfolioDailyReturn copyWith({
+    int? id,
+    String? localUserId,
+    String? returnDate,
+    Value<double?> beginningValueKrw = const Value.absent(),
+    double? endingValueKrw,
+    double? portfolioValueKrw,
+    double? externalCashFlowKrw,
+    Value<double?> dailyReturn = const Value.absent(),
+    String? dataQuality,
+    int? calculationVersion,
+    String? createdAt,
+    String? updatedAt,
+  }) => PortfolioDailyReturn(
+    id: id ?? this.id,
+    localUserId: localUserId ?? this.localUserId,
+    returnDate: returnDate ?? this.returnDate,
+    beginningValueKrw: beginningValueKrw.present
+        ? beginningValueKrw.value
+        : this.beginningValueKrw,
+    endingValueKrw: endingValueKrw ?? this.endingValueKrw,
+    portfolioValueKrw: portfolioValueKrw ?? this.portfolioValueKrw,
+    externalCashFlowKrw: externalCashFlowKrw ?? this.externalCashFlowKrw,
+    dailyReturn: dailyReturn.present ? dailyReturn.value : this.dailyReturn,
+    dataQuality: dataQuality ?? this.dataQuality,
+    calculationVersion: calculationVersion ?? this.calculationVersion,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  PortfolioDailyReturn copyWithCompanion(PortfolioDailyReturnsCompanion data) {
+    return PortfolioDailyReturn(
+      id: data.id.present ? data.id.value : this.id,
+      localUserId: data.localUserId.present
+          ? data.localUserId.value
+          : this.localUserId,
+      returnDate: data.returnDate.present
+          ? data.returnDate.value
+          : this.returnDate,
+      beginningValueKrw: data.beginningValueKrw.present
+          ? data.beginningValueKrw.value
+          : this.beginningValueKrw,
+      endingValueKrw: data.endingValueKrw.present
+          ? data.endingValueKrw.value
+          : this.endingValueKrw,
+      portfolioValueKrw: data.portfolioValueKrw.present
+          ? data.portfolioValueKrw.value
+          : this.portfolioValueKrw,
+      externalCashFlowKrw: data.externalCashFlowKrw.present
+          ? data.externalCashFlowKrw.value
+          : this.externalCashFlowKrw,
+      dailyReturn: data.dailyReturn.present
+          ? data.dailyReturn.value
+          : this.dailyReturn,
+      dataQuality: data.dataQuality.present
+          ? data.dataQuality.value
+          : this.dataQuality,
+      calculationVersion: data.calculationVersion.present
+          ? data.calculationVersion.value
+          : this.calculationVersion,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PortfolioDailyReturn(')
+          ..write('id: $id, ')
+          ..write('localUserId: $localUserId, ')
+          ..write('returnDate: $returnDate, ')
+          ..write('beginningValueKrw: $beginningValueKrw, ')
+          ..write('endingValueKrw: $endingValueKrw, ')
+          ..write('portfolioValueKrw: $portfolioValueKrw, ')
+          ..write('externalCashFlowKrw: $externalCashFlowKrw, ')
+          ..write('dailyReturn: $dailyReturn, ')
+          ..write('dataQuality: $dataQuality, ')
+          ..write('calculationVersion: $calculationVersion, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    localUserId,
+    returnDate,
+    beginningValueKrw,
+    endingValueKrw,
+    portfolioValueKrw,
+    externalCashFlowKrw,
+    dailyReturn,
+    dataQuality,
+    calculationVersion,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PortfolioDailyReturn &&
+          other.id == this.id &&
+          other.localUserId == this.localUserId &&
+          other.returnDate == this.returnDate &&
+          other.beginningValueKrw == this.beginningValueKrw &&
+          other.endingValueKrw == this.endingValueKrw &&
+          other.portfolioValueKrw == this.portfolioValueKrw &&
+          other.externalCashFlowKrw == this.externalCashFlowKrw &&
+          other.dailyReturn == this.dailyReturn &&
+          other.dataQuality == this.dataQuality &&
+          other.calculationVersion == this.calculationVersion &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PortfolioDailyReturnsCompanion
+    extends UpdateCompanion<PortfolioDailyReturn> {
+  final Value<int> id;
+  final Value<String> localUserId;
+  final Value<String> returnDate;
+  final Value<double?> beginningValueKrw;
+  final Value<double> endingValueKrw;
+  final Value<double> portfolioValueKrw;
+  final Value<double> externalCashFlowKrw;
+  final Value<double?> dailyReturn;
+  final Value<String> dataQuality;
+  final Value<int> calculationVersion;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  const PortfolioDailyReturnsCompanion({
+    this.id = const Value.absent(),
+    this.localUserId = const Value.absent(),
+    this.returnDate = const Value.absent(),
+    this.beginningValueKrw = const Value.absent(),
+    this.endingValueKrw = const Value.absent(),
+    this.portfolioValueKrw = const Value.absent(),
+    this.externalCashFlowKrw = const Value.absent(),
+    this.dailyReturn = const Value.absent(),
+    this.dataQuality = const Value.absent(),
+    this.calculationVersion = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  PortfolioDailyReturnsCompanion.insert({
+    this.id = const Value.absent(),
+    required String localUserId,
+    required String returnDate,
+    this.beginningValueKrw = const Value.absent(),
+    required double endingValueKrw,
+    required double portfolioValueKrw,
+    this.externalCashFlowKrw = const Value.absent(),
+    this.dailyReturn = const Value.absent(),
+    this.dataQuality = const Value.absent(),
+    this.calculationVersion = const Value.absent(),
+    required String createdAt,
+    required String updatedAt,
+  }) : localUserId = Value(localUserId),
+       returnDate = Value(returnDate),
+       endingValueKrw = Value(endingValueKrw),
+       portfolioValueKrw = Value(portfolioValueKrw),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<PortfolioDailyReturn> custom({
+    Expression<int>? id,
+    Expression<String>? localUserId,
+    Expression<String>? returnDate,
+    Expression<double>? beginningValueKrw,
+    Expression<double>? endingValueKrw,
+    Expression<double>? portfolioValueKrw,
+    Expression<double>? externalCashFlowKrw,
+    Expression<double>? dailyReturn,
+    Expression<String>? dataQuality,
+    Expression<int>? calculationVersion,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (localUserId != null) 'local_user_id': localUserId,
+      if (returnDate != null) 'return_date': returnDate,
+      if (beginningValueKrw != null) 'beginning_value_krw': beginningValueKrw,
+      if (endingValueKrw != null) 'ending_value_krw': endingValueKrw,
+      if (portfolioValueKrw != null) 'portfolio_value_krw': portfolioValueKrw,
+      if (externalCashFlowKrw != null)
+        'external_cash_flow_krw': externalCashFlowKrw,
+      if (dailyReturn != null) 'daily_return': dailyReturn,
+      if (dataQuality != null) 'data_quality': dataQuality,
+      if (calculationVersion != null) 'calculation_version': calculationVersion,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  PortfolioDailyReturnsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? localUserId,
+    Value<String>? returnDate,
+    Value<double?>? beginningValueKrw,
+    Value<double>? endingValueKrw,
+    Value<double>? portfolioValueKrw,
+    Value<double>? externalCashFlowKrw,
+    Value<double?>? dailyReturn,
+    Value<String>? dataQuality,
+    Value<int>? calculationVersion,
+    Value<String>? createdAt,
+    Value<String>? updatedAt,
+  }) {
+    return PortfolioDailyReturnsCompanion(
+      id: id ?? this.id,
+      localUserId: localUserId ?? this.localUserId,
+      returnDate: returnDate ?? this.returnDate,
+      beginningValueKrw: beginningValueKrw ?? this.beginningValueKrw,
+      endingValueKrw: endingValueKrw ?? this.endingValueKrw,
+      portfolioValueKrw: portfolioValueKrw ?? this.portfolioValueKrw,
+      externalCashFlowKrw: externalCashFlowKrw ?? this.externalCashFlowKrw,
+      dailyReturn: dailyReturn ?? this.dailyReturn,
+      dataQuality: dataQuality ?? this.dataQuality,
+      calculationVersion: calculationVersion ?? this.calculationVersion,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (localUserId.present) {
+      map['local_user_id'] = Variable<String>(localUserId.value);
+    }
+    if (returnDate.present) {
+      map['return_date'] = Variable<String>(returnDate.value);
+    }
+    if (beginningValueKrw.present) {
+      map['beginning_value_krw'] = Variable<double>(beginningValueKrw.value);
+    }
+    if (endingValueKrw.present) {
+      map['ending_value_krw'] = Variable<double>(endingValueKrw.value);
+    }
+    if (portfolioValueKrw.present) {
+      map['portfolio_value_krw'] = Variable<double>(portfolioValueKrw.value);
+    }
+    if (externalCashFlowKrw.present) {
+      map['external_cash_flow_krw'] = Variable<double>(
+        externalCashFlowKrw.value,
+      );
+    }
+    if (dailyReturn.present) {
+      map['daily_return'] = Variable<double>(dailyReturn.value);
+    }
+    if (dataQuality.present) {
+      map['data_quality'] = Variable<String>(dataQuality.value);
+    }
+    if (calculationVersion.present) {
+      map['calculation_version'] = Variable<int>(calculationVersion.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PortfolioDailyReturnsCompanion(')
+          ..write('id: $id, ')
+          ..write('localUserId: $localUserId, ')
+          ..write('returnDate: $returnDate, ')
+          ..write('beginningValueKrw: $beginningValueKrw, ')
+          ..write('endingValueKrw: $endingValueKrw, ')
+          ..write('portfolioValueKrw: $portfolioValueKrw, ')
+          ..write('externalCashFlowKrw: $externalCashFlowKrw, ')
+          ..write('dailyReturn: $dailyReturn, ')
+          ..write('dataQuality: $dataQuality, ')
+          ..write('calculationVersion: $calculationVersion, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BenchmarkPricesTable extends BenchmarkPrices
+    with TableInfo<$BenchmarkPricesTable, BenchmarkPrice> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BenchmarkPricesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _benchmarkCodeMeta = const VerificationMeta(
+    'benchmarkCode',
+  );
+  @override
+  late final GeneratedColumn<String> benchmarkCode = GeneratedColumn<String>(
+    'benchmark_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _priceDateMeta = const VerificationMeta(
+    'priceDate',
+  );
+  @override
+  late final GeneratedColumn<String> priceDate = GeneratedColumn<String>(
+    'price_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _closePriceMeta = const VerificationMeta(
+    'closePrice',
+  );
+  @override
+  late final GeneratedColumn<double> closePrice = GeneratedColumn<double>(
+    'close_price',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _adjustedClosePriceMeta =
+      const VerificationMeta('adjustedClosePrice');
+  @override
+  late final GeneratedColumn<double> adjustedClosePrice =
+      GeneratedColumn<double>(
+        'adjusted_close_price',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('KRW'),
+  );
+  static const VerificationMeta _fxRateToKrwMeta = const VerificationMeta(
+    'fxRateToKrw',
+  );
+  @override
+  late final GeneratedColumn<double> fxRateToKrw = GeneratedColumn<double>(
+    'fx_rate_to_krw',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    benchmarkCode,
+    priceDate,
+    closePrice,
+    adjustedClosePrice,
+    currencyCode,
+    fxRateToKrw,
+    source,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'benchmark_prices';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BenchmarkPrice> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('benchmark_code')) {
+      context.handle(
+        _benchmarkCodeMeta,
+        benchmarkCode.isAcceptableOrUnknown(
+          data['benchmark_code']!,
+          _benchmarkCodeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_benchmarkCodeMeta);
+    }
+    if (data.containsKey('price_date')) {
+      context.handle(
+        _priceDateMeta,
+        priceDate.isAcceptableOrUnknown(data['price_date']!, _priceDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_priceDateMeta);
+    }
+    if (data.containsKey('close_price')) {
+      context.handle(
+        _closePriceMeta,
+        closePrice.isAcceptableOrUnknown(data['close_price']!, _closePriceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_closePriceMeta);
+    }
+    if (data.containsKey('adjusted_close_price')) {
+      context.handle(
+        _adjustedClosePriceMeta,
+        adjustedClosePrice.isAcceptableOrUnknown(
+          data['adjusted_close_price']!,
+          _adjustedClosePriceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fx_rate_to_krw')) {
+      context.handle(
+        _fxRateToKrwMeta,
+        fxRateToKrw.isAcceptableOrUnknown(
+          data['fx_rate_to_krw']!,
+          _fxRateToKrwMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {benchmarkCode, priceDate},
+  ];
+  @override
+  BenchmarkPrice map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BenchmarkPrice(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      benchmarkCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}benchmark_code'],
+      )!,
+      priceDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}price_date'],
+      )!,
+      closePrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}close_price'],
+      )!,
+      adjustedClosePrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}adjusted_close_price'],
+      ),
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      )!,
+      fxRateToKrw: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}fx_rate_to_krw'],
+      ),
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BenchmarkPricesTable createAlias(String alias) {
+    return $BenchmarkPricesTable(attachedDatabase, alias);
+  }
+}
+
+class BenchmarkPrice extends DataClass implements Insertable<BenchmarkPrice> {
+  final int id;
+  final String benchmarkCode;
+  final String priceDate;
+  final double closePrice;
+  final double? adjustedClosePrice;
+  final String currencyCode;
+  final double? fxRateToKrw;
+  final String? source;
+  final String createdAt;
+  final String updatedAt;
+  const BenchmarkPrice({
+    required this.id,
+    required this.benchmarkCode,
+    required this.priceDate,
+    required this.closePrice,
+    this.adjustedClosePrice,
+    required this.currencyCode,
+    this.fxRateToKrw,
+    this.source,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['benchmark_code'] = Variable<String>(benchmarkCode);
+    map['price_date'] = Variable<String>(priceDate);
+    map['close_price'] = Variable<double>(closePrice);
+    if (!nullToAbsent || adjustedClosePrice != null) {
+      map['adjusted_close_price'] = Variable<double>(adjustedClosePrice);
+    }
+    map['currency_code'] = Variable<String>(currencyCode);
+    if (!nullToAbsent || fxRateToKrw != null) {
+      map['fx_rate_to_krw'] = Variable<double>(fxRateToKrw);
+    }
+    if (!nullToAbsent || source != null) {
+      map['source'] = Variable<String>(source);
+    }
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    return map;
+  }
+
+  BenchmarkPricesCompanion toCompanion(bool nullToAbsent) {
+    return BenchmarkPricesCompanion(
+      id: Value(id),
+      benchmarkCode: Value(benchmarkCode),
+      priceDate: Value(priceDate),
+      closePrice: Value(closePrice),
+      adjustedClosePrice: adjustedClosePrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(adjustedClosePrice),
+      currencyCode: Value(currencyCode),
+      fxRateToKrw: fxRateToKrw == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fxRateToKrw),
+      source: source == null && nullToAbsent
+          ? const Value.absent()
+          : Value(source),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BenchmarkPrice.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BenchmarkPrice(
+      id: serializer.fromJson<int>(json['id']),
+      benchmarkCode: serializer.fromJson<String>(json['benchmarkCode']),
+      priceDate: serializer.fromJson<String>(json['priceDate']),
+      closePrice: serializer.fromJson<double>(json['closePrice']),
+      adjustedClosePrice: serializer.fromJson<double?>(
+        json['adjustedClosePrice'],
+      ),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
+      fxRateToKrw: serializer.fromJson<double?>(json['fxRateToKrw']),
+      source: serializer.fromJson<String?>(json['source']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'benchmarkCode': serializer.toJson<String>(benchmarkCode),
+      'priceDate': serializer.toJson<String>(priceDate),
+      'closePrice': serializer.toJson<double>(closePrice),
+      'adjustedClosePrice': serializer.toJson<double?>(adjustedClosePrice),
+      'currencyCode': serializer.toJson<String>(currencyCode),
+      'fxRateToKrw': serializer.toJson<double?>(fxRateToKrw),
+      'source': serializer.toJson<String?>(source),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+    };
+  }
+
+  BenchmarkPrice copyWith({
+    int? id,
+    String? benchmarkCode,
+    String? priceDate,
+    double? closePrice,
+    Value<double?> adjustedClosePrice = const Value.absent(),
+    String? currencyCode,
+    Value<double?> fxRateToKrw = const Value.absent(),
+    Value<String?> source = const Value.absent(),
+    String? createdAt,
+    String? updatedAt,
+  }) => BenchmarkPrice(
+    id: id ?? this.id,
+    benchmarkCode: benchmarkCode ?? this.benchmarkCode,
+    priceDate: priceDate ?? this.priceDate,
+    closePrice: closePrice ?? this.closePrice,
+    adjustedClosePrice: adjustedClosePrice.present
+        ? adjustedClosePrice.value
+        : this.adjustedClosePrice,
+    currencyCode: currencyCode ?? this.currencyCode,
+    fxRateToKrw: fxRateToKrw.present ? fxRateToKrw.value : this.fxRateToKrw,
+    source: source.present ? source.value : this.source,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BenchmarkPrice copyWithCompanion(BenchmarkPricesCompanion data) {
+    return BenchmarkPrice(
+      id: data.id.present ? data.id.value : this.id,
+      benchmarkCode: data.benchmarkCode.present
+          ? data.benchmarkCode.value
+          : this.benchmarkCode,
+      priceDate: data.priceDate.present ? data.priceDate.value : this.priceDate,
+      closePrice: data.closePrice.present
+          ? data.closePrice.value
+          : this.closePrice,
+      adjustedClosePrice: data.adjustedClosePrice.present
+          ? data.adjustedClosePrice.value
+          : this.adjustedClosePrice,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
+      fxRateToKrw: data.fxRateToKrw.present
+          ? data.fxRateToKrw.value
+          : this.fxRateToKrw,
+      source: data.source.present ? data.source.value : this.source,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BenchmarkPrice(')
+          ..write('id: $id, ')
+          ..write('benchmarkCode: $benchmarkCode, ')
+          ..write('priceDate: $priceDate, ')
+          ..write('closePrice: $closePrice, ')
+          ..write('adjustedClosePrice: $adjustedClosePrice, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('fxRateToKrw: $fxRateToKrw, ')
+          ..write('source: $source, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    benchmarkCode,
+    priceDate,
+    closePrice,
+    adjustedClosePrice,
+    currencyCode,
+    fxRateToKrw,
+    source,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BenchmarkPrice &&
+          other.id == this.id &&
+          other.benchmarkCode == this.benchmarkCode &&
+          other.priceDate == this.priceDate &&
+          other.closePrice == this.closePrice &&
+          other.adjustedClosePrice == this.adjustedClosePrice &&
+          other.currencyCode == this.currencyCode &&
+          other.fxRateToKrw == this.fxRateToKrw &&
+          other.source == this.source &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BenchmarkPricesCompanion extends UpdateCompanion<BenchmarkPrice> {
+  final Value<int> id;
+  final Value<String> benchmarkCode;
+  final Value<String> priceDate;
+  final Value<double> closePrice;
+  final Value<double?> adjustedClosePrice;
+  final Value<String> currencyCode;
+  final Value<double?> fxRateToKrw;
+  final Value<String?> source;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  const BenchmarkPricesCompanion({
+    this.id = const Value.absent(),
+    this.benchmarkCode = const Value.absent(),
+    this.priceDate = const Value.absent(),
+    this.closePrice = const Value.absent(),
+    this.adjustedClosePrice = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.fxRateToKrw = const Value.absent(),
+    this.source = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  BenchmarkPricesCompanion.insert({
+    this.id = const Value.absent(),
+    required String benchmarkCode,
+    required String priceDate,
+    required double closePrice,
+    this.adjustedClosePrice = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.fxRateToKrw = const Value.absent(),
+    this.source = const Value.absent(),
+    required String createdAt,
+    required String updatedAt,
+  }) : benchmarkCode = Value(benchmarkCode),
+       priceDate = Value(priceDate),
+       closePrice = Value(closePrice),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<BenchmarkPrice> custom({
+    Expression<int>? id,
+    Expression<String>? benchmarkCode,
+    Expression<String>? priceDate,
+    Expression<double>? closePrice,
+    Expression<double>? adjustedClosePrice,
+    Expression<String>? currencyCode,
+    Expression<double>? fxRateToKrw,
+    Expression<String>? source,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (benchmarkCode != null) 'benchmark_code': benchmarkCode,
+      if (priceDate != null) 'price_date': priceDate,
+      if (closePrice != null) 'close_price': closePrice,
+      if (adjustedClosePrice != null)
+        'adjusted_close_price': adjustedClosePrice,
+      if (currencyCode != null) 'currency_code': currencyCode,
+      if (fxRateToKrw != null) 'fx_rate_to_krw': fxRateToKrw,
+      if (source != null) 'source': source,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  BenchmarkPricesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? benchmarkCode,
+    Value<String>? priceDate,
+    Value<double>? closePrice,
+    Value<double?>? adjustedClosePrice,
+    Value<String>? currencyCode,
+    Value<double?>? fxRateToKrw,
+    Value<String?>? source,
+    Value<String>? createdAt,
+    Value<String>? updatedAt,
+  }) {
+    return BenchmarkPricesCompanion(
+      id: id ?? this.id,
+      benchmarkCode: benchmarkCode ?? this.benchmarkCode,
+      priceDate: priceDate ?? this.priceDate,
+      closePrice: closePrice ?? this.closePrice,
+      adjustedClosePrice: adjustedClosePrice ?? this.adjustedClosePrice,
+      currencyCode: currencyCode ?? this.currencyCode,
+      fxRateToKrw: fxRateToKrw ?? this.fxRateToKrw,
+      source: source ?? this.source,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (benchmarkCode.present) {
+      map['benchmark_code'] = Variable<String>(benchmarkCode.value);
+    }
+    if (priceDate.present) {
+      map['price_date'] = Variable<String>(priceDate.value);
+    }
+    if (closePrice.present) {
+      map['close_price'] = Variable<double>(closePrice.value);
+    }
+    if (adjustedClosePrice.present) {
+      map['adjusted_close_price'] = Variable<double>(adjustedClosePrice.value);
+    }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
+    if (fxRateToKrw.present) {
+      map['fx_rate_to_krw'] = Variable<double>(fxRateToKrw.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BenchmarkPricesCompanion(')
+          ..write('id: $id, ')
+          ..write('benchmarkCode: $benchmarkCode, ')
+          ..write('priceDate: $priceDate, ')
+          ..write('closePrice: $closePrice, ')
+          ..write('adjustedClosePrice: $adjustedClosePrice, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('fxRateToKrw: $fxRateToKrw, ')
+          ..write('source: $source, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -10542,6 +12239,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AssetAllocationTargetsTable assetAllocationTargets =
       $AssetAllocationTargetsTable(this);
   late final $ExchangeRatesTable exchangeRates = $ExchangeRatesTable(this);
+  late final $PortfolioDailyReturnsTable portfolioDailyReturns =
+      $PortfolioDailyReturnsTable(this);
+  late final $BenchmarkPricesTable benchmarkPrices = $BenchmarkPricesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10561,6 +12263,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     dailyPortfolioSnapshotHoldingItems,
     assetAllocationTargets,
     exchangeRates,
+    portfolioDailyReturns,
+    benchmarkPrices,
   ];
 }
 
@@ -11754,6 +13458,10 @@ typedef $$HoldingsTableCreateCompanionBuilder =
       required String symbol,
       required double quantity,
       required double averagePrice,
+      Value<double> averagePriceSource,
+      Value<double> averagePriceKrw,
+      Value<double> averagePurchaseFxRate,
+      Value<double> costBasisKrw,
       required double currentPrice,
       required String note,
       required int sortOrder,
@@ -11774,6 +13482,10 @@ typedef $$HoldingsTableUpdateCompanionBuilder =
       Value<String> symbol,
       Value<double> quantity,
       Value<double> averagePrice,
+      Value<double> averagePriceSource,
+      Value<double> averagePriceKrw,
+      Value<double> averagePurchaseFxRate,
+      Value<double> costBasisKrw,
       Value<double> currentPrice,
       Value<String> note,
       Value<int> sortOrder,
@@ -11914,6 +13626,26 @@ class $$HoldingsTableFilterComposer
 
   ColumnFilters<double> get averagePrice => $composableBuilder(
     column: $table.averagePrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get averagePriceSource => $composableBuilder(
+    column: $table.averagePriceSource,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get averagePriceKrw => $composableBuilder(
+    column: $table.averagePriceKrw,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get averagePurchaseFxRate => $composableBuilder(
+    column: $table.averagePurchaseFxRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get costBasisKrw => $composableBuilder(
+    column: $table.costBasisKrw,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12080,6 +13812,26 @@ class $$HoldingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get averagePriceSource => $composableBuilder(
+    column: $table.averagePriceSource,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get averagePriceKrw => $composableBuilder(
+    column: $table.averagePriceKrw,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get averagePurchaseFxRate => $composableBuilder(
+    column: $table.averagePurchaseFxRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get costBasisKrw => $composableBuilder(
+    column: $table.costBasisKrw,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get currentPrice => $composableBuilder(
     column: $table.currentPrice,
     builder: (column) => ColumnOrderings(column),
@@ -12174,6 +13926,26 @@ class $$HoldingsTableAnnotationComposer
 
   GeneratedColumn<double> get averagePrice => $composableBuilder(
     column: $table.averagePrice,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get averagePriceSource => $composableBuilder(
+    column: $table.averagePriceSource,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get averagePriceKrw => $composableBuilder(
+    column: $table.averagePriceKrw,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get averagePurchaseFxRate => $composableBuilder(
+    column: $table.averagePurchaseFxRate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get costBasisKrw => $composableBuilder(
+    column: $table.costBasisKrw,
     builder: (column) => column,
   );
 
@@ -12308,6 +14080,10 @@ class $$HoldingsTableTableManager
                 Value<String> symbol = const Value.absent(),
                 Value<double> quantity = const Value.absent(),
                 Value<double> averagePrice = const Value.absent(),
+                Value<double> averagePriceSource = const Value.absent(),
+                Value<double> averagePriceKrw = const Value.absent(),
+                Value<double> averagePurchaseFxRate = const Value.absent(),
+                Value<double> costBasisKrw = const Value.absent(),
                 Value<double> currentPrice = const Value.absent(),
                 Value<String> note = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
@@ -12326,6 +14102,10 @@ class $$HoldingsTableTableManager
                 symbol: symbol,
                 quantity: quantity,
                 averagePrice: averagePrice,
+                averagePriceSource: averagePriceSource,
+                averagePriceKrw: averagePriceKrw,
+                averagePurchaseFxRate: averagePurchaseFxRate,
+                costBasisKrw: costBasisKrw,
                 currentPrice: currentPrice,
                 note: note,
                 sortOrder: sortOrder,
@@ -12346,6 +14126,10 @@ class $$HoldingsTableTableManager
                 required String symbol,
                 required double quantity,
                 required double averagePrice,
+                Value<double> averagePriceSource = const Value.absent(),
+                Value<double> averagePriceKrw = const Value.absent(),
+                Value<double> averagePurchaseFxRate = const Value.absent(),
+                Value<double> costBasisKrw = const Value.absent(),
                 required double currentPrice,
                 required String note,
                 required int sortOrder,
@@ -12364,6 +14148,10 @@ class $$HoldingsTableTableManager
                 symbol: symbol,
                 quantity: quantity,
                 averagePrice: averagePrice,
+                averagePriceSource: averagePriceSource,
+                averagePriceKrw: averagePriceKrw,
+                averagePurchaseFxRate: averagePurchaseFxRate,
+                costBasisKrw: costBasisKrw,
                 currentPrice: currentPrice,
                 note: note,
                 sortOrder: sortOrder,
@@ -14955,7 +16743,9 @@ typedef $$TransactionLinesTableCreateCompanionBuilder =
       Value<double> feeAmount,
       Value<double> taxAmount,
       Value<double> costBasisDelta,
+      Value<double> costBasisSourceDelta,
       Value<double> realizedPnl,
+      Value<String> realizedPnlSource,
       Value<double?> fxRate,
       Value<int> sortOrder,
     });
@@ -14981,7 +16771,9 @@ typedef $$TransactionLinesTableUpdateCompanionBuilder =
       Value<double> feeAmount,
       Value<double> taxAmount,
       Value<double> costBasisDelta,
+      Value<double> costBasisSourceDelta,
       Value<double> realizedPnl,
+      Value<String> realizedPnlSource,
       Value<double?> fxRate,
       Value<int> sortOrder,
     });
@@ -15166,8 +16958,18 @@ class $$TransactionLinesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get costBasisSourceDelta => $composableBuilder(
+    column: $table.costBasisSourceDelta,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<double> get realizedPnl => $composableBuilder(
     column: $table.realizedPnl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get realizedPnlSource => $composableBuilder(
+    column: $table.realizedPnlSource,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15363,8 +17165,18 @@ class $$TransactionLinesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get costBasisSourceDelta => $composableBuilder(
+    column: $table.costBasisSourceDelta,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get realizedPnl => $composableBuilder(
     column: $table.realizedPnl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get realizedPnlSource => $composableBuilder(
+    column: $table.realizedPnlSource,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -15542,8 +17354,18 @@ class $$TransactionLinesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<double> get costBasisSourceDelta => $composableBuilder(
+    column: $table.costBasisSourceDelta,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<double> get realizedPnl => $composableBuilder(
     column: $table.realizedPnl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get realizedPnlSource => $composableBuilder(
+    column: $table.realizedPnlSource,
     builder: (column) => column,
   );
 
@@ -15702,7 +17524,9 @@ class $$TransactionLinesTableTableManager
                 Value<double> feeAmount = const Value.absent(),
                 Value<double> taxAmount = const Value.absent(),
                 Value<double> costBasisDelta = const Value.absent(),
+                Value<double> costBasisSourceDelta = const Value.absent(),
                 Value<double> realizedPnl = const Value.absent(),
+                Value<String> realizedPnlSource = const Value.absent(),
                 Value<double?> fxRate = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
               }) => TransactionLinesCompanion(
@@ -15726,7 +17550,9 @@ class $$TransactionLinesTableTableManager
                 feeAmount: feeAmount,
                 taxAmount: taxAmount,
                 costBasisDelta: costBasisDelta,
+                costBasisSourceDelta: costBasisSourceDelta,
                 realizedPnl: realizedPnl,
+                realizedPnlSource: realizedPnlSource,
                 fxRate: fxRate,
                 sortOrder: sortOrder,
               ),
@@ -15752,7 +17578,9 @@ class $$TransactionLinesTableTableManager
                 Value<double> feeAmount = const Value.absent(),
                 Value<double> taxAmount = const Value.absent(),
                 Value<double> costBasisDelta = const Value.absent(),
+                Value<double> costBasisSourceDelta = const Value.absent(),
                 Value<double> realizedPnl = const Value.absent(),
+                Value<String> realizedPnlSource = const Value.absent(),
                 Value<double?> fxRate = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
               }) => TransactionLinesCompanion.insert(
@@ -15776,7 +17604,9 @@ class $$TransactionLinesTableTableManager
                 feeAmount: feeAmount,
                 taxAmount: taxAmount,
                 costBasisDelta: costBasisDelta,
+                costBasisSourceDelta: costBasisSourceDelta,
                 realizedPnl: realizedPnl,
+                realizedPnlSource: realizedPnlSource,
                 fxRate: fxRate,
                 sortOrder: sortOrder,
               ),
@@ -18579,6 +20409,675 @@ typedef $$ExchangeRatesTableProcessedTableManager =
       ExchangeRate,
       PrefetchHooks Function()
     >;
+typedef $$PortfolioDailyReturnsTableCreateCompanionBuilder =
+    PortfolioDailyReturnsCompanion Function({
+      Value<int> id,
+      required String localUserId,
+      required String returnDate,
+      Value<double?> beginningValueKrw,
+      required double endingValueKrw,
+      required double portfolioValueKrw,
+      Value<double> externalCashFlowKrw,
+      Value<double?> dailyReturn,
+      Value<String> dataQuality,
+      Value<int> calculationVersion,
+      required String createdAt,
+      required String updatedAt,
+    });
+typedef $$PortfolioDailyReturnsTableUpdateCompanionBuilder =
+    PortfolioDailyReturnsCompanion Function({
+      Value<int> id,
+      Value<String> localUserId,
+      Value<String> returnDate,
+      Value<double?> beginningValueKrw,
+      Value<double> endingValueKrw,
+      Value<double> portfolioValueKrw,
+      Value<double> externalCashFlowKrw,
+      Value<double?> dailyReturn,
+      Value<String> dataQuality,
+      Value<int> calculationVersion,
+      Value<String> createdAt,
+      Value<String> updatedAt,
+    });
+
+class $$PortfolioDailyReturnsTableFilterComposer
+    extends Composer<_$AppDatabase, $PortfolioDailyReturnsTable> {
+  $$PortfolioDailyReturnsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localUserId => $composableBuilder(
+    column: $table.localUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get returnDate => $composableBuilder(
+    column: $table.returnDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get beginningValueKrw => $composableBuilder(
+    column: $table.beginningValueKrw,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get endingValueKrw => $composableBuilder(
+    column: $table.endingValueKrw,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get portfolioValueKrw => $composableBuilder(
+    column: $table.portfolioValueKrw,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get externalCashFlowKrw => $composableBuilder(
+    column: $table.externalCashFlowKrw,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get dailyReturn => $composableBuilder(
+    column: $table.dailyReturn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dataQuality => $composableBuilder(
+    column: $table.dataQuality,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get calculationVersion => $composableBuilder(
+    column: $table.calculationVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PortfolioDailyReturnsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PortfolioDailyReturnsTable> {
+  $$PortfolioDailyReturnsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localUserId => $composableBuilder(
+    column: $table.localUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get returnDate => $composableBuilder(
+    column: $table.returnDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get beginningValueKrw => $composableBuilder(
+    column: $table.beginningValueKrw,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get endingValueKrw => $composableBuilder(
+    column: $table.endingValueKrw,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get portfolioValueKrw => $composableBuilder(
+    column: $table.portfolioValueKrw,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get externalCashFlowKrw => $composableBuilder(
+    column: $table.externalCashFlowKrw,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get dailyReturn => $composableBuilder(
+    column: $table.dailyReturn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dataQuality => $composableBuilder(
+    column: $table.dataQuality,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get calculationVersion => $composableBuilder(
+    column: $table.calculationVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PortfolioDailyReturnsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PortfolioDailyReturnsTable> {
+  $$PortfolioDailyReturnsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get localUserId => $composableBuilder(
+    column: $table.localUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get returnDate => $composableBuilder(
+    column: $table.returnDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get beginningValueKrw => $composableBuilder(
+    column: $table.beginningValueKrw,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get endingValueKrw => $composableBuilder(
+    column: $table.endingValueKrw,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get portfolioValueKrw => $composableBuilder(
+    column: $table.portfolioValueKrw,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get externalCashFlowKrw => $composableBuilder(
+    column: $table.externalCashFlowKrw,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get dailyReturn => $composableBuilder(
+    column: $table.dailyReturn,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get dataQuality => $composableBuilder(
+    column: $table.dataQuality,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get calculationVersion => $composableBuilder(
+    column: $table.calculationVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$PortfolioDailyReturnsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PortfolioDailyReturnsTable,
+          PortfolioDailyReturn,
+          $$PortfolioDailyReturnsTableFilterComposer,
+          $$PortfolioDailyReturnsTableOrderingComposer,
+          $$PortfolioDailyReturnsTableAnnotationComposer,
+          $$PortfolioDailyReturnsTableCreateCompanionBuilder,
+          $$PortfolioDailyReturnsTableUpdateCompanionBuilder,
+          (
+            PortfolioDailyReturn,
+            BaseReferences<
+              _$AppDatabase,
+              $PortfolioDailyReturnsTable,
+              PortfolioDailyReturn
+            >,
+          ),
+          PortfolioDailyReturn,
+          PrefetchHooks Function()
+        > {
+  $$PortfolioDailyReturnsTableTableManager(
+    _$AppDatabase db,
+    $PortfolioDailyReturnsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PortfolioDailyReturnsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PortfolioDailyReturnsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PortfolioDailyReturnsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> localUserId = const Value.absent(),
+                Value<String> returnDate = const Value.absent(),
+                Value<double?> beginningValueKrw = const Value.absent(),
+                Value<double> endingValueKrw = const Value.absent(),
+                Value<double> portfolioValueKrw = const Value.absent(),
+                Value<double> externalCashFlowKrw = const Value.absent(),
+                Value<double?> dailyReturn = const Value.absent(),
+                Value<String> dataQuality = const Value.absent(),
+                Value<int> calculationVersion = const Value.absent(),
+                Value<String> createdAt = const Value.absent(),
+                Value<String> updatedAt = const Value.absent(),
+              }) => PortfolioDailyReturnsCompanion(
+                id: id,
+                localUserId: localUserId,
+                returnDate: returnDate,
+                beginningValueKrw: beginningValueKrw,
+                endingValueKrw: endingValueKrw,
+                portfolioValueKrw: portfolioValueKrw,
+                externalCashFlowKrw: externalCashFlowKrw,
+                dailyReturn: dailyReturn,
+                dataQuality: dataQuality,
+                calculationVersion: calculationVersion,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String localUserId,
+                required String returnDate,
+                Value<double?> beginningValueKrw = const Value.absent(),
+                required double endingValueKrw,
+                required double portfolioValueKrw,
+                Value<double> externalCashFlowKrw = const Value.absent(),
+                Value<double?> dailyReturn = const Value.absent(),
+                Value<String> dataQuality = const Value.absent(),
+                Value<int> calculationVersion = const Value.absent(),
+                required String createdAt,
+                required String updatedAt,
+              }) => PortfolioDailyReturnsCompanion.insert(
+                id: id,
+                localUserId: localUserId,
+                returnDate: returnDate,
+                beginningValueKrw: beginningValueKrw,
+                endingValueKrw: endingValueKrw,
+                portfolioValueKrw: portfolioValueKrw,
+                externalCashFlowKrw: externalCashFlowKrw,
+                dailyReturn: dailyReturn,
+                dataQuality: dataQuality,
+                calculationVersion: calculationVersion,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PortfolioDailyReturnsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PortfolioDailyReturnsTable,
+      PortfolioDailyReturn,
+      $$PortfolioDailyReturnsTableFilterComposer,
+      $$PortfolioDailyReturnsTableOrderingComposer,
+      $$PortfolioDailyReturnsTableAnnotationComposer,
+      $$PortfolioDailyReturnsTableCreateCompanionBuilder,
+      $$PortfolioDailyReturnsTableUpdateCompanionBuilder,
+      (
+        PortfolioDailyReturn,
+        BaseReferences<
+          _$AppDatabase,
+          $PortfolioDailyReturnsTable,
+          PortfolioDailyReturn
+        >,
+      ),
+      PortfolioDailyReturn,
+      PrefetchHooks Function()
+    >;
+typedef $$BenchmarkPricesTableCreateCompanionBuilder =
+    BenchmarkPricesCompanion Function({
+      Value<int> id,
+      required String benchmarkCode,
+      required String priceDate,
+      required double closePrice,
+      Value<double?> adjustedClosePrice,
+      Value<String> currencyCode,
+      Value<double?> fxRateToKrw,
+      Value<String?> source,
+      required String createdAt,
+      required String updatedAt,
+    });
+typedef $$BenchmarkPricesTableUpdateCompanionBuilder =
+    BenchmarkPricesCompanion Function({
+      Value<int> id,
+      Value<String> benchmarkCode,
+      Value<String> priceDate,
+      Value<double> closePrice,
+      Value<double?> adjustedClosePrice,
+      Value<String> currencyCode,
+      Value<double?> fxRateToKrw,
+      Value<String?> source,
+      Value<String> createdAt,
+      Value<String> updatedAt,
+    });
+
+class $$BenchmarkPricesTableFilterComposer
+    extends Composer<_$AppDatabase, $BenchmarkPricesTable> {
+  $$BenchmarkPricesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get benchmarkCode => $composableBuilder(
+    column: $table.benchmarkCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priceDate => $composableBuilder(
+    column: $table.priceDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get closePrice => $composableBuilder(
+    column: $table.closePrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get adjustedClosePrice => $composableBuilder(
+    column: $table.adjustedClosePrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get fxRateToKrw => $composableBuilder(
+    column: $table.fxRateToKrw,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BenchmarkPricesTableOrderingComposer
+    extends Composer<_$AppDatabase, $BenchmarkPricesTable> {
+  $$BenchmarkPricesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get benchmarkCode => $composableBuilder(
+    column: $table.benchmarkCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priceDate => $composableBuilder(
+    column: $table.priceDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get closePrice => $composableBuilder(
+    column: $table.closePrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get adjustedClosePrice => $composableBuilder(
+    column: $table.adjustedClosePrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get fxRateToKrw => $composableBuilder(
+    column: $table.fxRateToKrw,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BenchmarkPricesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BenchmarkPricesTable> {
+  $$BenchmarkPricesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get benchmarkCode => $composableBuilder(
+    column: $table.benchmarkCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get priceDate =>
+      $composableBuilder(column: $table.priceDate, builder: (column) => column);
+
+  GeneratedColumn<double> get closePrice => $composableBuilder(
+    column: $table.closePrice,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get adjustedClosePrice => $composableBuilder(
+    column: $table.adjustedClosePrice,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get fxRateToKrw => $composableBuilder(
+    column: $table.fxRateToKrw,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$BenchmarkPricesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BenchmarkPricesTable,
+          BenchmarkPrice,
+          $$BenchmarkPricesTableFilterComposer,
+          $$BenchmarkPricesTableOrderingComposer,
+          $$BenchmarkPricesTableAnnotationComposer,
+          $$BenchmarkPricesTableCreateCompanionBuilder,
+          $$BenchmarkPricesTableUpdateCompanionBuilder,
+          (
+            BenchmarkPrice,
+            BaseReferences<
+              _$AppDatabase,
+              $BenchmarkPricesTable,
+              BenchmarkPrice
+            >,
+          ),
+          BenchmarkPrice,
+          PrefetchHooks Function()
+        > {
+  $$BenchmarkPricesTableTableManager(
+    _$AppDatabase db,
+    $BenchmarkPricesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BenchmarkPricesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BenchmarkPricesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BenchmarkPricesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> benchmarkCode = const Value.absent(),
+                Value<String> priceDate = const Value.absent(),
+                Value<double> closePrice = const Value.absent(),
+                Value<double?> adjustedClosePrice = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
+                Value<double?> fxRateToKrw = const Value.absent(),
+                Value<String?> source = const Value.absent(),
+                Value<String> createdAt = const Value.absent(),
+                Value<String> updatedAt = const Value.absent(),
+              }) => BenchmarkPricesCompanion(
+                id: id,
+                benchmarkCode: benchmarkCode,
+                priceDate: priceDate,
+                closePrice: closePrice,
+                adjustedClosePrice: adjustedClosePrice,
+                currencyCode: currencyCode,
+                fxRateToKrw: fxRateToKrw,
+                source: source,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String benchmarkCode,
+                required String priceDate,
+                required double closePrice,
+                Value<double?> adjustedClosePrice = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
+                Value<double?> fxRateToKrw = const Value.absent(),
+                Value<String?> source = const Value.absent(),
+                required String createdAt,
+                required String updatedAt,
+              }) => BenchmarkPricesCompanion.insert(
+                id: id,
+                benchmarkCode: benchmarkCode,
+                priceDate: priceDate,
+                closePrice: closePrice,
+                adjustedClosePrice: adjustedClosePrice,
+                currencyCode: currencyCode,
+                fxRateToKrw: fxRateToKrw,
+                source: source,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BenchmarkPricesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BenchmarkPricesTable,
+      BenchmarkPrice,
+      $$BenchmarkPricesTableFilterComposer,
+      $$BenchmarkPricesTableOrderingComposer,
+      $$BenchmarkPricesTableAnnotationComposer,
+      $$BenchmarkPricesTableCreateCompanionBuilder,
+      $$BenchmarkPricesTableUpdateCompanionBuilder,
+      (
+        BenchmarkPrice,
+        BaseReferences<_$AppDatabase, $BenchmarkPricesTable, BenchmarkPrice>,
+      ),
+      BenchmarkPrice,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -18625,4 +21124,8 @@ class $AppDatabaseManager {
       );
   $$ExchangeRatesTableTableManager get exchangeRates =>
       $$ExchangeRatesTableTableManager(_db, _db.exchangeRates);
+  $$PortfolioDailyReturnsTableTableManager get portfolioDailyReturns =>
+      $$PortfolioDailyReturnsTableTableManager(_db, _db.portfolioDailyReturns);
+  $$BenchmarkPricesTableTableManager get benchmarkPrices =>
+      $$BenchmarkPricesTableTableManager(_db, _db.benchmarkPrices);
 }

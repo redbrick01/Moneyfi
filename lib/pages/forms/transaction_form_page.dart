@@ -54,9 +54,12 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
   late final TextEditingController nameController;
   late final TextEditingController amountController;
   late final TextEditingController quantityController;
+  late final TextEditingController buyFxRateController;
+  late final TextEditingController realizedProfitController;
   late final TextEditingController searchController;
   late int selectedHoldingId;
   late bool includeInCalculations;
+  late bool useManualRealizedProfit;
   bool isSaving = false;
   bool isSearching = false;
   String? searchMessage;
@@ -75,11 +78,24 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     nameController = TextEditingController(text: item?.name ?? '');
     amountController = TextEditingController(text: item?.amount ?? '');
     quantityController = TextEditingController(text: item?.quantity ?? '');
+    buyFxRateController = TextEditingController(
+      text: item?.fxRate == null ? '' : _numberText(item!.fxRate!),
+    );
+    realizedProfitController = TextEditingController(
+      text:
+          item?.realizedProfitSource == 'manual' &&
+              item?.realizedProfitAmount != null
+          ? _numberText(item!.realizedProfitAmount!)
+          : '',
+    );
     searchController = TextEditingController();
     amountController.addListener(_handlePreviewInputChanged);
     quantityController.addListener(_handlePreviewInputChanged);
+    buyFxRateController.addListener(_handlePreviewInputChanged);
+    realizedProfitController.addListener(_handlePreviewInputChanged);
     selectedHoldingId = item?.holdingId ?? widget.holdingId;
     includeInCalculations = item?.includeInCalculations ?? true;
+    useManualRealizedProfit = item?.realizedProfitSource == 'manual';
     _assetsFuture =
         widget.assetsFutureForTesting ?? AppDatabase.instance.fetchAssets();
   }
@@ -99,8 +115,12 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     nameController.dispose();
     amountController.removeListener(_handlePreviewInputChanged);
     quantityController.removeListener(_handlePreviewInputChanged);
+    buyFxRateController.removeListener(_handlePreviewInputChanged);
+    realizedProfitController.removeListener(_handlePreviewInputChanged);
     amountController.dispose();
     quantityController.dispose();
+    buyFxRateController.dispose();
+    realizedProfitController.dispose();
     searchController.dispose();
     _searchDebounce?.cancel();
     super.dispose();
@@ -184,6 +204,27 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
       return;
     }
 
+    double? manualRealizedProfitAmount;
+    if (transactionType == '매도' && useManualRealizedProfit) {
+      final realizedProfitValidation = MoneyfyInputValidators.decimal(
+        realizedProfitController.text,
+        fieldName: '실현손익',
+        allowZero: true,
+        allowNegative: true,
+      );
+      if (!realizedProfitValidation.isValid) {
+        _showValidationMessage(realizedProfitValidation.message!);
+        return;
+      }
+      manualRealizedProfitAmount = realizedProfitValidation.value!;
+      final realizedProfitText = _numberText(manualRealizedProfitAmount);
+      if (realizedProfitController.text.trim() != realizedProfitText) {
+        setState(() {
+          realizedProfitController.text = realizedProfitText;
+        });
+      }
+    }
+
     setState(() {
       isSaving = true;
     });
@@ -194,6 +235,32 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
       final currentHolding = await _resolveCurrentHolding(assets);
       final currentAssetId = currentHolding.assetId ?? widget.assetId;
       final currentHoldingId = currentHolding.id!;
+      double? tradeFxRate;
+      final requiresBuyFxRate = _requiresBuyFxRate(currentHolding);
+      final hasBuyFxRateInput = buyFxRateController.text.trim().isNotEmpty;
+      if (requiresBuyFxRate && (includeInCalculations || hasBuyFxRateInput)) {
+        final fxRateValidation = MoneyfyInputValidators.decimal(
+          buyFxRateController.text,
+          fieldName: '매수 환율',
+          allowZero: false,
+        );
+        if (!fxRateValidation.isValid || fxRateValidation.value! <= 0) {
+          _showValidationMessage(
+            fxRateValidation.message ?? '매수 환율을 0보다 크게 입력해 주세요.',
+          );
+          setState(() {
+            isSaving = false;
+          });
+          return;
+        }
+        tradeFxRate = fxRateValidation.value!;
+        final fxRateText = _numberText(tradeFxRate);
+        if (buyFxRateController.text.trim() != fxRateText) {
+          setState(() {
+            buyFxRateController.text = fxRateText;
+          });
+        }
+      }
       if (item == null) {
         await AppDatabase.instance.createTransaction(
           assetId: currentAssetId,
@@ -204,6 +271,8 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
           amount: amountText,
           quantity: quantityText,
           includeInCalculations: includeInCalculations,
+          manualRealizedProfitAmount: manualRealizedProfitAmount,
+          tradeFxRate: tradeFxRate,
         );
       } else {
         await AppDatabase.instance.updateTransactionItem(
@@ -221,7 +290,12 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
             quantityValue: item.quantityValue,
             grossAmount: item.grossAmount,
             cashFlowAmount: item.cashFlowAmount,
-            realizedProfitAmount: item.realizedProfitAmount,
+            realizedProfitAmount:
+                manualRealizedProfitAmount ?? item.realizedProfitAmount,
+            realizedProfitSource: manualRealizedProfitAmount == null
+                ? 'auto'
+                : 'manual',
+            fxRate: tradeFxRate,
             ledgerEventId: item.ledgerEventId,
             ledgerLineId: item.ledgerLineId,
             ledgerKind: item.ledgerKind,
@@ -307,6 +381,33 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
 
   double? _parseFormNumber(String value) {
     return double.tryParse(value.replaceAll(',', '').trim());
+  }
+
+  bool _requiresBuyFxRate(HoldingItem? holding) {
+    final currencyCode =
+        holding?.currencyCode ?? _selectedMarketResult?.currencyCode;
+    return typeController.text.trim() == '매수' && currencyCode == 'USD';
+  }
+
+  double _defaultUsdKrwRate(List<AssetItem> assets, HoldingItem? holding) {
+    final holdingRate = holding?.exchangeRate ?? 0;
+    if (holdingRate > 0) return holdingRate;
+    for (final asset in assets) {
+      for (final candidate in asset.holdings) {
+        if (candidate.currencyCode == 'USD' && candidate.exchangeRate > 0) {
+          return candidate.exchangeRate;
+        }
+      }
+    }
+    return 1;
+  }
+
+  void _ensureDefaultBuyFxRate(List<AssetItem> assets, HoldingItem? holding) {
+    if (!_requiresBuyFxRate(holding)) return;
+    if (buyFxRateController.text.trim().isNotEmpty) return;
+    final rate = _defaultUsdKrwRate(assets, holding);
+    if (rate <= 0) return;
+    buyFxRateController.text = _numberText(rate);
   }
 
   HoldingItem? _settlementCashHoldingFor(
@@ -907,6 +1008,15 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
           _selectedMarketResult,
         );
         final currentHolding = _currentHolding(assets);
+        if (_requiresBuyFxRate(currentHolding) &&
+            buyFxRateController.text.trim().isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || buyFxRateController.text.trim().isNotEmpty) {
+              return;
+            }
+            _ensureDefaultBuyFxRate(assets, currentHolding);
+          });
+        }
         final targetHoldingLabel =
             currentHolding?.name ?? _selectedMarketResult?.name ?? '보유 종목 선택';
         final sellableQuantity = transactionType == '매도'
@@ -917,7 +1027,9 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
             : 0.0;
         final canUseBuyShortcuts =
             buyableCash > 0 &&
-            (_parseFormNumber(amountController.text) ?? 0) > 0;
+            (_parseFormNumber(amountController.text) ?? 0) > 0 &&
+            (!_requiresBuyFxRate(currentHolding) ||
+                (_parseFormNumber(buyFxRateController.text) ?? 0) > 0);
 
         return MoneyfyFormScaffold(
           title: widget.item == null ? '거래 추가' : '거래 수정',
@@ -1034,6 +1146,14 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                         decimal: true,
                       ),
                     ),
+                    if (_requiresBuyFxRate(currentHolding))
+                      MoneyfyFormField(
+                        label: '매수 환율',
+                        controller: buyFxRateController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                      ),
                     if (transactionType == '매도' && sellableQuantity > 0)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 14),
@@ -1054,6 +1174,16 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                         ),
                       ),
                   ],
+                  if (transactionType == '매도')
+                    _RealizedProfitInput(
+                      useManualValue: useManualRealizedProfit,
+                      controller: realizedProfitController,
+                      onModeChanged: (value) {
+                        setState(() {
+                          useManualRealizedProfit = value;
+                        });
+                      },
+                    ),
                   MoneyfyLedgerPreview(
                     rows: [
                       MoneyfyLedgerPreviewRow(
@@ -1102,6 +1232,55 @@ class _CalculationToggle extends StatelessWidget {
       ),
       subtitle: Text(
         value ? '보유 수량, 평단, 현금 흐름에 반영됩니다.' : '거래 내역에만 기록되고 현재 포트폴리오는 변하지 않습니다.',
+      ),
+    );
+  }
+}
+
+class _RealizedProfitInput extends StatelessWidget {
+  const _RealizedProfitInput({
+    required this.useManualValue,
+    required this.controller,
+    required this.onModeChanged,
+  });
+
+  final bool useManualValue;
+  final TextEditingController controller;
+  final ValueChanged<bool> onModeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '실현손익',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: MoneyfyPalette.tertiaryText,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          MoneyfyChoiceWrap<bool>(
+            options: const [false, true],
+            value: useManualValue,
+            labelBuilder: (value) => value ? '직접 입력' : '자동 계산',
+            onChanged: onModeChanged,
+          ),
+          if (useManualValue) ...[
+            const SizedBox(height: 12),
+            MoneyfyFormField(
+              label: '실현손익 금액',
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(
+                signed: true,
+                decimal: true,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
