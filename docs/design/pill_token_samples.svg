@@ -1,0 +1,109 @@
+<svg width="1400" height="1040" viewBox="0 0 1400 1040" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1400" height="1040" fill="#FFFFFF"/>
+  <text x="64" y="76" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="36" font-weight="700">Moneyfy Pill Token Samples</text>
+  <text x="64" y="112" fill="#5B616E" font-family="SUIT, Arial, sans-serif" font-size="18">현재 light theme 기준. 색상은 VisualSpec/BrandColors 토큰에서 가져오며, pill 치수는 VisualSpec.pill 값을 따른다.</text>
+
+  <rect x="64" y="148" width="1272" height="120" rx="20" fill="#F7F7F7"/>
+  <text x="96" y="190" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="22" font-weight="700">Size Tokens</text>
+  <text x="96" y="226" fill="#5B616E" font-family="SUIT, Arial, sans-serif" font-size="16">radius: AppRadius.rPill = 100, borderWidth: 1</text>
+  <rect x="470" y="178" width="106" height="28" rx="14" fill="#F7F7F7"/>
+  <text x="523" y="198" text-anchor="middle" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="13" font-weight="600">sm 28 / 12</text>
+  <rect x="620" y="176" width="126" height="32" rx="16" fill="#F7F7F7"/>
+  <text x="683" y="198" text-anchor="middle" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">md 32 / 14</text>
+  <rect x="790" y="174" width="150" height="36" rx="18" fill="#F7F7F7"/>
+  <text x="865" y="198" text-anchor="middle" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">lg 36 / 16</text>
+  <text x="980" y="197" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14">표기: height / horizontal padding</text>
+
+  <text x="64" y="328" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="26" font-weight="700">Variant x Tone</text>
+  <text x="64" y="358" fill="#5B616E" font-family="SUIT, Arial, sans-serif" font-size="16">resolver 기본값 기준. override가 있는 call site는 background/text/border만 토큰 기반으로 덮어쓴다.</text>
+
+  <text x="240" y="414" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">neutral</text>
+  <text x="450" y="414" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">primary</text>
+  <text x="660" y="414" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">success</text>
+  <text x="870" y="414" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">danger</text>
+  <text x="1080" y="414" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">warning</text>
+
+  <text x="64" y="466" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="18" font-weight="700">soft</text>
+  <rect x="220" y="438" width="132" height="32" rx="16" fill="#F7F7F7" stroke="#DEE1E6" stroke-opacity="0.32"/>
+  <text x="286" y="459" text-anchor="middle" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">neutral</text>
+  <rect x="430" y="438" width="132" height="32" rx="16" fill="#F7F7F7" stroke="#DEE1E6" stroke-opacity="0.32"/>
+  <text x="496" y="459" text-anchor="middle" fill="#3A6DFF" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">primary</text>
+  <rect x="640" y="438" width="132" height="32" rx="16" fill="#F7F7F7" stroke="#DEE1E6" stroke-opacity="0.32"/>
+  <text x="706" y="459" text-anchor="middle" fill="#00D47E" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">success</text>
+  <rect x="850" y="438" width="132" height="32" rx="16" fill="#F7F7F7" stroke="#DEE1E6" stroke-opacity="0.32"/>
+  <text x="916" y="459" text-anchor="middle" fill="#FF4554" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">danger</text>
+  <rect x="1060" y="438" width="132" height="32" rx="16" fill="#F7F7F7" stroke="#DEE1E6" stroke-opacity="0.32"/>
+  <text x="1126" y="459" text-anchor="middle" fill="#FFB800" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">warning</text>
+
+  <text x="64" y="534" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="18" font-weight="700">outline</text>
+  <rect x="220" y="506" width="132" height="32" rx="16" fill="#FFFFFF" stroke="#DEE1E6"/>
+  <text x="286" y="527" text-anchor="middle" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">neutral</text>
+  <rect x="430" y="506" width="132" height="32" rx="16" fill="#FFFFFF" stroke="#DEE1E6"/>
+  <text x="496" y="527" text-anchor="middle" fill="#3A6DFF" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">primary</text>
+  <rect x="640" y="506" width="132" height="32" rx="16" fill="#FFFFFF" stroke="#DEE1E6"/>
+  <text x="706" y="527" text-anchor="middle" fill="#00D47E" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">success</text>
+  <rect x="850" y="506" width="132" height="32" rx="16" fill="#FFFFFF" stroke="#DEE1E6"/>
+  <text x="916" y="527" text-anchor="middle" fill="#FF4554" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">danger</text>
+  <rect x="1060" y="506" width="132" height="32" rx="16" fill="#FFFFFF" stroke="#DEE1E6"/>
+  <text x="1126" y="527" text-anchor="middle" fill="#FFB800" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">warning</text>
+
+  <text x="64" y="602" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="18" font-weight="700">selected</text>
+  <rect x="220" y="574" width="132" height="32" rx="16" fill="#FFFFFF" stroke="#3A6DFF"/>
+  <text x="286" y="595" text-anchor="middle" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">neutral</text>
+  <rect x="430" y="574" width="132" height="32" rx="16" fill="#FFFFFF" stroke="#3A6DFF"/>
+  <text x="496" y="595" text-anchor="middle" fill="#3A6DFF" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">primary</text>
+  <rect x="640" y="574" width="132" height="32" rx="16" fill="#FFFFFF" stroke="#3A6DFF"/>
+  <text x="706" y="595" text-anchor="middle" fill="#00D47E" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">success</text>
+  <rect x="850" y="574" width="132" height="32" rx="16" fill="#FFFFFF" stroke="#3A6DFF"/>
+  <text x="916" y="595" text-anchor="middle" fill="#FF4554" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">danger</text>
+  <rect x="1060" y="574" width="132" height="32" rx="16" fill="#FFFFFF" stroke="#3A6DFF"/>
+  <text x="1126" y="595" text-anchor="middle" fill="#FFB800" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">warning</text>
+
+  <text x="64" y="670" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="18" font-weight="700">tonal</text>
+  <rect x="220" y="642" width="132" height="32" rx="16" fill="#F7F7F7" stroke="#F7F7F7"/>
+  <text x="286" y="663" text-anchor="middle" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">neutral</text>
+  <rect x="430" y="642" width="132" height="32" rx="16" fill="#F7F7F7" stroke="#F7F7F7"/>
+  <text x="496" y="663" text-anchor="middle" fill="#3A6DFF" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">primary</text>
+  <rect x="640" y="642" width="132" height="32" rx="16" fill="#F7F7F7" stroke="#F7F7F7"/>
+  <text x="706" y="663" text-anchor="middle" fill="#00D47E" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">success</text>
+  <rect x="850" y="642" width="132" height="32" rx="16" fill="#F7F7F7" stroke="#F7F7F7"/>
+  <text x="916" y="663" text-anchor="middle" fill="#FF4554" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">danger</text>
+  <rect x="1060" y="642" width="132" height="32" rx="16" fill="#F7F7F7" stroke="#F7F7F7"/>
+  <text x="1126" y="663" text-anchor="middle" fill="#FFB800" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">warning</text>
+
+  <rect x="64" y="724" width="1272" height="248" rx="20" fill="#F7F7F7"/>
+  <text x="96" y="768" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="22" font-weight="700">현재 앱에서 자주 쓰는 조합</text>
+  <text x="96" y="802" fill="#5B616E" font-family="SUIT, Arial, sans-serif" font-size="15">override가 있는 경우에도 색상은 context.colors / context.surfaces / ColorScheme 토큰 기반이다.</text>
+
+  <text x="96" y="850" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">Ticker / type badge</text>
+  <rect x="260" y="828" width="72" height="28" rx="14" fill="#F7F7F7" stroke="#DEE1E6" stroke-opacity="0.32"/>
+  <text x="296" y="847" text-anchor="middle" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="13" font-weight="600">NVDA</text>
+  <rect x="350" y="828" width="58" height="28" rx="14" fill="#EEF0F3" stroke="#DEE1E6"/>
+  <text x="379" y="847" text-anchor="middle" fill="#5B616E" font-family="SUIT, Arial, sans-serif" font-size="13" font-weight="600">매도</text>
+
+  <text x="96" y="900" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">Filter chip</text>
+  <rect x="260" y="878" width="86" height="36" rx="18" fill="#FFFFFF" stroke="#3A6DFF"/>
+  <text x="303" y="901" text-anchor="middle" fill="#3A6DFF" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">✓ 전체</text>
+  <rect x="360" y="878" width="72" height="36" rx="18" fill="#FFFFFF" stroke="#DEE1E6"/>
+  <text x="396" y="901" text-anchor="middle" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="400">매수</text>
+
+  <text x="560" y="850" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">Metric / delta</text>
+  <rect x="700" y="828" width="96" height="32" rx="16" fill="#FFFFFF" stroke="#DEE1E6"/>
+  <text x="748" y="849" text-anchor="middle" fill="#00D47E" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">+43.7%</text>
+  <rect x="812" y="828" width="96" height="32" rx="16" fill="#FFFFFF" stroke="#DEE1E6"/>
+  <text x="860" y="849" text-anchor="middle" fill="#FF4554" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">-16.5%</text>
+
+  <text x="560" y="900" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">Risk / level</text>
+  <rect x="700" y="878" width="96" height="28" rx="14" fill="#00D47E" fill-opacity="0.14"/>
+  <text x="748" y="897" text-anchor="middle" fill="#00D47E" font-family="SUIT, Arial, sans-serif" font-size="13" font-weight="600">리스크 낮음</text>
+  <rect x="812" y="878" width="96" height="28" rx="14" fill="#FF4554" fill-opacity="0.14"/>
+  <text x="860" y="897" text-anchor="middle" fill="#FF4554" font-family="SUIT, Arial, sans-serif" font-size="13" font-weight="600">리스크 높음</text>
+
+  <text x="990" y="850" fill="#7C828A" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">Metadata</text>
+  <rect x="1090" y="828" width="162" height="32" rx="16" fill="#FFFFFF"/>
+  <text x="1171" y="849" text-anchor="middle" fill="#5B616E" font-family="SUIT, Arial, sans-serif" font-size="14" font-weight="600">USD/KRW 1,507.00</text>
+  <rect x="1090" y="878" width="82" height="28" rx="14" fill="#F7F7F7" stroke="#DEE1E6" stroke-opacity="0.32"/>
+  <text x="1131" y="897" text-anchor="middle" fill="#0A0B0D" font-family="SUIT, Arial, sans-serif" font-size="13" font-weight="600">집중도</text>
+
+  <text x="64" y="1010" fill="#A8ACB3" font-family="SUIT, Arial, sans-serif" font-size="13">Generated from current Moneyfy pill tokens. Light theme values: primary #3A6DFF, success #00D47E, danger #FF4554, warning #FFB800, neutral text #0A0B0D, border #DEE1E6, soft/default pill surface #F7F7F7, soft border #DEE1E6 @ 32%.</text>
+</svg>

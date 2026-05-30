@@ -29,6 +29,7 @@ class MoneyfyPillStyle {
     bool disabled = false,
   }) {
     final colors = context.colors;
+    final surfaces = context.surfaces;
     final height = switch (size) {
       MoneyfyPillSize.sm => VisualSpec.pill.heightSm,
       MoneyfyPillSize.md => VisualSpec.pill.heightMd,
@@ -51,24 +52,18 @@ class MoneyfyPillStyle {
       MoneyfyPillTone.danger => colors.negativeOn,
       MoneyfyPillTone.warning => colors.warningOn,
     };
-    final toneContainer = switch (tone) {
-      MoneyfyPillTone.neutral => colors.neutralSurfaceRaised,
-      MoneyfyPillTone.primary => colors.primaryContainer,
-      MoneyfyPillTone.success => colors.positiveContainer,
-      MoneyfyPillTone.danger => colors.negativeContainer,
-      MoneyfyPillTone.warning => colors.warningContainer,
-    };
+    final toneContainer = surfaces.surfaceRaised;
     final foreground = disabled
         ? colors.neutralTextMuted.withValues(alpha: 0.62)
         : toneForeground;
     final background = switch (variant) {
-      MoneyfyPillVariant.soft => colors.neutralSurfaceRaised,
+      MoneyfyPillVariant.soft => surfaces.surfaceRaised,
       MoneyfyPillVariant.outline => colors.neutralBackground,
       MoneyfyPillVariant.selected => colors.neutralBackground,
       MoneyfyPillVariant.tonal => toneContainer,
     };
     final border = switch (variant) {
-      MoneyfyPillVariant.soft => colors.neutralOutline.withValues(alpha: 0),
+      MoneyfyPillVariant.soft => colors.neutralOutline.withValues(alpha: 0.32),
       MoneyfyPillVariant.outline => colors.neutralOutline,
       MoneyfyPillVariant.selected => colors.primary,
       MoneyfyPillVariant.tonal => toneContainer,
