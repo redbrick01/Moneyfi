@@ -149,7 +149,7 @@ class _PerformanceCockpitCard extends StatelessWidget {
             '순 투자성과',
             style: context.typography.meta.copyWith(
               color: context.colors.neutralTextMuted,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
           SizedBox(height: context.spacing.xs),
@@ -235,7 +235,7 @@ class _StatusPill extends StatelessWidget {
         label,
         style: context.typography.meta.copyWith(
           color: color,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
         ),
       ),
     );
@@ -562,7 +562,7 @@ class _RiskMetricTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: context.typography.meta.copyWith(
               color: context.colors.neutralTextMuted,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
           SizedBox(height: context.spacing.xs),
@@ -1035,7 +1035,7 @@ class _MetricRow extends StatelessWidget {
               textAlign: TextAlign.right,
               style: theme.textTheme.titleMedium?.copyWith(
                 color: _valueTextColor(context, value),
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
               ),
             ),
             if (trailing != null) ...[

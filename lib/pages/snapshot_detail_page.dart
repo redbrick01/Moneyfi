@@ -712,7 +712,7 @@ class _SnapshotEmbeddedCashAccountRow extends StatelessWidget {
               Text(
                 _formatSnapshotMoney(account.balance, account.currencyCode),
                 style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ],
@@ -744,7 +744,7 @@ class _SnapshotSectionLabel extends StatelessWidget {
         title,
         style: theme.textTheme.bodyMedium?.copyWith(
           color: context.colors.neutralTextMuted,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
         ),
       ),
     );
@@ -1027,7 +1027,7 @@ class _ProfitValueWidget extends StatelessWidget {
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: _changeColor(context, amount!),
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
               ),
             ),
           ),
@@ -1091,7 +1091,7 @@ class _SnapshotItemRow extends StatelessWidget {
                 '${weight.toStringAsFixed(1)}%',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: context.colors.neutralTextMuted,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ],
@@ -1105,7 +1105,7 @@ class _SnapshotItemRow extends StatelessWidget {
               _formatCurrency(item.totalValuationAmount),
               style: theme.textTheme.titleMedium?.copyWith(
                 color: context.colors.neutralText,
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
               ),
             ),
             const SizedBox(height: 4),
@@ -1120,7 +1120,7 @@ class _SnapshotItemRow extends StatelessWidget {
                     color: previousProfitAmount == null
                         ? context.colors.neutralTextMuted
                         : _changeColor(context, previousProfitAmount),
-                    fontWeight: FontWeight.w600,
+                    fontWeight: AppFontWeights.semibold,
                   ),
                 ),
                 if (previousProfitRate != null) ...[
@@ -1276,7 +1276,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
                   Text(
                     holding.holdingName,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1302,7 +1302,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
                             holding.holdingSymbol,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: context.colors.neutralTextMuted,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: AppFontWeights.semibold,
                             ),
                           ),
                         ),
@@ -1324,7 +1324,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
                   _formatCurrency(holding.totalValuationAmount),
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: context.colors.neutralText,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: AppFontWeights.semibold,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1335,7 +1335,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
                       _formatSignedCurrency(holding.profitAmount),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: _changeColor(context, holding.profitAmount),
-                        fontWeight: FontWeight.w600,
+                        fontWeight: AppFontWeights.semibold,
                       ),
                     ),
                     const SizedBox(width: 8),

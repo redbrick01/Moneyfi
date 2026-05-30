@@ -247,7 +247,7 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
                     item.symbol,
                     style: context.typography.caption.copyWith(
                       color: context.colors.neutralText,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                 ),
@@ -259,7 +259,7 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
                     overflow: TextOverflow.ellipsis,
                     style: context.typography.cardTitle.copyWith(
                       color: context.colors.neutralText,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                 ),
@@ -368,7 +368,7 @@ class _CompanyIssueRow extends StatelessWidget {
                     title,
                     style: context.typography.body.copyWith(
                       color: context.colors.neutralText,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                 ),
@@ -385,7 +385,7 @@ class _CompanyIssueRow extends StatelessWidget {
                     importanceStyle.label,
                     style: context.typography.caption.copyWith(
                       color: importanceStyle.color,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                 ),
@@ -481,7 +481,7 @@ class _CompanyOutlookRow extends StatelessWidget {
             label,
             style: context.typography.caption.copyWith(
               color: context.colors.neutralTextMuted,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
         ),

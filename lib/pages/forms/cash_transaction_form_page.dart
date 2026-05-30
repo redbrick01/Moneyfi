@@ -559,7 +559,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
                 '거래 유형',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: context.colors.neutralTextMuted,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
               SizedBox(height: context.spacing.xs + context.spacing.xs / 4),

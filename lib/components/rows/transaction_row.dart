@@ -72,7 +72,7 @@ class TransactionRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: context.typography.caption.copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: AppFontWeights.semibold,
                       ),
                     ),
                   ),
@@ -120,7 +120,7 @@ class TransactionRow extends StatelessWidget {
                           softWrap: false,
                           style: context.typography.cardTitle.copyWith(
                             color: amountColor,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: AppFontWeights.semibold,
                           ),
                         ),
                       ),

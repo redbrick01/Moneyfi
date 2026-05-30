@@ -206,7 +206,7 @@ class _AssetAmountText extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.visible,
         style: context.typography.cardTitle.copyWith(
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
         ),
       ),
     );

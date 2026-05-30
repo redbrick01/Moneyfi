@@ -507,66 +507,45 @@ class _FloatingTabBarItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final colors = context.colors;
-    final labelStyle = context.typography.caption.copyWith(
-      height: 1.2,
-      letterSpacing: 0,
-      color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
-      fontWeight: FontWeight.w400,
-    );
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.spacing.xs / 8),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacing.xs - 3,
-            vertical: context.spacing.xs,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(context.radius.rPill),
-            color: isSelected
-                ? colors.primary
-                : colorScheme.surface.withValues(alpha: 0),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 34,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? colors.primary
-                      : colorScheme.surface.withValues(alpha: 0),
-                  borderRadius: BorderRadius.circular(context.radius.rMd),
-                ),
-                child: Icon(
-                  isSelected ? item.selectedIcon : item.icon,
-                  size: VisualSpec.icon.sizeSmall,
-                  color: isSelected
-                      ? colorScheme.onPrimary
-                      : colorScheme.onSurfaceVariant,
-                ),
+      child: Semantics(
+        label: item.label,
+        button: true,
+        selected: isSelected,
+        child: GestureDetector(
+          key: ValueKey('bottom-tab-${item.label}'),
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.xs - 3,
+              vertical: context.spacing.xs,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(context.radius.rPill),
+              color: isSelected
+                  ? colors.primary
+                  : colorScheme.surface.withValues(alpha: 0),
+            ),
+            child: Container(
+              width: 34,
+              height: 26,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? colors.primary
+                    : colorScheme.surface.withValues(alpha: 0),
+                borderRadius: BorderRadius.circular(context.radius.rMd),
               ),
-              SizedBox(height: context.spacing.xs / 2),
-              SizedBox(
-                height: 14,
-                child: Center(
-                  child: Text(
-                    item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textHeightBehavior: const TextHeightBehavior(
-                      applyHeightToFirstAscent: false,
-                      applyHeightToLastDescent: false,
-                    ),
-                    style: labelStyle,
-                  ),
-                ),
+              child: Icon(
+                isSelected ? item.selectedIcon : item.icon,
+                size: VisualSpec.icon.sizeSmall,
+                color: isSelected
+                    ? colorScheme.onPrimary
+                    : colorScheme.onSurfaceVariant,
               ),
-            ],
+            ),
           ),
         ),
       ),

@@ -295,7 +295,7 @@ class SnapshotCalendarCard extends StatelessWidget {
                           label,
                           style: context.typography.meta.copyWith(
                             color: context.colors.neutralTextMuted,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: AppFontWeights.semibold,
                           ),
                         ),
                       ),
@@ -378,8 +378,8 @@ class SnapshotCalendarCard extends StatelessWidget {
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: dayColor,
                             fontWeight: hasSnapshot || isPivotDay
-                                ? FontWeight.w600
-                                : FontWeight.w600,
+                                ? AppFontWeights.semibold
+                                : AppFontWeights.semibold,
                           ),
                         ),
                         SizedBox(
@@ -767,7 +767,7 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
                   item.totalAsset,
                   style: context.typography.cardTitle.copyWith(
                     color: context.colors.neutralText,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: AppFontWeights.semibold,
                   ),
                 ),
                 SizedBox(height: context.spacing.xs / 2),
@@ -778,7 +778,7 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
                       item.change,
                       style: context.typography.meta.copyWith(
                         color: _analysisValueColor(context, item.change),
-                        fontWeight: FontWeight.w600,
+                        fontWeight: AppFontWeights.semibold,
                       ),
                     ),
                     SizedBox(width: context.spacing.xs),
@@ -800,7 +800,7 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
                         item.changeRate,
                         style: context.typography.caption.copyWith(
                           color: _analysisValueColor(context, item.changeRate),
-                          fontWeight: FontWeight.w600,
+                          fontWeight: AppFontWeights.semibold,
                         ),
                       ),
                     ),

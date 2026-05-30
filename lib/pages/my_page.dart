@@ -137,7 +137,7 @@ class _LoggedOutView extends StatelessWidget {
                           '로그인이 필요해요',
                           textAlign: TextAlign.center,
                           style: context.typography.cardTitle.copyWith(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: AppFontWeights.semibold,
                           ),
                         ),
                         SizedBox(height: context.spacing.xs),

@@ -194,7 +194,9 @@ class ExpandableBlock extends StatelessWidget {
       children: [
         Text(
           heading,
-          style: context.typography.meta.copyWith(fontWeight: FontWeight.w600),
+          style: context.typography.meta.copyWith(
+            fontWeight: AppFontWeights.semibold,
+          ),
         ),
         SizedBox(height: context.spacing.xs / 2),
         Text(body, style: context.typography.body),

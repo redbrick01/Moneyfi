@@ -584,7 +584,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                 child: Text(
                                   item.displayName,
                                   style: context.typography.cardTitle.copyWith(
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: AppFontWeights.semibold,
                                   ),
                                 ),
                               ),
@@ -653,7 +653,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                       totalValuationAmount,
                                     ),
                               style: context.typography.heroNumber.copyWith(
-                                fontWeight: FontWeight.w600,
+                                fontWeight: AppFontWeights.semibold,
                                 height: 1,
                               ),
                             ),
@@ -1316,7 +1316,7 @@ class _HeroMetricRow extends StatelessWidget {
             child: Text(
               label,
               style: context.typography.meta.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
                 color: context.colors.neutralText,
               ),
             ),
@@ -1325,7 +1325,7 @@ class _HeroMetricRow extends StatelessWidget {
             value,
             style: context.typography.meta.copyWith(
               color: _valueStringColor(context, value),
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
           SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
@@ -1364,7 +1364,7 @@ class _HeroDashChip extends StatelessWidget {
         '-',
         style: context.typography.meta.copyWith(
           color: context.colors.neutralText,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
         ),
       ),
     );
@@ -1524,7 +1524,7 @@ class _HoldingSortMenuRow extends StatelessWidget {
                 option.label,
                 style: context.typography.body.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ),
@@ -1637,7 +1637,7 @@ class _HoldingProfitLine extends StatelessWidget {
                 textAlign: TextAlign.right,
                 style: context.typography.body.copyWith(
                   color: amountColor,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ),

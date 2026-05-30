@@ -315,8 +315,8 @@ class _AnnualTrendCardState extends State<_AnnualTrendCard> {
                                                   ? colors.neutralText
                                                   : colors.neutralTextMuted,
                                               fontWeight: selectedIndex == i
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w400,
+                                                  ? AppFontWeights.semibold
+                                                  : AppFontWeights.regular,
                                             ),
                                       ),
                                     ),
@@ -437,7 +437,7 @@ class _AnnualGrowthSummaryCard extends StatelessWidget {
                 _formatSignedCurrency(bundle.annualGrowthAmount),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: growthColor,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ],
@@ -457,7 +457,7 @@ class _AnnualGrowthSummaryCard extends StatelessWidget {
                 _formatSignedPercent(bundle.annualGrowthRate),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: growthColor,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ],
@@ -700,7 +700,7 @@ class _SelectedValueRow extends StatelessWidget {
             month,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: context.colors.neutralText,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
           SizedBox(height: context.spacing.xs),
@@ -719,14 +719,14 @@ class _SelectedValueRow extends StatelessWidget {
                         text: '${item.label} ',
                         style: TextStyle(
                           color: item.color,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: AppFontWeights.semibold,
                         ),
                       ),
                       TextSpan(
                         text: item.value,
                         style: TextStyle(
                           color: context.colors.neutralText,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: AppFontWeights.semibold,
                         ),
                       ),
                     ],
@@ -769,7 +769,7 @@ class _LegendTextItem extends StatelessWidget {
           '●',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: color,
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
           ),
         ),
         SizedBox(width: context.spacing.xs / 2),
@@ -777,7 +777,7 @@ class _LegendTextItem extends StatelessWidget {
           label,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: context.colors.neutralText,
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
           ),
         ),
       ],

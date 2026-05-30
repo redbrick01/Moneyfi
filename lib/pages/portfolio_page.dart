@@ -623,7 +623,7 @@ class _InteractiveDonutChart extends StatelessWidget {
                         overflow: TextOverflow.visible,
                         style: context.typography.cardTitle.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: AppFontWeights.semibold,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -877,7 +877,7 @@ class _PortfolioDiagnosisSectionCard extends StatelessWidget {
                       child: Text(
                         '포트폴리오 분석 결과',
                         style: context.typography.cardTitle.copyWith(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: AppFontWeights.semibold,
                         ),
                       ),
                     ),
@@ -1006,7 +1006,7 @@ class _DiagnosisBlockCard extends StatelessWidget {
             Text(
               title!,
               style: context.typography.cardTitle.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
               ),
             ),
             SizedBox(height: context.spacing.xs),
@@ -1060,7 +1060,7 @@ class _RiskBadge extends StatelessWidget {
         '리스크 $riskLevel',
         style: context.typography.caption.copyWith(
           color: color,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
         ),
       ),
     );

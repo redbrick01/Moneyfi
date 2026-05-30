@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/design_system/font_families.dart';
 import 'package:moneyfy/pages/analysis_page.dart';
 import 'package:moneyfy/pages/app_shell_page.dart';
 import 'package:moneyfy/pages/asset_detail_page.dart';
@@ -86,15 +87,12 @@ void _installPathProviderMock() {
 }
 
 Future<void> _loadScreenshotFonts() async {
-  final textFont = File('/System/Library/Fonts/AppleSDGothicNeo.ttc');
-  if (textFont.existsSync()) {
-    final textLoader = FontLoader('.SF Pro Text')
-      ..addFont(_loadFontData(textFont.path));
-    final displayLoader = FontLoader('.SF Pro Display')
-      ..addFont(_loadFontData(textFont.path));
-    await textLoader.load();
-    await displayLoader.load();
-  }
+  await _loadFontFamily(AppFontFamilies.sans, const [
+    'assets/fonts/suit/SUIT-Regular.ttf',
+    'assets/fonts/suit/SUIT-Medium.ttf',
+    'assets/fonts/suit/SUIT-SemiBold.ttf',
+    'assets/fonts/suit/SUIT-Bold.ttf',
+  ]);
 
   final materialIconFont = File(
     '/usr/local/share/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
@@ -102,6 +100,21 @@ Future<void> _loadScreenshotFonts() async {
   if (materialIconFont.existsSync()) {
     final loader = FontLoader('MaterialIcons')
       ..addFont(_loadFontData(materialIconFont.path));
+    await loader.load();
+  }
+}
+
+Future<void> _loadFontFamily(String family, List<String> paths) async {
+  final loader = FontLoader(family);
+  var hasFonts = false;
+  for (final path in paths) {
+    final fontFile = File(path);
+    if (fontFile.existsSync()) {
+      loader.addFont(_loadFontData(path));
+      hasFonts = true;
+    }
+  }
+  if (hasFonts) {
     await loader.load();
   }
 }

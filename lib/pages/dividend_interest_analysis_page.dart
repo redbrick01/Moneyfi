@@ -313,7 +313,7 @@ class _IncomeBarRow extends StatelessWidget {
             Text(
               _formatCurrency(total),
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
               ),
             ),
           ],
@@ -368,7 +368,7 @@ class _IncomePeriodRow extends StatelessWidget {
         Text(
           _formatCurrency(item.total),
           style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
           ),
         ),
       ],
@@ -408,7 +408,7 @@ class _IncomeSourceRow extends StatelessWidget {
         Text(
           _formatCurrency(item.total),
           style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
           ),
         ),
       ],
@@ -441,7 +441,7 @@ class _IncomeTransactionRow extends StatelessWidget {
             item.type,
             style: theme.textTheme.labelMedium?.copyWith(
               color: context.colors.warningOn,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
         ),
@@ -465,7 +465,7 @@ class _IncomeTransactionRow extends StatelessWidget {
         Text(
           _formatCurrency(item.amountKrw),
           style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
           ),
         ),
       ],

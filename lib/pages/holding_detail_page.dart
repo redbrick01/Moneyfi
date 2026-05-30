@@ -391,7 +391,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                       displayHolding.name,
                                       style: context.typography.cardTitle
                                           .copyWith(
-                                            fontWeight: FontWeight.w600,
+                                            fontWeight: AppFontWeights.semibold,
                                           ),
                                     ),
                                   ),
@@ -431,7 +431,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                 child: Text(
                                   displayHolding.value,
                                   style: context.typography.heroNumber.copyWith(
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: AppFontWeights.semibold,
                                     height: 1,
                                   ),
                                   textAlign: TextAlign.right,
@@ -856,7 +856,7 @@ class _HoldingHeroDeltaMetricRow extends StatelessWidget {
           child: Text(
             label,
             style: context.typography.meta.copyWith(
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
               color: context.colors.neutralText,
             ),
           ),
@@ -864,7 +864,7 @@ class _HoldingHeroDeltaMetricRow extends StatelessWidget {
         Text(
           value,
           style: context.typography.meta.copyWith(
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
             color: _holdingValueStringColor(context, value),
           ),
         ),
@@ -903,7 +903,7 @@ class _HoldingHeroDashChip extends StatelessWidget {
         '-',
         style: context.typography.meta.copyWith(
           color: context.colors.neutralText,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
         ),
       ),
     );
@@ -1513,7 +1513,7 @@ class _WeekRangeBar extends StatelessWidget {
                                 softWrap: false,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: context.colors.neutralSurfaceBase,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: AppFontWeights.semibold,
                                 ),
                               ),
                             ),
@@ -1547,14 +1547,14 @@ class _WeekRangeBar extends StatelessWidget {
                 lowLabel,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: context.colors.neutralText,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
               Text(
                 highLabel,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: context.colors.neutralText,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ],
@@ -1618,7 +1618,7 @@ class _FundComponentRow extends StatelessWidget {
               item.weight,
               style: theme.textTheme.titleMedium?.copyWith(
                 color: context.colors.neutralText,
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
               ),
             ),
             SizedBox(height: context.spacing.xs / 2),
@@ -1673,7 +1673,7 @@ class _MetricTile extends StatelessWidget {
             value,
             style: theme.textTheme.titleMedium?.copyWith(
               color: _holdingValueStringColor(context, value),
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -1760,7 +1760,7 @@ class _TransactionRow extends StatelessWidget {
                             transaction.type,
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: typeStyle.textColor,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: AppFontWeights.semibold,
                             ),
                           ),
                         ),
@@ -1780,7 +1780,7 @@ class _TransactionRow extends StatelessWidget {
                         context,
                         transaction,
                       ),
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                   SizedBox(height: context.spacing.xs / 2),

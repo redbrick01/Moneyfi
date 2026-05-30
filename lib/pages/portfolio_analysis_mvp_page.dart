@@ -716,7 +716,7 @@ class _DiagnosisHero extends StatelessWidget {
                   diagnosis.label,
                   style: context.typography.meta.copyWith(
                     color: diagnosis.color,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: AppFontWeights.bold,
                   ),
                 ),
               ),
@@ -976,7 +976,7 @@ class _ExpandableSubsectionHeader extends StatelessWidget {
                           '$count',
                           style: context.typography.meta.copyWith(
                             color: context.colors.neutralTextMuted,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: AppFontWeights.bold,
                           ),
                         ),
                       ),
@@ -1099,7 +1099,7 @@ class _HhiGauge extends StatelessWidget {
                   level.label,
                   style: context.typography.meta.copyWith(
                     color: level.color,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: AppFontWeights.bold,
                   ),
                 ),
               ),
@@ -1216,7 +1216,7 @@ class _HhiGauge extends StatelessWidget {
                   '낮음',
                   style: context.typography.meta.copyWith(
                     color: context.colors.positiveOn,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: AppFontWeights.bold,
                   ),
                 ),
               ),
@@ -1227,7 +1227,7 @@ class _HhiGauge extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: context.typography.meta.copyWith(
                     color: context.colors.warningOn,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: AppFontWeights.bold,
                   ),
                 ),
               ),
@@ -1238,7 +1238,7 @@ class _HhiGauge extends StatelessWidget {
                   textAlign: TextAlign.right,
                   style: context.typography.meta.copyWith(
                     color: context.colors.negativeOn,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: AppFontWeights.bold,
                   ),
                 ),
               ),
@@ -1312,7 +1312,7 @@ class _MddGauge extends StatelessWidget {
                   level.label,
                   style: context.typography.meta.copyWith(
                     color: level.color,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: AppFontWeights.bold,
                   ),
                 ),
               ),
@@ -1378,7 +1378,7 @@ class _MddGauge extends StatelessWidget {
                         : TextAlign.center,
                     style: context.typography.meta.copyWith(
                       color: segment.textColor,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: AppFontWeights.bold,
                     ),
                   ),
                 );
@@ -1585,7 +1585,7 @@ class _DateMetricText extends StatelessWidget {
             value,
             style: context.typography.body.copyWith(
               color: context.colors.neutralText,
-              fontWeight: FontWeight.w700,
+              fontWeight: AppFontWeights.bold,
             ),
           ),
         ),
@@ -1868,7 +1868,7 @@ class _ContributionRow extends StatelessWidget {
                     '$rank',
                     style: context.typography.meta.copyWith(
                       color: context.colors.neutralText,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: AppFontWeights.bold,
                     ),
                   ),
                 ),
@@ -1878,7 +1878,7 @@ class _ContributionRow extends StatelessWidget {
                     label,
                     style: context.typography.body.copyWith(
                       color: context.colors.neutralText,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: AppFontWeights.bold,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1889,7 +1889,7 @@ class _ContributionRow extends StatelessWidget {
                   _formatSignedAmount(value),
                   style: context.typography.body.copyWith(
                     color: color,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: AppFontWeights.bold,
                   ),
                 ),
               ],
@@ -1961,7 +1961,7 @@ class _CauseRow extends StatelessWidget {
               label,
               style: context.typography.body.copyWith(
                 color: context.colors.neutralText,
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
               ),
             ),
             SizedBox(height: context.spacing.xs),
@@ -2015,7 +2015,7 @@ class _HoldingConcentrationRow extends StatelessWidget {
                     metric.assetLabel,
                     style: context.typography.body.copyWith(
                       color: context.colors.neutralText,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: AppFontWeights.bold,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -2038,7 +2038,7 @@ class _HoldingConcentrationRow extends StatelessWidget {
                     level.label,
                     style: context.typography.meta.copyWith(
                       color: level.color,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: AppFontWeights.bold,
                     ),
                   ),
                 ),
@@ -2090,7 +2090,7 @@ class _HoldingConcentrationRow extends StatelessWidget {
                     metric.topHoldingLabel,
                     style: context.typography.body.copyWith(
                       color: context.colors.neutralText,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: AppFontWeights.bold,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -2200,7 +2200,7 @@ class _InfoPairRow extends StatelessWidget {
     );
     final valueStyle = context.typography.body.copyWith(
       color: valueColor ?? context.colors.neutralText,
-      fontWeight: FontWeight.w700,
+      fontWeight: AppFontWeights.bold,
     );
 
     return LayoutBuilder(

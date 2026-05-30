@@ -627,7 +627,7 @@ class _TransactionFilterButton extends StatelessWidget {
                   style: context.typography.meta.copyWith(
                     color: colorScheme.onPrimary,
                     fontSize: context.fontSizes.s12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: AppFontWeights.bold,
                   ),
                 ),
               ),
@@ -736,8 +736,8 @@ class _FilterStrip<T> extends StatelessWidget {
                   ),
                   labelStyle: context.typography.meta.copyWith(
                     fontWeight: selected == value
-                        ? FontWeight.w700
-                        : FontWeight.w400,
+                        ? AppFontWeights.bold
+                        : AppFontWeights.regular,
                   ),
                 );
               },
@@ -1021,7 +1021,9 @@ class _FilterOptionWrap<T> extends StatelessWidget {
                   : colorScheme.outlineVariant,
             ),
             labelStyle: context.typography.meta.copyWith(
-              fontWeight: value == selected ? FontWeight.w700 : FontWeight.w400,
+              fontWeight: value == selected
+                  ? AppFontWeights.bold
+                  : AppFontWeights.regular,
             ),
           ),
       ],

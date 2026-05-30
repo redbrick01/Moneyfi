@@ -87,7 +87,7 @@ class _ImpactChip extends StatelessWidget {
             item.label,
             style: context.typography.meta.copyWith(
               color: foreground,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
         ],

@@ -270,7 +270,7 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                               child: Text(
                                 holding.name,
                                 style: context.typography.cardTitle.copyWith(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: AppFontWeights.semibold,
                                 ),
                               ),
                             ),
@@ -306,7 +306,7 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                           child: Text(
                             holding.value,
                             style: context.typography.heroNumber.copyWith(
-                              fontWeight: FontWeight.w600,
+                              fontWeight: AppFontWeights.semibold,
                               height: 1,
                             ),
                             textAlign: TextAlign.right,
@@ -645,7 +645,7 @@ class _CashHeroDeltaMetricRow extends StatelessWidget {
           child: Text(
             label,
             style: context.typography.meta.copyWith(
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
               color: context.colors.neutralText,
             ),
           ),
@@ -653,7 +653,7 @@ class _CashHeroDeltaMetricRow extends StatelessWidget {
         Text(
           value,
           style: context.typography.meta.copyWith(
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
             color: _cashValueStringColor(context, value),
           ),
         ),
@@ -692,7 +692,7 @@ class _CashHeroDashChip extends StatelessWidget {
         '-',
         style: context.typography.meta.copyWith(
           color: context.colors.neutralText,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
         ),
       ),
     );

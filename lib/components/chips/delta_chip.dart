@@ -82,7 +82,7 @@ class DeltaChip extends StatelessWidget {
                           : context.typography.meta)
                       .copyWith(
                         color: statusColor,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: AppFontWeights.semibold,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
             ),

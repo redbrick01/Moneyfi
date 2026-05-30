@@ -251,7 +251,7 @@ class _AssetSectionBasePlate extends StatelessWidget {
                     '자산',
                     style: context.typography.cardTitle.copyWith(
                       fontSize: context.fontSizes.s18,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                   const Spacer(),
@@ -401,7 +401,7 @@ class _AssetSortMenuRow extends StatelessWidget {
                 option.label,
                 style: context.typography.body.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ),
@@ -447,7 +447,7 @@ class _AnalysisSectionBasePlate extends StatelessWidget {
                     'AI 포트폴리오 분석',
                     style: context.typography.cardTitle.copyWith(
                       fontSize: context.fontSizes.s18,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                   const Spacer(),
@@ -608,7 +608,7 @@ class _SummaryCardState extends State<_SummaryCard> {
                                       '총 자산',
                                       style: context.typography.body.copyWith(
                                         fontSize: context.fontSizes.s18,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: AppFontWeights.semibold,
                                       ),
                                     ),
                                   ),
@@ -629,7 +629,7 @@ class _SummaryCardState extends State<_SummaryCard> {
                                           : 'USD/KRW ${app_number.formatCurrency(usdKrwRate, fractionDigits: 2)}',
                                       style: context.typography.meta.copyWith(
                                         fontSize: context.fontSizes.s14,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: AppFontWeights.semibold,
                                         color: Theme.of(
                                           context,
                                         ).colorScheme.onSurfaceVariant,
@@ -649,7 +649,7 @@ class _SummaryCardState extends State<_SummaryCard> {
                                     style: context.typography.heroNumber
                                         .copyWith(
                                           fontSize: context.fontSizes.s32,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: AppFontWeights.semibold,
                                           height: 1,
                                           color: Theme.of(
                                             context,
@@ -897,7 +897,7 @@ class _SummaryValueRow extends StatelessWidget {
             label,
             style: context.typography.caption.copyWith(
               fontSize: context.fontSizes.s16,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
@@ -906,7 +906,7 @@ class _SummaryValueRow extends StatelessWidget {
           valueText,
           style: context.typography.caption.copyWith(
             fontSize: context.fontSizes.s16,
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
             color: valueColor,
           ),
         ),
@@ -937,7 +937,7 @@ class _SummaryDashChip extends StatelessWidget {
         '-',
         style: context.typography.meta.copyWith(
           color: context.colors.neutralTextMuted,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
         ),
       ),
     );
@@ -1500,7 +1500,7 @@ class _AssetListCardState extends State<_AssetListCard> {
                             '자산이 아직 없어요',
                             textAlign: TextAlign.center,
                             style: context.typography.cardTitle.copyWith(
-                              fontWeight: FontWeight.w600,
+                              fontWeight: AppFontWeights.semibold,
                             ),
                           ),
                           SizedBox(height: context.spacing.xs),
@@ -1889,7 +1889,7 @@ class _AssetProfitLine extends StatelessWidget {
                 textAlign: TextAlign.right,
                 style: context.typography.caption.copyWith(
                   color: amountColor,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ),
@@ -2021,7 +2021,7 @@ class _InsightCardContent extends StatelessWidget {
             Text(
               '${dominant.key} 비중이 가장 높습니다',
               style: context.typography.cardTitle.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
               ),
             ),
             SizedBox(height: context.spacing.xs),
@@ -2075,7 +2075,7 @@ class _DashboardDiagnosisBadge extends StatelessWidget {
         style: context.typography.caption.copyWith(
           fontSize: context.fontSizes.s14,
           color: color,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
         ),
       ),
     );
@@ -2120,7 +2120,7 @@ class _DiagnosisScoreDonut extends StatelessWidget {
             '$score',
             style: context.typography.cardTitle.copyWith(
               fontSize: context.fontSizes.s16,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
         ],

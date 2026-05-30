@@ -94,7 +94,7 @@ class SnapshotRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.typography.cardTitle.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: AppFontWeights.semibold,
                       ),
                     ),
                     SizedBox(height: context.spacing.xs / 2),
@@ -110,7 +110,7 @@ class SnapshotRow extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: context.typography.meta.copyWith(
                                 color: deltaColor,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: AppFontWeights.semibold,
                               ),
                             ),
                           ),
@@ -142,7 +142,7 @@ class SnapshotRow extends StatelessWidget {
                                         defaultColor:
                                             context.colors.neutralTextMuted,
                                       ),
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: AppFontWeights.semibold,
                                     ),
                               ),
                             ),
@@ -154,7 +154,7 @@ class SnapshotRow extends StatelessWidget {
                         deltaText,
                         style: context.typography.meta.copyWith(
                           color: deltaColor,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: AppFontWeights.semibold,
                         ),
                       ),
                     if (!singleLineDelta && deltaPercent != null) ...[

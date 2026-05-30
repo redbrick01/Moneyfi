@@ -70,7 +70,7 @@ class _TransactionHistoryListState extends State<TransactionHistoryList> {
               style: TextButton.styleFrom(
                 foregroundColor: context.colors.neutralTextMuted,
                 textStyle: context.typography.meta.copyWith(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ),

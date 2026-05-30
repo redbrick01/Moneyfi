@@ -160,10 +160,17 @@ void main() {
     await tester.pumpWidget(const MoneyfyApp());
     await settlePage(tester);
 
-    for (final label in const ['홈', '포트폴', '거래', '분석', '통계', 'My']) {
-      await tester.tap(find.text(label).last);
+    for (final (label, pageText) in const [
+      ('홈', '홈'),
+      ('포트폴', '포트폴리오'),
+      ('거래', '거래'),
+      ('분석', '분석'),
+      ('통계', '통계'),
+      ('My', 'My'),
+    ]) {
+      await tester.tap(find.byKey(ValueKey('bottom-tab-$label')));
       await settlePage(tester);
-      expect(find.text(label), findsWidgets);
+      expect(find.text(pageText), findsWidgets);
     }
   });
 

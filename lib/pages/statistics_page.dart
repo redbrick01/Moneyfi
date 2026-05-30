@@ -612,8 +612,8 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
                                               color:
                                                   colorScheme.onSurfaceVariant,
                                               fontWeight: _selectedIndex == i
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w400,
+                                                  ? AppFontWeights.semibold
+                                                  : AppFontWeights.regular,
                                             ),
                                       ),
                                     ),
@@ -721,7 +721,7 @@ class _SelectedMonthStrip extends StatelessWidget {
                 style: context.typography.cardTitle.copyWith(
                   fontSize: context.fontSizes.s16,
                   color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
               if (deltaText != null) ...[
@@ -735,7 +735,7 @@ class _SelectedMonthStrip extends StatelessWidget {
                       style: context.typography.caption.copyWith(
                         fontSize: context.fontSizes.s14,
                         color: deltaColor,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: AppFontWeights.semibold,
                       ),
                     ),
                     if (deltaRate != null) ...[
@@ -1188,7 +1188,7 @@ class _CalendarLegendRow extends StatelessWidget {
               '20',
               style: context.typography.caption.copyWith(
                 color: pivotColor,
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
               ),
             ),
             SizedBox(width: context.spacing.xs / 2),
@@ -1261,8 +1261,8 @@ class _CalendarDayCell extends StatelessWidget {
               style: context.typography.meta.copyWith(
                 color: dayColor,
                 fontWeight: hasSnapshot || isSelected || isPivotDay
-                    ? FontWeight.w600
-                    : FontWeight.w600,
+                    ? AppFontWeights.semibold
+                    : AppFontWeights.semibold,
               ),
             ),
             SizedBox(height: context.spacing.xs / 2),
@@ -1306,7 +1306,7 @@ class _LegendTextRow extends StatelessWidget {
                   '●',
                   style: context.typography.meta.copyWith(
                     color: item.color,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: AppFontWeights.semibold,
                   ),
                 ),
                 SizedBox(width: context.spacing.xs / 2),
@@ -1630,7 +1630,7 @@ Widget _buildCenteredLevel1EmptyCard(
                       title,
                       textAlign: TextAlign.center,
                       style: context.typography.cardTitle.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: AppFontWeights.semibold,
                       ),
                     ),
                     SizedBox(height: context.spacing.xs),

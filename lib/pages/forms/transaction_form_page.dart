@@ -1048,7 +1048,7 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                     '거래 유형',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: context.colors.neutralTextMuted,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                   SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
@@ -1265,7 +1265,7 @@ class _RealizedProfitInput extends StatelessWidget {
             '실현손익',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: context.colors.neutralTextMuted,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
           SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
@@ -1322,7 +1322,7 @@ class _TransactionMarketSearchField extends StatelessWidget {
           '새 종목 검색',
           style: theme.textTheme.bodySmall?.copyWith(
             color: context.colors.neutralTextMuted,
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
           ),
         ),
         SizedBox(height: context.spacing.xs),
@@ -1415,7 +1415,7 @@ class _TransactionMarketSearchField extends StatelessWidget {
               color: message!.startsWith('선택됨')
                   ? context.colors.primary
                   : context.colors.neutralTextMuted,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
         ],
@@ -1488,7 +1488,7 @@ class _TransactionMarketSearchResultTile extends StatelessWidget {
                     result.name,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: context.colors.neutralText,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                   SizedBox(height: context.spacing.xs / 2 - 1),
@@ -1496,7 +1496,7 @@ class _TransactionMarketSearchResultTile extends StatelessWidget {
                     result.subtitle,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: context.colors.neutralTextMuted,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                 ],
@@ -1507,7 +1507,7 @@ class _TransactionMarketSearchResultTile extends StatelessWidget {
               result.priceLabel,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: context.colors.primary,
-                fontWeight: FontWeight.w600,
+                fontWeight: AppFontWeights.semibold,
               ),
             ),
           ],

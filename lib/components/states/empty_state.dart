@@ -53,7 +53,7 @@ class EmptyStateCard extends StatelessWidget {
         Text(
           title,
           style: context.typography.cardTitle.copyWith(
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
           ),
           textAlign: TextAlign.center,
           maxLines: 1,

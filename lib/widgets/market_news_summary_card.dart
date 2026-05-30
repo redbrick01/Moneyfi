@@ -171,7 +171,7 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
                     '${summary!.newsCount}건',
                     style: context.typography.caption.copyWith(
                       color: context.colors.neutralTextMuted,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
               ],
@@ -225,7 +225,7 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
                   summary.marketSummary,
                   style: context.typography.cardTitle.copyWith(
                     color: context.colors.neutralText,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: AppFontWeights.semibold,
                     height: 1.4,
                   ),
                 ),
@@ -323,7 +323,7 @@ class _MarketIssueTile extends StatelessWidget {
                   _formatIssueTitle(item.title),
                   style: context.typography.cardTitle.copyWith(
                     color: context.colors.neutralText,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: AppFontWeights.semibold,
                   ),
                 ),
               ),
@@ -341,7 +341,7 @@ class _MarketIssueTile extends StatelessWidget {
                   importanceStyle.label,
                   style: context.typography.caption.copyWith(
                     color: importanceStyle.color,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: AppFontWeights.semibold,
                   ),
                 ),
               ),
@@ -406,7 +406,7 @@ class _ImpactRow extends StatelessWidget {
                 item.label,
                 style: context.typography.caption.copyWith(
                   color: context.colors.neutralText,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ),
@@ -445,7 +445,7 @@ class _OverallAssessmentCard extends StatelessWidget {
             '종합 평가',
             style: context.typography.cardTitle.copyWith(
               color: context.colors.neutralText,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
           if (summary.keyRisk.trim().isNotEmpty) ...[
@@ -494,7 +494,7 @@ class _AssessmentBlock extends StatelessWidget {
                 label,
                 style: context.typography.caption.copyWith(
                   color: context.colors.neutralText,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ),

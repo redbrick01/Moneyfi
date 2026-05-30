@@ -70,9 +70,9 @@ class MoneyfyFormScaffold extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(context.radius.rPill),
               ),
-              textStyle: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w400),
+              textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: AppFontWeights.regular,
+              ),
             ),
             child: Text(isSaving ? '저장 중...' : actionLabel),
           ),
@@ -106,7 +106,7 @@ class MoneyfyFormSection extends StatelessWidget {
           Text(
             title,
             style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
           SizedBox(height: context.spacing.sm),
@@ -156,7 +156,7 @@ class MoneyfyFormInfoPanel extends StatelessWidget {
                   title,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: context.colors.neutralText,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: AppFontWeights.semibold,
                   ),
                 ),
                 SizedBox(height: context.spacing.xs / 2),
@@ -232,7 +232,7 @@ class _MoneyfyLedgerPreviewRowView extends StatelessWidget {
             row.label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: context.colors.neutralTextMuted,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
         ),
@@ -244,7 +244,7 @@ class _MoneyfyLedgerPreviewRowView extends StatelessWidget {
             textAlign: TextAlign.right,
             style: theme.textTheme.bodySmall?.copyWith(
               color: context.colors.neutralText,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
         ),
@@ -284,7 +284,7 @@ class MoneyfyFormField extends StatelessWidget {
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: context.colors.neutralTextMuted,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
           SizedBox(height: context.spacing.xs),
@@ -376,7 +376,7 @@ class MoneyfySelectionField<T> extends StatelessWidget {
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: context.colors.neutralTextMuted,
-              fontWeight: FontWeight.w600,
+              fontWeight: AppFontWeights.semibold,
             ),
           ),
           SizedBox(height: context.spacing.xs),
@@ -422,7 +422,7 @@ class MoneyfySelectionField<T> extends StatelessWidget {
                             color: selected == null
                                 ? context.colors.neutralTextMuted
                                 : context.colors.neutralText,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: AppFontWeights.semibold,
                           ),
                         ),
                         if (selected?.subtitle case final subtitle?) ...[
@@ -575,7 +575,7 @@ class _MoneyfySelectionOptionTile<T> extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: context.colors.neutralText,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                   if (option.subtitle case final subtitle?) ...[
@@ -598,7 +598,7 @@ class _MoneyfySelectionOptionTile<T> extends StatelessWidget {
                 meta,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: context.colors.neutralText,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
             ],
@@ -673,7 +673,7 @@ class MoneyfyChoiceWrap<T> extends StatelessWidget {
                       color: option == value
                           ? Theme.of(context).colorScheme.onPrimary
                           : context.colors.neutralText,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: AppFontWeights.regular,
                     ),
                   ),
                 ],
@@ -723,7 +723,7 @@ class MoneyfyPercentageShortcutButtons extends StatelessWidget {
                 ),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 textStyle: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppFontWeights.semibold,
                 ),
               ),
               child: Text('${(ratio * 100).round()}%'),

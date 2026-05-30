@@ -108,7 +108,7 @@ class AllocationLegendRow extends StatelessWidget {
                     Text(
                       amountText!,
                       style: context.typography.meta.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: AppFontWeights.semibold,
                         color: colorScheme.onSurface,
                       ),
                     ),
@@ -126,7 +126,7 @@ class AllocationLegendRow extends StatelessWidget {
                     child: Text(
                       ratioText,
                       style: context.typography.meta.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: AppFontWeights.semibold,
                         color: colorScheme.onSurface,
                       ),
                     ),
