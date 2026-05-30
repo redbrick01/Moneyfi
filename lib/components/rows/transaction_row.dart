@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../chips/moneyfy_pill.dart';
 import '../../design_system/context_extensions.dart';
 
 class TransactionRow extends StatelessWidget {
@@ -30,7 +31,7 @@ class TransactionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final badgeColor = typeColor ?? colorScheme.surfaceContainerHighest;
-    final badgeWidth = context.spacing.xl + context.spacing.xs;
+    final badgeWidth = context.spacing.xxl;
     final trailingWidth = context.spacing.xxxl + context.spacing.xl;
 
     return InkWell(
@@ -56,25 +57,13 @@ class TransactionRow extends StatelessWidget {
             children: [
               SizedBox(
                 width: badgeWidth,
-                height: context.spacing.md + context.spacing.xs / 2,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: badgeColor,
-                    borderRadius: BorderRadius.circular(context.radius.rPill),
-                    border: Border.all(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      typeLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.typography.caption.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: AppFontWeights.semibold,
-                      ),
-                    ),
+                child: MoneyfyBadge(
+                  label: typeLabel,
+                  size: MoneyfyPillSize.sm,
+                  backgroundColor: badgeColor,
+                  textColor: colorScheme.onSurfaceVariant,
+                  borderColor: colorScheme.outlineVariant.withValues(
+                    alpha: 0.7,
                   ),
                 ),
               ),

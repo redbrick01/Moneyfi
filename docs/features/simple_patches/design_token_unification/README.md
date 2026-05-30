@@ -38,6 +38,7 @@ MONEYFY 앱의 색상, 폰트, 여백, 간격, 반경, 상태 표현을 공통 �
 | 24 | [Stage 06D Test Report](test_report_20260529_stage_06d.md) | brand/native/web asset consistency audit 변경/검증 결과 |
 | 25 | [Stage 07 Test Report](test_report_20260529_stage_07.md) | legacy token retirement policy 및 reporting-only guardrail 변경/검증 결과 |
 | 26 | [Stage 07 Follow-up Test Report](test_report_20260529_stage_07_followup.md) | snapshot detail holdout 및 transparent token cleanup 검증 결과 |
+| 27 | [Pill, Chip, Badge Token Report](test_report_20260530_pill_chip_badge_tokens.md) | pill/chip/badge 공통 resolver와 compact label UI 토큰화 검증 결과 |
 
 ## Stage Plans
 

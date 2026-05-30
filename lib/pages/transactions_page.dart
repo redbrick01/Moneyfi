@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import '../components/chips/moneyfy_pill.dart';
 import '../components/icons/app_icon.dart';
 import '../components/rows/transaction_row.dart';
 import '../components/section_card.dart';
@@ -719,24 +720,41 @@ class _FilterStrip<T> extends StatelessWidget {
             Builder(
               builder: (context) {
                 final icon = leadingIconBuilder?.call(value);
+                final isSelected = selected == value;
+                final pillStyle = MoneyfyPillStyle.resolve(
+                  context,
+                  size: MoneyfyPillSize.lg,
+                  tone: isSelected
+                      ? MoneyfyPillTone.primary
+                      : MoneyfyPillTone.neutral,
+                  variant: isSelected
+                      ? MoneyfyPillVariant.selected
+                      : MoneyfyPillVariant.outline,
+                );
                 return RawChip(
-                  avatar: icon == null ? null : Icon(icon, size: 16),
+                  avatar: icon == null
+                      ? null
+                      : Icon(icon, size: 16, color: pillStyle.foreground),
                   label: Text(labelBuilder(value)),
-                  selected: selected == value,
+                  selected: isSelected,
                   onPressed: () => onChanged(value),
                   showCheckmark: false,
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  padding: EdgeInsets.symmetric(horizontal: context.spacing.xs),
+                  backgroundColor: pillStyle.background,
+                  selectedColor: pillStyle.background,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(pillStyle.radius),
+                  ),
+                  padding: pillStyle.padding,
                   labelPadding: EdgeInsets.zero,
                   side: BorderSide(
-                    color: selected == value
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.outlineVariant,
+                    color: pillStyle.border,
+                    width: pillStyle.borderWidth,
                   ),
-                  labelStyle: context.typography.meta.copyWith(
-                    fontWeight: selected == value
-                        ? AppFontWeights.bold
+                  labelStyle: pillStyle.textStyle.copyWith(
+                    fontWeight: isSelected
+                        ? AppFontWeights.semibold
                         : AppFontWeights.regular,
                   ),
                 );
@@ -997,36 +1015,68 @@ class _FilterOptionWrap<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Wrap(
       spacing: context.spacing.xs,
       runSpacing: context.spacing.xs,
       children: [
         for (final value in values)
-          RawChip(
-            avatar: value == selected
-                ? Icon(
-                    Icons.check_rounded,
-                    size: 16,
-                    color: colorScheme.primary,
-                  )
-                : null,
-            label: Text(labelBuilder(value)),
-            selected: value == selected,
-            showCheckmark: false,
-            onPressed: () => onChanged(value),
-            side: BorderSide(
-              color: value == selected
-                  ? colorScheme.primary
-                  : colorScheme.outlineVariant,
-            ),
-            labelStyle: context.typography.meta.copyWith(
-              fontWeight: value == selected
-                  ? AppFontWeights.bold
-                  : AppFontWeights.regular,
-            ),
+          _FilterOptionChip<T>(
+            value: value,
+            selected: selected,
+            labelBuilder: labelBuilder,
+            onChanged: onChanged,
           ),
       ],
+    );
+  }
+}
+
+class _FilterOptionChip<T> extends StatelessWidget {
+  const _FilterOptionChip({
+    required this.value,
+    required this.selected,
+    required this.labelBuilder,
+    required this.onChanged,
+  });
+
+  final T value;
+  final T selected;
+  final String Function(T value) labelBuilder;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = value == selected;
+    final pillStyle = MoneyfyPillStyle.resolve(
+      context,
+      size: MoneyfyPillSize.lg,
+      tone: isSelected ? MoneyfyPillTone.primary : MoneyfyPillTone.neutral,
+      variant: isSelected
+          ? MoneyfyPillVariant.selected
+          : MoneyfyPillVariant.outline,
+    );
+
+    return RawChip(
+      avatar: isSelected
+          ? Icon(Icons.check_rounded, size: 16, color: pillStyle.foreground)
+          : null,
+      label: Text(labelBuilder(value)),
+      selected: isSelected,
+      showCheckmark: false,
+      onPressed: () => onChanged(value),
+      backgroundColor: pillStyle.background,
+      selectedColor: pillStyle.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(pillStyle.radius),
+      ),
+      padding: pillStyle.padding,
+      labelPadding: EdgeInsets.zero,
+      side: BorderSide(color: pillStyle.border, width: pillStyle.borderWidth),
+      labelStyle: pillStyle.textStyle.copyWith(
+        fontWeight: isSelected
+            ? AppFontWeights.semibold
+            : AppFontWeights.regular,
+      ),
     );
   }
 }

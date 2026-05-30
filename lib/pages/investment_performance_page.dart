@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../components/chips/moneyfy_pill.dart';
 import '../components/section_card.dart';
 import '../db/app_database.dart';
 import '../design_system/context_extensions.dart';
@@ -101,10 +102,10 @@ class _DateRangeSelector extends StatelessWidget {
       child: Row(
         children: [
           for (var index = 0; index < ranges.length; index++) ...[
-            ChoiceChip(
-              label: Text(ranges[index].label),
+            _InvestmentChoiceChip(
+              label: ranges[index].label,
               selected: ranges[index].preset == selectedRange.preset,
-              onSelected: (_) => onSelected(ranges[index]),
+              onSelected: () => onSelected(ranges[index]),
             ),
             if (index != ranges.length - 1) SizedBox(width: context.spacing.xs),
           ],
@@ -218,26 +219,15 @@ class _StatusPill extends StatelessWidget {
     final color = hasValue
         ? _valueColor(context, value!)
         : context.colors.neutralTextMuted;
-    return Container(
-      constraints: const BoxConstraints(minHeight: 28),
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.sm,
-        vertical: context.spacing.xs / 2,
+    return MoneyfyBadge(
+      label: label,
+      size: MoneyfyPillSize.md,
+      variant: MoneyfyPillVariant.outline,
+      backgroundColor: context.colors.neutralSurfaceOverlay.withValues(
+        alpha: 0.56,
       ),
-      decoration: BoxDecoration(
-        color: context.colors.neutralSurfaceOverlay.withValues(alpha: 0.56),
-        borderRadius: BorderRadius.circular(context.radius.rPill),
-        border: Border.all(
-          color: context.colors.neutralOutline.withValues(alpha: 0.52),
-        ),
-      ),
-      child: Text(
-        label,
-        style: context.typography.meta.copyWith(
-          color: color,
-          fontWeight: AppFontWeights.semibold,
-        ),
-      ),
+      borderColor: context.colors.neutralOutline.withValues(alpha: 0.52),
+      textColor: color,
     );
   }
 }
@@ -867,10 +857,10 @@ class _HoldingContributionCard extends StatelessWidget {
                   index < _HoldingFilterMode.values.length;
                   index++
                 ) ...[
-                  ChoiceChip(
-                    label: Text(_HoldingFilterMode.values[index].label),
+                  _InvestmentChoiceChip(
+                    label: _HoldingFilterMode.values[index].label,
                     selected: _HoldingFilterMode.values[index] == filterMode,
-                    onSelected: (_) =>
+                    onSelected: () =>
                         onFilterModeChanged(_HoldingFilterMode.values[index]),
                   ),
                   if (index != _HoldingFilterMode.values.length - 1)
@@ -988,20 +978,54 @@ class _MetricPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.xs,
-        vertical: context.spacing.xs / 2,
+    return MoneyfyBadge(
+      label: '$label ${_formatSignedCurrency(value)}',
+      size: MoneyfyPillSize.sm,
+      backgroundColor: context.colors.neutralSurfaceOverlay.withValues(
+        alpha: 0.56,
       ),
-      decoration: BoxDecoration(
-        color: context.colors.neutralSurfaceOverlay.withValues(alpha: 0.56),
-        borderRadius: BorderRadius.circular(context.radius.rPill),
+      textColor: _valueColor(context, value),
+    );
+  }
+}
+
+class _InvestmentChoiceChip extends StatelessWidget {
+  const _InvestmentChoiceChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = MoneyfyPillStyle.resolve(
+      context,
+      size: MoneyfyPillSize.lg,
+      tone: selected ? MoneyfyPillTone.primary : MoneyfyPillTone.neutral,
+      variant: selected
+          ? MoneyfyPillVariant.selected
+          : MoneyfyPillVariant.outline,
+    );
+
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      showCheckmark: false,
+      backgroundColor: style.background,
+      selectedColor: style.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(style.radius),
       ),
-      child: Text(
-        '$label ${_formatSignedCurrency(value)}',
-        style: context.typography.caption.copyWith(
-          color: _valueColor(context, value),
-        ),
+      side: BorderSide(color: style.border, width: style.borderWidth),
+      padding: style.padding,
+      labelPadding: EdgeInsets.zero,
+      labelStyle: style.textStyle.copyWith(
+        fontWeight: selected ? AppFontWeights.semibold : AppFontWeights.regular,
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../components/chips/moneyfy_pill.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../services/market_news_summary_service.dart';
@@ -328,22 +329,11 @@ class _MarketIssueTile extends StatelessWidget {
                 ),
               ),
               SizedBox(width: context.spacing.xs),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacing.xs,
-                  vertical: context.spacing.xs / 2,
-                ),
-                decoration: BoxDecoration(
-                  color: importanceStyle.background,
-                  borderRadius: BorderRadius.circular(context.radius.rPill),
-                ),
-                child: Text(
-                  importanceStyle.label,
-                  style: context.typography.caption.copyWith(
-                    color: importanceStyle.color,
-                    fontWeight: AppFontWeights.semibold,
-                  ),
-                ),
+              MoneyfyBadge(
+                label: importanceStyle.label,
+                size: MoneyfyPillSize.sm,
+                backgroundColor: importanceStyle.background,
+                textColor: importanceStyle.color,
               ),
             ],
           ),
@@ -393,22 +383,11 @@ class _ImpactRow extends StatelessWidget {
           width: context.spacing.xxxl + context.spacing.xs - 2,
           child: Align(
             alignment: Alignment.topLeft,
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.spacing.xs + context.spacing.xs / 4,
-                vertical: context.spacing.xs / 2,
-              ),
-              decoration: BoxDecoration(
-                color: context.surfaces.surfaceRaised,
-                borderRadius: BorderRadius.circular(context.radius.rPill),
-              ),
-              child: Text(
-                item.label,
-                style: context.typography.caption.copyWith(
-                  color: context.colors.neutralText,
-                  fontWeight: AppFontWeights.semibold,
-                ),
-              ),
+            child: MoneyfyBadge(
+              label: item.label,
+              size: MoneyfyPillSize.sm,
+              backgroundColor: context.surfaces.surfaceRaised,
+              textColor: context.colors.neutralText,
             ),
           ),
         ),
@@ -481,22 +460,11 @@ class _AssessmentBlock extends StatelessWidget {
           width: context.spacing.xxxl + context.spacing.xs - 2,
           child: Align(
             alignment: Alignment.topLeft,
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.spacing.xs + context.spacing.xs / 4,
-                vertical: context.spacing.xs / 2,
-              ),
-              decoration: BoxDecoration(
-                color: context.surfaces.surfaceRaised,
-                borderRadius: BorderRadius.circular(context.radius.rPill),
-              ),
-              child: Text(
-                label,
-                style: context.typography.caption.copyWith(
-                  color: context.colors.neutralText,
-                  fontWeight: AppFontWeights.semibold,
-                ),
-              ),
+            child: MoneyfyBadge(
+              label: label,
+              size: MoneyfyPillSize.sm,
+              backgroundColor: context.surfaces.surfaceRaised,
+              textColor: context.colors.neutralText,
             ),
           ),
         ),

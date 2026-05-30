@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../design_system/context_extensions.dart';
 import '../../design_system/spec.dart';
 import '../icons/app_icon.dart';
+import 'moneyfy_pill.dart';
 
 class ImpactChipData {
   const ImpactChipData({
@@ -55,24 +56,22 @@ class _ImpactChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final background = item.emphasized
-        ? colorScheme.secondaryContainer
-        : colorScheme.surfaceContainer;
-    final foreground = item.emphasized
-        ? colorScheme.onSecondaryContainer
-        : colorScheme.onSurfaceVariant;
+    final style = MoneyfyPillStyle.resolve(
+      context,
+      size: MoneyfyPillSize.md,
+      tone: item.emphasized ? MoneyfyPillTone.primary : MoneyfyPillTone.neutral,
+      variant: item.emphasized
+          ? MoneyfyPillVariant.tonal
+          : MoneyfyPillVariant.outline,
+    );
 
     return Container(
-      height: context.spacing.lg + context.spacing.xs / 2,
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.sm - 2,
-        vertical: context.spacing.xs - 2,
-      ),
+      constraints: BoxConstraints(minHeight: style.height),
+      padding: style.padding,
       decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(context.radius.rPill),
-        border: Border.all(color: colorScheme.outlineVariant),
+        color: style.background,
+        borderRadius: BorderRadius.circular(style.radius),
+        border: Border.all(color: style.border, width: style.borderWidth),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -80,16 +79,10 @@ class _ImpactChip extends StatelessWidget {
           AppIcon.raw(
             item.icon,
             size: VisualSpec.icon.chipIcon,
-            color: foreground,
+            color: style.foreground,
           ),
           SizedBox(width: context.spacing.xs / 2),
-          Text(
-            item.label,
-            style: context.typography.meta.copyWith(
-              color: foreground,
-              fontWeight: AppFontWeights.semibold,
-            ),
-          ),
+          Text(item.label, style: style.textStyle),
         ],
       ),
     );

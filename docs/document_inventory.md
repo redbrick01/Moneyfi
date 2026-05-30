@@ -47,6 +47,7 @@
 | --- | --- |
 | [Design System](design_system.md) | UI/UX 단일 기준: 방향, 토큰, typography, component, 상태, 화면 패턴, 메인 자산 카드, QA |
 | [Brand Palette](brand/README.md) | 브랜드/시맨틱 컬러 결정, 구현 팔레트, 팔레트 이미지 산출물 |
+| [Pill, Chip, Badge Token Plan](design/pill_chip_badge_token_plan.md) | 스크린샷 기준 pill/chip/badge 현재 상태와 토큰 정리 계획 |
 | [Transaction Ledger Redesign](design/transaction_ledger_redesign.md) | 거래 내역 화면 개편 방향 |
 | [Transaction History UI/UX Improvement Plan](design/transaction_history_ui_ux_improvement_plan.md) | 거래 내역 필터/목록 UX 개선 계획 |
 

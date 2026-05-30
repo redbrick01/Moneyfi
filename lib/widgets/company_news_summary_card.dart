@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../components/chips/moneyfy_pill.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../services/company_news_summary_service.dart';
@@ -234,22 +235,11 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
           children: [
             Row(
               children: [
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.spacing.xs + context.spacing.xs / 4,
-                    vertical: context.spacing.xs / 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: context.surfaces.surfaceRaised,
-                    borderRadius: BorderRadius.circular(context.radius.rPill),
-                  ),
-                  child: Text(
-                    item.symbol,
-                    style: context.typography.caption.copyWith(
-                      color: context.colors.neutralText,
-                      fontWeight: AppFontWeights.semibold,
-                    ),
-                  ),
+                MoneyfyBadge(
+                  label: item.symbol,
+                  size: MoneyfyPillSize.sm,
+                  backgroundColor: context.surfaces.surfaceRaised,
+                  textColor: context.colors.neutralText,
                 ),
                 SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
                 Expanded(
@@ -372,22 +362,11 @@ class _CompanyIssueRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.spacing.xs,
-                    vertical: context.spacing.xs / 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: importanceStyle.background,
-                    borderRadius: BorderRadius.circular(context.radius.rPill),
-                  ),
-                  child: Text(
-                    importanceStyle.label,
-                    style: context.typography.caption.copyWith(
-                      color: importanceStyle.color,
-                      fontWeight: AppFontWeights.semibold,
-                    ),
-                  ),
+                MoneyfyBadge(
+                  label: importanceStyle.label,
+                  size: MoneyfyPillSize.sm,
+                  backgroundColor: importanceStyle.background,
+                  textColor: importanceStyle.color,
                 ),
               ],
             ),

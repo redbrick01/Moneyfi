@@ -6,6 +6,7 @@ class VisualSpec {
   static const brand = _BrandSpec();
   static const surface = _SurfaceSpec();
   static const chart = _ChartSpec();
+  static const pill = _PillSpec();
   static const icon = _IconSpec();
   static const motion = _MotionSpec();
 }
@@ -275,6 +276,18 @@ class _ChartSpec {
   List<Color> get palette => VisualSpec.brand.chartPalette;
   Map<String, Color> get assetTypeColors =>
       VisualSpec.brand.assetTypeChartColors;
+}
+
+class _PillSpec {
+  const _PillSpec();
+
+  final double heightSm = 28;
+  final double heightMd = 32;
+  final double heightLg = 36;
+  final double paddingHSm = 12;
+  final double paddingHMd = 14;
+  final double paddingHLg = 16;
+  final double borderWidth = 1;
 }
 
 class _IconSpec {

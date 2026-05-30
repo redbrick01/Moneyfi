@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/context_extensions.dart';
+import 'moneyfy_pill.dart';
 import '../formatters/number_format.dart';
 
 enum DeltaChipMode { currency, percent, both }
@@ -28,23 +28,19 @@ class DeltaChip extends StatelessWidget {
     final isPositive = value > 0;
     final isNegative = value < 0;
     final isNeutral = !isPositive && !isNegative;
-    final colors = context.colors;
-    final statusColor = isPositive
-        ? colors.positiveOn
+    final tone = isPositive
+        ? MoneyfyPillTone.success
         : isNegative
-        ? colors.negativeOn
-        : colors.neutralTextMuted;
-    final statusContainer = isPositive
-        ? colors.positiveContainer
-        : isNegative
-        ? colors.negativeContainer
-        : colors.neutralSurfaceBase;
-    final backgroundColor = vivid && !isNeutral
-        ? statusContainer
-        : colors.neutralSurfaceBase;
-    final borderColor = vivid && !isNeutral
-        ? statusContainer
-        : colors.neutralOutline.withValues(alpha: 0.72);
+        ? MoneyfyPillTone.danger
+        : MoneyfyPillTone.neutral;
+    final style = MoneyfyPillStyle.resolve(
+      context,
+      size: compact ? MoneyfyPillSize.sm : MoneyfyPillSize.md,
+      tone: tone,
+      variant: vivid && !isNeutral
+          ? MoneyfyPillVariant.tonal
+          : MoneyfyPillVariant.outline,
+    );
 
     final label = switch (mode) {
       DeltaChipMode.currency => formatSigned(value),
@@ -54,19 +50,12 @@ class DeltaChip extends StatelessWidget {
     };
 
     return Container(
-      constraints: BoxConstraints(
-        minHeight: compact
-            ? context.spacing.sm + context.spacing.xs
-            : context.spacing.lg,
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? context.spacing.xs - 2 : context.spacing.xs,
-        vertical: compact ? context.spacing.xs / 4 : context.spacing.xs / 2,
-      ),
+      constraints: BoxConstraints(minHeight: style.height),
+      padding: style.padding,
       decoration: BoxDecoration(
-        color: backgroundColor,
-        border: Border.all(color: borderColor),
-        borderRadius: BorderRadius.circular(context.radius.rPill),
+        color: style.background,
+        border: Border.all(color: style.border, width: style.borderWidth),
+        borderRadius: BorderRadius.circular(style.radius),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -76,15 +65,9 @@ class DeltaChip extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style:
-                  (compact
-                          ? context.typography.caption
-                          : context.typography.meta)
-                      .copyWith(
-                        color: statusColor,
-                        fontWeight: AppFontWeights.semibold,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+              style: style.textStyle.copyWith(
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ],
