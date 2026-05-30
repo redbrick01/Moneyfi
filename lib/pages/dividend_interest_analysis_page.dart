@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../components/chips/moneyfy_pill.dart';
 import '../components/section_card.dart';
 import '../components/transaction_history_list.dart';
 import '../db/app_database.dart';
@@ -427,23 +428,14 @@ class _IncomeTransactionRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: context.spacing.xs + context.spacing.xs / 4,
-            vertical: context.spacing.xs / 2,
-          ),
-          decoration: BoxDecoration(
-            color: context.colors.warningContainer,
-            borderRadius: BorderRadius.circular(context.radius.rPill),
-            border: Border.all(color: context.colors.warningOn),
-          ),
-          child: Text(
-            item.type,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: context.colors.warningOn,
-              fontWeight: AppFontWeights.semibold,
-            ),
-          ),
+        MoneyfyBadge(
+          label: item.type,
+          size: MoneyfyPillSize.sm,
+          tone: MoneyfyPillTone.warning,
+          variant: MoneyfyPillVariant.tonal,
+          backgroundColor: context.colors.warningContainer,
+          borderColor: context.colors.warningOn,
+          textColor: context.colors.warningOn,
         ),
         SizedBox(width: context.spacing.sm),
         Expanded(

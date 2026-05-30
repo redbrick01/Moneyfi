@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../components/chips/moneyfy_pill.dart';
 import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
@@ -700,25 +701,13 @@ class _DiagnosisHero extends StatelessWidget {
                 child: Icon(diagnosis.icon, color: diagnosis.color),
               ),
               SizedBox(width: context.spacing.sm),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacing.xs + context.spacing.xs / 4,
-                  vertical: context.spacing.xs - context.spacing.xs / 4,
-                ),
-                decoration: BoxDecoration(
-                  color: context.colors.neutralSurfaceBase,
-                  borderRadius: BorderRadius.circular(context.radius.rPill),
-                  border: Border.all(
-                    color: diagnosis.color.withValues(alpha: 0.24),
-                  ),
-                ),
-                child: Text(
-                  diagnosis.label,
-                  style: context.typography.meta.copyWith(
-                    color: diagnosis.color,
-                    fontWeight: AppFontWeights.bold,
-                  ),
-                ),
+              MoneyfyBadge(
+                label: diagnosis.label,
+                size: MoneyfyPillSize.sm,
+                variant: MoneyfyPillVariant.outline,
+                backgroundColor: context.colors.neutralSurfaceBase,
+                borderColor: diagnosis.color.withValues(alpha: 0.24),
+                textColor: diagnosis.color,
               ),
             ],
           ),
@@ -958,27 +947,13 @@ class _ExpandableSubsectionHeader extends StatelessWidget {
                         ),
                       ),
                       SizedBox(width: context.spacing.xs),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.spacing.xs,
-                          vertical: context.spacing.xs / 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: context.colors.neutralSurfaceBase,
-                          borderRadius: BorderRadius.circular(
-                            context.radius.rPill,
-                          ),
-                          border: Border.all(
-                            color: context.colors.neutralOutline,
-                          ),
-                        ),
-                        child: Text(
-                          '$count',
-                          style: context.typography.meta.copyWith(
-                            color: context.colors.neutralTextMuted,
-                            fontWeight: AppFontWeights.bold,
-                          ),
-                        ),
+                      MoneyfyBadge(
+                        label: '$count',
+                        size: MoneyfyPillSize.sm,
+                        variant: MoneyfyPillVariant.outline,
+                        backgroundColor: context.colors.neutralSurfaceBase,
+                        borderColor: context.colors.neutralOutline,
+                        textColor: context.colors.neutralTextMuted,
                       ),
                     ],
                   ),
@@ -1083,25 +1058,13 @@ class _HhiGauge extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacing.xs + context.spacing.xs / 4,
-                  vertical: context.spacing.xs - context.spacing.xs / 4,
-                ),
-                decoration: BoxDecoration(
-                  color: level.background,
-                  borderRadius: BorderRadius.circular(context.radius.rPill),
-                  border: Border.all(
-                    color: level.color.withValues(alpha: 0.28),
-                  ),
-                ),
-                child: Text(
-                  level.label,
-                  style: context.typography.meta.copyWith(
-                    color: level.color,
-                    fontWeight: AppFontWeights.bold,
-                  ),
-                ),
+              MoneyfyBadge(
+                label: level.label,
+                size: MoneyfyPillSize.sm,
+                variant: MoneyfyPillVariant.tonal,
+                backgroundColor: level.background,
+                borderColor: level.color.withValues(alpha: 0.28),
+                textColor: level.color,
               ),
             ],
           ),
@@ -1296,25 +1259,13 @@ class _MddGauge extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacing.xs + context.spacing.xs / 4,
-                  vertical: context.spacing.xs - context.spacing.xs / 4,
-                ),
-                decoration: BoxDecoration(
-                  color: level.background,
-                  borderRadius: BorderRadius.circular(context.radius.rPill),
-                  border: Border.all(
-                    color: level.color.withValues(alpha: 0.28),
-                  ),
-                ),
-                child: Text(
-                  level.label,
-                  style: context.typography.meta.copyWith(
-                    color: level.color,
-                    fontWeight: AppFontWeights.bold,
-                  ),
-                ),
+              MoneyfyBadge(
+                label: level.label,
+                size: MoneyfyPillSize.sm,
+                variant: MoneyfyPillVariant.tonal,
+                backgroundColor: level.background,
+                borderColor: level.color.withValues(alpha: 0.28),
+                textColor: level.color,
               ),
             ],
           ),
@@ -2022,25 +1973,13 @@ class _HoldingConcentrationRow extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.spacing.xs + 1,
-                    vertical: context.spacing.xs / 2 + 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: level.background,
-                    borderRadius: BorderRadius.circular(context.radius.rPill),
-                    border: Border.all(
-                      color: level.color.withValues(alpha: 0.28),
-                    ),
-                  ),
-                  child: Text(
-                    level.label,
-                    style: context.typography.meta.copyWith(
-                      color: level.color,
-                      fontWeight: AppFontWeights.bold,
-                    ),
-                  ),
+                MoneyfyBadge(
+                  label: level.label,
+                  size: MoneyfyPillSize.sm,
+                  variant: MoneyfyPillVariant.tonal,
+                  backgroundColor: level.background,
+                  borderColor: level.color.withValues(alpha: 0.28),
+                  textColor: level.color,
                 ),
               ],
             ),

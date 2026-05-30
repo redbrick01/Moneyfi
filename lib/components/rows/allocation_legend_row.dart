@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../design_system/spec.dart';
 import '../../design_system/context_extensions.dart';
+import '../chips/moneyfy_pill.dart';
 import '../icons/app_icon.dart';
 
 class AllocationLegendRow extends StatelessWidget {
@@ -113,23 +114,13 @@ class AllocationLegendRow extends StatelessWidget {
                       ),
                     ),
                   if (amountText != null) SizedBox(width: context.spacing.xs),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: context.spacing.xs,
-                      vertical: context.spacing.xs / 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface,
-                      borderRadius: BorderRadius.circular(context.radius.rPill),
-                      border: Border.all(color: colorScheme.outlineVariant),
-                    ),
-                    child: Text(
-                      ratioText,
-                      style: context.typography.meta.copyWith(
-                        fontWeight: AppFontWeights.semibold,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
+                  MoneyfyBadge(
+                    label: ratioText,
+                    size: MoneyfyPillSize.sm,
+                    variant: MoneyfyPillVariant.outline,
+                    backgroundColor: colorScheme.surface,
+                    borderColor: colorScheme.outlineVariant,
+                    textColor: colorScheme.onSurface,
                   ),
                 ],
               ),

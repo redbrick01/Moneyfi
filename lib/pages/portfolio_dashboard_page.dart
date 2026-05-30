@@ -5,6 +5,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../components/buttons/app_buttons.dart';
 import '../components/chips/delta_chip.dart';
+import '../components/chips/moneyfy_pill.dart';
 import '../components/feedback/app_snackbar.dart';
 import '../components/formatters/number_format.dart' as app_number;
 import '../components/icons/app_icon.dart';
@@ -657,29 +658,16 @@ class _SummaryCardState extends State<_SummaryCard> {
                                       ),
                                     ),
                                   ),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: context.spacing.sm + 2,
-                                      vertical: context.spacing.xs + 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: context.surfaces.surfaceBase,
-                                      borderRadius: BorderRadius.circular(
-                                        context.radius.rPill,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      usdKrwRate == null
-                                          ? 'USD/KRW -'
-                                          : 'USD/KRW ${app_number.formatCurrency(usdKrwRate, fractionDigits: 2)}',
-                                      style: context.typography.meta.copyWith(
-                                        fontSize: context.fontSizes.s14,
-                                        fontWeight: AppFontWeights.semibold,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
+                                  MoneyfyBadge(
+                                    label: usdKrwRate == null
+                                        ? 'USD/KRW -'
+                                        : 'USD/KRW ${app_number.formatCurrency(usdKrwRate, fractionDigits: 2)}',
+                                    size: MoneyfyPillSize.md,
+                                    backgroundColor:
+                                        context.surfaces.surfaceBase,
+                                    textColor: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                   ),
                                 ],
                               ),
@@ -967,24 +955,12 @@ class _SummaryDashChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: BoxConstraints(minHeight: context.spacing.md),
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.xs,
-        vertical: context.spacing.xs / 2,
-      ),
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceBase,
-        border: Border.all(color: context.colors.neutralOutline),
-        borderRadius: BorderRadius.circular(context.radius.rPill),
-      ),
-      child: Text(
-        '-',
-        style: context.typography.meta.copyWith(
-          color: context.colors.neutralTextMuted,
-          fontWeight: AppFontWeights.semibold,
-        ),
-      ),
+    return MoneyfyBadge(
+      label: '-',
+      size: MoneyfyPillSize.sm,
+      variant: MoneyfyPillVariant.outline,
+      backgroundColor: context.surfaces.surfaceBase,
+      textColor: context.colors.neutralTextMuted,
     );
   }
 }
@@ -2082,8 +2058,10 @@ class _InsightCardContent extends StatelessWidget {
             spacing: context.spacing.xs,
             runSpacing: context.spacing.xs,
             children: [
-              if (dominant != null) const Chip(label: Text('집중도')),
-              if (dominant != null) const Chip(label: Text('리밸런싱')),
+              if (dominant != null)
+                const MoneyfyBadge(label: '집중도', size: MoneyfyPillSize.sm),
+              if (dominant != null)
+                const MoneyfyBadge(label: '리밸런싱', size: MoneyfyPillSize.sm),
             ],
           ),
           SizedBox(height: context.spacing.sm),
@@ -2106,23 +2084,11 @@ class _DashboardDiagnosisBadge extends StatelessWidget {
       '높음' => context.colors.negativeOn,
       _ => context.colors.warningOn,
     };
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.sm + 2,
-        vertical: context.spacing.xs + 2,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(context.radius.rPill),
-      ),
-      child: Text(
-        '리스크 $riskLevel',
-        style: context.typography.caption.copyWith(
-          fontSize: context.fontSizes.s14,
-          color: color,
-          fontWeight: AppFontWeights.semibold,
-        ),
-      ),
+    return MoneyfyBadge(
+      label: '리스크 $riskLevel',
+      size: MoneyfyPillSize.md,
+      backgroundColor: color.withValues(alpha: 0.14),
+      textColor: color,
     );
   }
 }

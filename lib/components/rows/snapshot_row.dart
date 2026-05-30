@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../chips/delta_chip.dart';
+import '../chips/moneyfy_pill.dart';
 import '../../design_system/context_extensions.dart';
 import '../icons/app_icon.dart';
 
@@ -116,34 +117,17 @@ class SnapshotRow extends StatelessWidget {
                           ),
                           if (deltaPercent != null) ...[
                             SizedBox(width: context.spacing.xs / 2),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: context.spacing.xs,
-                                vertical: context.spacing.xs / 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: context.colors.neutralSurfaceBase,
-                                borderRadius: BorderRadius.circular(
-                                  context.radius.rPill,
-                                ),
-                                border: Border.all(
-                                  color: context.colors.neutralOutline,
-                                ),
-                              ),
-                              child: Text(
+                            MoneyfyBadge(
+                              label: _formatPercent(deltaPercent!),
+                              size: MoneyfyPillSize.sm,
+                              variant: MoneyfyPillVariant.outline,
+                              backgroundColor:
+                                  context.colors.neutralSurfaceBase,
+                              borderColor: context.colors.neutralOutline,
+                              textColor: _moneyfyValueColor(
+                                context,
                                 _formatPercent(deltaPercent!),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(
-                                      color: _moneyfyValueColor(
-                                        context,
-                                        _formatPercent(deltaPercent!),
-                                        defaultColor:
-                                            context.colors.neutralTextMuted,
-                                      ),
-                                      fontWeight: AppFontWeights.semibold,
-                                    ),
+                                defaultColor: context.colors.neutralTextMuted,
                               ),
                             ),
                           ],

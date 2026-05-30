@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../components/buttons/app_buttons.dart';
+import '../components/chips/moneyfy_pill.dart';
 import '../components/feedback/app_snackbar.dart';
 import '../components/icons/app_icon.dart';
 import '../components/rows/allocation_legend_row.dart';
@@ -1047,22 +1048,11 @@ class _RiskBadge extends StatelessWidget {
       '높음' => context.colors.negativeOn,
       _ => context.colors.warningOn,
     };
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.sm,
-        vertical: context.spacing.xs / 2,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(context.radius.rPill),
-      ),
-      child: Text(
-        '리스크 $riskLevel',
-        style: context.typography.caption.copyWith(
-          color: color,
-          fontWeight: AppFontWeights.semibold,
-        ),
-      ),
+    return MoneyfyBadge(
+      label: '리스크 $riskLevel',
+      size: MoneyfyPillSize.sm,
+      backgroundColor: color.withValues(alpha: 0.14),
+      textColor: color,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../components/buttons/app_buttons.dart';
 import '../components/chips/delta_chip.dart';
+import '../components/chips/moneyfy_pill.dart';
 import '../components/rows/transaction_row.dart';
 import '../components/transaction_history_list.dart';
 import '../design_system/context_extensions.dart';
@@ -677,24 +678,12 @@ class _CashHeroDashChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 24),
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.xs,
-        vertical: context.spacing.xs / 2,
-      ),
-      decoration: BoxDecoration(
-        color: context.colors.neutralSurfaceBase,
-        border: Border.all(color: context.colors.neutralOutline),
-        borderRadius: BorderRadius.circular(context.radius.rPill),
-      ),
-      child: Text(
-        '-',
-        style: context.typography.meta.copyWith(
-          color: context.colors.neutralText,
-          fontWeight: AppFontWeights.semibold,
-        ),
-      ),
+    return MoneyfyBadge(
+      label: '-',
+      size: MoneyfyPillSize.sm,
+      variant: MoneyfyPillVariant.outline,
+      backgroundColor: context.colors.neutralSurfaceBase,
+      textColor: context.colors.neutralText,
     );
   }
 }

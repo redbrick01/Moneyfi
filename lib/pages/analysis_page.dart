@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../components/chips/moneyfy_pill.dart';
 import '../components/icons/app_icon.dart';
 import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
@@ -782,27 +783,13 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: context.spacing.xs),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: context.spacing.xs,
-                        vertical: context.spacing.xs / 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: context.colors.neutralSurfaceBase,
-                        borderRadius: BorderRadius.circular(
-                          context.radius.rPill,
-                        ),
-                        border: Border.all(
-                          color: context.colors.neutralOutline,
-                        ),
-                      ),
-                      child: Text(
-                        item.changeRate,
-                        style: context.typography.caption.copyWith(
-                          color: _analysisValueColor(context, item.changeRate),
-                          fontWeight: AppFontWeights.semibold,
-                        ),
-                      ),
+                    MoneyfyBadge(
+                      label: item.changeRate,
+                      size: MoneyfyPillSize.sm,
+                      variant: MoneyfyPillVariant.outline,
+                      backgroundColor: context.colors.neutralSurfaceBase,
+                      borderColor: context.colors.neutralOutline,
+                      textColor: _analysisValueColor(context, item.changeRate),
                     ),
                   ],
                 ),
