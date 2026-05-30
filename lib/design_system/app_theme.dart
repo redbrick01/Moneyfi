@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'app_typography.dart';
 import 'brand/brand_palette.dart';
+import 'font_families.dart';
+import 'font_weights.dart';
 import 'spec.dart';
 import 'tokens.dart';
 
@@ -42,7 +44,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
-      fontFamily: '.SF Pro Text',
+      fontFamily: AppFontFamilies.sans,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: _appBackgroundFor(brightness),
       textTheme: typography.toTextTheme(),
@@ -77,7 +79,7 @@ class AppTheme {
         selectedItemColor: colorScheme.primary,
         unselectedItemColor: colorScheme.onSurfaceVariant,
         selectedLabelStyle: typography.meta.copyWith(
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
         ),
         unselectedLabelStyle: typography.caption,
         elevation: 0,
@@ -215,61 +217,61 @@ class AppTheme {
     if (brightness == Brightness.light) {
       return base.copyWith(
         primary: VisualSpec.brand.seed,
-        onPrimary: const Color(0xFFFFFFFF),
-        primaryContainer: const Color(0xFFEEF0F3),
-        onPrimaryContainer: const Color(0xFF0052FF),
-        secondary: const Color(0xFF0052FF),
-        onSecondary: const Color(0xFFFFFFFF),
-        secondaryContainer: const Color(0xFFEEF0F3),
-        onSecondaryContainer: const Color(0xFF0A0B0D),
-        tertiary: const Color(0xFFF4B000),
-        onTertiary: const Color(0xFF0A0B0D),
-        tertiaryContainer: const Color(0xFFEEF0F3),
-        onTertiaryContainer: const Color(0xFFF4B000),
+        onPrimary: VisualSpec.brand.onPrimary,
+        primaryContainer: VisualSpec.brand.primaryContainer(brightness),
+        onPrimaryContainer: VisualSpec.brand.onPrimaryContainer(brightness),
+        secondary: VisualSpec.brand.info,
+        onSecondary: VisualSpec.brand.onPrimary,
+        secondaryContainer: VisualSpec.brand.infoContainer(brightness),
+        onSecondaryContainer: VisualSpec.brand.onInfoContainer(brightness),
+        tertiary: VisualSpec.brand.lightWarning,
+        onTertiary: VisualSpec.brand.lightTextPrimary,
+        tertiaryContainer: VisualSpec.brand.warningContainer(brightness),
+        onTertiaryContainer: VisualSpec.brand.onWarningContainer(brightness),
         surface: VisualSpec.brand.lightSurface,
-        surfaceContainerLowest: const Color(0xFFFFFFFF),
+        surfaceContainerLowest: VisualSpec.brand.surfaceLowest(brightness),
         surfaceContainerLow: VisualSpec.brand.lightSurfaceLow,
         surfaceContainer: VisualSpec.brand.lightSurfaceContainer,
         surfaceContainerHigh: VisualSpec.brand.lightSurfaceHigh,
         surfaceContainerHighest: VisualSpec.brand.lightSurfaceHighest,
         onSurface: VisualSpec.brand.lightTextPrimary,
         onSurfaceVariant: VisualSpec.brand.lightTextSecondary,
-        outline: const Color(0xFFDEE1E6),
+        outline: VisualSpec.brand.outline(brightness),
         outlineVariant: VisualSpec.brand.lightOutlineVariant,
         error: VisualSpec.brand.lightNegative,
-        onError: const Color(0xFFFFFFFF),
-        errorContainer: const Color(0xFFEEF0F3),
-        onErrorContainer: const Color(0xFFCF202F),
+        onError: VisualSpec.brand.onPrimary,
+        errorContainer: VisualSpec.brand.negativeContainer(brightness),
+        onErrorContainer: VisualSpec.brand.onNegativeContainer(brightness),
       );
     }
 
     return base.copyWith(
-      primary: const Color(0xFF0052FF),
-      onPrimary: const Color(0xFFFFFFFF),
-      primaryContainer: const Color(0xFF003ECC),
-      onPrimaryContainer: const Color(0xFFFFFFFF),
-      secondary: const Color(0xFF0052FF),
-      onSecondary: const Color(0xFFFFFFFF),
-      secondaryContainer: const Color(0xFF16181C),
-      onSecondaryContainer: const Color(0xFFFFFFFF),
-      tertiary: const Color(0xFFF4B000),
-      onTertiary: const Color(0xFF0A0B0D),
-      tertiaryContainer: const Color(0xFF16181C),
-      onTertiaryContainer: const Color(0xFFF4B000),
+      primary: VisualSpec.brand.primary,
+      onPrimary: VisualSpec.brand.onPrimary,
+      primaryContainer: VisualSpec.brand.primaryContainer(brightness),
+      onPrimaryContainer: VisualSpec.brand.onPrimaryContainer(brightness),
+      secondary: VisualSpec.brand.info,
+      onSecondary: VisualSpec.brand.onPrimary,
+      secondaryContainer: VisualSpec.brand.infoContainer(brightness),
+      onSecondaryContainer: VisualSpec.brand.onInfoContainer(brightness),
+      tertiary: VisualSpec.brand.darkWarning,
+      onTertiary: VisualSpec.brand.lightTextPrimary,
+      tertiaryContainer: VisualSpec.brand.warningContainer(brightness),
+      onTertiaryContainer: VisualSpec.brand.onWarningContainer(brightness),
       surface: VisualSpec.brand.darkSurface,
-      surfaceContainerLowest: const Color(0xFF0A0B0D),
+      surfaceContainerLowest: VisualSpec.brand.surfaceLowest(brightness),
       surfaceContainerLow: VisualSpec.brand.darkSurfaceLow,
       surfaceContainer: VisualSpec.brand.darkSurfaceContainer,
       surfaceContainerHigh: VisualSpec.brand.darkSurfaceHigh,
       surfaceContainerHighest: VisualSpec.brand.darkSurfaceHighest,
       onSurface: VisualSpec.brand.darkTextPrimary,
       onSurfaceVariant: VisualSpec.brand.darkTextSecondary,
-      outline: const Color(0xFF16181C),
+      outline: VisualSpec.brand.outline(brightness),
       outlineVariant: VisualSpec.brand.darkOutlineVariant,
       error: VisualSpec.brand.darkNegative,
-      onError: const Color(0xFFFFFFFF),
-      errorContainer: const Color(0xFF16181C),
-      onErrorContainer: const Color(0xFFCF202F),
+      onError: VisualSpec.brand.onPrimary,
+      errorContainer: VisualSpec.brand.negativeContainer(brightness),
+      onErrorContainer: VisualSpec.brand.onNegativeContainer(brightness),
     );
   }
 

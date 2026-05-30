@@ -1,0 +1,71 @@
+<svg width="1800" height="1280" viewBox="0 0 1800 1280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1800" height="1280" fill="#F7F9FA"/>
+  <rect x="64" y="56" width="1672" height="1168" rx="32" fill="#FFFFFF"/>
+  <text x="112" y="122" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="700">Moneyfy Current App Palette</text>
+  <text x="112" y="164" fill="#5B616E" font-family="Inter, Arial, sans-serif" font-size="21">Actual colors currently used in lib/ and web/manifest.json after token cleanup.</text>
+
+  <text x="112" y="244" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Brand</text>
+  <rect x="112" y="276" width="250" height="132" rx="16" fill="#3A6DFF"/>
+  <text x="136" y="338" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Primary</text>
+  <text x="136" y="368" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="18">#3A6DFF</text>
+  <text x="136" y="394" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="14">seed / info / chart01</text>
+  <rect x="386" y="276" width="250" height="132" rx="16" fill="#2DA4FF"/>
+  <text x="410" y="338" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Primary Active</text>
+  <text x="410" y="368" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="18">#2DA4FF</text>
+  <text x="410" y="394" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="14">pressed / dark container</text>
+
+  <text x="112" y="480" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Semantic</text>
+  <rect x="112" y="512" width="250" height="132" rx="16" fill="#00D47E"/>
+  <text x="136" y="574" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Success</text>
+  <text x="136" y="604" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="18">#00D47E</text>
+  <text x="136" y="630" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="14">positive / chart02</text>
+  <rect x="386" y="512" width="250" height="132" rx="16" fill="#FFB800"/>
+  <text x="410" y="574" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Warning</text>
+  <text x="410" y="604" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="18">#FFB800</text>
+  <text x="410" y="630" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="14">warning / tertiary</text>
+  <rect x="660" y="512" width="250" height="132" rx="16" fill="#FF4554"/>
+  <text x="684" y="574" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Error</text>
+  <text x="684" y="604" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="18">#FF4554</text>
+  <text x="684" y="630" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="14">negative / chart03</text>
+
+  <text x="112" y="716" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Text And Dark</text>
+  <rect x="112" y="748" width="250" height="132" rx="16" fill="#0A0B0D"/>
+  <text x="136" y="810" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Ink</text>
+  <text x="136" y="840" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="18">#0A0B0D</text>
+  <text x="136" y="866" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="14">text / dark bg / chart04</text>
+  <rect x="386" y="748" width="250" height="132" rx="16" fill="#16181C"/>
+  <text x="410" y="810" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Dark Surface</text>
+  <text x="410" y="840" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="18">#16181C</text>
+  <text x="410" y="866" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="14">dark layers / outline</text>
+  <rect x="660" y="748" width="250" height="132" rx="16" fill="#5B616E"/>
+  <text x="684" y="810" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Text Secondary</text>
+  <text x="684" y="840" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="18">#5B616E</text>
+  <text x="684" y="866" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="14">secondary / chart05</text>
+  <rect x="934" y="748" width="250" height="132" rx="16" fill="#7C828A"/>
+  <text x="958" y="810" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Text Tertiary</text>
+  <text x="958" y="840" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="18">#7C828A</text>
+  <text x="958" y="866" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="14">tertiary text</text>
+  <rect x="1208" y="748" width="250" height="132" rx="16" fill="#A8ACB3"/>
+  <text x="1232" y="810" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">Dark Text 2</text>
+  <text x="1232" y="840" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="18">#A8ACB3</text>
+  <text x="1232" y="866" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="14">dark secondary / chart06</text>
+
+  <text x="112" y="952" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Surfaces And Borders</text>
+  <rect x="112" y="984" width="220" height="120" rx="16" fill="#FFFFFF" stroke="#DEE1E6"/>
+  <text x="136" y="1042" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">White</text>
+  <text x="136" y="1070" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="17">#FFFFFF</text>
+  <rect x="356" y="984" width="220" height="120" rx="16" fill="#F7F7F7" stroke="#DEE1E6"/>
+  <text x="380" y="1042" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">Muted</text>
+  <text x="380" y="1070" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="17">#F7F7F7</text>
+  <rect x="600" y="984" width="220" height="120" rx="16" fill="#EEF0F3" stroke="#DEE1E6"/>
+  <text x="624" y="1042" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">Soft Neutral</text>
+  <text x="624" y="1070" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="17">#EEF0F3</text>
+  <rect x="844" y="984" width="220" height="120" rx="16" fill="#DEE1E6" stroke="#D0D5DA"/>
+  <text x="868" y="1042" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">Border</text>
+  <text x="868" y="1070" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="17">#DEE1E6</text>
+  <rect x="1088" y="984" width="220" height="120" rx="16" fill="#000000" fill-opacity="0" stroke="#DEE1E6"/>
+  <text x="1112" y="1042" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">Transparent</text>
+  <text x="1112" y="1070" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="17">0x00000000</text>
+
+  <text x="112" y="1160" fill="#5B616E" font-family="Inter, Arial, sans-serif" font-size="18">Total: 14 opaque colors plus one transparent token. Chart colors remain role aliases, not extra palette colors.</text>
+</svg>

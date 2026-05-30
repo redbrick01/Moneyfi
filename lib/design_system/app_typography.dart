@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'font_families.dart';
+import 'font_weights.dart';
+
 class AppTypography extends ThemeExtension<AppTypography> {
   const AppTypography({
     required this.pageTitle,
@@ -16,69 +19,69 @@ class AppTypography extends ThemeExtension<AppTypography> {
     const numberFeatures = [FontFeature.tabularFigures()];
     return AppTypography(
       pageTitle: TextStyle(
-        fontFamily: '.SF Pro Display',
+        fontFamily: AppFontFamilies.display,
         fontSize: 32,
-        fontWeight: FontWeight.w400,
+        fontWeight: AppFontWeights.regular,
         height: 1.12,
         letterSpacing: 0,
         color: colorScheme.onSurface,
       ),
       heroNumber: TextStyle(
-        fontFamily: '.SF Pro Display',
+        fontFamily: AppFontFamilies.mono,
         fontSize: 36,
-        fontWeight: FontWeight.w500,
+        fontWeight: AppFontWeights.medium,
         height: 1.1,
         letterSpacing: 0,
         color: colorScheme.onSurface,
         fontFeatures: numberFeatures,
       ),
       sectionTitle: TextStyle(
-        fontFamily: '.SF Pro Display',
+        fontFamily: AppFontFamilies.display,
         fontSize: 18,
-        fontWeight: FontWeight.w600,
+        fontWeight: AppFontWeights.semibold,
         height: 1.3,
         letterSpacing: 0,
         color: colorScheme.onSurface,
       ),
       cardTitle: TextStyle(
-        fontFamily: '.SF Pro Text',
+        fontFamily: AppFontFamilies.sans,
         fontSize: 16,
-        fontWeight: FontWeight.w600,
+        fontWeight: AppFontWeights.semibold,
         height: 1.35,
         letterSpacing: 0,
         color: colorScheme.onSurface,
         fontFeatures: numberFeatures,
       ),
       body: TextStyle(
-        fontFamily: '.SF Pro Text',
+        fontFamily: AppFontFamilies.sans,
         fontSize: 16,
-        fontWeight: FontWeight.w400,
+        fontWeight: AppFontWeights.regular,
         height: 1.5,
         letterSpacing: 0,
         color: colorScheme.onSurface,
       ),
       meta: TextStyle(
-        fontFamily: '.SF Pro Text',
+        fontFamily: AppFontFamilies.sans,
         fontSize: 14,
-        fontWeight: FontWeight.w400,
+        fontWeight: AppFontWeights.regular,
         height: 1.43,
         letterSpacing: 0,
         color: colorScheme.onSurfaceVariant,
         fontFeatures: numberFeatures,
       ),
       caption: TextStyle(
-        fontFamily: '.SF Pro Text',
+        fontFamily: AppFontFamilies.sans,
         fontSize: 13,
-        fontWeight: FontWeight.w400,
+        fontWeight: AppFontWeights.regular,
         height: 1.3,
         letterSpacing: 0,
         color: colorScheme.onSurfaceVariant,
         fontFeatures: numberFeatures,
       ),
       button: TextStyle(
-        fontFamily: '.SF Pro Text',
+        fontFamily: AppFontFamilies.sans,
         fontSize: 16,
-        fontWeight: FontWeight.w600,
+        fontWeight: AppFontWeights.semibold,
         height: 1.0,
         letterSpacing: 0,
         color: colorScheme.onPrimary,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../design_system/font_families.dart';
+import '../design_system/font_weights.dart';
 import 'moneyfy_colors.dart';
 
 export 'moneyfy_colors.dart';
@@ -8,7 +10,7 @@ class MoneyfyTheme {
   static ThemeData get light {
     return ThemeData(
       useMaterial3: true,
-      fontFamily: '.SF Pro Text',
+      fontFamily: AppFontFamilies.sans,
       scaffoldBackgroundColor: MoneyfyPalette.background,
       colorScheme:
           ColorScheme.fromSeed(
@@ -17,46 +19,46 @@ class MoneyfyTheme {
           ).copyWith(
             primary: MoneyfyPalette.primary,
             onPrimary: MoneyfyPalette.onPrimary,
-            primaryContainer: MoneyfyPalette.primarySoft,
+            primaryContainer: MoneyfyPalette.softNeutral,
             onPrimaryContainer: MoneyfyPalette.primary,
             secondary: MoneyfyPalette.info,
             onSecondary: MoneyfyPalette.onPrimary,
-            secondaryContainer: MoneyfyPalette.infoBg,
+            secondaryContainer: MoneyfyPalette.softNeutral,
             onSecondaryContainer: MoneyfyPalette.info,
             surface: MoneyfyPalette.surface,
             onSurface: MoneyfyPalette.ink,
             onSurfaceVariant: MoneyfyPalette.secondaryText,
             outline: MoneyfyPalette.border,
-            outlineVariant: MoneyfyPalette.borderNeutral,
+            outlineVariant: MoneyfyPalette.softNeutral,
             error: MoneyfyPalette.error,
             onError: MoneyfyPalette.onPrimary,
-            errorContainer: MoneyfyPalette.errorBg,
-            onErrorContainer: MoneyfyPalette.errorStrong,
+            errorContainer: MoneyfyPalette.softNeutral,
+            onErrorContainer: MoneyfyPalette.error,
           ),
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
-          fontFamily: '.SF Pro Display',
+          fontFamily: AppFontFamilies.display,
           fontSize: 32,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
           color: MoneyfyPalette.ink,
           letterSpacing: -0.28,
         ),
         headlineSmall: TextStyle(
-          fontFamily: '.SF Pro Display',
+          fontFamily: AppFontFamilies.mono,
           fontSize: 36,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
           color: MoneyfyPalette.ink,
           letterSpacing: 0.196,
         ),
         titleLarge: TextStyle(
           fontSize: 18,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
           color: MoneyfyPalette.ink,
           letterSpacing: 0.231,
         ),
         titleMedium: TextStyle(
           fontSize: 16,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
           color: MoneyfyPalette.ink,
           letterSpacing: -0.374,
         ),
@@ -73,18 +75,18 @@ class MoneyfyTheme {
         ),
         labelMedium: TextStyle(
           fontSize: 13,
-          fontWeight: FontWeight.w400,
+          fontWeight: AppFontWeights.regular,
           color: MoneyfyPalette.secondaryText,
         ),
       ),
       navigationBarTheme: const NavigationBarThemeData(
         height: 74,
         backgroundColor: MoneyfyPalette.surface,
-        indicatorColor: MoneyfyPalette.accentSoft,
+        indicatorColor: MoneyfyPalette.softNeutral,
         labelTextStyle: WidgetStatePropertyAll(
           TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.w600,
+            fontWeight: AppFontWeights.semibold,
             color: MoneyfyPalette.secondaryText,
           ),
         ),
@@ -97,7 +99,7 @@ class MoneyfyTheme {
         foregroundColor: MoneyfyPalette.ink,
         titleTextStyle: TextStyle(
           fontSize: 18,
-          fontWeight: FontWeight.w600,
+          fontWeight: AppFontWeights.semibold,
           color: MoneyfyPalette.ink,
         ),
       ),
@@ -141,7 +143,10 @@ class MoneyfyTheme {
             borderRadius: BorderRadius.circular(9999),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: AppFontWeights.semibold,
+          ),
         ),
       ),
       dividerColor: MoneyfyPalette.border,

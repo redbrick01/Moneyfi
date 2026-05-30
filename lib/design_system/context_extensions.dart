@@ -4,6 +4,8 @@ import 'app_typography.dart';
 import 'brand/brand_palette.dart';
 import 'tokens.dart';
 
+export 'font_weights.dart';
+
 extension AppBuildContextX on BuildContext {
   AppSpacing get spacing {
     final value = Theme.of(this).extension<AppSpacing>();

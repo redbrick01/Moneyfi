@@ -71,6 +71,18 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
+
+  fonts:
+    - family: SUIT
+      fonts:
+        - asset: assets/fonts/suit/SUIT-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/suit/SUIT-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/suit/SUIT-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/suit/SUIT-Bold.ttf
+          weight: 700
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

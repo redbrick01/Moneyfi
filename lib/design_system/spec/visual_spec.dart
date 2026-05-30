@@ -13,9 +13,14 @@ class VisualSpec {
 class _BrandSpec {
   const _BrandSpec();
 
-  // Seed
-  final Color seedColor = const Color(0xFF0052FF);
+  // Brand
+  final Color seedColor = const Color(0xFF3A6DFF);
   Color get seed => seedColor;
+  Color get primary => seedColor;
+  final Color primaryActive = const Color(0xFF2DA4FF);
+  final Color onPrimary = const Color(0xFFFFFFFF);
+  Color get link => primary;
+  Color get info => primary;
 
   // Light neutrals
   final Color lightBg = const Color(0xFFFFFFFF);
@@ -27,6 +32,7 @@ class _BrandSpec {
   final Color lightTextPrimary = const Color(0xFF0A0B0D);
   final Color lightTextSecondary = const Color(0xFF5B616E);
   final Color lightOutlineVariant = const Color(0xFFDEE1E6);
+  final Color lightOutlineSubtle = const Color(0xFFEEF0F3);
 
   // Dark neutrals
   final Color darkBg = const Color(0xFF0A0B0D);
@@ -39,38 +45,48 @@ class _BrandSpec {
   final Color darkTextSecondary = const Color(0xFFA8ACB3);
   final Color darkOutlineVariant = const Color(0xFF16181C);
 
+  // Brand containers
+  Color get lightPrimaryContainer => lightOutlineSubtle;
+  Color get lightOnPrimaryContainer => primary;
+  Color get darkPrimaryContainer => primaryActive;
+  Color get darkOnPrimaryContainer => onPrimary;
+  Color get lightInfoContainer => lightOutlineSubtle;
+  Color get lightOnInfoContainer => info;
+  Color get darkInfoContainer => darkSurfaceContainer;
+  Color get darkOnInfoContainer => onPrimary;
+
   // Status - Positive
-  final Color lightPositive = const Color(0xFF05B169);
+  final Color lightPositive = const Color(0xFF00D47E);
   final Color lightPositiveContainer = const Color(0xFFEEF0F3);
-  final Color lightOnPositiveContainer = const Color(0xFF05B169);
-  final Color darkPositive = const Color(0xFF05B169);
+  final Color lightOnPositiveContainer = const Color(0xFF00D47E);
+  final Color darkPositive = const Color(0xFF00D47E);
   final Color darkPositiveContainer = const Color(0xFF16181C);
-  final Color darkOnPositiveContainer = const Color(0xFF05B169);
+  final Color darkOnPositiveContainer = const Color(0xFF00D47E);
 
   // Status - Negative
-  final Color lightNegative = const Color(0xFFCF202F);
+  final Color lightNegative = const Color(0xFFFF4554);
   final Color lightNegativeContainer = const Color(0xFFEEF0F3);
-  final Color lightOnNegativeContainer = const Color(0xFFCF202F);
-  final Color darkNegative = const Color(0xFFCF202F);
+  final Color lightOnNegativeContainer = const Color(0xFFFF4554);
+  final Color darkNegative = const Color(0xFFFF4554);
   final Color darkNegativeContainer = const Color(0xFF16181C);
-  final Color darkOnNegativeContainer = const Color(0xFFCF202F);
+  final Color darkOnNegativeContainer = const Color(0xFFFF4554);
 
   // Status - Warning
-  final Color lightWarning = const Color(0xFFF4B000);
+  final Color lightWarning = const Color(0xFFFFB800);
   final Color lightWarningContainer = const Color(0xFFEEF0F3);
-  final Color lightOnWarningContainer = const Color(0xFFF4B000);
-  final Color darkWarning = const Color(0xFFF4B000);
+  final Color lightOnWarningContainer = const Color(0xFFFFB800);
+  final Color darkWarning = const Color(0xFFFFB800);
   final Color darkWarningContainer = const Color(0xFF16181C);
-  final Color darkOnWarningContainer = const Color(0xFFF4B000);
+  final Color darkOnWarningContainer = const Color(0xFFFFB800);
 
   // Interaction overlay alpha
   final double lightOverlayPressedAlpha = 0.08;
   final double darkOverlayPressedAlpha = 0.16;
 
   // Chart palette (8)
-  final Color chart01 = const Color(0xFF0052FF);
-  final Color chart02 = const Color(0xFF05B169);
-  final Color chart03 = const Color(0xFFCF202F);
+  final Color chart01 = const Color(0xFF3A6DFF);
+  final Color chart02 = const Color(0xFF00D47E);
+  final Color chart03 = const Color(0xFFFF4554);
   final Color chart04 = const Color(0xFF0A0B0D);
   final Color chart05 = const Color(0xFF5B616E);
   final Color chart06 = const Color(0xFFA8ACB3);
@@ -97,6 +113,40 @@ class _BrandSpec {
 
   Color background(Brightness brightness) {
     return brightness == Brightness.dark ? darkBg : lightBg;
+  }
+
+  Color surfaceLowest(Brightness brightness) {
+    return brightness == Brightness.dark ? darkBg : lightSurface;
+  }
+
+  Color outline(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? darkOutlineVariant
+        : lightOutlineVariant;
+  }
+
+  Color primaryContainer(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? darkPrimaryContainer
+        : lightPrimaryContainer;
+  }
+
+  Color onPrimaryContainer(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? darkOnPrimaryContainer
+        : lightOnPrimaryContainer;
+  }
+
+  Color infoContainer(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? darkInfoContainer
+        : lightInfoContainer;
+  }
+
+  Color onInfoContainer(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? darkOnInfoContainer
+        : lightOnInfoContainer;
   }
 
   Color positiveContainer(Brightness brightness) {
@@ -168,20 +218,20 @@ class _SurfaceSpec {
 
   Color cardBase(Brightness brightness) {
     return brightness == Brightness.dark
-        ? const Color(0xFF16181C)
-        : const Color(0xFFFFFFFF);
+        ? VisualSpec.brand.darkSurfaceContainer
+        : VisualSpec.brand.lightSurface;
   }
 
   Color cardRaised(Brightness brightness) {
     return brightness == Brightness.dark
-        ? const Color(0xFF16181C)
-        : const Color(0xFFF7F7F7);
+        ? VisualSpec.brand.darkSurfaceHigh
+        : VisualSpec.brand.lightSurfaceContainer;
   }
 
   Color overlay(Brightness brightness) {
     return brightness == Brightness.dark
-        ? const Color(0xFF16181C)
-        : const Color(0xFFFFFFFF);
+        ? VisualSpec.brand.darkSurfaceHighest
+        : VisualSpec.brand.lightSurface;
   }
 }
 

@@ -1,0 +1,49 @@
+<svg width="1600" height="1040" viewBox="0 0 1600 1040" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="1040" fill="#F7F9FA"/>
+  <rect x="72" y="64" width="1456" height="912" rx="32" fill="#FFFFFF"/>
+  <text x="112" y="132" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="700">Moneyfy Young Concept Palette</text>
+  <text x="112" y="174" fill="#5B616E" font-family="Inter, Arial, sans-serif" font-size="22">Clear digital blue, fresh mint, and softer youthful semantic colors.</text>
+
+  <text x="112" y="260" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Core Brand</text>
+  <rect x="112" y="292" width="300" height="150" rx="18" fill="#3A6DFF"/>
+  <text x="136" y="376" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Primary</text>
+  <text x="136" y="408" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="20">#3A6DFF</text>
+  <text x="136" y="436" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="15">clear digital blue</text>
+  <rect x="436" y="292" width="300" height="150" rx="18" fill="#2DA4FF"/>
+  <text x="460" y="376" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Icon Blue</text>
+  <text x="460" y="408" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="20">#2DA4FF</text>
+  <text x="460" y="436" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="15">crisp sky blue</text>
+  <rect x="760" y="292" width="300" height="150" rx="18" fill="#00E5B5"/>
+  <text x="784" y="376" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Mint Accent</text>
+  <text x="784" y="408" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="20">#00E5B5</text>
+  <text x="784" y="436" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="15">bright neon mint</text>
+  <rect x="1084" y="292" width="300" height="150" rx="18" fill="#1E293B"/>
+  <text x="1108" y="376" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Deep Trust</text>
+  <text x="1108" y="408" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="20">#1E293B</text>
+  <text x="1108" y="436" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="15">dark slate blue</text>
+
+  <text x="112" y="520" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Semantic</text>
+  <rect x="112" y="552" width="300" height="140" rx="18" fill="#00D47E"/>
+  <text x="136" y="630" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Success</text>
+  <text x="136" y="662" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="20">#00D47E</text>
+  <rect x="436" y="552" width="300" height="140" rx="18" fill="#FFB800"/>
+  <text x="460" y="630" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Warning</text>
+  <text x="460" y="662" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="20">#FFB800</text>
+  <rect x="760" y="552" width="300" height="140" rx="18" fill="#FF4554"/>
+  <text x="784" y="630" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Error</text>
+  <text x="784" y="662" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="20">#FF4554</text>
+
+  <text x="112" y="768" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Soft System</text>
+  <rect x="112" y="800" width="300" height="120" rx="18" fill="#E3F5FF" stroke="#D0D5DA"/>
+  <text x="136" y="866" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">Info Soft</text>
+  <text x="136" y="896" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="18">#E3F5FF</text>
+  <rect x="436" y="800" width="300" height="120" rx="18" fill="#E0FBF0" stroke="#D0D5DA"/>
+  <text x="460" y="866" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">Mint Soft</text>
+  <text x="460" y="896" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="18">#E0FBF0</text>
+  <rect x="760" y="800" width="300" height="120" rx="18" fill="#FFFFFF" stroke="#D0D5DA"/>
+  <text x="784" y="866" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">Surface</text>
+  <text x="784" y="896" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="18">#FFFFFF</text>
+  <rect x="1084" y="800" width="300" height="120" rx="18" fill="#F7F9FA" stroke="#D0D5DA"/>
+  <text x="1108" y="866" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">Background</text>
+  <text x="1108" y="896" fill="#1E293B" font-family="Inter, Arial, sans-serif" font-size="18">#F7F9FA</text>
+</svg>
