@@ -1,6 +1,7 @@
 # Design-MD Full Compliance Verification Test Plan
 
 작성일: 2026-05-29
+최종 업데이트: 2026-05-30
 
 ## 목적
 
@@ -55,6 +56,7 @@ Blocking 전환 전 조건:
 - allowlist가 안정적이다.
 - chart geometry, platform asset, Flutter intrinsic values 예외가 문서화되어 있다.
 - `--self-test`가 CI에서 안정적으로 통과한다.
+- `docs/design_system.md`에 정의된 current primary `#3A6DFF`, SUIT font family, `AppFontWeights` 사용 규칙이 code guardrail과 일치한다.
 
 ## Screenshot / Golden Candidates
 
@@ -202,3 +204,13 @@ Golden diff와 일부 sheet/form/detail loaded state는 아직 후속 과제다.
 - `flutter test`: passed, 214 tests.
 
 Golden diff, real OS keyboard screenshot, snapshot/detail/sheet 추가 coverage는 아직 후속 과제다.
+
+2026-05-30 Design Token Refresh 기준:
+
+- Brand primary는 app icon blue 계열의 `#3A6DFF`로 통합했다.
+- Brand active는 `#2DA4FF`, success는 `#00D47E`, warning은 `#FFB800`, error는 `#FF4554`로 정리했다.
+- SUIT font family와 `AppFontWeights`를 token source로 분리했다.
+- Direct `fontFamily`, legacy font family name, direct `FontWeight.w...`, direct `fontSize:` 탐지를 guardrail에 포함했다.
+- Obsolete launcher icon assets and duplicate icon sources were removed.
+- Design compliance screenshot artifacts were regenerated for the current token state.
+- `flutter analyze`: passed, no issues.

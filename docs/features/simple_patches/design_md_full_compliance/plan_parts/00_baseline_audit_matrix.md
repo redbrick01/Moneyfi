@@ -17,7 +17,7 @@ Design-MD full compliance 작업의 기준을 고정하고, 모든 UI-bearing �
 
 ## 구현 작업
 
-1. `docs/design_system.md`의 Coinbase design-md 원칙을 모바일 앱 기준으로 요약한다.
+1. `docs/design_system.md`의 Moneyfy design system 원칙을 모바일 앱 기준으로 요약한다.
 2. `lib/pages/**/*.dart`, `lib/components/**`, `lib/widgets/**`, `lib/ui_scaffold/**` 중 UI-bearing 대상을 모두 audit matrix에 등록한다.
 3. `lib/main.dart`, `lib/design_system/**`, `lib/theme/**`, `lib/components/separators/**`처럼 화면 baseline에 영향을 주는 source도 audit-only 또는 contract 대상으로 등록한다.
 4. `assets/**`, `web/manifest.json`, iOS/Android/macOS visual resources는 Flutter token 치환 대상이 아니라 platform asset audit 대상으로 등록한다.

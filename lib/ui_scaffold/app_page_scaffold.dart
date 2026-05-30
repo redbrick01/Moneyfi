@@ -9,6 +9,7 @@ class AppPageScaffold extends StatelessWidget {
     super.key,
     required this.title,
     required this.body,
+    this.titleWidget,
     this.subtitle,
     this.actions,
     this.scrollable = true,
@@ -35,6 +36,7 @@ class AppPageScaffold extends StatelessWidget {
     this.scrollController,
     this.isPrimaryActionLoading = false,
   }) : isFormPage = true,
+       titleWidget = null,
        scrollable = true,
        enablePullToRefresh = false,
        onRefresh = null,
@@ -42,6 +44,7 @@ class AppPageScaffold extends StatelessWidget {
        useSliver = false;
 
   final String title;
+  final Widget? titleWidget;
   final String? subtitle;
   final List<Widget>? actions;
   final Widget body;
@@ -79,7 +82,12 @@ class AppPageScaffold extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Header(title: title, subtitle: subtitle, actions: actions),
+        _Header(
+          title: title,
+          titleWidget: titleWidget,
+          subtitle: subtitle,
+          actions: actions,
+        ),
         SizedBox(height: context.spacing.sectionGap),
         body,
       ],
@@ -175,9 +183,15 @@ class AppPageScaffold extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.title, this.subtitle, this.actions});
+  const _Header({
+    required this.title,
+    this.titleWidget,
+    this.subtitle,
+    this.actions,
+  });
 
   final String title;
+  final Widget? titleWidget;
   final String? subtitle;
   final List<Widget>? actions;
 
@@ -192,12 +206,13 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: context.typography.pageTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              titleWidget ??
+                  Text(
+                    title,
+                    style: context.typography.pageTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
               if (subtitle != null) ...[
                 SizedBox(height: context.spacing.xs),
                 Text(

@@ -4,7 +4,7 @@
 
 ## 목적
 
-MONEYFY 모바일 앱이 `docs/design_system.md`의 Coinbase design-md를 실제 화면 단위까지 준수하는지 점검하기 위한 기준 matrix다.
+MONEYFY 모바일 앱이 `docs/design_system.md`의 현행 Moneyfy design system을 실제 화면 단위까지 준수하는지 점검하기 위한 기준 matrix다.
 
 이 문서는 00단계 산출물이며, 이후 단계는 이 matrix의 `result`, `screenshotPath`, `nextAction`을 갱신한다.
 

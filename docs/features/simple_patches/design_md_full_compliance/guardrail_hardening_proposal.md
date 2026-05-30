@@ -1,6 +1,7 @@
 # Guardrail Hardening Proposal
 
 작성일: 2026-05-29
+최종 업데이트: 2026-05-30
 
 ## 현재 상태
 
@@ -10,6 +11,17 @@
 - CI도 `continue-on-error: true`.
 - 현재 local result는 clean.
 - `--self-test`로 pattern 자체의 동작을 검증할 수 있다.
+- 2026-05-30 기준으로 color뿐 아니라 font size, font family, font weight, spacing legacy pattern도 탐지한다.
+
+## 현재 탐지 규칙
+
+| 규칙 | 탐지 대상 | 예외 |
+| --- | --- | --- |
+| Direct color | `Color(0x...)`, `Colors.*` | `lib/design_system/**`, `lib/theme/**`, test fixture 등 allowlist |
+| Direct font size | `fontSize: <number>` | typography/token/theme source |
+| Direct font family | `.SF Pro`, Roboto, AppleSDGothic, Pretendard, Noto, literal `fontFamily` | `lib/design_system/font_families.dart` |
+| Direct font weight | `FontWeight.w...` | `lib/design_system/font_weights.dart` |
+| Tokenized spacing | 반복적인 literal spacing 후보 | token source와 documented exceptions |
 
 ## 전환 단계
 
@@ -29,6 +41,7 @@
 | chart/canvas geometry | 직접 숫자 허용. color/type은 token 사용 권장 |
 | platform assets | SVG/manifest/native resource는 별도 asset audit |
 | Flutter intrinsic values | API 요구값은 문서화 후 허용 |
+| generated screenshot artifacts | binary output이므로 guardrail 대상 아님 |
 
 ## 추천 CI 추가안
 
@@ -46,3 +59,4 @@
 - guardrail clean.
 - CI에서 최소 1회 reporting-only로 안정성 확인.
 - blocking 전환 시점에 exception list가 문서화되어 있음.
+- `docs/design_system.md`의 color/font 규칙과 script 탐지 규칙이 서로 일치함.

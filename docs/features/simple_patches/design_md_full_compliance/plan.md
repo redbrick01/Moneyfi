@@ -4,18 +4,18 @@
 
 ## 목표
 
-MONEYFY 모바일 앱 전체 화면과 주요 컴포넌트가 `docs/design_system.md`의 Coinbase design-md를 실제 화면 단위까지 준수하도록 개선한다.
+MONEYFY 모바일 앱 전체 화면과 주요 컴포넌트가 `docs/design_system.md`의 현행 Moneyfy design system을 실제 화면 단위까지 준수하도록 개선한다.
 
-이 계획은 단순 토큰 치환이 아니다. 이미 적용된 토큰 기반을 출발점으로 삼고, 모바일 화면에서 사용자가 실제로 보는 card, row, button, chip, chart, icon, platform asset의 형태와 밀도, 계층, 색 사용, 숫자 표현, 터치 타깃, 빈/오류/로딩 상태가 Coinbase design-md의 원칙과 어긋나는 지점을 찾아 수정한다.
+이 계획은 단순 토큰 치환이 아니다. 이미 적용된 토큰 기반을 출발점으로 삼고, 모바일 화면에서 사용자가 실제로 보는 card, row, button, chip, chart, icon, platform asset의 형태와 밀도, 계층, 색 사용, 숫자 표현, 터치 타깃, 빈/오류/로딩 상태가 Moneyfy design system의 원칙과 어긋나는 지점을 찾아 수정한다.
 
 ## 기준 해석
 
-`docs/design_system.md`는 Coinbase 마케팅/제품 표면을 분석한 문서다. MONEYFY는 로그인 후 사용하는 자산 관리 앱이므로 아래처럼 앱 UI 기준으로 재해석한다.
+`docs/design_system.md`는 2026-05-30부터 Moneyfy 앱 UI 기준의 단일 디자인 규칙 문서다. 이전 Coinbase 분석에서 가져온 절제된 금융 UI 문법은 아래처럼 Moneyfy 모바일 앱 기준으로 재해석한다.
 
 | design-md 원칙 | MONEYFY 모바일 적용 기준 |
 | --- | --- |
 | 순백 canvas와 절제된 gray band | 페이지 바닥은 흰색 중심, 정보 묶음은 soft gray 또는 hairline card로 구분 |
-| Coinbase Blue는 드물게 사용 | 주요 CTA, 선택 상태, 핵심 링크에만 사용하고 장식/보조 강조에는 남발하지 않음 |
+| Primary blue는 드물게 사용 | 주요 CTA, 선택 상태, 핵심 링크에만 사용하고 장식/보조 강조에는 남발하지 않음 |
 | 숫자는 mono/tabular | 금액, 수익률, 비중, 차트 tooltip 숫자는 tabular figure 또는 mono 역할 적용 |
 | trading green/red는 text only | 상승/하락 의미는 텍스트와 작은 아이콘/라인으로만 표현하고 filled background는 피함 |
 | pill CTA, full circle asset icon | 버튼/검색/chip은 pill, 자산 아이콘은 circular plate, 일반 card는 rounded container |
@@ -47,7 +47,7 @@ MONEYFY 모바일 앱 전체 화면과 주요 컴포넌트가 `docs/design_syste
 | 모바일 밀도 재조정 | 360/390/430dp에서 card padding, row height, sticky CTA, chart legend overflow 확인 필요 | P0 |
 | 숫자 typography 일관성 | 모든 금액/수익률/비중/차트 tooltip이 mono/tabular 역할을 쓰는지 화면 단위 확인 필요 | P0 |
 | semantic color 사용 | green/red background, 과도한 status fill, primary blue 남발 여부 확인 필요 | P0 |
-| chart 문법 | chart palette, grid, legend, tooltip, selected state가 Coinbase식 절제와 맞는지 확인 필요 | P1 |
+| chart 문법 | chart palette, grid, legend, tooltip, selected state가 Moneyfy의 restrained surface 문법과 맞는지 확인 필요 | P1 |
 | icon/asset 문법 | 자산 glyph, app icon, leading badge, native/web icon 색상이 단일 brand voltage와 맞는지 2차 확인 필요 | P1 |
 | empty/loading/error 상태 | state component가 각 화면에서 같은 tone, spacing, action hierarchy로 보이는지 확인 필요 | P1 |
 | dark/sync/auth surface | 어두운 hero/overlay가 design-md의 surface-dark/elevated 문법으로 통일됐는지 확인 필요 | P1 |
@@ -137,7 +137,7 @@ MONEYFY 모바일 앱 전체 화면과 주요 컴포넌트가 `docs/design_syste
 
 - 대상: `lib/components/icons/**`, `assets/**`, `web/manifest.json`, iOS/macOS/Android icon resources
 - 점검: app icon primary color, native theme color, web manifest color, icon stroke/fill, asset glyph circle, launcher foreground/background 대비.
-- 수정 방향: Coinbase Blue 계열을 단일 brand voltage로 유지하고, 플랫폼별 자동 생성물은 Flutter UI 토큰과 분리해 audit-only로 관리.
+- 수정 방향: current primary `#3A6DFF`를 단일 brand voltage로 유지하고, 플랫폼별 자동 생성물은 Flutter UI 토큰과 분리해 audit-only로 관리.
 - 우선순위: P1
 
 ## 우선순위 정의
@@ -347,7 +347,7 @@ flutter test
 - `flutter test test/ui_component_smoke_test.dart`와 `flutter test test/page_walkthrough_test.dart` 통과.
 - P0 화면이 360/390/430dp와 text scale 1.3에서 overflow 없이 동작.
 - 금액/비율/수익률/차트 숫자가 `context.typography`의 number 역할 또는 `FontFeature.tabularFigures()`가 적용된 TextStyle로 표시.
-- Coinbase Blue는 primary CTA, selected state, link/action에 제한되고, semantic green/red는 text/icon/chart mark 중심으로 사용됨.
+- Primary blue `#3A6DFF`는 primary CTA, selected state, link/action에 제한되고, semantic green/red는 text/icon/chart mark 중심으로 사용됨.
 - app icon, web manifest, native theme color가 brand asset audit에서 pass.
 - 남은 예외가 있다면 파일/컴포넌트/사유/재검토 조건이 문서화됨.
 
@@ -356,10 +356,10 @@ flutter test
 | 리스크 | 설명 | 대응 |
 | --- | --- | --- |
 | 토큰 통과와 실제 화면 불일치 | guardrail clean이어도 화면 밀도/계층/강조가 design-md와 다를 수 있음 | screenshot audit을 P0로 수행 |
-| 과도한 Coinbase 마케팅 문법 적용 | MONEYFY는 앱이므로 96px editorial spacing을 그대로 적용하면 모바일 사용성이 떨어짐 | 모바일 앱용 재해석 기준 유지 |
+| 과도한 마케팅 문법 적용 | MONEYFY는 앱이므로 96px editorial spacing을 그대로 적용하면 모바일 사용성이 떨어짐 | 모바일 앱용 재해석 기준 유지 |
 | 정보 밀도 손실 | 투자 앱은 숫자와 행이 많아 너무 넓은 여백은 사용성을 해칠 수 있음 | row/card 최소 규칙과 화면별 density를 함께 검증 |
 | chart 회귀 | painter geometry를 토큰화하다가 chart가 깨질 수 있음 | geometry는 보수적으로 유지하고 visual role만 정리 |
-| semantic color 오용 | green/red filled chip이나 warning background가 Coinbase 원칙과 충돌할 수 있음 | text-only 원칙을 audit 항목에 포함 |
+| semantic color 오용 | green/red filled chip이나 warning background가 Moneyfy 원칙과 충돌할 수 있음 | text-only 원칙을 audit 항목에 포함 |
 | 플랫폼 asset 자동 생성 차이 | iOS/Android/web icon은 Flutter UI 토큰과 동기화되지 않을 수 있음 | asset audit을 별도 산출물로 관리 |
 | 사용자 변경 충돌 | 현재 워크트리에 다수 변경이 있음 | 관련 파일만 좁게 수정하고 기존 변경을 되돌리지 않음 |
 | visual regression 자동화 부족 | 수동 QA가 누락되면 회귀를 놓칠 수 있음 | P2에서 screenshot/golden 후보를 추가 |

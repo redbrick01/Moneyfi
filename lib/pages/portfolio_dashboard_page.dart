@@ -163,6 +163,7 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
   Widget build(BuildContext context) {
     return AppPageScaffold(
       title: '홈',
+      titleWidget: const _MoneyfyHomeWordmark(),
       enablePullToRefresh: true,
       onRefresh: _refreshPage,
       hasFloatingNavInset: true,
@@ -479,6 +480,50 @@ class _AnalysisSectionBasePlate extends StatelessWidget {
             child: child,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MoneyfyHomeWordmark extends StatelessWidget {
+  const _MoneyfyHomeWordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    final style = context.typography.pageTitle.copyWith(
+      fontWeight: AppFontWeights.medium,
+      letterSpacing: -0.4,
+    );
+    final colors = context.colors;
+
+    return Semantics(
+      header: true,
+      label: 'Moneyfy',
+      child: ExcludeSemantics(
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: 'M',
+                style: style.copyWith(color: colors.primary),
+              ),
+              TextSpan(
+                text: 'oney',
+                style: style.copyWith(color: colors.neutralText),
+              ),
+              TextSpan(
+                text: 'f',
+                style: style.copyWith(color: colors.positiveOn),
+              ),
+              TextSpan(
+                text: 'y',
+                style: style.copyWith(color: colors.neutralText),
+              ),
+            ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }

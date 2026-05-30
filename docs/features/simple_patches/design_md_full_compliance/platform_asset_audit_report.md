@@ -1,44 +1,46 @@
 # Platform Asset Audit Report
 
 작성일: 2026-05-29
+최종 업데이트: 2026-05-30
 
 ## Scope
 
 Stage 04 `P1-E Icons / Platform Assets` audit note.
 
-이번 Stage 04에서는 platform asset 파일을 직접 수정하지 않았다. 현재 워크트리에 이미 존재하는 platform/asset 변경을 design-md 관점에서 review 대상으로 기록한다.
+2026-05-30 기준으로 잘못 식별된 앱 아이콘과 중복 launcher raster asset은 제거되었다. 플랫폼 에셋은 Flutter UI token 치환 대상이 아니므로, 남는 변경은 manifest/name/theme color drift 여부로 관리한다.
 
 ## Diff Review Command
 
 ```bash
-git diff -- assets web ios android macos linux
+git diff -- assets web ios android macos linux windows
 ```
 
-현재 변경 파일:
+아이콘 정리에서 변경된 주요 파일:
 
 - `android/app/src/main/AndroidManifest.xml`
 - `assets/README.md`
-- `assets/app_icon_flat.svg`
-- `assets/icon/app_icon.svg`
 - `ios/Runner/Info.plist`
 - `linux/runner/my_application.cc`
 - `macos/Runner/Configs/AppInfo.xcconfig`
 - `web/index.html`
 - `web/manifest.json`
+- `windows/runner/Runner.rc`
+- deleted generated icon assets under `android`, `assets/icon`, `ios`, `macos`, `web/icons`, `windows`
 
 ## Checklist
 
 | 영역 | 파일/위치 | 판정 | 메모 |
 | --- | --- | --- | --- |
-| source app icon | `assets/app_icon_flat.svg`, `assets/icon/app_icon.svg` | pending visual review | 현재 아이콘은 white canvas, `#EEF0F3`, `#0A0B0D`, `#05B169` 중심. Coinbase Blue가 app icon에 드러나지 않는 점은 brand strategy로 재검토 필요 |
-| web manifest | `web/manifest.json`, `web/index.html`, `web/icons/**` | pending visual review | manifest theme color가 `#0052FF`, background가 white로 design-md와 정렬됨 |
-| iOS | `ios/Runner/Assets.xcassets/**`, `ios/Runner/Info.plist` | pending visual review | display name이 `Moneyfy`로 정리됨. icon raster set은 source SVG와 실제 일치 여부 확인 필요 |
-| Android | `android/app/src/main/**` | pending visual review | label이 `Moneyfy`로 정리됨. launcher raster set은 source SVG와 실제 일치 여부 확인 필요 |
-| macOS | `macos/Runner/Assets.xcassets/**`, `macos/Runner/Configs/AppInfo.xcconfig` | pending visual review | product name이 `Moneyfy`로 정리됨. icon raster set 확인 필요 |
-| Linux | `linux/runner/**` | pending visual review | runner background가 white로 정리됨 |
+| source app icon | `assets/icon/**`, `assets/app_icon_flat.svg` | removed | 잘못 식별된 source icon과 duplicate icon source를 제거함 |
+| web manifest | `web/manifest.json`, `web/index.html`, `web/icons/**` | updated | manifest theme color는 current primary `#3A6DFF`; deleted icon paths는 제거됨 |
+| iOS | `ios/Runner/Assets.xcassets/**`, `ios/Runner/Info.plist` | cleaned | display name은 `Moneyfy`; 불필요한 AppIcon raster files 제거 |
+| Android | `android/app/src/main/**` | cleaned | label은 `Moneyfy`; generated launcher raster files 제거, manifest icon reference 제거 |
+| macOS | `macos/Runner/Assets.xcassets/**`, `macos/Runner/Configs/AppInfo.xcconfig` | cleaned | product name은 `Moneyfy`; duplicate AppIcon entries/files 제거 |
+| Linux | `linux/runner/**` | aligned | runner background가 white로 정리됨 |
+| Windows | `windows/runner/**` | cleaned | stale `.ico` resource와 rc icon block 제거 |
 
 ## Stage 04 Verdict
 
-- Platform asset source 변경은 이번 Stage 04에서 수행하지 않음.
-- 현재 변경은 design-md 방향과 대체로 정렬되어 보이나, generated raster icon과 source SVG 일치 여부는 별도 visual diff가 필요하다.
-- 최종 pass는 Stage 05 screenshot/golden 또는 platform visual review 이후 확정한다.
+- Platform asset source는 현재 중복 보관하지 않는다.
+- Web/native metadata는 `Moneyfy` name과 current primary `#3A6DFF` 중심으로 정렬한다.
+- 새 launcher icon pipeline을 복구할 경우, source asset, generated outputs, manifest references를 한 단위로 문서화해야 한다.

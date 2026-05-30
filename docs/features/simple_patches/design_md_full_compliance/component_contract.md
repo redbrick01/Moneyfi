@@ -4,7 +4,7 @@
 
 ## 목적
 
-MONEYFY 공용 UI 컴포넌트가 `docs/design_system.md`의 Coinbase design-md 원칙을 모바일 앱 화면에서 일관되게 구현하도록 하는 canonical contract다.
+MONEYFY 공용 UI 컴포넌트가 `docs/design_system.md`의 현행 Moneyfy design system 원칙을 모바일 앱 화면에서 일관되게 구현하도록 하는 canonical contract다.
 
 이 문서는 `plan_parts/02_shared_component_contracts.md`의 산출물이며, P0/P1 화면 수정은 이 contract를 먼저 따른다.
 

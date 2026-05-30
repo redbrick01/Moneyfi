@@ -24,7 +24,7 @@
 
 | 컴포넌트 | 기준 |
 | --- | --- |
-| Primary button | 44dp 기본 높이, pill radius, Coinbase Blue, pressed/disabled state 명확 |
+| Primary button | 44dp 기본 높이, pill radius, Moneyfy primary `#3A6DFF`, pressed/disabled state 명확 |
 | Large CTA | 56dp 높이, primary action에만 사용 |
 | Secondary button | soft gray surface, ink text, pill radius |
 | Tertiary action | transparent, primary blue text/icon only |

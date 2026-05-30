@@ -40,7 +40,7 @@ Company/market news card의 중요도 pill 배경을 semantic/primary container�
 
 의도:
 
-- 중요도는 text/icon color로 전달하고, 배경은 Coinbase design-md의 restrained surface 문법을 따른다.
+- 중요도는 text/icon color로 전달하고, 배경은 Moneyfy design system의 restrained surface 문법을 따른다.
 
 ### Portfolio Diagnosis / Risk Badges
 

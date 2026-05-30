@@ -48,7 +48,7 @@ P0 이후 브랜드 완성도와 분석 사용성에 영향을 주는 P1 surface
 
 ### P1-E Icons / Platform Assets
 
-- app icon, web manifest, native theme color가 Coinbase Blue 계열과 일관되는지 확인한다.
+- app icon, web manifest, native theme color가 Moneyfy primary `#3A6DFF`와 일관되는지 확인한다.
 - asset glyph는 circular plate와 충분한 대비를 가진다.
 - platform-generated asset은 Flutter UI token 치환 대상이 아니므로 diff/review note로 관리한다.
 
@@ -56,8 +56,8 @@ P0 이후 브랜드 완성도와 분석 사용성에 영향을 주는 P1 surface
 
 | 영역 | 파일/위치 | 점검 |
 | --- | --- | --- |
-| source app icon | `assets/app_icon_flat.svg`, `assets/icon/**` | primary color, foreground/background 대비, glyph radius |
-| web manifest | `web/manifest.json`, `web/index.html`, `web/icons/**` | theme/background color, icon 경로, generated icon 색상 |
+| source app icon | `assets/icon/**`, `assets/app_icon_flat.svg` | 현재 제거 상태 유지. 복구 시 primary color, foreground/background 대비, glyph radius 검증 |
+| web manifest | `web/manifest.json`, `web/index.html`, `web/icons/**` | theme/background color, icon 경로 제거 상태, generated icon 색상 |
 | iOS | `ios/Runner/Assets.xcassets/**`, `ios/Runner/Info.plist` | icon set, launch/theme 관련 색상 |
 | Android | `android/app/src/main/**` | launcher icon, adaptive icon, manifest theme |
 | macOS | `macos/Runner/Assets.xcassets/**`, `macos/Runner/Configs/AppInfo.xcconfig` | app icon, bundle display name 관련 visual metadata |

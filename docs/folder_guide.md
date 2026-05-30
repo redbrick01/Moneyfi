@@ -65,6 +65,7 @@
 
 | 경로 | 역할 |
 | --- | --- |
+| `docs/brand/` | 브랜드 팔레트, 컬러 감사표, 팔레트 이미지 산출물 |
 | `docs/design/` | 기능별 화면 리디자인 계획. 일반 UI/UX 규칙은 `docs/design_system.md`로 통합 |
 | `docs/features/` | 기능 개발, 단순 패치, 버그 픽스, 수동 테스트 작업 기록 |
 | `docs/guides/` | 작업 유형별 개발 프로세스 가이드 |
@@ -102,4 +103,4 @@ Flutter가 생성한 플랫폼 프로젝트입니다. 일반 기능 개발은 �
 | Supabase 함수 수정 | `supabase/functions/`, `lib/services/` |
 | 디자인 조정 | `docs/design_system.md`, `lib/design_system/`, `lib/components/` |
 | 테스트 추가 | `test/README.md`, 기존 `test/*_test.dart` |
-| iOS 앱 아이콘 갱신 | `ios/Runner/Assets.xcassets/AppIcon.appiconset/` |
+| 앱 아이콘/플랫폼 에셋 갱신 | `docs/features/simple_patches/design_md_full_compliance/platform_asset_audit_report.md`, 각 platform asset catalog |

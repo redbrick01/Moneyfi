@@ -20,6 +20,7 @@
 | 문서 | 내용 |
 | --- | --- |
 | [Design System](design_system.md) | MONEYFY UI/UX 단일 기준 문서: 원칙, 토큰, 컴포넌트, 화면 패턴, QA, 메인 자산 카드 포맷 |
+| [Brand Palette](brand/README.md) | 아이콘 블루 기반 브랜드/시맨틱 컬러 결정과 팔레트 산출물 |
 | [Transaction Ledger Redesign](design/transaction_ledger_redesign.md) | 거래 내역 화면 개편 방향 |
 | [Transaction History UI/UX Improvement Plan](design/transaction_history_ui_ux_improvement_plan.md) | 거래 내역 필터와 목록 UX 개선 계획 |
 

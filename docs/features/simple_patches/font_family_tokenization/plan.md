@@ -44,7 +44,7 @@ MONEYFY의 폰트 패밀리를 문자열 직접 참조가 아니라 디자인 �
 - Typography size scale 재설계.
 - 화면별 layout redesign.
 - 색상/spacing/radius token 변경.
-- Coinbase 전용 licensed font 사용.
+- Coinbase 전용 licensed font 사용. 현재 Moneyfy 앱은 SUIT token으로 통합한다.
 - Golden diff 도입.
 
 ## 토큰 설계
@@ -111,7 +111,7 @@ rg -n "fontFamily|FontLoader|\\.SF Pro|SUIT|Inter|JetBrains|Geist|Pretendard|Not
 
 | 예외 | 조건 |
 | --- | --- |
-| `docs/design_system.md` | 원본 design-md 분석 문서이므로 Coinbase/Inter/JetBrains 대체 설명 유지 가능 |
+| `docs/design_system.md` | 현재 Moneyfy design system 기준 문서이므로 SUIT token과 current typography 규칙을 유지 |
 | font token 정의 파일 | `AppFontFamilies` 안에서만 family string 직접 선언 가능 |
 | `pubspec.yaml` | Flutter font 등록을 위해 family name 직접 선언 가능. 단 token 값과 일치해야 함 |
 | screenshot harness | `FontLoader(AppFontFamilies.sans/display/mono)`처럼 token을 참조해야 함 |
