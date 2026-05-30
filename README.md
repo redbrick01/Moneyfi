@@ -113,12 +113,6 @@ flutter test
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-앱 아이콘을 다시 생성할 때:
-
-```bash
-./tools/generate_app_icons.sh
-```
-
 ## Git Guide
 
 이 저장소는 소스 코드, 문서, 샘플 설정 파일만 관리하고 로컬 산출물은 제외합니다.

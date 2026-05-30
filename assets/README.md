@@ -8,8 +8,6 @@
 | --- | --- |
 | `config.example.json` | Supabase client 설정 예시 |
 | `config.json` | 로컬 실행용 실제 Supabase client 설정. 없으면 로그인/동기화 없이 앱이 시작됩니다. git에 올리지 않습니다. |
-| `icon/` | `app_icon_flat.svg`에서 복사/생성되는 앱 아이콘 산출물 |
-| `app_icon_flat.svg` | 앱 아이콘 canonical SVG source |
 
 ## Config
 
@@ -31,11 +29,3 @@ cp assets/config.example.json assets/config.json
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY`는 절대 이 파일에 넣지 않습니다.
-
-## Icons
-
-앱 아이콘을 다시 생성할 때는 루트의 스크립트를 사용합니다.
-
-```bash
-./tools/generate_app_icons.sh
-```

@@ -79,7 +79,7 @@ Flutter가 생성한 플랫폼 프로젝트입니다. 일반 기능 개발은 �
 | `android/` | Android 권한, Gradle 설정, 패키지 설정 |
 | `ios/` | iOS 권한, signing, storyboard, asset catalog |
 | `macos/` | macOS 권한, entitlements, CocoaPods |
-| `web/` | manifest, favicon, web icon |
+| `web/` | manifest, web entrypoint |
 | `linux/`, `windows/` | 데스크톱 빌드 설정 |
 
 ## Generated And Local Folders
@@ -102,4 +102,4 @@ Flutter가 생성한 플랫폼 프로젝트입니다. 일반 기능 개발은 �
 | Supabase 함수 수정 | `supabase/functions/`, `lib/services/` |
 | 디자인 조정 | `docs/design_system.md`, `lib/design_system/`, `lib/components/` |
 | 테스트 추가 | `test/README.md`, 기존 `test/*_test.dart` |
-| 앱 아이콘 갱신 | `assets/`, `tools/generate_app_icons.sh` |
+| iOS 앱 아이콘 갱신 | `ios/Runner/Assets.xcassets/AppIcon.appiconset/` |
