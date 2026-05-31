@@ -31,6 +31,11 @@ Implemented a local-first Investment Review Hub for MONEYFY. The feature adds:
 - Added `InvestmentReviewHomeCard` to the dashboard.
 - Added an Analysis page entry card using the current branch's existing `Navigator.push` navigation style.
 
+## Review Fixes
+
+- Investment review performance now aggregates ledger records by currency and converts USD amounts to KRW using the latest cached USD/KRW rate before formatting.
+- Weekly and monthly review ranges now end at the review generation date instead of including future dates in the current week or month.
+
 ## Plan Adjustment
 
 The written plan mentioned adding a `go_router` route. This clean worktree did not contain the navigation files from the parent workspace's unrelated dirty work, and the current app structure uses direct `Navigator.push` entries in the relevant pages.
@@ -43,7 +48,7 @@ Fresh verification was run from the worktree on 2026-05-31.
 
 | Command | Result |
 | --- | --- |
-| `flutter test test/investment_review_periods_test.dart test/investment_review_narrative_test.dart test/investment_review_snapshot_builder_test.dart test/investment_review_ai_coach_test.dart` | Passed, 10 tests |
+| `flutter test test/investment_review_periods_test.dart test/investment_review_narrative_test.dart test/investment_review_snapshot_builder_test.dart test/investment_review_ai_coach_test.dart` | Passed |
 | `flutter test test/page_walkthrough_test.dart --plain-name "stage 2: analysis entry cards open their child pages"` | Passed |
 | `flutter test test/widget_test.dart --plain-name "investment review page"` | Passed, 2 tests |
 | `flutter test test/widget_test.dart --plain-name "investment review home card shows headline and action"` | Passed |

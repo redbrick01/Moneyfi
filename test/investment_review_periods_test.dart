@@ -28,6 +28,16 @@ void main() {
       expect(range.label, '이번 주');
     });
 
+    test('caps weekly range at today instead of future Sunday', () {
+      final range = InvestmentReviewPeriodResolver.resolve(
+        InvestmentReviewPeriodType.weekly,
+        now: DateTime(2026, 5, 27, 22, 15),
+      );
+
+      expect(range.from, DateTime(2026, 5, 25));
+      expect(range.to, DateTime(2026, 5, 27));
+    });
+
     test('resolves monthly range from first through last day', () {
       final range = InvestmentReviewPeriodResolver.resolve(
         InvestmentReviewPeriodType.monthly,
@@ -38,6 +48,16 @@ void main() {
       expect(range.from, DateTime(2026, 5, 1));
       expect(range.to, DateTime(2026, 5, 31));
       expect(range.label, '이번 달');
+    });
+
+    test('caps monthly range at today instead of future month end', () {
+      final range = InvestmentReviewPeriodResolver.resolve(
+        InvestmentReviewPeriodType.monthly,
+        now: DateTime(2026, 5, 27, 22, 15),
+      );
+
+      expect(range.from, DateTime(2026, 5, 1));
+      expect(range.to, DateTime(2026, 5, 27));
     });
   });
 }

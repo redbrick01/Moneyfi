@@ -19,9 +19,15 @@ class InvestmentReviewSnapshotBuilder {
       type,
       now: generatedAt,
     );
-    final performance = await _database.fetchLedgerPortfolioPerformance(
-      from: period.from,
-      to: period.to,
+    final performanceByCurrency = await _database
+        .fetchLedgerPortfolioPerformanceByCurrency(
+          from: period.from,
+          to: period.to,
+        );
+    final usdKrwRate = await _database.fetchLatestExchangeRate() ?? 1.0;
+    final performance = _mergePerformanceAsKrw(
+      performanceByCurrency,
+      usdKrwRate,
     );
     final activity = _activityFrom(performance);
     final hasEnoughData =
@@ -143,5 +149,88 @@ class InvestmentReviewSnapshotBuilder {
 
   String _formatSigned(double amount) {
     return MoneyfyDisplayCurrencySettings.formatSignedAmountFromKrw(amount);
+  }
+
+  LedgerPortfolioPerformanceRecord _mergePerformanceAsKrw(
+    Map<String, LedgerPortfolioPerformanceRecord> recordsByCurrency,
+    double usdKrwRate,
+  ) {
+    var realizedPnl = 0.0;
+    var incomeAmount = 0.0;
+    var feeAmount = 0.0;
+    var taxAmount = 0.0;
+    var externalCashFlowAmount = 0.0;
+    var externalDepositAmount = 0.0;
+    var externalWithdrawalAmount = 0.0;
+    var tradeSettlementCashFlowAmount = 0.0;
+    var internalCashMovementAmount = 0.0;
+    var buyAmount = 0.0;
+    var sellAmount = 0.0;
+    var buyCount = 0;
+    var sellCount = 0;
+    var incomeCount = 0;
+    var cashFlowCount = 0;
+
+    for (final entry in recordsByCurrency.entries) {
+      final currencyCode = entry.key;
+      final record = entry.value;
+      realizedPnl += _toKrw(record.realizedPnl, currencyCode, usdKrwRate);
+      incomeAmount += _toKrw(record.incomeAmount, currencyCode, usdKrwRate);
+      feeAmount += _toKrw(record.feeAmount, currencyCode, usdKrwRate);
+      taxAmount += _toKrw(record.taxAmount, currencyCode, usdKrwRate);
+      externalCashFlowAmount += _toKrw(
+        record.externalCashFlowAmount,
+        currencyCode,
+        usdKrwRate,
+      );
+      externalDepositAmount += _toKrw(
+        record.externalDepositAmount,
+        currencyCode,
+        usdKrwRate,
+      );
+      externalWithdrawalAmount += _toKrw(
+        record.externalWithdrawalAmount,
+        currencyCode,
+        usdKrwRate,
+      );
+      tradeSettlementCashFlowAmount += _toKrw(
+        record.tradeSettlementCashFlowAmount,
+        currencyCode,
+        usdKrwRate,
+      );
+      internalCashMovementAmount += _toKrw(
+        record.internalCashMovementAmount,
+        currencyCode,
+        usdKrwRate,
+      );
+      buyAmount += _toKrw(record.buyAmount, currencyCode, usdKrwRate);
+      sellAmount += _toKrw(record.sellAmount, currencyCode, usdKrwRate);
+      buyCount += record.buyCount;
+      sellCount += record.sellCount;
+      incomeCount += record.incomeCount;
+      cashFlowCount += record.cashFlowCount;
+    }
+
+    return LedgerPortfolioPerformanceRecord(
+      realizedPnl: realizedPnl,
+      incomeAmount: incomeAmount,
+      feeAmount: feeAmount,
+      taxAmount: taxAmount,
+      externalCashFlowAmount: externalCashFlowAmount,
+      externalDepositAmount: externalDepositAmount,
+      externalWithdrawalAmount: externalWithdrawalAmount,
+      tradeSettlementCashFlowAmount: tradeSettlementCashFlowAmount,
+      internalCashMovementAmount: internalCashMovementAmount,
+      buyAmount: buyAmount,
+      sellAmount: sellAmount,
+      buyCount: buyCount,
+      sellCount: sellCount,
+      incomeCount: incomeCount,
+      cashFlowCount: cashFlowCount,
+    );
+  }
+
+  double _toKrw(double amount, String currencyCode, double exchangeRate) {
+    return currencyCode.toUpperCase() == 'USD' ? amount * exchangeRate : amount;
   }
 }

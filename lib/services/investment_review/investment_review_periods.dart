@@ -16,13 +16,13 @@ abstract final class InvestmentReviewPeriodResolver {
       InvestmentReviewPeriodType.weekly => InvestmentReviewPeriodRange(
         type: type,
         from: base.subtract(Duration(days: base.weekday - 1)),
-        to: base.add(Duration(days: DateTime.sunday - base.weekday)),
+        to: base,
         label: '이번 주',
       ),
       InvestmentReviewPeriodType.monthly => InvestmentReviewPeriodRange(
         type: type,
         from: DateTime(base.year, base.month),
-        to: DateTime(base.year, base.month + 1, 0),
+        to: base,
         label: '이번 달',
       ),
     };
