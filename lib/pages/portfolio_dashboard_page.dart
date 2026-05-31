@@ -6,6 +6,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import '../components/buttons/app_buttons.dart';
 import '../components/chips/delta_chip.dart';
 import '../components/chips/moneyfy_pill.dart';
+import '../components/cards/investment_review_home_card.dart';
 import '../components/feedback/app_snackbar.dart';
 import '../components/formatters/number_format.dart' as app_number;
 import '../components/icons/app_icon.dart';
@@ -22,6 +23,8 @@ import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
 import '../models/asset_item.dart';
 import '../services/auth_service.dart';
+import '../services/investment_review/investment_review_models.dart';
+import '../services/investment_review/investment_review_snapshot_builder.dart';
 import '../services/market_data_service.dart';
 import '../services/portfolio_diagnosis_service.dart';
 import '../ui_scaffold/app_page_scaffold.dart';
@@ -29,6 +32,7 @@ import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
 import 'asset_detail_page.dart';
 import 'forms/asset_form_page.dart';
+import 'investment_review_page.dart';
 
 enum _AssetSortOption {
   custom('기본순', '사용자 지정 순서'),
@@ -105,17 +109,37 @@ class PortfolioDashboardPage extends StatefulWidget {
 
 class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
   _AssetSortOption _assetSortOption = _AssetSortOption.custom;
+  late Future<InvestmentReviewReport> _todayReviewFuture;
   int _refreshTick = 0;
   bool _isEditMode = false;
   bool _isRefreshing = false;
   bool _hasVisibleAssets = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _todayReviewFuture = _loadTodayReview();
+  }
+
   void _markChanged() {
     if (!mounted) return;
     _invalidateDashboardSharedDataCache();
     setState(() {
+      _todayReviewFuture = _loadTodayReview();
       _refreshTick++;
     });
+  }
+
+  Future<InvestmentReviewReport> _loadTodayReview() {
+    return InvestmentReviewSnapshotBuilder(
+      database: AppDatabase.instance,
+    ).build(InvestmentReviewPeriodType.today);
+  }
+
+  void _openInvestmentReview() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const InvestmentReviewPage()));
   }
 
   @override
@@ -178,7 +202,25 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
             onCreateAsset: _openAssetForm,
           ),
           SizedBox(height: context.spacing.xl),
-          SizedBox(height: context.spacing.sm),
+          FutureBuilder<InvestmentReviewReport>(
+            future: _todayReviewFuture,
+            builder: (context, snapshot) {
+              final report = snapshot.data;
+              if (report == null) {
+                return const SizedBox.shrink();
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  InvestmentReviewHomeCard(
+                    report: report,
+                    onOpen: _openInvestmentReview,
+                  ),
+                  SizedBox(height: context.spacing.xl),
+                ],
+              );
+            },
+          ),
           _AssetSectionBasePlate(
             sortOption: _assetSortOption,
             onSortChanged: (value) => setState(() => _assetSortOption = value),

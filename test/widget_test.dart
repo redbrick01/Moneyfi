@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:moneyfy/components/cards/investment_review_home_card.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
 import 'package:moneyfy/models/asset_item.dart';
 import 'package:moneyfy/pages/forms/cash_transaction_form_page.dart';
@@ -701,4 +702,52 @@ void main() {
       expect(find.text('주간 회고가 준비됐어요.'), findsOneWidget);
     },
   );
+
+  testWidgets('investment review home card shows headline and action', (
+    tester,
+  ) async {
+    final period = InvestmentReviewPeriodResolver.resolve(
+      InvestmentReviewPeriodType.today,
+      now: DateTime(2026, 5, 31),
+    );
+    var tapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: InvestmentReviewHomeCard(
+            report: InvestmentReviewReport(
+              period: period,
+              metrics: const [
+                InvestmentReviewMetric(label: '순 투자성과', value: '+10,000원'),
+              ],
+              signals: const [],
+              narrative: const InvestmentReviewNarrative(
+                headline: '오늘은 성과 개선이 보여요.',
+                summary: '순 투자성과 +10,000원 기준으로 확인했습니다.',
+                nextActions: ['비중을 확인해 보세요.'],
+              ),
+              aiState: const InvestmentReviewAiState.off(),
+              hasEnoughData: true,
+              activity: const InvestmentReviewActivitySummary(
+                buyCount: 0,
+                sellCount: 0,
+                incomeCount: 0,
+                cashFlowCount: 0,
+              ),
+            ),
+            onOpen: () {
+              tapped = true;
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('오늘의 투자 회고'), findsOneWidget);
+    expect(find.text('오늘은 성과 개선이 보여요.'), findsOneWidget);
+    await tester.tap(find.text('자세히 보기'));
+    expect(tapped, isTrue);
+  });
 }
