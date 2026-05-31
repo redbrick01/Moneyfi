@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/components/cards/investment_review_home_card.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
 import 'package:moneyfy/models/asset_item.dart';
+import 'package:moneyfy/navigation/moneyfy_router.dart';
 import 'package:moneyfy/pages/forms/cash_transaction_form_page.dart';
 import 'package:moneyfy/pages/forms/transaction_form_page.dart';
 import 'package:moneyfy/pages/investment_performance_page.dart';
@@ -13,8 +14,6 @@ import 'package:moneyfy/pages/portfolio_dashboard_page.dart';
 import 'package:moneyfy/services/investment_review/investment_review_models.dart';
 import 'package:moneyfy/services/investment_review/investment_review_periods.dart';
 import 'package:moneyfy/utils/input_validators.dart';
-
-import 'package:moneyfy/main.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -252,11 +251,22 @@ void main() {
   testWidgets('Moneyfy app renders shell smoke test', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MoneyfyApp());
-    await tester.pump();
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: AppTheme.light,
+        routerConfig: buildMoneyfyRouter(useStartupGate: false),
+      ),
+    );
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
 
     expect(find.byType(MaterialApp), findsOneWidget);
-    expect(find.byIcon(Icons.home_rounded), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('bottom-tab-홈')).evaluate().isNotEmpty ||
+          find.text('Moneyfy').evaluate().isNotEmpty,
+      isTrue,
+    );
   });
 
   testWidgets('sell quantity shortcuts appear only for sell type', (

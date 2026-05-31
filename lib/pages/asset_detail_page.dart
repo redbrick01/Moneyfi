@@ -6,21 +6,24 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import '../components/buttons/app_buttons.dart';
 import '../components/chips/delta_chip.dart';
 import '../components/chips/moneyfy_pill.dart';
+import '../components/panels/app_detail_section.dart';
+import '../components/panels/app_floating_menu_surface.dart';
+import '../components/panels/app_inner_panel.dart';
 import '../components/rows/asset_row.dart';
 import '../components/separators/app_divider.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../db/app_database.dart';
 import '../models/asset_item.dart';
+import '../navigation/moneyfy_navigation.dart';
+import '../navigation/moneyfy_routes.dart';
 import '../services/market_data_service.dart';
 import '../services/sync_service.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
-import 'cash_account_detail_page.dart';
 import 'forms/asset_form_page.dart';
 import 'forms/cash_account_form_page.dart';
 import 'forms/holding_form_page.dart';
-import 'holding_detail_page.dart';
 
 enum _HoldingSortOption {
   custom('기본순'),
@@ -36,6 +39,8 @@ enum _HoldingSortOption {
 
 Color _iconTone(BuildContext context) =>
     Theme.of(context).colorScheme.onSurfaceVariant;
+
+const double _kComparisonValueEpsilon = 1.0;
 
 class AssetDetailPage extends StatefulWidget {
   const AssetDetailPage({super.key, required this.assetId, this.assetClientId});
@@ -151,13 +156,20 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     final currentAssetId =
         assetId ?? (await _resolveCurrentAssetId(null)) ?? widget.assetId;
     if (!mounted) return;
-    final changed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => isCashAccount
-            ? CashAccountFormPage(assetId: currentAssetId, item: item)
-            : HoldingFormPage(assetId: currentAssetId, item: item),
-      ),
-    );
+    final bool? changed;
+    if (item == null) {
+      changed = isCashAccount
+          ? await context.openCashAccountCreate(assetId: currentAssetId)
+          : await context.openHoldingCreate(assetId: currentAssetId);
+    } else {
+      changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => isCashAccount
+              ? CashAccountFormPage(assetId: currentAssetId, item: item)
+              : HoldingFormPage(assetId: currentAssetId, item: item),
+        ),
+      );
+    }
 
     if (changed == true && mounted) {
       _reloadDetail();
@@ -226,7 +238,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     );
     final twoDaysAgoDate = _snapshotDate(now.subtract(const Duration(days: 2)));
 
-    double previousSnapshotValue = totalValuationAmount;
+    double? previousSnapshotValue;
     final comparisonValue = await _resolveAssetComparisonValueFromRawSnapshot(
       snapshotDate: comparisonSnapshotDate,
       asset: item,
@@ -248,10 +260,16 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
       }
     }
 
-    final monthlyProfit = totalValuationAmount - previousSnapshotValue;
-    final monthlyProfitRate = previousSnapshotValue == 0
+    final hasMonthlyComparison = _isUsableComparisonValue(
+      previousSnapshotValue,
+    );
+    final monthlyPreviousValue = previousSnapshotValue ?? 0.0;
+    final monthlyProfit = hasMonthlyComparison
+        ? totalValuationAmount - monthlyPreviousValue
+        : 0.0;
+    final monthlyProfitRate = !hasMonthlyComparison || monthlyPreviousValue == 0
         ? 0.0
-        : (monthlyProfit / previousSnapshotValue) * 100;
+        : (monthlyProfit / monthlyPreviousValue) * 100;
     final previousDaySnapshotValue =
         await _resolveAssetComparisonValueFromRawSnapshot(
           snapshotDate: previousDayDate,
@@ -264,18 +282,24 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     final previousDayComparison = _AssetDailyComparison(
       previousValue: previousDaySnapshotValue ?? twoDaysAgoValue,
     );
+    final hasDailyComparison = _isUsableComparisonValue(
+      previousDayComparison.previousValue,
+    );
     final previousDayValue = previousDayComparison.previousValue ?? 0;
-    final dailyProfit = totalValuationAmount - previousDayValue;
-    final dailyProfitRate = previousDayValue == 0
+    final dailyProfit = hasDailyComparison
+        ? totalValuationAmount - previousDayValue
+        : 0.0;
+    final dailyProfitRate = !hasDailyComparison || previousDayValue == 0
         ? 0.0
         : (dailyProfit / previousDayValue) * 100;
     return _AssetDetailData(
       item: item,
       monthlyProfit: monthlyProfit,
       monthlyProfitRate: monthlyProfitRate,
+      hasMonthlyComparison: hasMonthlyComparison,
       dailyProfit: dailyProfit,
       dailyProfitRate: dailyProfitRate,
-      hasDailyComparison: previousDayComparison.previousValue != null,
+      hasDailyComparison: hasDailyComparison,
     );
   }
 
@@ -310,6 +334,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
   }) async {
     final results = await Future.wait<Object?>([
       AppDatabase.instance.fetchPortfolioSnapshotByDate(snapshotDate),
+      AppDatabase.instance.fetchPortfolioSnapshotItemsByDates([snapshotDate]),
       AppDatabase.instance.fetchPortfolioSnapshotHoldingItemsByDates([
         snapshotDate,
       ]),
@@ -319,9 +344,15 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     ]);
 
     final snapshot = results[0] as DailyPortfolioSnapshot?;
-    final holdingRows = results[1] as List<DailyPortfolioSnapshotHoldingItem>;
-    final cashRows = results[2] as List<SnapshotCashAccountRecord>;
+    final assetRows = results[1] as List<DailyPortfolioSnapshotItem>;
+    final holdingRows = results[2] as List<DailyPortfolioSnapshotHoldingItem>;
+    final cashRows = results[3] as List<SnapshotCashAccountRecord>;
     final snapshotExchangeRate = snapshot?.exchangeRate ?? 1.0;
+    final aggregateValue = _findSnapshotAssetValue(
+      assetRows: assetRows,
+      asset: asset,
+    );
+    if (aggregateValue != null) return aggregateValue;
 
     return _sumRawSnapshotVisibleAssetValues(
       asset: asset,
@@ -329,6 +360,29 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
       cashRows: cashRows,
       snapshotExchangeRate: snapshotExchangeRate,
     );
+  }
+
+  double? _findSnapshotAssetValue({
+    required List<DailyPortfolioSnapshotItem> assetRows,
+    required AssetItem asset,
+  }) {
+    final targetAssetId = asset.id;
+    final targetAssetTitle = _normalizeAssetTitle(asset.displayName);
+
+    for (final row in assetRows) {
+      if (targetAssetId != null && row.assetId == targetAssetId) {
+        return row.totalValuationAmount;
+      }
+    }
+
+    for (final row in assetRows) {
+      final rowTitle = _normalizeAssetTitle(row.assetTitle);
+      if (targetAssetTitle.isNotEmpty && rowTitle == targetAssetTitle) {
+        return row.totalValuationAmount;
+      }
+    }
+
+    return null;
   }
 
   double? _sumRawSnapshotVisibleAssetValues({
@@ -529,13 +583,16 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
               : ((totalProfitAmount / totalPurchaseAmount) * 100);
           final monthlyProfit = data.monthlyProfit;
           final monthlyProfitRate = data.monthlyProfitRate;
+          final hasMonthlyComparison = data.hasMonthlyComparison;
           final dailyProfit = data.dailyProfit;
           final dailyProfitRate = data.dailyProfitRate;
           final hasDailyComparison = data.hasDailyComparison;
           final valuationDisplayValue = _formatSignedCurrency(
             totalProfitAmount,
           );
-          final monthlyDisplayValue = _formatSignedCurrency(monthlyProfit);
+          final monthlyDisplayValue = hasMonthlyComparison
+              ? _formatSignedCurrency(monthlyProfit)
+              : '-';
           final dailyDisplayValue = hasDailyComparison
               ? _formatSignedCurrency(dailyProfit)
               : '-';
@@ -558,7 +615,6 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     MoneyfySurfaceCard(
-                      variant: MoneyfySurfaceCardVariant.raised,
                       padding: EdgeInsets.all(context.cardPadding()),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -679,15 +735,8 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                               duration: context.motion.fast,
                               curve: Curves.easeOutCubic,
                               alignment: Alignment.topCenter,
-                              child: Container(
+                              child: AppInnerPanel(
                                 padding: EdgeInsets.all(context.cardPadding()),
-                                decoration: BoxDecoration(
-                                  color: context.surfaces.surfaceBase,
-                                  borderRadius: BorderRadius.circular(
-                                    VisualSpec.surface.radiusCard,
-                                  ),
-                                  boxShadow: context.shadows.level2,
-                                ),
                                 child: Column(
                                   children: [
                                     _HeroMetricRow(
@@ -703,7 +752,9 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                       percentValue: isCashAssetGroup
                                           ? monthlyProfitRate
                                           : valuationProfitRate,
-                                      showDeltaChip: true,
+                                      showDeltaChip: isCashAssetGroup
+                                          ? hasMonthlyComparison
+                                          : true,
                                     ),
                                     AnimatedSwitcher(
                                       duration: context.motion.fast,
@@ -735,6 +786,8 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                                     rawValue: monthlyProfit,
                                                     percentValue:
                                                         monthlyProfitRate,
+                                                    showDeltaChip:
+                                                        hasMonthlyComparison,
                                                   ),
                                                 if (!isCashAssetGroup)
                                                   SizedBox(
@@ -847,7 +900,15 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                           ],
                         ),
                         child: investmentHoldings.isEmpty
-                            ? _buildEmptyDetailCard(context, '등록된 보유 종목이 없습니다.')
+                            ? _buildEmptyDetailCard(
+                                context,
+                                title: '등록된 보유 종목이 없어요',
+                                description:
+                                    '주식, 펀드, 코인 같은 투자 보유를 추가하면 매수/매도/배당 거래를 기록할 수 있어요.',
+                                actionLabel: '보유 종목 추가',
+                                onAction: () =>
+                                    _openHoldingForm(assetId: item.id),
+                              )
                             : _buildGroupedHoldingCards(
                                 context: context,
                                 visibleHoldings: visibleInvestmentHoldings,
@@ -868,7 +929,17 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                         color: _iconTone(context),
                       ),
                       child: cashLikeHoldings.isEmpty
-                          ? _buildEmptyDetailCard(context, '등록된 현금 계좌가 없습니다.')
+                          ? _buildEmptyDetailCard(
+                              context,
+                              title: '등록된 현금 계좌가 없어요',
+                              description:
+                                  '입금, 출금, 이체, 환전을 기록할 현금 계좌를 추가해 주세요.',
+                              actionLabel: '현금 계좌 추가',
+                              onAction: () => _openHoldingForm(
+                                assetId: item.id,
+                                isCashAccount: true,
+                              ),
+                            )
                           : _buildGroupedCashAccountCards(
                               context: context,
                               visibleHoldings: visibleCashLikeHoldings,
@@ -1217,18 +1288,28 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
         ((totalRows - 1) * _kAssetDividerHeight);
   }
 
-  Widget _buildEmptyDetailCard(BuildContext context, String message) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      width: double.infinity,
-      child: MoneyfySurfaceCard(
-        variant: MoneyfySurfaceCardVariant.base,
-        child: Text(
-          message,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: context.colors.neutralTextMuted,
+  Widget _buildEmptyDetailCard(
+    BuildContext context, {
+    required String title,
+    required String description,
+    required String actionLabel,
+    required VoidCallback onAction,
+  }) {
+    return AppInnerPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: context.typography.cardTitle.copyWith(
+              fontWeight: AppFontWeights.semibold,
+            ),
           ),
-        ),
+          SizedBox(height: context.spacing.xs),
+          Text(description, style: context.typography.meta),
+          SizedBox(height: context.spacing.md),
+          AppPrimaryButton(label: actionLabel, onPressed: onAction),
+        ],
       ),
     );
   }
@@ -1249,6 +1330,12 @@ bool _isCashLikeHolding(HoldingItem holding) {
 
 String _formatSignedCurrency(double amount) {
   return MoneyfyDisplayCurrencySettings.formatSignedAmountFromKrw(amount);
+}
+
+bool _isUsableComparisonValue(double? value) {
+  return value != null &&
+      value.isFinite &&
+      value.abs() >= _kComparisonValueEpsilon;
 }
 
 String _previousMonthComparisonDate(DateTime date) {
@@ -1273,6 +1360,7 @@ class _AssetDetailData {
     required this.item,
     required this.monthlyProfit,
     required this.monthlyProfitRate,
+    required this.hasMonthlyComparison,
     required this.dailyProfit,
     required this.dailyProfitRate,
     required this.hasDailyComparison,
@@ -1281,6 +1369,7 @@ class _AssetDetailData {
   final AssetItem item;
   final double monthlyProfit;
   final double monthlyProfitRate;
+  final bool hasMonthlyComparison;
   final double dailyProfit;
   final double dailyProfitRate;
   final bool hasDailyComparison;
@@ -1316,20 +1405,22 @@ class _HeroMetricRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: context.typography.meta.copyWith(
+              style: context.typography.caption.copyWith(
+                fontSize: context.fontSizes.s16,
                 fontWeight: AppFontWeights.semibold,
-                color: context.colors.neutralText,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
           Text(
             value,
-            style: context.typography.meta.copyWith(
+            style: context.typography.caption.copyWith(
+              fontSize: context.fontSizes.s16,
               color: _valueStringColor(context, value),
               fontWeight: AppFontWeights.semibold,
             ),
           ),
-          SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
+          SizedBox(width: context.spacing.xs),
           if (showDeltaChip)
             DeltaChip(
               value: rawValue,
@@ -1377,62 +1468,12 @@ class _DetailSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dividerColor = Theme.of(
-      context,
-    ).colorScheme.outlineVariant.withValues(alpha: 0.7);
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-        boxShadow: context.shadows.level3,
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(context.cardPadding()),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(title, style: context.typography.sectionTitle),
-                ),
-                if (trailing != null) ...[
-                  if (showHeaderTrailingDivider) ...[
-                    SizedBox(
-                      width: context.spacing.xs + context.spacing.xs / 4,
-                    ),
-                    Container(width: 1, height: 24, color: dividerColor),
-                    SizedBox(
-                      width: context.spacing.xs + context.spacing.xs / 4,
-                    ),
-                  ],
-                  trailing!,
-                ],
-              ],
-            ),
-            SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
-            if (wrapBodyWithInnerCard)
-              SizedBox(
-                width: double.infinity,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: context.surfaces.surfaceBase,
-                    borderRadius: BorderRadius.circular(
-                      VisualSpec.surface.radiusCard,
-                    ),
-                    boxShadow: context.shadows.level2,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(context.cardPadding()),
-                    child: child,
-                  ),
-                ),
-              )
-            else
-              child,
-          ],
-        ),
-      ),
+    return AppDetailSection(
+      title: title,
+      trailing: trailing,
+      wrapBodyWithInnerPanel: wrapBodyWithInnerCard,
+      showHeaderTrailingDivider: showHeaderTrailingDivider,
+      child: child,
     );
   }
 }
@@ -1444,17 +1485,7 @@ class _HoldingSortMenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-        border: Border.all(
-          color: Theme.of(
-            context,
-          ).colorScheme.outlineVariant.withValues(alpha: 0.55),
-        ),
-        boxShadow: context.shadows.level1,
-      ),
+    return AppFloatingMenuSurface(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1557,12 +1588,10 @@ class _HoldingRow extends StatelessWidget {
       showChevron: false,
       onTap: () async {
         if (holding.id == null) return;
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => HoldingDetailPage(
-              holdingId: holding.id!,
-              holdingClientId: holding.clientId,
-            ),
+        await context.openHoldingDetail(
+          HoldingDetailRouteArgs(
+            holdingId: holding.id!,
+            holdingClientId: holding.clientId,
           ),
         );
         onChanged();
@@ -1694,12 +1723,10 @@ class _CashAccountCard extends StatelessWidget {
       showChevron: false,
       onTap: () async {
         if (holding.id == null) return;
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => CashAccountDetailPage(
-              holdingId: holding.id!,
-              holdingClientId: holding.clientId,
-            ),
+        await context.openCashAccountDetail(
+          CashAccountDetailRouteArgs(
+            holdingId: holding.id!,
+            holdingClientId: holding.clientId,
           ),
         );
         onChanged();

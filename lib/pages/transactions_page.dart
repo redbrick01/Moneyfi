@@ -3,6 +3,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../components/chips/moneyfy_pill.dart';
 import '../components/icons/app_icon.dart';
+import '../components/panels/app_sheet_surface.dart';
 import '../components/rows/transaction_row.dart';
 import '../components/section_card.dart';
 import '../components/separators/app_divider.dart';
@@ -14,6 +15,7 @@ import '../db/app_database.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../models/asset_item.dart';
+import '../navigation/moneyfy_navigation.dart';
 import '../services/sync_service.dart';
 import '../ui_scaffold/app_page_scaffold.dart';
 import '../utils/display_currency.dart';
@@ -176,6 +178,15 @@ class _TransactionsPageState extends State<TransactionsPage> {
     await _openTransactionForm(account);
   }
 
+  Future<void> _openAssetFormForEmptyState() async {
+    final changed = await context.openAssetCreate();
+    if (changed == true && mounted) {
+      setState(() {
+        _pageFuture = _loadPageData();
+      });
+    }
+  }
+
   void _resetQuery() {
     if (_searchController.text.isNotEmpty) {
       _searchController.clear();
@@ -237,25 +248,42 @@ class _TransactionsPageState extends State<TransactionsPage> {
       }
     }
 
-    final changed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => account.isCash
-            ? CashTransactionFormPage(
-                assetId: account.assetId,
-                holdingId: account.holdingId,
-                holdingClientId: account.holdingClientId,
-                item: item,
-                defaultName: account.title,
-              )
-            : TransactionFormPage(
-                assetId: account.assetId,
-                holdingId: account.holdingId,
-                holdingClientId: account.holdingClientId,
-                item: item,
-                defaultName: account.title,
-              ),
-      ),
-    );
+    final bool? changed;
+    if (item == null) {
+      changed = account.isCash
+          ? await context.openCashTransactionCreate(
+              assetId: account.assetId,
+              holdingId: account.holdingId,
+              holdingClientId: account.holdingClientId,
+              defaultName: account.title,
+            )
+          : await context.openTransactionCreate(
+              assetId: account.assetId,
+              holdingId: account.holdingId,
+              holdingClientId: account.holdingClientId,
+              defaultName: account.title,
+            );
+    } else {
+      changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => account.isCash
+              ? CashTransactionFormPage(
+                  assetId: account.assetId,
+                  holdingId: account.holdingId,
+                  holdingClientId: account.holdingClientId,
+                  item: item,
+                  defaultName: account.title,
+                )
+              : TransactionFormPage(
+                  assetId: account.assetId,
+                  holdingId: account.holdingId,
+                  holdingClientId: account.holdingClientId,
+                  item: item,
+                  defaultName: account.title,
+                ),
+        ),
+      );
+    }
 
     if (changed == true && mounted) {
       setState(() {
@@ -386,14 +414,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
 
     if (data.entries.isEmpty) {
+      final hasAccounts = data.accounts.isNotEmpty;
       return EmptyStateCard(
-        title: '아직 거래 내역이 없어요',
-        description: data.accounts.isEmpty
-            ? '자산이나 현금 계좌를 먼저 추가해 주세요.'
-            : '첫 거래를 등록하고 자산 흐름을 기록하세요.',
+        title: hasAccounts ? '아직 거래 내역이 없어요' : '거래를 기록할 계좌가 없어요',
+        description: hasAccounts
+            ? '첫 거래를 등록하고 자산 흐름을 기록하세요.'
+            : '먼저 자산군을 만들고 자산 상세에서 보유 종목이나 현금 계좌를 추가해 주세요.',
         icon: AppIconName.wallet,
-        actionLabel: data.accounts.isEmpty ? null : '거래 추가',
-        onAction: data.accounts.isEmpty ? null : () => _openCreateFlow(data),
+        actionLabel: hasAccounts ? '거래 추가' : '자산 추가',
+        onAction: hasAccounts
+            ? () => _openCreateFlow(data)
+            : _openAssetFormForEmptyState,
         variant: EmptyStateVariant.embedded,
       );
     }
@@ -831,148 +862,123 @@ class _TransactionFilterSheetState extends State<_TransactionFilterSheet> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
-    return FractionallySizedBox(
+    return AppSheetSurface(
       heightFactor: 0.82,
-      alignment: Alignment.bottomCenter,
-      child: SafeArea(
-        top: false,
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(context.radius.rLg),
+      child: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              context.spacing.md,
+              context.spacing.sm,
+              context.spacing.md,
+              context.spacing.sm,
+            ),
+            child: Column(
+              children: [
+                const AppSheetHandle(),
+                SizedBox(height: context.spacing.md),
+                Row(
+                  children: [
+                    Text('상세 필터', style: context.typography.sectionTitle),
+                    const Spacer(),
+                    TextButton(onPressed: _reset, child: const Text('초기화')),
+                  ],
+                ),
+              ],
             ),
           ),
-          child: Column(
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  context.spacing.md,
-                  context.spacing.sm,
-                  context.spacing.md,
-                  context.spacing.sm,
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: context.spacing.xl + context.spacing.xs,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: colorScheme.outlineVariant,
-                        borderRadius: BorderRadius.circular(
-                          context.radius.rPill,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: context.spacing.md),
-                    Row(
-                      children: [
-                        Text('상세 필터', style: context.typography.sectionTitle),
-                        const Spacer(),
-                        TextButton(onPressed: _reset, child: const Text('초기화')),
-                      ],
-                    ),
-                  ],
-                ),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.md,
+                0,
+                context.spacing.md,
+                context.spacing.md,
               ),
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.fromLTRB(
-                    context.spacing.md,
-                    0,
-                    context.spacing.md,
-                    context.spacing.md,
-                  ),
-                  children: [
-                    _FilterSheetSection(
-                      title: '기간',
-                      child: _FilterOptionWrap<_TransactionPeriodFilter>(
-                        values: _TransactionPeriodFilter.values,
-                        selected: _period,
-                        labelBuilder: (period) => period.label,
-                        onChanged: (period) {
-                          setState(() {
-                            _period = period;
-                          });
-                        },
-                      ),
-                    ),
-                    _FilterSheetSection(
-                      title: '거래 유형',
-                      child: _FilterOptionWrap<_TransactionCategoryFilter>(
-                        values: _TransactionCategoryFilter.values,
-                        selected: _category,
-                        labelBuilder: (category) => category.label,
-                        onChanged: (category) {
-                          setState(() {
-                            _category = category;
-                          });
-                        },
-                      ),
-                    ),
-                    _FilterSheetSection(
-                      title: '계좌',
-                      child: _DisabledFilterNotice(
-                        text: '계좌별 필터는 다음 단계에서 추가합니다.',
-                      ),
-                    ),
-                    _FilterSheetSection(
-                      title: '자산',
-                      child: _DisabledFilterNotice(
-                        text: '자산별 필터는 다음 단계에서 추가합니다.',
-                      ),
-                    ),
-                    _FilterSheetSection(
-                      title: '정렬',
-                      child: _FilterOptionWrap<_TransactionSortMode>(
-                        values: _TransactionSortMode.values,
-                        selected: _sortMode,
-                        labelBuilder: (mode) => mode.label,
-                        onChanged: (mode) {
-                          setState(() {
-                            _sortMode = mode;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.fromLTRB(
-                  context.spacing.md,
-                  context.spacing.sm,
-                  context.spacing.md,
-                  context.spacing.md + bottomInset,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  border: Border(
-                    top: BorderSide(color: colorScheme.outlineVariant),
+              children: [
+                _FilterSheetSection(
+                  title: '기간',
+                  child: _FilterOptionWrap<_TransactionPeriodFilter>(
+                    values: _TransactionPeriodFilter.values,
+                    selected: _period,
+                    labelBuilder: (period) => period.label,
+                    onChanged: (period) {
+                      setState(() {
+                        _period = period;
+                      });
+                    },
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _reset,
-                        child: const Text('초기화'),
-                      ),
-                    ),
-                    SizedBox(width: context.spacing.sm),
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton(
-                        onPressed: _apply,
-                        child: const Text('결과 보기'),
-                      ),
-                    ),
-                  ],
+                _FilterSheetSection(
+                  title: '거래 유형',
+                  child: _FilterOptionWrap<_TransactionCategoryFilter>(
+                    values: _TransactionCategoryFilter.values,
+                    selected: _category,
+                    labelBuilder: (category) => category.label,
+                    onChanged: (category) {
+                      setState(() {
+                        _category = category;
+                      });
+                    },
+                  ),
                 ),
-              ),
-            ],
+                _FilterSheetSection(
+                  title: '계좌',
+                  child: _DisabledFilterNotice(text: '계좌별 필터는 다음 단계에서 추가합니다.'),
+                ),
+                _FilterSheetSection(
+                  title: '자산',
+                  child: _DisabledFilterNotice(text: '자산별 필터는 다음 단계에서 추가합니다.'),
+                ),
+                _FilterSheetSection(
+                  title: '정렬',
+                  child: _FilterOptionWrap<_TransactionSortMode>(
+                    values: _TransactionSortMode.values,
+                    selected: _sortMode,
+                    labelBuilder: (mode) => mode.label,
+                    onChanged: (mode) {
+                      setState(() {
+                        _sortMode = mode;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          Container(
+            padding: EdgeInsets.fromLTRB(
+              context.spacing.md,
+              context.spacing.sm,
+              context.spacing.md,
+              context.spacing.md + bottomInset,
+            ),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              border: Border(
+                top: BorderSide(color: colorScheme.outlineVariant),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _reset,
+                    child: const Text('초기화'),
+                  ),
+                ),
+                SizedBox(width: context.spacing.sm),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    onPressed: _apply,
+                    child: const Text('결과 보기'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1170,7 +1176,7 @@ enum _TransactionCreateKind {
   ),
   cash(
     '현금 계좌 거래',
-    '입금, 출금, 이체, 환전을 기록합니다.',
+    '현금 계좌의 입금, 출금, 이체, 환전을 기록합니다.',
     Icons.account_balance_wallet_rounded,
   );
 
@@ -1179,6 +1185,11 @@ enum _TransactionCreateKind {
   final String title;
   final String subtitle;
   final IconData icon;
+
+  String get disabledSubtitle => switch (this) {
+    _TransactionCreateKind.investment => '보유 종목을 먼저 추가해 주세요.',
+    _TransactionCreateKind.cash => '현금 계좌를 먼저 추가해 주세요.',
+  };
 }
 
 class _TransactionKindPickerSheet extends StatelessWidget {
@@ -1193,79 +1204,56 @@ class _TransactionKindPickerSheet extends StatelessWidget {
     final hasInvestmentAccount = accounts.any((account) => !account.isCash);
     final hasCashAccount = accounts.any((account) => account.isCash);
 
-    return FractionallySizedBox(
+    return AppSheetSurface(
       heightFactor: 0.42,
-      alignment: Alignment.bottomCenter,
-      child: SafeArea(
-        top: false,
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(context.radius.rLg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              context.spacing.md,
+              context.spacing.sm,
+              context.spacing.md,
+              context.spacing.sm,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Center(child: AppSheetHandle()),
+                SizedBox(height: context.spacing.md),
+                Text('거래 유형 선택', style: context.typography.sectionTitle),
+                SizedBox(height: context.spacing.xs / 2),
+                Text(
+                  '투자 거래는 보유 종목, 현금 거래는 현금 계좌가 필요해요.',
+                  style: context.typography.meta.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  context.spacing.md,
-                  context.spacing.sm,
-                  context.spacing.md,
-                  context.spacing.sm,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: context.spacing.xl + context.spacing.xs,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: colorScheme.outlineVariant,
-                          borderRadius: BorderRadius.circular(
-                            context.radius.rPill,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: context.spacing.md),
-                    Text('거래 유형 선택', style: context.typography.sectionTitle),
-                    SizedBox(height: context.spacing.xs / 2),
-                    Text(
-                      '세부 계좌와 보유 종목은 다음 화면에서 선택할 수 있어요.',
-                      style: context.typography.meta.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.md,
+                context.spacing.xs / 2,
+                context.spacing.md,
+                context.spacing.md + bottomInset,
               ),
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.fromLTRB(
-                    context.spacing.md,
-                    context.spacing.xs / 2,
-                    context.spacing.md,
-                    context.spacing.md + bottomInset,
-                  ),
-                  children: [
-                    _TransactionKindTile(
-                      kind: _TransactionCreateKind.investment,
-                      enabled: hasInvestmentAccount,
-                    ),
-                    SizedBox(height: context.spacing.sm),
-                    _TransactionKindTile(
-                      kind: _TransactionCreateKind.cash,
-                      enabled: hasCashAccount,
-                    ),
-                  ],
+              children: [
+                _TransactionKindTile(
+                  kind: _TransactionCreateKind.investment,
+                  enabled: hasInvestmentAccount,
                 ),
-              ),
-            ],
+                SizedBox(height: context.spacing.sm),
+                _TransactionKindTile(
+                  kind: _TransactionCreateKind.cash,
+                  enabled: hasCashAccount,
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1322,7 +1310,7 @@ class _TransactionKindTile extends StatelessWidget {
                   ),
                   SizedBox(height: context.spacing.xs / 2),
                   Text(
-                    enabled ? kind.subtitle : '등록 가능한 항목이 없습니다.',
+                    enabled ? kind.subtitle : kind.disabledSubtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: context.typography.meta.copyWith(

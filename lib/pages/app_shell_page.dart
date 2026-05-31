@@ -1,13 +1,18 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../db/app_database.dart';
+import '../navigation/moneyfy_navigation.dart';
+import '../navigation/moneyfy_routes.dart';
 import '../services/app_data_lifecycle_service.dart';
 import '../services/auth_service.dart';
 import '../services/market_data_service.dart';
 import '../services/sync_service.dart';
+import '../ui_scaffold/app_insets.dart';
 import '../utils/display_currency.dart';
 import 'analysis_page.dart';
 import 'my_page.dart';
@@ -17,7 +22,12 @@ import 'statistics_page.dart';
 import 'transactions_page.dart';
 
 class AppShellPage extends StatefulWidget {
-  const AppShellPage({super.key});
+  const AppShellPage({
+    super.key,
+    this.initialLocation = MoneyfyRoutePaths.home,
+  });
+
+  final String initialLocation;
 
   @override
   State<AppShellPage> createState() => _AppShellPageState();
@@ -29,31 +39,36 @@ class _AppShellPageState extends State<AppShellPage>
   static const _destinations = <_NavItem>[
     _NavItem(
       label: '홈',
+      routeName: MoneyfyRouteNames.home,
+      routePath: MoneyfyRoutePaths.home,
       icon: Icons.home_outlined,
       selectedIcon: Icons.home_rounded,
     ),
     _NavItem(
       label: '포트폴',
+      routeName: MoneyfyRouteNames.portfolio,
+      routePath: MoneyfyRoutePaths.portfolio,
       icon: Icons.pie_chart_outline_rounded,
       selectedIcon: Icons.pie_chart_rounded,
     ),
     _NavItem(
       label: '거래',
+      routeName: MoneyfyRouteNames.transactions,
+      routePath: MoneyfyRoutePaths.transactions,
       icon: Icons.receipt_long_outlined,
       selectedIcon: Icons.receipt_long_rounded,
     ),
     _NavItem(
       label: '분석',
+      routeName: MoneyfyRouteNames.analysis,
+      routePath: MoneyfyRoutePaths.analysis,
       icon: Icons.bar_chart_outlined,
       selectedIcon: Icons.bar_chart_rounded,
     ),
     _NavItem(
-      label: '통계',
-      icon: Icons.insert_chart_outlined_rounded,
-      selectedIcon: Icons.insert_chart_rounded,
-    ),
-    _NavItem(
       label: 'My',
+      routeName: MoneyfyRouteNames.my,
+      routePath: MoneyfyRoutePaths.my,
       icon: Icons.person_outline_rounded,
       selectedIcon: Icons.person_rounded,
     ),
@@ -67,7 +82,6 @@ class _AppShellPageState extends State<AppShellPage>
   int _dataRefreshTick = 0;
   int _dataScopeVersion = 0;
   int _analysisReselectionTick = 0;
-  int _portfolioDiagnosisFocusTick = 0;
   bool _isClearingSignedOutData = false;
   bool _isReplacingAccountData = false;
   String? _accountDataReplacementMessage;
@@ -77,6 +91,7 @@ class _AppShellPageState extends State<AppShellPage>
   @override
   void initState() {
     super.initState();
+    selectedIndex = _tabIndexForLocation(widget.initialLocation);
     WidgetsBinding.instance.addObserver(this);
     _pageScrollControllers = List.generate(
       _destinations.length,
@@ -102,6 +117,20 @@ class _AppShellPageState extends State<AppShellPage>
     _pollingTimer = Timer.periodic(_pollingInterval, (_) {
       _runPollingCycle();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant AppShellPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialLocation == widget.initialLocation) {
+      return;
+    }
+    final nextIndex = _tabIndexForLocation(widget.initialLocation);
+    if (nextIndex != selectedIndex) {
+      setState(() {
+        selectedIndex = nextIndex;
+      });
+    }
   }
 
   @override
@@ -141,6 +170,13 @@ class _AppShellPageState extends State<AppShellPage>
   }
 
   void _handleTabSelected(int index) {
+    final destination = _destinations[index];
+    if (selectedIndex == index &&
+        _normalizedLocation != destination.routePath) {
+      context.go(destination.routePath);
+      return;
+    }
+
     if (selectedIndex == index) {
       final controller = _pageScrollControllers[index];
       if (controller.hasClients) {
@@ -158,16 +194,30 @@ class _AppShellPageState extends State<AppShellPage>
       return;
     }
 
-    setState(() {
-      selectedIndex = index;
-    });
+    context.go(destination.routePath);
+  }
+
+  int _tabIndexForLocation(String location) {
+    final path = _normalizeLocation(location);
+    if (path == MoneyfyRoutePaths.statistics) {
+      return _analysisTabIndex;
+    }
+    final index = _destinations.indexWhere((item) => item.routePath == path);
+    return index < 0 ? 0 : index;
+  }
+
+  String get _normalizedLocation => _normalizeLocation(widget.initialLocation);
+
+  bool get _showsStatisticsRoute {
+    return _normalizedLocation == MoneyfyRoutePaths.statistics;
+  }
+
+  String _normalizeLocation(String location) {
+    return Uri.tryParse(location)?.path ?? location;
   }
 
   void _openPortfolioDiagnosisFromHome() {
-    setState(() {
-      selectedIndex = 1;
-      _portfolioDiagnosisFocusTick++;
-    });
+    unawaited(context.openPortfolioDiagnosis());
   }
 
   Future<void> _runPollingCycle() async {
@@ -264,7 +314,6 @@ class _AppShellPageState extends State<AppShellPage>
                   title: '포트폴리오',
                   child: PortfolioPage(
                     scrollController: _pageScrollControllers[1],
-                    diagnosisFocusTick: _portfolioDiagnosisFocusTick,
                     dataRefreshTick: _dataRefreshTick,
                   ),
                 ),
@@ -280,29 +329,27 @@ class _AppShellPageState extends State<AppShellPage>
                 _DataScopedTabPage(
                   scopeVersion: _dataScopeVersion,
                   replacementMessage: _dataReplacementMessage,
-                  title: '분석',
-                  child: AnalysisPage(
-                    scrollController: _pageScrollControllers[3],
-                    reselectionTick: _analysisReselectionTick,
-                    dataRefreshTick: _dataRefreshTick,
-                  ),
+                  title: _showsStatisticsRoute ? '통계' : '분석',
+                  child: _showsStatisticsRoute
+                      ? StatisticsPage(
+                          scrollController:
+                              _pageScrollControllers[_analysisTabIndex],
+                          dataRefreshTick: _dataRefreshTick,
+                        )
+                      : AnalysisPage(
+                          scrollController:
+                              _pageScrollControllers[_analysisTabIndex],
+                          reselectionTick: _analysisReselectionTick,
+                          dataRefreshTick: _dataRefreshTick,
+                        ),
                 ),
-                _DataScopedTabPage(
-                  scopeVersion: _dataScopeVersion,
-                  replacementMessage: _dataReplacementMessage,
-                  title: '통계',
-                  child: StatisticsPage(
-                    scrollController: _pageScrollControllers[4],
-                    dataRefreshTick: _dataRefreshTick,
-                  ),
-                ),
-                MyPage(scrollController: _pageScrollControllers[5]),
+                MyPage(scrollController: _pageScrollControllers[4]),
               ],
             ),
           ),
           Positioned(
-            left: 14,
-            right: 14,
+            left: context.spacing.sm,
+            right: context.spacing.sm,
             bottom: bottomInset > 0 ? bottomInset : 14,
             child: _FloatingTabBar(
               items: _destinations,
@@ -325,6 +372,8 @@ class _AppShellPageState extends State<AppShellPage>
     return null;
   }
 }
+
+const _analysisTabIndex = 3;
 
 class _DataScopedTabPage extends StatelessWidget {
   const _DataScopedTabPage({
@@ -431,11 +480,15 @@ class _AccountDataReplacementPage extends StatelessWidget {
 class _NavItem {
   const _NavItem({
     required this.label,
+    required this.routeName,
+    required this.routePath,
     required this.icon,
     required this.selectedIcon,
   });
 
   final String label;
+  final String routeName;
+  final String routePath;
   final IconData icon;
   final IconData selectedIcon;
 }
@@ -454,6 +507,13 @@ class _FloatingTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final itemCount = items.length;
+    final safeSelectedIndex = itemCount == 0
+        ? 0
+        : selectedIndex.clamp(0, itemCount - 1).toInt();
+    final horizontalPadding = context.spacing.xs - context.spacing.xs / 4;
+    final verticalPadding = context.spacing.xs;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -464,27 +524,68 @@ class _FloatingTabBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(context.radius.rPill),
             side: BorderSide(color: colors.neutralOutline),
           ),
-          child: Stack(
-            children: [
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacing.xs - context.spacing.xs / 4,
-                  vertical: context.spacing.xs - 1,
-                ),
-                child: Row(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final availableWidth = constraints.maxWidth.isFinite
+                  ? constraints.maxWidth
+                  : MediaQuery.sizeOf(context).width;
+              final trackWidth = math.max(
+                0.0,
+                availableWidth - horizontalPadding * 2,
+              );
+              final indicatorWidth = itemCount == 0
+                  ? 0.0
+                  : trackWidth / itemCount;
+              final indicatorLeft =
+                  horizontalPadding + indicatorWidth * safeSelectedIndex;
+
+              return SizedBox(
+                height: AppInsets.floatingNavHeight,
+                child: Stack(
                   children: [
-                    for (var i = 0; i < items.length; i++)
-                      Expanded(
-                        child: _FloatingTabBarItem(
-                          item: items[i],
-                          isSelected: selectedIndex == i,
-                          onTap: () => onSelected(i),
+                    Positioned(
+                      left: indicatorLeft,
+                      top: verticalPadding,
+                      bottom: verticalPadding,
+                      width: indicatorWidth,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.spacing.xs / 4,
+                        ),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              context.radius.rPill,
+                            ),
+                            color: colors.primary,
+                          ),
                         ),
                       ),
+                    ),
+                    Positioned.fill(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                          vertical: verticalPadding,
+                        ),
+                        child: Row(
+                          children: [
+                            for (var i = 0; i < items.length; i++)
+                              Expanded(
+                                child: _FloatingTabBarItem(
+                                  item: items[i],
+                                  isSelected: safeSelectedIndex == i,
+                                  onTap: () => onSelected(i),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ],
@@ -505,11 +606,14 @@ class _FloatingTabBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    assert(item.routeName.isNotEmpty && item.routePath.isNotEmpty);
     final colorScheme = Theme.of(context).colorScheme;
-    final colors = context.colors;
+    final foregroundColor = isSelected
+        ? colorScheme.onPrimary
+        : colorScheme.onSurfaceVariant;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.spacing.xs / 8),
+      padding: EdgeInsets.symmetric(horizontal: context.spacing.xs / 4),
       child: Semantics(
         label: item.label,
         button: true,
@@ -518,32 +622,13 @@ class _FloatingTabBarItem extends StatelessWidget {
           key: ValueKey('bottom-tab-${item.label}'),
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: context.spacing.xs - 3,
-              vertical: context.spacing.xs,
-            ),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(context.radius.rPill),
-              color: isSelected
-                  ? colors.primary
-                  : colorScheme.surface.withValues(alpha: 0),
-            ),
-            child: Container(
-              width: 34,
-              height: 26,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? colors.primary
-                    : colorScheme.surface.withValues(alpha: 0),
-                borderRadius: BorderRadius.circular(context.radius.rMd),
-              ),
+          child: SizedBox(
+            height: VisualSpec.icon.minTapTarget,
+            child: Center(
               child: Icon(
                 isSelected ? item.selectedIcon : item.icon,
-                size: VisualSpec.icon.sizeSmall,
-                color: isSelected
-                    ? colorScheme.onPrimary
-                    : colorScheme.onSurfaceVariant,
+                size: VisualSpec.icon.sizeDefault,
+                color: foregroundColor,
               ),
             ),
           ),

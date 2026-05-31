@@ -15,13 +15,12 @@ import '../components/separators/app_divider.dart';
 import '../design_system/spec.dart';
 import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
+import '../navigation/moneyfy_navigation.dart';
 import '../services/auth_service.dart';
 import '../services/market_data_service.dart';
 import '../services/sync_service.dart';
 import '../ui_scaffold/app_page_scaffold.dart';
 import '../utils/input_validators.dart';
-import 'login_page.dart';
-import 'signup_page.dart';
 
 enum _SyncBannerState { idle, running, success, failed }
 
@@ -118,7 +117,6 @@ class _LoggedOutView extends StatelessWidget {
               ),
               padding: EdgeInsets.all(context.cardPadding()),
               child: SectionCard(
-                variant: SectionCardVariant.raised,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: 188),
                   child: Center(
@@ -150,25 +148,13 @@ class _LoggedOutView extends StatelessWidget {
                         AppPrimaryButton(
                           label: '로그인',
                           expand: true,
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const LoginPage(),
-                              ),
-                            );
-                          },
+                          onPressed: context.openLogin,
                         ),
                         SizedBox(height: context.spacing.xs),
                         AppGhostButton(
                           label: '회원가입',
                           expand: true,
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const SignupPage(),
-                              ),
-                            );
-                          },
+                          onPressed: context.openSignup,
                         ),
                       ],
                     ),
@@ -743,7 +729,7 @@ class _LoggedInViewState extends State<_LoggedInView> {
       if (!mounted) return;
       AppSnackBar.showSuccess(
         context,
-        '내부 DB 요약을 클립보드에 복사했어요.',
+        'GPT용 DB 요약을 클립보드에 복사했어요.',
         hasFloatingNavInset: true,
       );
     } catch (error) {
@@ -880,10 +866,10 @@ class _LoggedInViewState extends State<_LoggedInView> {
               AppDivider(),
               SettingsActionRow(
                 icon: VisualSpec.icon.insights,
-                title: '내부 DB 요약 복사 (GPT)',
+                title: 'GPT용 DB 요약 복사',
                 subtitle: _isCopyingDbSummary
                     ? '클립보드 복사 준비 중'
-                    : '현재 DB 값을 정리해 클립보드에 복사해요',
+                    : '포트폴리오 분석에 쓸 요약 데이터를 클립보드에 복사해요',
                 enabled: !_isCopyingDbSummary,
                 onTap: _copyInternalDbSummaryForGpt,
                 trailing: _isCopyingDbSummary

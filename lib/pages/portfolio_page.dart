@@ -1,16 +1,19 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 import '../components/buttons/app_buttons.dart';
 import '../components/chips/moneyfy_pill.dart';
 import '../components/feedback/app_snackbar.dart';
 import '../components/icons/app_icon.dart';
+import '../components/panels/app_inner_panel.dart';
 import '../components/rows/allocation_legend_row.dart';
 import '../components/rows/rebalance_row.dart';
 import '../components/separators/app_divider.dart';
 import '../components/section_card.dart';
-import '../components/states/empty_state.dart';
 import '../components/states/inline_error.dart';
 import '../components/states/retry_row.dart';
 import '../components/states/skeletons.dart';
@@ -18,6 +21,8 @@ import '../design_system/spec.dart';
 import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
 import '../models/asset_item.dart';
+import '../navigation/moneyfy_navigation.dart';
+import '../navigation/moneyfy_routes.dart';
 import '../services/market_data_service.dart';
 import '../services/portfolio_diagnosis_service.dart';
 import '../theme/moneyfy_theme.dart';
@@ -30,12 +35,10 @@ class PortfolioPage extends StatefulWidget {
   const PortfolioPage({
     super.key,
     this.scrollController,
-    this.diagnosisFocusTick = 0,
     this.dataRefreshTick = 0,
   });
 
   final ScrollController? scrollController;
-  final int diagnosisFocusTick;
   final int dataRefreshTick;
 
   @override
@@ -44,16 +47,13 @@ class PortfolioPage extends StatefulWidget {
 
 class _PortfolioPageState extends State<PortfolioPage> {
   final Map<int, TextEditingController> _targetControllers = {};
-  final GlobalKey _diagnosisCardKey = GlobalKey();
   late Future<_PortfolioPageData> _pageFuture;
   String? _selectedAssetLabel;
   bool _isGeneratingDiagnosis = false;
-  late int _handledDiagnosisFocusTick;
 
   @override
   void initState() {
     super.initState();
-    _handledDiagnosisFocusTick = widget.diagnosisFocusTick;
     _pageFuture = _loadPortfolioPageData();
   }
 
@@ -64,10 +64,6 @@ class _PortfolioPageState extends State<PortfolioPage> {
       setState(() {
         _pageFuture = _loadPortfolioPageData();
       });
-    }
-    if (widget.diagnosisFocusTick != _handledDiagnosisFocusTick) {
-      _handledDiagnosisFocusTick = widget.diagnosisFocusTick;
-      _scrollToDiagnosisCard();
     }
   }
 
@@ -80,9 +76,14 @@ class _PortfolioPageState extends State<PortfolioPage> {
   }
 
   Future<void> _openAssetForm([AssetItem? item]) async {
-    final changed = await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => AssetFormPage(item: item)));
+    final bool? changed;
+    if (item == null) {
+      changed = await context.openAssetCreate();
+    } else {
+      changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => AssetFormPage(item: item)),
+      );
+    }
 
     if (changed == true && mounted) {
       setState(() {
@@ -91,25 +92,24 @@ class _PortfolioPageState extends State<PortfolioPage> {
     }
   }
 
+  Future<void> _openAssetDetail(int assetId) async {
+    await context.openAssetDetail(AssetDetailRouteArgs(assetId: assetId));
+    if (!mounted) return;
+    setState(() {
+      _pageFuture = _loadPortfolioPageData();
+    });
+  }
+
+  void _openPortfolioDiagnosisDetail() {
+    unawaited(context.openPortfolioDiagnosis());
+  }
+
   @override
   void dispose() {
     for (final controller in _targetControllers.values) {
       controller.dispose();
     }
     super.dispose();
-  }
-
-  void _scrollToDiagnosisCard() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _diagnosisCardKey.currentContext;
-      if (context == null) return;
-      Scrollable.ensureVisible(
-        context,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-        alignment: 0.08,
-      );
-    });
   }
 
   @override
@@ -186,52 +186,47 @@ class _PortfolioPageState extends State<PortfolioPage> {
           scrollController: widget.scrollController,
           body: items.isEmpty
               ? _PortfolioSectionBasePlate(
-                  child: EmptyStateCard(
-                    title: '자산을 추가하면 비중을 볼 수 있어요',
-                    description: 'Home에서 자산을 등록한 뒤 포트폴리오 비중과 리밸런싱을 확인하세요.',
-                    icon: AppIconName.pieChart,
-                    actionLabel: '자산 추가',
-                    onAction: () => _openAssetForm(),
-                    variant: EmptyStateVariant.embedded,
+                  child: AppInnerPanel(
+                    child: _PortfolioEmptyContent(
+                      title: '자산을 추가하면 비중을 볼 수 있어요',
+                      description:
+                          '자산군을 만든 뒤 보유 종목이나 현금 계좌를 추가하면 비중과 리밸런싱을 확인할 수 있어요.',
+                      icon: AppIconName.pieChart,
+                      actionLabel: '자산 추가',
+                      onAction: () => _openAssetForm(),
+                    ),
                   ),
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _PortfolioSectionBasePlate(
-                      child: _AllocationSectionCard(
-                        items: items,
-                        selectedAssetLabel: _selectedAssetLabel,
-                        onSelectAsset: (label) {
-                          setState(() {
-                            _selectedAssetLabel = _selectedAssetLabel == label
-                                ? null
-                                : label;
-                          });
-                        },
-                      ),
-                    ),
-                    SizedBox(height: context.spacing.sectionGap),
-                    _PortfolioSectionBasePlate(
-                      child: _RebalancingSectionCard(
-                        entries: rebalanceEntries,
-                        onOpenTargetSheet: () =>
-                            _openTargetAllocationSheet(items),
-                      ),
-                    ),
-                    SizedBox(height: context.spacing.sectionGap),
-                    _PortfolioSectionBasePlate(
-                      child: KeyedSubtree(
-                        key: _diagnosisCardKey,
-                        child: _PortfolioDiagnosisSectionCard(
-                          diagnosis: data.diagnosis,
-                          isGenerating: _isGeneratingDiagnosis,
-                          generatedAt: data.diagnosisCachedAt,
-                          onGenerate: data.diagnosisPayload == null
+                    _AllocationSectionCard(
+                      items: items,
+                      selectedAssetLabel: _selectedAssetLabel,
+                      onSelectAsset: (label) {
+                        setState(() {
+                          _selectedAssetLabel = _selectedAssetLabel == label
                               ? null
-                              : () => _generatePortfolioDiagnosis(data),
-                        ),
-                      ),
+                              : label;
+                        });
+                      },
+                      onOpenAssetDetail: _openAssetDetail,
+                    ),
+                    SizedBox(height: context.spacing.sectionGap),
+                    _RebalancingSectionCard(
+                      entries: rebalanceEntries,
+                      onOpenTargetSheet: () =>
+                          _openTargetAllocationSheet(items),
+                    ),
+                    SizedBox(height: context.spacing.sectionGap),
+                    _PortfolioDiagnosisSectionCard(
+                      diagnosis: data.diagnosis,
+                      isGenerating: _isGeneratingDiagnosis,
+                      generatedAt: data.diagnosisCachedAt,
+                      onGenerate: data.diagnosisPayload == null
+                          ? null
+                          : () => _generatePortfolioDiagnosis(data),
+                      onOpenDetail: _openPortfolioDiagnosisDetail,
                     ),
                   ],
                 ),
@@ -372,6 +367,67 @@ class _PortfolioSectionBasePlate extends StatelessWidget {
   }
 }
 
+class _PortfolioEmptyContent extends StatelessWidget {
+  const _PortfolioEmptyContent({
+    required this.title,
+    required this.description,
+    required this.icon,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final String description;
+  final AppIconName icon;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.md,
+        vertical: context.spacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          AppIcon(
+            icon,
+            size: VisualSpec.icon.iconSizeLarge,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
+          ),
+          SizedBox(height: context.spacing.sm),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: context.typography.cardTitle.copyWith(
+              fontWeight: AppFontWeights.semibold,
+            ),
+          ),
+          SizedBox(height: context.spacing.xs),
+          Text(
+            description,
+            textAlign: TextAlign.center,
+            style: context.typography.meta,
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            SizedBox(height: context.spacing.md),
+            AppPrimaryButton(
+              label: actionLabel!,
+              onPressed: onAction,
+              expand: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 Future<_PortfolioPageData> _loadPortfolioPageData() async {
   final assets = await AppDatabase.instance.fetchAssets();
   final targetRatios = await AppDatabase.instance.fetchAssetAllocationTargets();
@@ -442,11 +498,13 @@ class _AllocationSectionCard extends StatelessWidget {
     required this.items,
     required this.selectedAssetLabel,
     required this.onSelectAsset,
+    required this.onOpenAssetDetail,
   });
 
   final List<_AllocationItem> items;
   final String? selectedAssetLabel;
   final ValueChanged<String> onSelectAsset;
+  final ValueChanged<int> onOpenAssetDetail;
 
   @override
   Widget build(BuildContext context) {
@@ -479,26 +537,33 @@ class _AllocationSectionCard extends StatelessWidget {
               final legend = ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 240),
                 child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < items.length; i++)
-                        Padding(
-                          padding: EdgeInsets.only(
-                            bottom: i == items.length - 1
-                                ? 0
-                                : context.spacing.xs,
+                  child: SlidableAutoCloseBehavior(
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < items.length; i++)
+                          Padding(
+                            padding: EdgeInsets.only(
+                              bottom: i == items.length - 1
+                                  ? 0
+                                  : context.spacing.xs,
+                            ),
+                            child: _SwipeToOpenAssetDetail(
+                              label: items[i].label,
+                              onOpen: () => onOpenAssetDetail(items[i].assetId),
+                              child: AllocationLegendRow(
+                                color: items[i].color,
+                                icon: items[i].icon,
+                                title: items[i].label,
+                                ratioText:
+                                    '${items[i].ratio.toStringAsFixed(1)}%',
+                                amountText: _formatCurrency(items[i].amount),
+                                isSelected: selectedIndex == i,
+                                onTap: () => onSelectAsset(items[i].label),
+                              ),
+                            ),
                           ),
-                          child: AllocationLegendRow(
-                            color: items[i].color,
-                            icon: items[i].icon,
-                            title: items[i].label,
-                            ratioText: '${items[i].ratio.toStringAsFixed(1)}%',
-                            amountText: _formatCurrency(items[i].amount),
-                            isSelected: selectedIndex == i,
-                            onTap: () => onSelectAsset(items[i].label),
-                          ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -548,6 +613,56 @@ class _AllocationSectionCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SwipeToOpenAssetDetail extends StatelessWidget {
+  const _SwipeToOpenAssetDetail({
+    required this.label,
+    required this.onOpen,
+    required this.child,
+  });
+
+  static const _groupTag = 'portfolio-allocation-detail-action';
+  static const _extentRatio = 0.22;
+
+  final String label;
+  final VoidCallback onOpen;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      customSemanticsActions: {
+        CustomSemanticsAction(label: '$label 상세 열기'): onOpen,
+      },
+      child: Slidable(
+        key: ValueKey('allocation-detail-$label'),
+        groupTag: _groupTag,
+        endActionPane: ActionPane(
+          motion: const StretchMotion(),
+          extentRatio: _extentRatio,
+          dismissible: DismissiblePane(onDismissed: onOpen),
+          children: [
+            CustomSlidableAction(
+              onPressed: (_) => onOpen(),
+              backgroundColor: VisualSpec.surface.transparent,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              borderRadius: BorderRadius.zero,
+              child: Align(
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.open_in_new_rounded,
+                  color: context.colors.primary,
+                  size: VisualSpec.icon.sizeDefault,
+                ),
+              ),
+            ),
+          ],
+        ),
+        child: child,
       ),
     );
   }
@@ -827,33 +942,32 @@ class _PortfolioDiagnosisSectionCard extends StatelessWidget {
     required this.isGenerating,
     required this.generatedAt,
     required this.onGenerate,
+    required this.onOpenDetail,
   });
 
   final PortfolioDiagnosisResult? diagnosis;
   final bool isGenerating;
   final DateTime? generatedAt;
   final VoidCallback? onGenerate;
+  final VoidCallback onOpenDetail;
 
   @override
   Widget build(BuildContext context) {
     if (diagnosis == null) {
       return SectionCard(
-        title: 'AI 포트폴리오 분석',
+        title: '포트폴리오 진단',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'AI 분석 결과가 아직 생성되지 않았어요.',
-              style: context.typography.cardTitle,
-            ),
+            Text('진단 결과가 아직 생성되지 않았어요.', style: context.typography.cardTitle),
             SizedBox(height: context.spacing.xs),
             Text(
-              '버튼을 누르면 현재 포트폴리오 기준으로 분석을 생성합니다.',
+              '버튼을 누르면 현재 포트폴리오 기준으로 진단을 생성합니다.',
               style: context.typography.meta,
             ),
             SizedBox(height: context.spacing.md),
             AppPrimaryButton(
-              label: 'AI 포트폴리오 분석 생성',
+              label: '포트폴리오 진단 생성',
               isLoading: isGenerating,
               onPressed: onGenerate,
             ),
@@ -863,7 +977,7 @@ class _PortfolioDiagnosisSectionCard extends StatelessWidget {
     }
 
     return SectionCard(
-      title: 'AI 포트폴리오 분석',
+      title: '포트폴리오 진단',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -876,7 +990,7 @@ class _PortfolioDiagnosisSectionCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        '포트폴리오 분석 결과',
+                        '포트폴리오 진단 결과',
                         style: context.typography.cardTitle.copyWith(
                           fontWeight: AppFontWeights.semibold,
                         ),
@@ -891,8 +1005,8 @@ class _PortfolioDiagnosisSectionCard extends StatelessWidget {
                 SizedBox(height: context.spacing.xs),
                 Text(
                   diagnosis!.analysisSource == 'fallback_rule_based'
-                      ? '분석 출처: 규칙 기반'
-                      : '분석 출처: AI 모델',
+                      ? '진단 출처: 규칙 기반'
+                      : '진단 출처: AI 모델',
                   style: context.typography.caption,
                 ),
                 SizedBox(height: context.spacing.sm),
@@ -904,9 +1018,16 @@ class _PortfolioDiagnosisSectionCard extends StatelessWidget {
                 ),
                 SizedBox(height: context.spacing.sm),
                 AppPrimaryButton(
-                  label: 'AI 포트폴리오 분석 새로 생성',
+                  label: '진단 새로 생성',
                   isLoading: isGenerating,
                   onPressed: onGenerate,
+                ),
+                SizedBox(height: context.spacing.xs),
+                AppGhostButton(
+                  label: '상세 진단 보기',
+                  onPressed: onOpenDetail,
+                  expand: true,
+                  icon: Icons.open_in_new_rounded,
                 ),
               ],
             ),
@@ -990,16 +1111,8 @@ class _DiagnosisBlockCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return AppInnerPanel(
       padding: EdgeInsets.all(context.spacing.md),
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceBase,
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-        border: Border.all(
-          color: context.colors.neutralOutline.withValues(alpha: 0.9),
-        ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

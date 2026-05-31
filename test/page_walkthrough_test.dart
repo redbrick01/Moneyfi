@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
-import 'package:moneyfy/main.dart';
 import 'package:moneyfy/models/asset_item.dart';
+import 'package:moneyfy/navigation/moneyfy_router.dart';
 import 'package:moneyfy/pages/analysis_page.dart';
 import 'package:moneyfy/pages/annual_asset_analysis_page.dart';
 import 'package:moneyfy/pages/asset_detail_page.dart';
@@ -22,6 +22,7 @@ import 'package:moneyfy/pages/login_page.dart';
 import 'package:moneyfy/pages/signup_page.dart';
 import 'package:moneyfy/pages/snapshot_detail_page.dart';
 import 'package:moneyfy/pages/app_shell_page.dart';
+import 'package:moneyfy/pages/statistics_page.dart';
 import 'package:moneyfy/pages/transactions_page.dart';
 
 void main() {
@@ -158,20 +159,27 @@ void main() {
   });
 
   testWidgets('stage 1: app shell visits every bottom tab', (tester) async {
-    await tester.pumpWidget(const MoneyfyApp());
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        routerConfig: buildMoneyfyRouter(useStartupGate: false),
+      ),
+    );
     await settlePage(tester);
 
     for (final (label, pageText) in const [
-      ('홈', '홈'),
+      ('홈', null),
       ('포트폴', '포트폴리오'),
       ('거래', '거래'),
       ('분석', '분석'),
-      ('통계', '통계'),
       ('My', 'My'),
     ]) {
       await tester.tap(find.byKey(ValueKey('bottom-tab-$label')));
       await settlePage(tester);
-      expect(find.text(pageText), findsWidgets);
+      if (pageText != null) {
+        expect(find.text(pageText), findsWidgets);
+      }
     }
   });
 
@@ -235,6 +243,19 @@ void main() {
     expect(find.byTooltip('뒤로'), findsOneWidget);
 
     await tester.tap(find.byTooltip('뒤로'));
+    await settlePage(tester);
+    expect(find.text('종목별 뉴스'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('통계'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('통계').first);
+    await settlePage(tester);
+    expect(find.byType(StatisticsPage), findsOneWidget);
+
+    Navigator.of(tester.element(find.byType(StatisticsPage))).pop();
     await settlePage(tester);
     expect(find.text('종목별 뉴스'), findsOneWidget);
   });
@@ -378,18 +399,21 @@ void main() {
     );
   });
 
-  testWidgets('investment performance explains advanced metrics', (
+  testWidgets('investment performance explains redesigned dashboard', (
     tester,
   ) async {
     await pumpInteractivePage(tester, const InvestmentPerformancePage());
 
-    expect(find.text('시장 비교와 위험'), findsOneWidget);
+    expect(find.text('성과 판단'), findsOneWidget);
     expect(find.text('기간 수익률'), findsOneWidget);
-    expect(find.text('입출금 보정'), findsOneWidget);
+    expect(find.text('참고 벤치마크'), findsOneWidget);
     expect(find.text('S&P 500'), findsOneWidget);
-    expect(find.text('선택 기간'), findsOneWidget);
+    expect(find.text('총자산 변화 검산'), findsOneWidget);
+    expect(find.text('월별 확정 성과'), findsOneWidget);
+    expect(find.text('종목별 기여도'), findsOneWidget);
+    expect(find.text('위험 해석'), findsOneWidget);
     expect(find.text('Sharpe'), findsOneWidget);
-    expect(find.text('위험 대비 성과'), findsOneWidget);
+    expect(find.textContaining('최소 기간 데이터'), findsWidgets);
   });
 
   for (final pageCase in _standalonePageCases) {

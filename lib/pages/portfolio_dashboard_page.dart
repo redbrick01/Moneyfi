@@ -11,10 +11,11 @@ import '../components/feedback/app_snackbar.dart';
 import '../components/formatters/number_format.dart' as app_number;
 import '../components/icons/app_icon.dart';
 import '../components/icons/app_icon_button.dart';
+import '../components/panels/app_floating_menu_surface.dart';
+import '../components/panels/app_inner_panel.dart';
 import '../components/rows/asset_row.dart';
 import '../components/section_card.dart';
 import '../components/separators/app_divider.dart';
-import '../components/states/empty_state.dart';
 import '../components/states/inline_error.dart';
 import '../components/states/retry_row.dart';
 import '../components/states/skeletons.dart';
@@ -22,6 +23,8 @@ import '../design_system/spec.dart';
 import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
 import '../models/asset_item.dart';
+import '../navigation/moneyfy_navigation.dart';
+import '../navigation/moneyfy_routes.dart';
 import '../services/auth_service.dart';
 import '../services/investment_review/investment_review_models.dart';
 import '../services/investment_review/investment_review_snapshot_builder.dart';
@@ -30,7 +33,6 @@ import '../services/portfolio_diagnosis_service.dart';
 import '../ui_scaffold/app_page_scaffold.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
-import 'asset_detail_page.dart';
 import 'forms/asset_form_page.dart';
 import 'investment_review_page.dart';
 
@@ -184,9 +186,14 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
   }
 
   Future<void> _openAssetForm([AssetItem? item]) async {
-    final changed = await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => AssetFormPage(item: item)));
+    final bool? changed;
+    if (item == null) {
+      changed = await context.openAssetCreate();
+    } else {
+      changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => AssetFormPage(item: item)),
+      );
+    }
 
     if (changed == true) {
       _markChanged();
@@ -285,12 +292,9 @@ class _AssetSectionBasePlate extends StatelessWidget {
   Widget build(BuildContext context) {
     const headerHeight = 56.0;
     final horizontalPadding = context.cardPadding();
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-        boxShadow: context.shadows.level3,
-      ),
+    return SectionCard(
+      variant: SectionCardVariant.base,
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -388,17 +392,7 @@ class _AssetSortMenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-        border: Border.all(
-          color: Theme.of(
-            context,
-          ).colorScheme.outlineVariant.withValues(alpha: 0.55),
-        ),
-        boxShadow: context.shadows.level1,
-      ),
+    return AppFloatingMenuSurface(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -481,12 +475,8 @@ class _AnalysisSectionBasePlate extends StatelessWidget {
   Widget build(BuildContext context) {
     const headerHeight = 56.0;
     final horizontalPadding = context.cardPadding();
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-        boxShadow: context.shadows.level3,
-      ),
+    return SectionCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -500,7 +490,7 @@ class _AnalysisSectionBasePlate extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    'AI 포트폴리오 분석',
+                    '포트폴리오 진단',
                     style: context.typography.cardTitle.copyWith(
                       fontSize: context.fontSizes.s18,
                       fontWeight: AppFontWeights.semibold,
@@ -651,307 +641,277 @@ class _SummaryCardState extends State<_SummaryCard> {
               alignment: Alignment.center,
               child: SizedBox(
                 width: heroWidth,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(
-                      VisualSpec.surface.radiusCard,
-                    ),
-                    boxShadow: context.shadows.level3,
-                  ),
-                  child: MoneyfySurfaceCard(
-                    variant: MoneyfySurfaceCardVariant.raised,
-                    padding: EdgeInsets.all(outerPadding),
-                    child: snapshot.connectionState == ConnectionState.waiting
-                        ? Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: context.spacing.xl,
+                child: MoneyfySurfaceCard(
+                  padding: EdgeInsets.all(outerPadding),
+                  child: snapshot.connectionState == ConnectionState.waiting
+                      ? Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: context.spacing.xl,
+                          ),
+                          child: const SkeletonPresetCard(
+                            preset: SkeletonCardPreset.homeSummary,
+                          ),
+                        )
+                      : snapshot.hasError
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const InlineError(
+                              message: '네트워크 문제로 요약 정보를 불러오지 못했어요.',
+                              detail: '다시 시도해 주세요.',
                             ),
-                            child: const SkeletonPresetCard(
-                              preset: SkeletonCardPreset.homeSummary,
+                            SizedBox(height: context.spacing.sm),
+                            RetryRow(
+                              message: '요약을 다시 불러오려면 재시도를 눌러주세요.',
+                              onRetry: () {
+                                setState(() {
+                                  _summaryFuture = _loadSummaryCardData();
+                                });
+                              },
                             ),
-                          )
-                        : snapshot.hasError
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const InlineError(
-                                message: '네트워크 문제로 요약 정보를 불러오지 못했어요.',
-                                detail: '다시 시도해 주세요.',
-                              ),
-                              SizedBox(height: context.spacing.sm),
-                              RetryRow(
-                                message: '요약을 다시 불러오려면 재시도를 눌러주세요.',
-                                onRetry: () {
-                                  setState(() {
-                                    _summaryFuture = _loadSummaryCardData();
-                                  });
-                                },
-                              ),
-                            ],
-                          )
-                        : isEmptyPortfolio
-                        ? EmptyStateCard(
-                            title: '자산을 추가해 시작해요',
-                            description:
-                                '주식/펀드/코인/현금을 등록하면 총자산과 비중을 자동으로 계산해요.',
-                            icon: AppIconName.wallet,
-                            actionLabel: '자산 추가',
-                            onAction: () => widget.onCreateAsset(),
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '총 자산',
-                                      style: context.typography.body.copyWith(
-                                        fontSize: context.fontSizes.s18,
-                                        fontWeight: AppFontWeights.semibold,
-                                      ),
+                          ],
+                        )
+                      : isEmptyPortfolio
+                      ? _DashboardEmptyInnerPanel(
+                          title: '자산을 추가해 시작해요',
+                          description: '주식/펀드/코인/현금을 등록하면 총자산과 비중을 자동으로 계산해요.',
+                          icon: AppIconName.wallet,
+                          actionLabel: '자산 추가',
+                          onAction: () => widget.onCreateAsset(),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '총 자산',
+                                    style: context.typography.body.copyWith(
+                                      fontSize: context.fontSizes.s18,
+                                      fontWeight: AppFontWeights.semibold,
                                     ),
                                   ),
-                                  MoneyfyBadge(
-                                    label: usdKrwRate == null
-                                        ? 'USD/KRW -'
-                                        : 'USD/KRW ${app_number.formatCurrency(usdKrwRate, fractionDigits: 2)}',
-                                    size: MoneyfyPillSize.md,
-                                    backgroundColor:
-                                        context.surfaces.surfaceBase,
-                                    textColor: Theme.of(
+                                ),
+                                MoneyfyBadge(
+                                  label: usdKrwRate == null
+                                      ? 'USD/KRW -'
+                                      : 'USD/KRW ${app_number.formatCurrency(usdKrwRate, fractionDigits: 2)}',
+                                  size: MoneyfyPillSize.md,
+                                  backgroundColor: context.surfaces.surfaceBase,
+                                  textColor: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: context.spacing.lg),
+                            SizedBox(
+                              height: 40,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  _formatCurrency(totalValue),
+                                  textAlign: TextAlign.right,
+                                  style: context.typography.heroNumber.copyWith(
+                                    fontSize: context.fontSizes.s32,
+                                    fontWeight: AppFontWeights.semibold,
+                                    height: 1,
+                                    color: Theme.of(
                                       context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: context.spacing.lg),
-                              SizedBox(
-                                height: 40,
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Text(
-                                    _formatCurrency(totalValue),
-                                    textAlign: TextAlign.right,
-                                    style: context.typography.heroNumber
-                                        .copyWith(
-                                          fontSize: context.fontSizes.s32,
-                                          fontWeight: AppFontWeights.semibold,
-                                          height: 1,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurface,
-                                        ),
+                                    ).colorScheme.onSurface,
                                   ),
                                 ),
                               ),
-                              SizedBox(height: context.spacing.md),
-                              LayoutBuilder(
-                                builder: (context, innerConstraints) {
-                                  final innerCardWidth =
-                                      innerConstraints.maxWidth;
-                                  return Align(
-                                    alignment: Alignment.center,
-                                    child: SizedBox(
-                                      width: innerCardWidth,
-                                      child: GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onVerticalDragStart: (_) {},
-                                        onVerticalDragEnd: (details) {
-                                          final velocity =
-                                              details.primaryVelocity ?? 0;
-                                          if (velocity > 120 &&
-                                              !_isSummaryDetailExpanded) {
-                                            setState(() {
-                                              _isSummaryDetailExpanded = true;
-                                            });
-                                          } else if (velocity < -120 &&
-                                              _isSummaryDetailExpanded) {
-                                            setState(() {
-                                              _isSummaryDetailExpanded = false;
-                                            });
-                                          }
-                                        },
-                                        child: AnimatedSize(
-                                          duration: context.motion.fast,
-                                          curve: Curves.easeOutCubic,
-                                          alignment: Alignment.topCenter,
-                                          child: Container(
-                                            padding: EdgeInsets.all(
-                                              context.cardPadding(),
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  context.surfaces.surfaceBase,
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                    VisualSpec
-                                                        .surface
-                                                        .radiusCard,
-                                                  ),
-                                              boxShadow: context.shadows.level2,
-                                            ),
-                                            child: Column(
-                                              children: [
-                                                _SummaryValueRow(
-                                                  label: '평가 손익',
-                                                  valueText:
-                                                      valuationDisplayValue,
-                                                  valueColor:
-                                                      _signedDisplayColor(
-                                                        context,
-                                                        valuationDisplayValue,
-                                                        defaultColor: context
-                                                            .colors
-                                                            .neutralTextMuted,
-                                                      ),
-                                                  chip: DeltaChip(
-                                                    value: valuationProfit,
-                                                    percent:
-                                                        valuationProfitRate,
-                                                    mode: DeltaChipMode.percent,
-                                                    vivid: true,
-                                                  ),
+                            ),
+                            SizedBox(height: context.spacing.md),
+                            LayoutBuilder(
+                              builder: (context, innerConstraints) {
+                                final innerCardWidth =
+                                    innerConstraints.maxWidth;
+                                return Align(
+                                  alignment: Alignment.center,
+                                  child: SizedBox(
+                                    width: innerCardWidth,
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onVerticalDragStart: (_) {},
+                                      onVerticalDragEnd: (details) {
+                                        final velocity =
+                                            details.primaryVelocity ?? 0;
+                                        if (velocity > 120 &&
+                                            !_isSummaryDetailExpanded) {
+                                          setState(() {
+                                            _isSummaryDetailExpanded = true;
+                                          });
+                                        } else if (velocity < -120 &&
+                                            _isSummaryDetailExpanded) {
+                                          setState(() {
+                                            _isSummaryDetailExpanded = false;
+                                          });
+                                        }
+                                      },
+                                      child: AnimatedSize(
+                                        duration: context.motion.fast,
+                                        curve: Curves.easeOutCubic,
+                                        alignment: Alignment.topCenter,
+                                        child: AppInnerPanel(
+                                          padding: EdgeInsets.all(
+                                            context.cardPadding(),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              _SummaryValueRow(
+                                                label: '평가 손익',
+                                                valueText:
+                                                    valuationDisplayValue,
+                                                valueColor: _signedDisplayColor(
+                                                  context,
+                                                  valuationDisplayValue,
+                                                  defaultColor: context
+                                                      .colors
+                                                      .neutralTextMuted,
                                                 ),
-                                                AnimatedSwitcher(
-                                                  duration: context.motion.fast,
-                                                  switchInCurve:
-                                                      Curves.easeOutCubic,
-                                                  switchOutCurve:
-                                                      Curves.easeInCubic,
-                                                  transitionBuilder:
-                                                      (child, animation) {
-                                                        return FadeTransition(
-                                                          opacity: animation,
-                                                          child: SizeTransition(
-                                                            sizeFactor:
-                                                                animation,
-                                                            axisAlignment: -1,
-                                                            child: child,
-                                                          ),
-                                                        );
-                                                      },
-                                                  child:
-                                                      _isSummaryDetailExpanded
-                                                      ? Column(
-                                                          key: const ValueKey(
-                                                            'summary-expanded',
-                                                          ),
-                                                          children: [
-                                                            SizedBox(
-                                                              height: context
-                                                                  .spacing
-                                                                  .md,
-                                                            ),
-                                                            _SummaryValueRow(
-                                                              label: '전월 대비 수익',
-                                                              valueText:
-                                                                  monthlyDisplayValue,
-                                                              valueColor: _signedDisplayColor(
-                                                                context,
-                                                                monthlyDisplayValue,
-                                                                defaultColor:
-                                                                    context
-                                                                        .colors
-                                                                        .neutralTextMuted,
-                                                              ),
-                                                              chip: DeltaChip(
-                                                                value:
-                                                                    monthlyProfit,
-                                                                percent:
-                                                                    monthlyProfitRate,
-                                                                mode:
-                                                                    DeltaChipMode
-                                                                        .percent,
-                                                                vivid: true,
-                                                              ),
-                                                            ),
-                                                            SizedBox(
-                                                              height: context
-                                                                  .spacing
-                                                                  .md,
-                                                            ),
-                                                            _SummaryValueRow(
-                                                              label: '전일 대비 수익',
-                                                              valueText:
-                                                                  dailyDisplayValue,
-                                                              valueColor: _signedDisplayColor(
-                                                                context,
-                                                                dailyDisplayValue,
-                                                                defaultColor:
-                                                                    context
-                                                                        .colors
-                                                                        .neutralTextMuted,
-                                                              ),
-                                                              chip:
-                                                                  hasDailyComparison
-                                                                  ? DeltaChip(
-                                                                      value:
-                                                                          dailyProfit,
-                                                                      percent:
-                                                                          dailyProfitRate,
-                                                                      mode: DeltaChipMode
-                                                                          .percent,
-                                                                      vivid:
-                                                                          true,
-                                                                    )
-                                                                  : const _SummaryDashChip(),
-                                                            ),
-                                                          ],
-                                                        )
-                                                      : const SizedBox(
-                                                          key: ValueKey(
-                                                            'summary-collapsed',
-                                                          ),
+                                                chip: DeltaChip(
+                                                  value: valuationProfit,
+                                                  percent: valuationProfitRate,
+                                                  mode: DeltaChipMode.percent,
+                                                  vivid: true,
+                                                ),
+                                              ),
+                                              AnimatedSwitcher(
+                                                duration: context.motion.fast,
+                                                switchInCurve:
+                                                    Curves.easeOutCubic,
+                                                switchOutCurve:
+                                                    Curves.easeInCubic,
+                                                transitionBuilder:
+                                                    (child, animation) {
+                                                      return FadeTransition(
+                                                        opacity: animation,
+                                                        child: SizeTransition(
+                                                          sizeFactor: animation,
+                                                          axisAlignment: -1,
+                                                          child: child,
                                                         ),
-                                                ),
-                                                SizedBox(
-                                                  height: context.spacing.sm,
-                                                ),
-                                                const AppDivider(inset: 0),
-                                                SizedBox(
-                                                  height: context.spacing.sm,
-                                                ),
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.end,
-                                                  children: [
-                                                    Text(
-                                                      latestUpdatedAt == null
-                                                          ? (widget.isRefreshing
-                                                                ? '업데이트 중…'
-                                                                : '-')
-                                                          : widget.isRefreshing
-                                                          ? '${_formatTimestamp(latestUpdatedAt)} · 업데이트 중…'
-                                                          : _formatTimestamp(
-                                                              latestUpdatedAt,
-                                                            ),
-                                                      style: context
-                                                          .typography
-                                                          .caption
-                                                          .copyWith(
-                                                            fontSize: context
-                                                                .fontSizes
-                                                                .s12,
-                                                            color: Theme.of(context)
-                                                                .colorScheme
-                                                                .onSurfaceVariant,
+                                                      );
+                                                    },
+                                                child: _isSummaryDetailExpanded
+                                                    ? Column(
+                                                        key: const ValueKey(
+                                                          'summary-expanded',
+                                                        ),
+                                                        children: [
+                                                          SizedBox(
+                                                            height: context
+                                                                .spacing
+                                                                .md,
                                                           ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
+                                                          _SummaryValueRow(
+                                                            label: '전월 대비 수익',
+                                                            valueText:
+                                                                monthlyDisplayValue,
+                                                            valueColor: _signedDisplayColor(
+                                                              context,
+                                                              monthlyDisplayValue,
+                                                              defaultColor: context
+                                                                  .colors
+                                                                  .neutralTextMuted,
+                                                            ),
+                                                            chip: DeltaChip(
+                                                              value:
+                                                                  monthlyProfit,
+                                                              percent:
+                                                                  monthlyProfitRate,
+                                                              mode:
+                                                                  DeltaChipMode
+                                                                      .percent,
+                                                              vivid: true,
+                                                            ),
+                                                          ),
+                                                          SizedBox(
+                                                            height: context
+                                                                .spacing
+                                                                .md,
+                                                          ),
+                                                          _SummaryValueRow(
+                                                            label: '전일 대비 수익',
+                                                            valueText:
+                                                                dailyDisplayValue,
+                                                            valueColor: _signedDisplayColor(
+                                                              context,
+                                                              dailyDisplayValue,
+                                                              defaultColor: context
+                                                                  .colors
+                                                                  .neutralTextMuted,
+                                                            ),
+                                                            chip:
+                                                                hasDailyComparison
+                                                                ? DeltaChip(
+                                                                    value:
+                                                                        dailyProfit,
+                                                                    percent:
+                                                                        dailyProfitRate,
+                                                                    mode: DeltaChipMode
+                                                                        .percent,
+                                                                    vivid: true,
+                                                                  )
+                                                                : const _SummaryDashChip(),
+                                                          ),
+                                                        ],
+                                                      )
+                                                    : const SizedBox(
+                                                        key: ValueKey(
+                                                          'summary-collapsed',
+                                                        ),
+                                                      ),
+                                              ),
+                                              SizedBox(
+                                                height: context.spacing.sm,
+                                              ),
+                                              const AppDivider(inset: 0),
+                                              SizedBox(
+                                                height: context.spacing.sm,
+                                              ),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.end,
+                                                children: [
+                                                  Text(
+                                                    latestUpdatedAt == null
+                                                        ? (widget.isRefreshing
+                                                              ? '업데이트 중…'
+                                                              : '-')
+                                                        : widget.isRefreshing
+                                                        ? '${_formatTimestamp(latestUpdatedAt)} · 업데이트 중…'
+                                                        : _formatTimestamp(
+                                                            latestUpdatedAt,
+                                                          ),
+                                                    style: context
+                                                        .typography
+                                                        .caption
+                                                        .copyWith(
+                                                          fontSize: context
+                                                              .fontSizes
+                                                              .s12,
+                                                          color: Theme.of(context)
+                                                              .colorScheme
+                                                              .onSurfaceVariant,
+                                                        ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
                                     ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                  ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                 ),
               ),
             );
@@ -1553,8 +1513,8 @@ class _AssetListCardState extends State<_AssetListCard> {
               alignment: Alignment.center,
               child: SizedBox(
                 width: cardWidth,
-                child: SectionCard(
-                  variant: SectionCardVariant.raised,
+                child: AppInnerPanel(
+                  padding: EdgeInsets.zero,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(minHeight: 188),
                     child: Center(
@@ -1580,7 +1540,7 @@ class _AssetListCardState extends State<_AssetListCard> {
                           ),
                           SizedBox(height: context.spacing.xs),
                           Text(
-                            '첫 자산을 추가하면 홈 대시보드가 채워집니다.',
+                            '첫 자산군을 만들고 보유 종목이나 현금 계좌를 추가해 보세요.',
                             textAlign: TextAlign.center,
                             style: context.typography.meta,
                           ),
@@ -1600,18 +1560,14 @@ class _AssetListCardState extends State<_AssetListCard> {
           },
         );
       }
-      return MoneyfySurfaceCard(
-        variant: MoneyfySurfaceCardVariant.base,
+      return AppInnerPanel(
         padding: EdgeInsets.zero,
-        child: Padding(
-          padding: EdgeInsets.all(context.spacing.md),
-          child: EmptyStateCard(
-            title: '자산이 아직 없어요',
-            description: '첫 자산을 추가하면 홈 대시보드가 채워집니다.',
-            icon: AppIconName.insights,
-            actionLabel: '자산 추가',
-            onAction: () => widget.onCreateAsset(),
-          ),
+        child: _DashboardEmptyContent(
+          title: '자산이 아직 없어요',
+          description: '첫 자산군을 만들고 보유 종목이나 현금 계좌를 추가해 보세요.',
+          icon: AppIconName.insights,
+          actionLabel: '자산 추가',
+          onAction: () => widget.onCreateAsset(),
         ),
       );
     }
@@ -1672,8 +1628,7 @@ class _AssetListCardState extends State<_AssetListCard> {
     bool reorderable = false,
     bool leadingEmptySlot = false,
   }) {
-    return MoneyfySurfaceCard(
-      variant: MoneyfySurfaceCardVariant.base,
+    return AppInnerPanel(
       padding: EdgeInsets.zero,
       child: SlidableAutoCloseBehavior(
         child: reorderable
@@ -1859,12 +1814,10 @@ class _AssetRow extends StatelessWidget {
           ? null
           : () async {
               if (item.id == null) return;
-              await Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => AssetDetailPage(
-                    assetId: item.id!,
-                    assetClientId: item.clientId,
-                  ),
+              await context.openAssetDetail(
+                AssetDetailRouteArgs(
+                  assetId: item.id!,
+                  assetClientId: item.clientId,
                 ),
               );
               onChanged();
@@ -1983,6 +1936,96 @@ class _AssetProfitLine extends StatelessWidget {
   }
 }
 
+class _DashboardEmptyInnerPanel extends StatelessWidget {
+  const _DashboardEmptyInnerPanel({
+    required this.title,
+    required this.description,
+    required this.icon,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final String description;
+  final AppIconName icon;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppInnerPanel(
+      child: _DashboardEmptyContent(
+        title: title,
+        description: description,
+        icon: icon,
+        actionLabel: actionLabel,
+        onAction: onAction,
+      ),
+    );
+  }
+}
+
+class _DashboardEmptyContent extends StatelessWidget {
+  const _DashboardEmptyContent({
+    required this.title,
+    required this.description,
+    required this.icon,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final String description;
+  final AppIconName icon;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.md,
+        vertical: context.spacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          AppIcon(
+            icon,
+            size: VisualSpec.icon.iconSizeLarge,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
+          ),
+          SizedBox(height: context.spacing.sm),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: context.typography.cardTitle.copyWith(
+              fontWeight: AppFontWeights.semibold,
+            ),
+          ),
+          SizedBox(height: context.spacing.xs),
+          Text(
+            description,
+            textAlign: TextAlign.center,
+            style: context.typography.meta,
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            SizedBox(height: context.spacing.md),
+            AppPrimaryButton(
+              label: actionLabel!,
+              onPressed: onAction,
+              expand: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _InsightCard extends StatelessWidget {
   const _InsightCard({
     required this.refreshTick,
@@ -2046,24 +2089,52 @@ class _InsightCardContent extends StatelessWidget {
         : (dominant.value / totalValue) * 100;
 
     if (dominant == null && diagnosis == null) {
-      return EmptyStateCard(
-        title: '인사이트를 준비 중이에요',
-        description: '자산 데이터를 모으면 집중도와 리밸런싱 신호를 보여드릴게요.',
-        icon: AppIconName.lightbulb,
-        variant: EmptyStateVariant.embedded,
+      return AppInnerPanel(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: context.spacing.sm),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              AppIcon(
+                AppIconName.lightbulb,
+                size: VisualSpec.icon.iconSizeLarge,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
+              ),
+              SizedBox(height: context.spacing.sm),
+              Text(
+                '인사이트를 준비 중이에요',
+                textAlign: TextAlign.center,
+                style: context.typography.cardTitle.copyWith(
+                  fontWeight: AppFontWeights.semibold,
+                ),
+              ),
+              SizedBox(height: context.spacing.xs),
+              Text(
+                '자산 데이터를 모으면 집중도와 리밸런싱 신호를 보여드릴게요.',
+                textAlign: TextAlign.center,
+                style: context.typography.meta,
+              ),
+            ],
+          ),
+        ),
       );
     }
 
     if (diagnosis != null) {
       final firstSentence = _firstSentence(diagnosis!.summary);
 
-      return SectionCard(
-        variant: SectionCardVariant.base,
+      return AppInnerPanel(
+        padding: EdgeInsets.zero,
         child: InkWell(
-          borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
+          borderRadius: BorderRadius.circular(context.radius.rMd),
           onTap: onOpenPortfolioDiagnosis,
           child: Padding(
-            padding: EdgeInsets.all(context.cardPadding()),
+            padding: EdgeInsets.all(
+              context.spacing.sm + context.spacing.xs / 4,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -2087,8 +2158,7 @@ class _InsightCardContent extends StatelessWidget {
       );
     }
 
-    return SectionCard(
-      variant: SectionCardVariant.base,
+    return AppInnerPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

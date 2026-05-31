@@ -1,0 +1,271 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../pages/asset_detail_page.dart';
+import '../pages/cash_account_detail_page.dart';
+import '../pages/dividend_interest_analysis_page.dart';
+import '../pages/forms/asset_form_page.dart';
+import '../pages/forms/cash_account_form_page.dart';
+import '../pages/forms/cash_transaction_form_page.dart';
+import '../pages/forms/holding_form_page.dart';
+import '../pages/forms/transaction_form_page.dart';
+import '../pages/holding_detail_page.dart';
+import '../pages/investment_performance_page.dart';
+import '../pages/login_page.dart';
+import '../pages/portfolio_analysis_mvp_page.dart';
+import '../pages/statistics_page.dart';
+import '../pages/signup_page.dart';
+import 'moneyfy_routes.dart';
+
+extension MoneyfyNavigation on BuildContext {
+  Future<bool?> openAssetCreate() {
+    if (!_hasRouter) {
+      return Navigator.of(this).push<bool>(
+        MaterialPageRoute(
+          settings: const RouteSettings(name: MoneyfyRoutePaths.assetCreate),
+          builder: (_) => const AssetFormPage(),
+        ),
+      );
+    }
+    return push<bool>(MoneyfyRoutePaths.assetCreate);
+  }
+
+  Future<bool?> openHoldingCreate({required int assetId}) {
+    if (!_hasRouter) {
+      return Navigator.of(this).push<bool>(
+        MaterialPageRoute(
+          settings: RouteSettings(
+            name: MoneyfyRoutePaths.holdingCreate(assetId),
+          ),
+          builder: (_) => HoldingFormPage(assetId: assetId),
+        ),
+      );
+    }
+    return push<bool>(MoneyfyRoutePaths.holdingCreate(assetId));
+  }
+
+  Future<bool?> openCashAccountCreate({required int assetId}) {
+    if (!_hasRouter) {
+      return Navigator.of(this).push<bool>(
+        MaterialPageRoute(
+          settings: RouteSettings(
+            name: MoneyfyRoutePaths.cashAccountCreate(assetId),
+          ),
+          builder: (_) => CashAccountFormPage(assetId: assetId),
+        ),
+      );
+    }
+    return push<bool>(MoneyfyRoutePaths.cashAccountCreate(assetId));
+  }
+
+  Future<bool?> openTransactionCreate({
+    required int assetId,
+    required int holdingId,
+    String? holdingClientId,
+    String? defaultName,
+  }) {
+    if (!_hasRouter) {
+      return Navigator.of(this).push<bool>(
+        MaterialPageRoute(
+          settings: RouteSettings(
+            name: MoneyfyRoutePaths.transactionCreate(holdingId),
+          ),
+          builder: (_) => TransactionFormPage(
+            assetId: assetId,
+            holdingId: holdingId,
+            holdingClientId: holdingClientId,
+            defaultName: defaultName,
+          ),
+        ),
+      );
+    }
+    return push<bool>(
+      MoneyfyRoutePaths.transactionCreateWithArgs(
+        assetId: assetId,
+        holdingId: holdingId,
+        holdingClientId: holdingClientId,
+        defaultName: defaultName,
+      ),
+    );
+  }
+
+  Future<bool?> openCashTransactionCreate({
+    required int assetId,
+    required int holdingId,
+    String? holdingClientId,
+    String? defaultName,
+  }) {
+    if (!_hasRouter) {
+      return Navigator.of(this).push<bool>(
+        MaterialPageRoute(
+          settings: RouteSettings(
+            name: MoneyfyRoutePaths.cashTransactionCreate(holdingId),
+          ),
+          builder: (_) => CashTransactionFormPage(
+            assetId: assetId,
+            holdingId: holdingId,
+            holdingClientId: holdingClientId,
+            defaultName: defaultName,
+          ),
+        ),
+      );
+    }
+    return push<bool>(
+      MoneyfyRoutePaths.cashTransactionCreateWithArgs(
+        assetId: assetId,
+        holdingId: holdingId,
+        holdingClientId: holdingClientId,
+        defaultName: defaultName,
+      ),
+    );
+  }
+
+  Future<void> openAssetDetail(AssetDetailRouteArgs args) {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: RouteSettings(
+            name: MoneyfyRoutePaths.assetDetail(args.assetId),
+            arguments: args,
+          ),
+          builder: (_) => AssetDetailPage(
+            assetId: args.assetId,
+            assetClientId: args.assetClientId,
+          ),
+        ),
+      );
+    }
+    return push<void>(
+      MoneyfyRoutePaths.assetDetailWithClientId(
+        args.assetId,
+        args.assetClientId,
+      ),
+    );
+  }
+
+  Future<void> openHoldingDetail(HoldingDetailRouteArgs args) {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: RouteSettings(
+            name: MoneyfyRoutePaths.holdingDetail(args.holdingId),
+            arguments: args,
+          ),
+          builder: (_) => HoldingDetailPage(
+            holdingId: args.holdingId,
+            holdingClientId: args.holdingClientId,
+          ),
+        ),
+      );
+    }
+    return push<void>(
+      MoneyfyRoutePaths.holdingDetailWithClientId(
+        args.holdingId,
+        args.holdingClientId,
+      ),
+    );
+  }
+
+  Future<void> openCashAccountDetail(CashAccountDetailRouteArgs args) {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: RouteSettings(
+            name: MoneyfyRoutePaths.cashAccountDetail(args.holdingId),
+            arguments: args,
+          ),
+          builder: (_) => CashAccountDetailPage(
+            holdingId: args.holdingId,
+            holdingClientId: args.holdingClientId,
+          ),
+        ),
+      );
+    }
+    return push<void>(
+      MoneyfyRoutePaths.cashAccountDetailWithClientId(
+        args.holdingId,
+        args.holdingClientId,
+      ),
+    );
+  }
+
+  Future<void> openPortfolioDiagnosis() {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(
+            name: MoneyfyRoutePaths.portfolioDiagnosis,
+          ),
+          builder: (_) => const PortfolioAnalysisMvpPage(),
+        ),
+      );
+    }
+    return push<void>(MoneyfyRoutePaths.portfolioDiagnosis);
+  }
+
+  Future<void> openInvestmentPerformance() {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(
+            name: MoneyfyRoutePaths.investmentPerformance,
+          ),
+          builder: (_) => const InvestmentPerformancePage(),
+        ),
+      );
+    }
+    return push<void>(MoneyfyRoutePaths.investmentPerformance);
+  }
+
+  Future<void> openDividendInterest() {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(
+            name: MoneyfyRoutePaths.dividendInterest,
+          ),
+          builder: (_) => const DividendInterestAnalysisPage(),
+        ),
+      );
+    }
+    return push<void>(MoneyfyRoutePaths.dividendInterest);
+  }
+
+  Future<void> openStatistics() {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(name: MoneyfyRoutePaths.statistics),
+          builder: (_) => const StatisticsPage(),
+        ),
+      );
+    }
+    return push<void>(MoneyfyRoutePaths.statistics);
+  }
+
+  Future<void> openLogin() {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(name: MoneyfyRoutePaths.login),
+          builder: (_) => const LoginPage(),
+        ),
+      );
+    }
+    return push<void>(MoneyfyRoutePaths.login);
+  }
+
+  Future<void> openSignup() {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(name: MoneyfyRoutePaths.signup),
+          builder: (_) => const SignupPage(),
+        ),
+      );
+    }
+    return push<void>(MoneyfyRoutePaths.signup);
+  }
+
+  bool get _hasRouter => GoRouter.maybeOf(this) != null;
+}

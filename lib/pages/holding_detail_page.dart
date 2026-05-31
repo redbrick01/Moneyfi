@@ -4,12 +4,15 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import '../components/buttons/app_buttons.dart';
 import '../components/chips/delta_chip.dart';
 import '../components/chips/moneyfy_pill.dart';
+import '../components/panels/app_detail_section.dart';
+import '../components/panels/app_inner_panel.dart';
 import '../components/transaction_history_list.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../db/app_database.dart';
 import '../models/asset_item.dart';
 import '../models/market_snapshot.dart';
+import '../navigation/moneyfy_navigation.dart';
 import '../services/company_news_summary_service.dart';
 import '../services/market_data_service.dart';
 import '../services/sync_service.dart';
@@ -19,6 +22,8 @@ import '../widgets/moneyfy_ui.dart';
 import 'forms/cash_account_form_page.dart';
 import 'forms/holding_form_page.dart';
 import 'forms/transaction_form_page.dart';
+
+const double _kComparisonValueEpsilon = 1.0;
 
 class HoldingDetailPage extends StatefulWidget {
   const HoldingDetailPage({
@@ -204,17 +209,27 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
       return;
     }
 
-    final changed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => TransactionFormPage(
-          assetId: assetId,
-          holdingId: holdingId,
-          holdingClientId: holding.clientId,
-          item: item,
-          defaultName: holding.name,
+    final bool? changed;
+    if (item == null) {
+      changed = await context.openTransactionCreate(
+        assetId: assetId,
+        holdingId: holdingId,
+        holdingClientId: holding.clientId,
+        defaultName: holding.name,
+      );
+    } else {
+      changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => TransactionFormPage(
+            assetId: assetId,
+            holdingId: holdingId,
+            holdingClientId: holding.clientId,
+            item: item,
+            defaultName: holding.name,
+          ),
         ),
-      ),
-    );
+      );
+    }
 
     if (changed == true && mounted) {
       _reloadHolding();
@@ -358,7 +373,6 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                           height: context.spacing.xs + context.spacing.xs / 4,
                         ),
                         MoneyfySurfaceCard(
-                          variant: MoneyfySurfaceCardVariant.raised,
                           padding: EdgeInsets.all(context.cardPadding()),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,17 +485,9 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                       duration: context.motion.fast,
                                       curve: Curves.easeOutCubic,
                                       alignment: Alignment.topCenter,
-                                      child: Container(
-                                        width: double.infinity,
+                                      child: AppInnerPanel(
                                         padding: EdgeInsets.all(
                                           context.cardPadding(),
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: context.surfaces.surfaceBase,
-                                          borderRadius: BorderRadius.circular(
-                                            VisualSpec.surface.radiusCard,
-                                          ),
-                                          boxShadow: context.shadows.level2,
                                         ),
                                         child: Column(
                                           children: [
@@ -764,54 +770,7 @@ class _CardSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dividerColor = Theme.of(
-      context,
-    ).colorScheme.outlineVariant.withValues(alpha: 0.7);
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-        boxShadow: context.shadows.level3,
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(context.cardPadding()),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(title, style: context.typography.sectionTitle),
-                ),
-                if (trailing != null) ...[
-                  SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
-                  Container(width: 1, height: 24, color: dividerColor),
-                  SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
-                  trailing!,
-                ],
-              ],
-            ),
-            SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
-            SizedBox(
-              width: double.infinity,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: context.surfaces.surfaceBase,
-                  borderRadius: BorderRadius.circular(
-                    VisualSpec.surface.radiusCard,
-                  ),
-                  boxShadow: context.shadows.level2,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(context.cardPadding()),
-                  child: child,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return AppDetailSection(title: title, trailing: trailing, child: child);
   }
 }
 
@@ -856,20 +815,22 @@ class _HoldingHeroDeltaMetricRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: context.typography.meta.copyWith(
+            style: context.typography.caption.copyWith(
+              fontSize: context.fontSizes.s16,
               fontWeight: AppFontWeights.semibold,
-              color: context.colors.neutralText,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ),
         Text(
           value,
-          style: context.typography.meta.copyWith(
+          style: context.typography.caption.copyWith(
+            fontSize: context.fontSizes.s16,
             fontWeight: AppFontWeights.semibold,
             color: _holdingValueStringColor(context, value),
           ),
         ),
-        SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
+        SizedBox(width: context.spacing.xs),
         if (showDeltaChip)
           DeltaChip(
             value: rawValue,
@@ -955,16 +916,18 @@ Future<_HoldingComparisonMetrics> _loadHoldingComparisonMetrics(
     includeRecentFallback: true,
   );
 
-  final hasMonthly = monthlyPrevious != null;
-  final hasDaily = dailyPrevious != null;
-  final monthlyProfit = hasMonthly ? currentValue - monthlyPrevious : 0.0;
-  final monthlyRate = !hasMonthly || monthlyPrevious == 0
+  final hasMonthly = _isUsableComparisonValue(monthlyPrevious);
+  final hasDaily = _isUsableComparisonValue(dailyPrevious);
+  final monthlyPreviousValue = monthlyPrevious ?? 0.0;
+  final dailyPreviousValue = dailyPrevious ?? 0.0;
+  final monthlyProfit = hasMonthly ? currentValue - monthlyPreviousValue : 0.0;
+  final monthlyRate = !hasMonthly || monthlyPreviousValue == 0
       ? 0.0
-      : (monthlyProfit / monthlyPrevious) * 100;
-  final dailyProfit = hasDaily ? currentValue - dailyPrevious : 0.0;
-  final dailyRate = !hasDaily || dailyPrevious == 0
+      : (monthlyProfit / monthlyPreviousValue) * 100;
+  final dailyProfit = hasDaily ? currentValue - dailyPreviousValue : 0.0;
+  final dailyRate = !hasDaily || dailyPreviousValue == 0
       ? 0.0
-      : (dailyProfit / dailyPrevious) * 100;
+      : (dailyProfit / dailyPreviousValue) * 100;
 
   return _HoldingComparisonMetrics(
     valuationProfit: valuationProfit,
@@ -976,6 +939,12 @@ Future<_HoldingComparisonMetrics> _loadHoldingComparisonMetrics(
     hasMonthlyComparison: hasMonthly,
     hasDailyComparison: hasDaily,
   );
+}
+
+bool _isUsableComparisonValue(double? value) {
+  return value != null &&
+      value.isFinite &&
+      value.abs() >= _kComparisonValueEpsilon;
 }
 
 Future<double?> _resolveHoldingComparisonValue({

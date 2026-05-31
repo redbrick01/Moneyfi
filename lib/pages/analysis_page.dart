@@ -6,16 +6,14 @@ import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../db/app_database.dart';
+import '../navigation/moneyfy_navigation.dart';
 import '../services/company_news_summary_service.dart';
 import '../utils/display_currency.dart';
 import '../widgets/company_news_summary_card.dart';
 import '../widgets/market_news_summary_card.dart';
 import '../widgets/moneyfy_ui.dart';
 import 'annual_asset_analysis_page.dart';
-import 'dividend_interest_analysis_page.dart';
-import 'investment_performance_page.dart';
 import 'investment_review_page.dart';
-import 'portfolio_analysis_mvp_page.dart';
 import 'snapshot_detail_page.dart';
 
 class AnalysisPage extends StatefulWidget {
@@ -90,7 +88,6 @@ class _AnalysisPageState extends State<AnalysisPage> {
             _AnalysisEntryCard(
               icon: Icons.rate_review_rounded,
               title: '투자 회고',
-              subtitle: '오늘 · 주간 · 월간 판단 복기',
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -103,40 +100,25 @@ class _AnalysisPageState extends State<AnalysisPage> {
             _AnalysisEntryCard(
               icon: Icons.insights_rounded,
               title: '포트폴리오 진단',
-              subtitle: '위험 신호 · 조정 후보 · 집중도 점검',
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => const PortfolioAnalysisMvpPage(),
-                  ),
-                );
-              },
+              onTap: context.openPortfolioDiagnosis,
             ),
             SizedBox(height: context.spacing.sm),
             _AnalysisEntryCard(
               icon: Icons.query_stats_rounded,
               title: '투자성과 분석',
-              subtitle: '실현손익 · 배당/이자 · 입출금 제외 성과',
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => const InvestmentPerformancePage(),
-                  ),
-                );
-              },
+              onTap: context.openInvestmentPerformance,
             ),
             SizedBox(height: context.spacing.sm),
             _AnalysisEntryCard(
               icon: Icons.payments_rounded,
               title: '배당/이자 분석',
-              subtitle: '월별 추이 · 연 총합 · 종목별 수입',
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => const DividendInterestAnalysisPage(),
-                  ),
-                );
-              },
+              onTap: context.openDividendInterest,
+            ),
+            SizedBox(height: context.spacing.sm),
+            _AnalysisEntryCard(
+              icon: Icons.insert_chart_outlined_rounded,
+              title: '통계',
+              onTap: context.openStatistics,
             ),
           ],
         );
@@ -168,13 +150,11 @@ class _AnalysisEntryCard extends StatelessWidget {
   const _AnalysisEntryCard({
     required this.icon,
     required this.title,
-    required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
-  final String subtitle;
   final VoidCallback onTap;
 
   @override
@@ -204,23 +184,7 @@ class _AnalysisEntryCard extends StatelessWidget {
                 ),
               ),
               SizedBox(width: context.spacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: context.typography.cardTitle),
-                    SizedBox(height: context.spacing.xs / 2),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.typography.meta.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              Expanded(child: Text(title, style: context.typography.cardTitle)),
               SizedBox(width: context.spacing.sm),
               AppIcon(
                 AppIconName.chevronRight,
@@ -268,8 +232,8 @@ class SnapshotCalendarCard extends StatelessWidget {
     }
 
     return MoneyfySectionCard(
-      title: '스냅샷 캘린더',
-      subtitle: '${focusedMonth.year}년 ${focusedMonth.month}월',
+      title: '스냅샷 참고 캘린더',
+      subtitle: '기록 기반 참고 지표 · ${focusedMonth.year}년 ${focusedMonth.month}월',
       headerBottomSpacing: 18,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -466,8 +430,8 @@ class YearlyAssetAnalysisCard extends StatelessWidget {
                   SizedBox(height: context.spacing.xs),
                   Text(
                     years.isEmpty
-                        ? '데이터 없음'
-                        : years.map((year) => '$year년').join(' · '),
+                        ? '스냅샷 기록이 쌓이면 통계 기준 연도별 비교를 볼 수 있어요.'
+                        : '통계 기준 연도별 비교 · ${years.map((year) => '$year년').join(' · ')}',
                     style: context.typography.meta.copyWith(
                       color: context.colors.neutralTextMuted,
                     ),
