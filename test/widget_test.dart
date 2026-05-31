@@ -790,6 +790,75 @@ void main() {
   );
 
   testWidgets(
+    'weekly and monthly investment reviews remain read-only reports',
+    (tester) async {
+      InvestmentReviewReport reportFor(InvestmentReviewPeriodType type) {
+        final period = InvestmentReviewPeriodResolver.resolve(
+          type,
+          now: DateTime(2026, 6),
+        );
+        final periodName = switch (type) {
+          InvestmentReviewPeriodType.today => '오늘',
+          InvestmentReviewPeriodType.weekly => '주간',
+          InvestmentReviewPeriodType.monthly => '월간',
+        };
+        return InvestmentReviewReport(
+          period: period,
+          metrics: [
+            InvestmentReviewMetric(
+              label: '$periodName 순 투자성과',
+              value: '+12,000원',
+            ),
+          ],
+          signals: [
+            InvestmentReviewSignal(
+              title: '$periodName 분산 점검',
+              description: '비중을 확인하세요.',
+            ),
+          ],
+          narrative: InvestmentReviewNarrative(
+            headline: '$periodName 회고가 준비됐어요.',
+            summary: '$periodName 자동 요약입니다.',
+            nextActions: const ['다음 액션을 확인하세요.'],
+          ),
+          aiState: const InvestmentReviewAiState.off(),
+          hasEnoughData: true,
+          activity: const InvestmentReviewActivitySummary(buyCount: 1),
+        );
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: InvestmentReviewPage(
+            reportBuilderForTesting: (type) async => reportFor(type),
+            dailyReviewLoaderForTesting: (_) async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('성과 분석'), findsWidgets);
+
+      await tester.tap(find.text('주간'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('주간 회고가 준비됐어요.'), findsOneWidget);
+      expect(find.text('주요 지표'), findsOneWidget);
+      expect(find.text('리뷰 신호'), findsOneWidget);
+      expect(find.text('성과 분석'), findsNothing);
+
+      await tester.tap(find.text('월간'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('월간 회고가 준비됐어요.'), findsOneWidget);
+      expect(find.text('주요 지표'), findsOneWidget);
+      expect(find.text('리뷰 신호'), findsOneWidget);
+      expect(find.text('성과 분석'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'today investment review no-trade composer shows draft prompts and reasons',
     (tester) async {
       DateTime? loadedDate;
