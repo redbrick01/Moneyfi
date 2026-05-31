@@ -304,7 +304,7 @@ PortfolioDiagnosisResult _buildLocalFallbackDiagnosis(
         : const [],
     weaknesses: const ['외부 AI 응답 지연으로 최신 뉴스와 정성 분석 반영이 제한됩니다.'],
     suggestions: const [
-      '외부 API가 회복된 뒤 AI 포트폴리오 분석을 다시 생성하세요.',
+      '외부 API가 회복된 뒤 포트폴리오 진단을 다시 생성하세요.',
       '그 전에는 자산 비중, 현금 비중, 최근 급등락 종목을 우선 점검하세요.',
     ],
     uncertainty: true,

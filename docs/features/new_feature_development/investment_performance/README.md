@@ -8,6 +8,11 @@
 | --- | --- |
 | [Plan](plan.md) | 기능 목표, 범위, UX, 데이터/API, 단계별 개발 계획, 타당성 피드백 |
 | [Redesign Plan v1](redesign_plan_v1.md) | 투자성과 분석 페이지 전체 레이아웃 리디자인 방향, 레퍼런스, IA, 구현 단계 |
+| [Redesign Plan v2](redesign_plan_v2.md) | 투자 판단 중심 성과 대시보드로 완전 재구성하기 위한 새 리디자인 계획 |
+| [Redesign Plan v2 Parts](plan_parts/README.md) | v2 리디자인의 단계별 역할, 범위, 완료 조건을 분리한 실행 계획 |
+| [Redesign v2 Implementation Report](redesign_v2_implementation_report.md) | v2 리디자인 구현 범위, 검증 명령, 남은 리스크 기록 |
+| [Page Information Inventory](page_information_inventory.md) | 투자성과 분석 페이지 표시 정보, 데이터 출처, 계산식, 빈 상태 정리 |
+| [Investment Judgment Revision Plan](investment_judgment_revision_plan.md) | 투자성과 분석을 투자 판단 리포트로 개선하기 위한 수정 계획 |
 | [Verification Test Plan](verification_test_plan.md) | 자동 테스트, 수동 QA, 반응형 확인, acceptance criteria |
 | [Test Report 2026-05-24](test_report_20260524.md) | 테스트 계획 기준 자동 검증 실행 결과 |
 | [Temporary Development Report](tmp_development_report.md) | 구현 결과를 검증 계획 수립용으로 정리한 임시 개발 리포트 |
