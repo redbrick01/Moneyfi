@@ -1027,6 +1027,95 @@ void main() {
     },
   );
 
+  testWidgets(
+    'today investment review complete saves current draft before completing',
+    (tester) async {
+      DailyInvestmentReviewDraft? savedDraft;
+      DateTime? completedDate;
+      final events = <String>[];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: InvestmentReviewPage(
+              reportBuilderForTesting: (_) async =>
+                  todayReviewReport(headline: '오늘 회고가 준비됐어요.'),
+              dailyReviewLoaderForTesting: (_) async => null,
+              dailyReviewSaveForTesting: (draft) async {
+                savedDraft = draft;
+                events.add('save:${draft.performanceNote}');
+              },
+              dailyReviewCompleteForTesting: (date) async {
+                completedDate = date;
+                events.add('complete');
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, '완료 직전 성과 기록');
+      await tester.scrollUntilVisible(
+        find.text('회고 완료'),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('회고 완료'));
+      await tester.pumpAndSettle();
+
+      expect(savedDraft, isNotNull);
+      expect(savedDraft!.performanceNote, '완료 직전 성과 기록');
+      expect(completedDate, DateTime(2026, 6));
+      expect(events, ['save:완료 직전 성과 기록', 'complete']);
+    },
+  );
+
+  testWidgets(
+    'today investment review complete failure keeps form and shows SnackBar',
+    (tester) async {
+      DailyInvestmentReviewDraft? savedDraft;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: InvestmentReviewPage(
+              reportBuilderForTesting: (_) async =>
+                  todayReviewReport(headline: '오늘 회고가 준비됐어요.'),
+              dailyReviewLoaderForTesting: (_) async => null,
+              dailyReviewSaveForTesting: (draft) async {
+                savedDraft = draft;
+              },
+              dailyReviewCompleteForTesting: (_) async {
+                throw Exception('complete failed');
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, '완료 실패 후 유지');
+      await tester.scrollUntilVisible(
+        find.text('회고 완료'),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('회고 완료'));
+      await tester.pumpAndSettle();
+
+      expect(savedDraft, isNotNull);
+      expect(savedDraft!.performanceNote, '완료 실패 후 유지');
+      expect(find.text('회고를 저장하지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
+      final performanceField = tester.widget<TextField>(
+        find.byType(TextField).first,
+      );
+      expect(performanceField.controller!.text, '완료 실패 후 유지');
+    },
+  );
+
   testWidgets('investment review home card shows headline and action', (
     tester,
   ) async {
