@@ -96,4 +96,30 @@ void main() {
       expect(review.completedAt, isNotNull);
     },
   );
+
+  test('saveDraft preserves completed status for completed review', () async {
+    final date = DateTime(2026, 6, 1);
+    await repository.saveDraft(
+      DailyInvestmentReviewDraft.empty(
+        reviewDate: date,
+        mode: DailyInvestmentReviewMode.tradingDay,
+      ).copyWith(performanceNote: '실현손익 확인', tradeReviewNote: '계획 매도'),
+    );
+    await repository.markCompleted(date);
+    final completed = await repository.loadByDate(date);
+
+    await repository.saveDraft(
+      DailyInvestmentReviewDraft.empty(
+        reviewDate: date,
+        mode: DailyInvestmentReviewMode.tradingDay,
+      ).copyWith(performanceNote: '완료 후 수정', tradeReviewNote: '복기 보강'),
+    );
+
+    final review = await repository.loadByDate(date);
+    expect(review, isNotNull);
+    expect(review!.status, DailyInvestmentReviewStatus.completed);
+    expect(review.completedAt, isNotNull);
+    expect(review.completedAt, completed!.completedAt);
+    expect(review.performanceNote, '완료 후 수정');
+  });
 }

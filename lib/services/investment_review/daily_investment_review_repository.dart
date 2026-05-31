@@ -23,10 +23,16 @@ class DailyInvestmentReviewRepository {
   Future<void> saveDraft(DailyInvestmentReviewDraft draft) async {
     final now = DateTime.now().toIso8601String();
     final existing = await loadByDate(draft.reviewDate);
+    final existingCompleted =
+        existing?.status == DailyInvestmentReviewStatus.completed;
     final companion = DailyInvestmentReviewsCompanion(
       id: existing == null ? const Value.absent() : Value(existing.id),
       reviewDate: Value(_dateKey(draft.reviewDate)),
-      status: Value(DailyInvestmentReviewStatus.inProgress.name),
+      status: Value(
+        existingCompleted
+            ? DailyInvestmentReviewStatus.completed.name
+            : DailyInvestmentReviewStatus.inProgress.name,
+      ),
       mode: Value(draft.mode.name),
       performanceNote: Value(draft.performanceNote),
       tradeReviewNote: Value(draft.tradeReviewNote),
@@ -41,9 +47,9 @@ class DailyInvestmentReviewRepository {
       nextPlan: Value(draft.nextPlan),
       createdAt: Value(existing?.createdAt.toIso8601String() ?? now),
       updatedAt: Value(now),
-      completedAt: existing?.completedAt == null
-          ? const Value.absent()
-          : Value(existing!.completedAt!.toIso8601String()),
+      completedAt: existingCompleted && existing?.completedAt != null
+          ? Value(existing!.completedAt!.toIso8601String())
+          : const Value(null),
     );
 
     await _database
