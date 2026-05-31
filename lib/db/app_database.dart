@@ -1005,7 +1005,11 @@ class AppDatabase extends _$AppDatabase {
           COALESCE(SUM(CASE WHEN action = 'settlement' THEN cash_delta ELSE 0 END), 0) AS trade_settlement_cash_flow_amount,
           COALESCE(SUM(CASE WHEN action IN ('transfer_out', 'transfer_in', 'fx_out', 'fx_in') THEN ABS(cash_delta) ELSE 0 END), 0) AS internal_cash_movement_amount,
           COALESCE(SUM(CASE WHEN action = 'buy' THEN gross_amount ELSE 0 END), 0) AS buy_amount,
-          COALESCE(SUM(CASE WHEN action = 'sell' THEN gross_amount ELSE 0 END), 0) AS sell_amount
+          COALESCE(SUM(CASE WHEN action = 'sell' THEN gross_amount ELSE 0 END), 0) AS sell_amount,
+          COALESCE(SUM(CASE WHEN action = 'buy' THEN 1 ELSE 0 END), 0) AS buy_count,
+          COALESCE(SUM(CASE WHEN action = 'sell' THEN 1 ELSE 0 END), 0) AS sell_count,
+          COALESCE(SUM(CASE WHEN action IN ('dividend', 'interest') THEN 1 ELSE 0 END), 0) AS income_count,
+          COALESCE(SUM(CASE WHEN action IN ('deposit', 'withdrawal', 'opening_cash', 'transfer_out', 'transfer_in', 'fx_out', 'fx_in') THEN 1 ELSE 0 END), 0) AS cash_flow_count
         FROM transaction_lines tl
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
@@ -1034,6 +1038,10 @@ class AppDatabase extends _$AppDatabase {
       ),
       buyAmount: row.read<double>('buy_amount'),
       sellAmount: row.read<double>('sell_amount'),
+      buyCount: row.read<int>('buy_count'),
+      sellCount: row.read<int>('sell_count'),
+      incomeCount: row.read<int>('income_count'),
+      cashFlowCount: row.read<int>('cash_flow_count'),
     );
   }
 
@@ -1084,7 +1092,11 @@ class AppDatabase extends _$AppDatabase {
           COALESCE(SUM(CASE WHEN action = 'settlement' THEN cash_delta ELSE 0 END), 0) AS trade_settlement_cash_flow_amount,
           COALESCE(SUM(CASE WHEN action IN ('transfer_out', 'transfer_in', 'fx_out', 'fx_in') THEN ABS(cash_delta) ELSE 0 END), 0) AS internal_cash_movement_amount,
           COALESCE(SUM(CASE WHEN action = 'buy' THEN gross_amount ELSE 0 END), 0) AS buy_amount,
-          COALESCE(SUM(CASE WHEN action = 'sell' THEN gross_amount ELSE 0 END), 0) AS sell_amount
+          COALESCE(SUM(CASE WHEN action = 'sell' THEN gross_amount ELSE 0 END), 0) AS sell_amount,
+          COALESCE(SUM(CASE WHEN action = 'buy' THEN 1 ELSE 0 END), 0) AS buy_count,
+          COALESCE(SUM(CASE WHEN action = 'sell' THEN 1 ELSE 0 END), 0) AS sell_count,
+          COALESCE(SUM(CASE WHEN action IN ('dividend', 'interest') THEN 1 ELSE 0 END), 0) AS income_count,
+          COALESCE(SUM(CASE WHEN action IN ('deposit', 'withdrawal', 'opening_cash', 'transfer_out', 'transfer_in', 'fx_out', 'fx_in') THEN 1 ELSE 0 END), 0) AS cash_flow_count
         FROM transaction_lines tl
         INNER JOIN transaction_events te
           ON te.id = tl.event_id
@@ -1119,6 +1131,10 @@ class AppDatabase extends _$AppDatabase {
           ),
           buyAmount: row.read<double>('buy_amount'),
           sellAmount: row.read<double>('sell_amount'),
+          buyCount: row.read<int>('buy_count'),
+          sellCount: row.read<int>('sell_count'),
+          incomeCount: row.read<int>('income_count'),
+          cashFlowCount: row.read<int>('cash_flow_count'),
         ),
     };
   }

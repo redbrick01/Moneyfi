@@ -252,6 +252,10 @@ class LedgerPortfolioPerformanceRecord {
     required this.internalCashMovementAmount,
     required this.buyAmount,
     required this.sellAmount,
+    this.buyCount = 0,
+    this.sellCount = 0,
+    this.incomeCount = 0,
+    this.cashFlowCount = 0,
   });
 
   final String? currencyCode;
@@ -266,6 +270,10 @@ class LedgerPortfolioPerformanceRecord {
   final double internalCashMovementAmount;
   final double buyAmount;
   final double sellAmount;
+  final int buyCount;
+  final int sellCount;
+  final int incomeCount;
+  final int cashFlowCount;
 
   double get pureRealizedPerformance =>
       realizedPnl + incomeAmount - feeAmount - taxAmount;

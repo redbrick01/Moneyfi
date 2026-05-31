@@ -73,9 +73,27 @@ class InvestmentReviewAiState {
   final String? errorMessage;
 }
 
+class InvestmentReviewActivitySummary {
+  const InvestmentReviewActivitySummary({
+    this.buyCount = 0,
+    this.sellCount = 0,
+    this.incomeCount = 0,
+    this.cashFlowCount = 0,
+  });
+
+  final int buyCount;
+  final int sellCount;
+  final int incomeCount;
+  final int cashFlowCount;
+
+  int get tradeCount => buyCount + sellCount;
+  int get totalCount => tradeCount + incomeCount + cashFlowCount;
+}
+
 class InvestmentReviewReport {
   const InvestmentReviewReport({
     required this.period,
+    required this.activity,
     required this.metrics,
     required this.signals,
     required this.narrative,
@@ -85,6 +103,7 @@ class InvestmentReviewReport {
   });
 
   final InvestmentReviewPeriodRange period;
+  final InvestmentReviewActivitySummary activity;
   final List<InvestmentReviewMetric> metrics;
   final List<InvestmentReviewSignal> signals;
   final InvestmentReviewNarrative narrative;
