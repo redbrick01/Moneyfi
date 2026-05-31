@@ -2010,6 +2010,25 @@ void main() {
     expect(hiddenCashHolding?.isHidden, isTrue);
   });
 
+  test(
+    'core sync replacement preserves target allocation by asset client id',
+    () async {
+      final assetId = await createAsset('주식');
+      final payload = await db.buildDirtySyncPayload();
+      final assetClientId = (await (db.select(
+        db.assets,
+      )..where((row) => row.id.equals(assetId))).getSingle()).clientId!;
+
+      await db.saveAssetAllocationTargets({assetId: 42.5});
+      await db.replaceLocalSyncData(Map<String, dynamic>.from(payload));
+
+      final restoredAsset = await db.fetchAssetByClientId(assetClientId);
+      expect(restoredAsset, isNotNull);
+      final restoredTargets = await db.fetchAssetAllocationTargets();
+      expect(restoredTargets, {restoredAsset!.id: 42.5});
+    },
+  );
+
   test('core sync payload excludes derived analysis tables', () async {
     final assetId = await createAsset('주식');
     await db.createHolding(

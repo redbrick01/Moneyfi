@@ -7737,10 +7737,21 @@ class AppDatabase extends _$AppDatabase {
             .map((row) => row.map((key, value) => MapEntry('$key', value)))
             .toList(growable: false);
 
+    final localAssetRows = await select(assets).get();
     final localAssetHiddenByClientId = {
-      for (final row in await select(assets).get())
+      for (final row in localAssetRows)
         if (row.clientId != null && row.clientId!.isNotEmpty)
           row.clientId!: row.hidden,
+    };
+    final localAssetClientIdById = {
+      for (final row in localAssetRows)
+        if (row.clientId != null && row.clientId!.isNotEmpty)
+          row.id: row.clientId!,
+    };
+    final localTargetRatioByAssetClientId = {
+      for (final row in await select(assetAllocationTargets).get())
+        if (localAssetClientIdById[row.assetId] != null)
+          localAssetClientIdById[row.assetId]!: row.targetRatio,
     };
     final localHoldingHiddenByClientId = {
       for (final row in await select(holdings).get())
@@ -7755,6 +7766,7 @@ class AppDatabase extends _$AppDatabase {
 
     await transaction(() async {
       await delete(portfolioDailyReturns).go();
+      await delete(assetAllocationTargets).go();
       await delete(transactionLines).go();
       await delete(transactionEvents).go();
       await delete(cashTransactions).go();
@@ -7789,6 +7801,18 @@ class AppDatabase extends _$AppDatabase {
         if (clientId != null && clientId.isNotEmpty) {
           assetIdByClientId[clientId] = insertedId;
         }
+      }
+      for (final entry in localTargetRatioByAssetClientId.entries) {
+        final assetId = assetIdByClientId[entry.key];
+        if (assetId == null) {
+          continue;
+        }
+        await into(assetAllocationTargets).insert(
+          AssetAllocationTargetsCompanion.insert(
+            assetId: assetId,
+            targetRatio: entry.value,
+          ),
+        );
       }
 
       final holdingIdByClientId = <String, int>{};
