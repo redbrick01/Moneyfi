@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../components/chips/moneyfy_pill.dart';
+import '../components/panels/app_inner_panel.dart';
+import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../services/company_news_summary_service.dart';
@@ -34,94 +36,87 @@ class CompanyNewsSummaryCard extends StatelessWidget {
     final latestModel = _findLatestModel(items);
     final hasHeaderMeta = latestSummaryDate != null || latestModel != null;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-        boxShadow: context.shadows.level3,
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(context.cardPadding()),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Text(title, style: context.typography.sectionTitle),
-                ),
-                if (hasHeaderMeta)
-                  Flexible(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (latestSummaryDate != null)
-                          Flexible(
-                            child: Text(
-                              latestSummaryDate,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.right,
-                              style: context.typography.caption.copyWith(
-                                color: context.colors.neutralTextMuted,
-                              ),
+    return SectionCard(
+      variant: SectionCardVariant.base,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(title, style: context.typography.sectionTitle),
+              ),
+              if (hasHeaderMeta)
+                Flexible(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (latestSummaryDate != null)
+                        Flexible(
+                          child: Text(
+                            latestSummaryDate,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                            style: context.typography.caption.copyWith(
+                              color: context.colors.neutralTextMuted,
                             ),
                           ),
-                        if (latestSummaryDate != null && latestModel != null)
-                          SizedBox(width: context.spacing.xs),
-                        if (latestModel != null)
-                          Flexible(
-                            child: Text(
-                              latestModel,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.right,
-                              style: context.typography.caption.copyWith(
-                                color: context.colors.neutralTextMuted,
-                              ),
+                        ),
+                      if (latestSummaryDate != null && latestModel != null)
+                        SizedBox(width: context.spacing.xs),
+                      if (latestModel != null)
+                        Flexible(
+                          child: Text(
+                            latestModel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                            style: context.typography.caption.copyWith(
+                              color: context.colors.neutralTextMuted,
                             ),
                           ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-            SizedBox(height: context.spacing.md),
-            if (items.isEmpty)
-              SizedBox(
-                width: double.infinity,
-                child: Text(
-                  emptyMessage,
-                  textAlign: TextAlign.center,
-                  style: context.typography.body.copyWith(
-                    color: context.colors.neutralTextMuted,
+                        ),
+                    ],
                   ),
                 ),
-              )
-            else
+            ],
+          ),
+          SizedBox(height: context.spacing.md),
+          if (items.isEmpty)
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                emptyMessage,
+                textAlign: TextAlign.center,
+                style: context.typography.body.copyWith(
+                  color: context.colors.neutralTextMuted,
+                ),
+              ),
+            )
+          else
+            for (
+              var sectionIndex = 0;
+              sectionIndex < sections.length;
+              sectionIndex++
+            ) ...[
               for (
-                var sectionIndex = 0;
-                sectionIndex < sections.length;
-                sectionIndex++
+                var itemIndex = 0;
+                itemIndex < sections[sectionIndex].items.length;
+                itemIndex++
               ) ...[
-                for (
-                  var itemIndex = 0;
-                  itemIndex < sections[sectionIndex].items.length;
-                  itemIndex++
-                ) ...[
-                  _CompanyNewsSummaryTile(
-                    item: sections[sectionIndex].items[itemIndex],
-                  ),
-                  if (itemIndex != sections[sectionIndex].items.length - 1)
-                    SizedBox(height: context.spacing.sm),
-                ],
-                if (sectionIndex != sections.length - 1)
-                  SizedBox(height: context.spacing.md + context.spacing.xs / 4),
+                _CompanyNewsSummaryTile(
+                  item: sections[sectionIndex].items[itemIndex],
+                ),
+                if (itemIndex != sections[sectionIndex].items.length - 1)
+                  SizedBox(height: context.spacing.sm),
               ],
-          ],
-        ),
+              if (sectionIndex != sections.length - 1)
+                SizedBox(height: context.spacing.md + context.spacing.xs / 4),
+            ],
+        ],
       ),
     );
   }
@@ -224,12 +219,9 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
         : summaryText;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
+      borderRadius: BorderRadius.circular(context.radius.rMd),
       onTap: () => setState(() => _isExpanded = !_isExpanded),
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
-        decoration: _companyInnerNewsCardDecoration(context),
+      child: AppInnerPanel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -333,13 +325,10 @@ class _CompanyIssueRow extends StatelessWidget {
     final importance = '${issue['importance'] ?? ''}'.trim();
     final importanceStyle = _companyImportanceStyle(context, importance);
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(context.spacing.sm),
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-      ),
+    return AppInnerPanel(
+      dense: true,
+      tone: AppInnerPanelTone.raised,
+      showBorder: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -476,12 +465,4 @@ class _CompanyOutlookRow extends StatelessWidget {
       ],
     );
   }
-}
-
-BoxDecoration _companyInnerNewsCardDecoration(BuildContext context) {
-  return BoxDecoration(
-    color: context.surfaces.surfaceBase,
-    borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-    boxShadow: context.shadows.level2,
-  );
 }

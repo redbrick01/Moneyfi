@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../components/panels/app_sheet_surface.dart';
 import '../../design_system/context_extensions.dart';
 
 class MoneyfyFormScaffold extends StatelessWidget {
@@ -474,57 +475,40 @@ class _MoneyfySelectionSheet<T> extends StatelessWidget {
     final theme = Theme.of(context);
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
 
-    return SafeArea(
-      top: false,
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.colors.neutralBackground,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(context.radius.rLg),
-          ),
+    return AppSheetSurface(
+      backgroundColor: context.colors.neutralBackground,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          context.contentHorizontalPadding,
+          context.spacing.sm,
+          context.contentHorizontalPadding,
+          context.spacing.lg + bottomInset,
         ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            context.contentHorizontalPadding,
-            context.spacing.sm,
-            context.contentHorizontalPadding,
-            context.spacing.lg + bottomInset,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: context.colors.neutralOutline,
-                    borderRadius: BorderRadius.circular(context.radius.rPill),
-                  ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: AppSheetHandle()),
+            SizedBox(height: context.spacing.md + context.spacing.xs / 4),
+            Text(title, style: theme.textTheme.titleLarge),
+            SizedBox(height: context.spacing.md + context.spacing.xs / 4),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: options.length,
+                separatorBuilder: (context, index) => SizedBox(
+                  height: context.spacing.xs + context.spacing.xs / 4,
                 ),
+                itemBuilder: (context, index) {
+                  final option = options[index];
+                  return _MoneyfySelectionOptionTile<T>(
+                    option: option,
+                    isSelected: option.value == value,
+                  );
+                },
               ),
-              SizedBox(height: context.spacing.md + context.spacing.xs / 4),
-              Text(title, style: theme.textTheme.titleLarge),
-              SizedBox(height: context.spacing.md + context.spacing.xs / 4),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  separatorBuilder: (context, index) => SizedBox(
-                    height: context.spacing.xs + context.spacing.xs / 4,
-                  ),
-                  itemBuilder: (context, index) {
-                    final option = options[index];
-                    return _MoneyfySelectionOptionTile<T>(
-                      option: option,
-                      isSelected: option.value == value,
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

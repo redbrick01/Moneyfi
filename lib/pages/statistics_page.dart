@@ -124,6 +124,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
         return AppPageScaffold(
           title: '통계',
+          subtitle: '스냅샷과 기록을 기준으로 자산 흐름을 확인합니다.',
           enablePullToRefresh: true,
           onRefresh: _refreshPage,
           hasFloatingNavInset: true,
@@ -131,87 +132,58 @@ class _StatisticsPageState extends State<StatisticsPage> {
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _StatisticsSectionBasePlate(
-                child: _MonthlyTrendSection(
-                  months: data.months,
-                  monthKeys: data.monthKeys,
-                  series: data.series,
-                  totalSeries: data.totalSeries,
-                  sectionError: bundle.trendError,
-                  onRetry: _refreshPage,
-                ),
+              _MonthlyTrendSection(
+                months: data.months,
+                monthKeys: data.monthKeys,
+                series: data.series,
+                totalSeries: data.totalSeries,
+                sectionError: bundle.trendError,
+                onRetry: _refreshPage,
               ),
               SizedBox(height: context.spacing.sectionGap),
-              _StatisticsSectionBasePlate(
-                child: _MonthEndSnapshotsSection(
-                  items: closingAssets,
-                  sectionError: bundle.monthEndError,
-                  onRetry: _refreshPage,
-                ),
+              _MonthEndSnapshotsSection(
+                items: closingAssets,
+                sectionError: bundle.monthEndError,
+                onRetry: _refreshPage,
               ),
               SizedBox(height: context.spacing.sectionGap),
-              _StatisticsSectionBasePlate(
-                child: _YearAnalysisEntrySection(
-                  snapshots: bundle.allSnapshots,
-                  items: bundle.annualItems,
-                  sectionError: bundle.yearAnalysisError,
-                  onRetry: _refreshPage,
-                ),
+              _YearAnalysisEntrySection(
+                snapshots: bundle.allSnapshots,
+                items: bundle.annualItems,
+                sectionError: bundle.yearAnalysisError,
+                onRetry: _refreshPage,
               ),
               SizedBox(height: context.spacing.sectionGap),
-              _StatisticsSectionBasePlate(
-                child: _SnapshotCalendarSection(
-                  focusedMonth: focusedMonth,
-                  snapshots: bundle.allSnapshots,
-                  items: bundle.allItems,
-                  transactionDates: bundle.transactionDates,
-                  sectionError: bundle.calendarError,
-                  selectedDateKey: _selectedCalendarDateKey,
-                  onMonthChanged: (value) {
-                    setState(() {
-                      _focusedMonth = DateTime(value.year, value.month);
-                    });
-                  },
-                  onDateSelected: (dateKey) {
-                    setState(() {
-                      _selectedCalendarDateKey = dateKey;
-                    });
-                  },
-                  onShowNoSnapshotHint: () {
-                    AppSnackBar.showInfo(
-                      context,
-                      '선택한 날짜에 스냅샷이 없어요.',
-                      hasFloatingNavInset: true,
-                    );
-                  },
-                  onRetry: _refreshPage,
-                ),
+              _SnapshotCalendarSection(
+                focusedMonth: focusedMonth,
+                snapshots: bundle.allSnapshots,
+                items: bundle.allItems,
+                transactionDates: bundle.transactionDates,
+                sectionError: bundle.calendarError,
+                selectedDateKey: _selectedCalendarDateKey,
+                onMonthChanged: (value) {
+                  setState(() {
+                    _focusedMonth = DateTime(value.year, value.month);
+                  });
+                },
+                onDateSelected: (dateKey) {
+                  setState(() {
+                    _selectedCalendarDateKey = dateKey;
+                  });
+                },
+                onShowNoSnapshotHint: () {
+                  AppSnackBar.showInfo(
+                    context,
+                    '선택한 날짜에 스냅샷이 없어요.',
+                    hasFloatingNavInset: true,
+                  );
+                },
+                onRetry: _refreshPage,
               ),
             ],
           ),
         );
       },
-    );
-  }
-}
-
-class _StatisticsSectionBasePlate extends StatelessWidget {
-  const _StatisticsSectionBasePlate({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-        boxShadow: context.shadows.level3,
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(context.cardPadding()),
-        child: child,
-      ),
     );
   }
 }
@@ -523,6 +495,8 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('월별 스냅샷 기록으로 총자산 흐름을 비교해요.', style: context.typography.meta),
+          SizedBox(height: context.spacing.sm),
           _SelectedMonthStrip(
             monthKey: widget.monthKeys[selected],
             totalValueInMillion: widget.totalSeries.values[selected],
@@ -892,9 +866,7 @@ class _YearAnalysisEntrySection extends StatelessWidget {
                     Text('연도별 자산 분석', style: context.typography.cardTitle),
                     SizedBox(height: context.spacing.xs / 2),
                     Text(
-                      enabled
-                          ? '월별 트렌드와 요약을 연도 단위로 확인하세요.'
-                          : '분석할 스냅샷 데이터가 아직 없어요.',
+                      enabled ? '스냅샷 기록을 연도 단위로 비교해요.' : '분석할 스냅샷 데이터가 아직 없어요.',
                       style: context.typography.meta,
                     ),
                   ],
@@ -1010,6 +982,8 @@ class _SnapshotCalendarSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('날짜별 저장 기록과 거래 흔적을 확인해요.', style: context.typography.meta),
+            SizedBox(height: context.spacing.sm),
             Row(
               children: [
                 _MonthControlButton(
@@ -1037,8 +1011,6 @@ class _SnapshotCalendarSection extends StatelessWidget {
               ],
             ),
             SizedBox(height: context.spacing.xs),
-            _CalendarLegendRow(),
-            SizedBox(height: context.spacing.sm),
             Row(
               children: ['일', '월', '화', '수', '목', '금', '토']
                   .map(
@@ -1111,6 +1083,8 @@ class _SnapshotCalendarSection extends StatelessWidget {
                 );
               },
             ),
+            SizedBox(height: context.spacing.md),
+            Center(child: _CalendarLegendRow()),
           ],
         ),
       ),
@@ -1145,6 +1119,7 @@ class _CalendarLegendRow extends StatelessWidget {
       0.58,
     )!;
     return Wrap(
+      alignment: WrapAlignment.center,
       spacing: context.spacing.md,
       runSpacing: context.spacing.xs,
       children: [
@@ -1156,7 +1131,7 @@ class _CalendarLegendRow extends StatelessWidget {
               height: 12,
               decoration: BoxDecoration(
                 color: colorScheme.surface.withValues(alpha: 0),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(context.radius.rSm / 2),
                 border: Border.all(
                   color: colorScheme.primary.withValues(alpha: 0.28),
                 ),
@@ -1610,7 +1585,6 @@ Widget _buildCenteredLevel1EmptyCard(
         child: SizedBox(
           width: cardWidth,
           child: SectionCard(
-            variant: SectionCardVariant.raised,
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 188),
               child: Center(

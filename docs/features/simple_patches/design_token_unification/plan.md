@@ -102,6 +102,7 @@ v1 통일화에서 하지 않는 것:
 | 05 | [Detail And Form Pages](plan_parts/05_detail_and_form_pages.md) | 상세/폼 화면의 header, row, CTA, form spacing 통일 |
 | 06 | [Remaining App Surfaces](plan_parts/06_remaining_app_surfaces.md) | shell, auth, home, portfolio, transaction, statistics, account, overlay 통일 |
 | 07 | [Legacy Token Retirement](plan_parts/07_legacy_token_retirement.md) | legacy token 축소와 CI/문서 guardrail 단계화 |
+| 08 | [카드/패널 시각 문법 통일](plan_parts/08_card_panel_visual_grammar.md) | 토큰 연결 이후 카드/패널 표면 위계와 시각 문법 통일 |
 
 ## Suggested Batch Order
 

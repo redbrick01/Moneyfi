@@ -39,6 +39,9 @@ MONEYFY 앱의 색상, 폰트, 여백, 간격, 반경, 상태 표현을 공통 �
 | 25 | [Stage 07 Test Report](test_report_20260529_stage_07.md) | legacy token retirement policy 및 reporting-only guardrail 변경/검증 결과 |
 | 26 | [Stage 07 Follow-up Test Report](test_report_20260529_stage_07_followup.md) | snapshot detail holdout 및 transparent token cleanup 검증 결과 |
 | 27 | [Pill, Chip, Badge Token Report](test_report_20260530_pill_chip_badge_tokens.md) | pill/chip/badge 공통 resolver와 compact label UI 토큰화 검증 결과 |
+| 28 | [카드/패널 토큰 감사](panel_card_token_audit_20260530.md) | 앱 카드/패널 전수조사와 토큰 연결 여부 판정 |
+| 29 | [카드/패널 시각 문법 08A-08E 검증 보고서](test_report_20260530_card_panel_visual_grammar_08a_08b.md) | 공용 내부 패널, 부유 메뉴, 상세 섹션, 지표 타일, 바텀시트 표면 통일 검증 결과 |
+| 30 | [카드/패널 토큰 샘플 이미지](card_panel_token_sample_20260530.svg) | 카드/패널 표면, 반경, 테두리, 패딩 토큰 시각 샘플 |
 
 ## Stage Plans
 
@@ -52,6 +55,7 @@ MONEYFY 앱의 색상, 폰트, 여백, 간격, 반경, 상태 표현을 공통 �
 | 05 | [Detail And Form Pages](plan_parts/05_detail_and_form_pages.md) | 상세 화면, 입력 폼, sheet, CTA |
 | 06 | [Remaining App Surfaces](plan_parts/06_remaining_app_surfaces.md) | app shell, auth, my, portfolio, transaction, statistics, sync overlay, brand asset audit |
 | 07 | [Legacy Token Retirement](plan_parts/07_legacy_token_retirement.md) | legacy token 축소, compatibility policy, CI guardrail 후보 |
+| 08 | [카드/패널 시각 문법 통일](plan_parts/08_card_panel_visual_grammar.md) | 카드/패널 표면 위계와 시각 문법 통일 |
 
 ## Implementation Start Point
 

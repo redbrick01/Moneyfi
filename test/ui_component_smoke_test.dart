@@ -3,6 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:moneyfy/components/expandable/expandable_tile.dart';
 import 'package:moneyfy/components/headers/detail_header_card.dart';
+import 'package:moneyfy/components/metrics/app_metric_tile.dart';
+import 'package:moneyfy/components/panels/app_detail_section.dart';
+import 'package:moneyfy/components/panels/app_floating_menu_surface.dart';
+import 'package:moneyfy/components/panels/app_inner_panel.dart';
+import 'package:moneyfy/components/panels/app_sheet_surface.dart';
 import 'package:moneyfy/components/rows/asset_row.dart';
 import 'package:moneyfy/components/rows/transaction_row.dart';
 import 'package:moneyfy/components/section_card.dart';
@@ -42,6 +47,27 @@ void main() {
     );
     expect(find.text('종목명'), findsOneWidget);
     expect(find.text('₩12,300,000'), findsOneWidget);
+  });
+
+  testWidgets('Panel surfaces render child content', (tester) async {
+    await pumpUi(
+      tester,
+      const Column(
+        children: [
+          AppInnerPanel(child: Text('내부 패널')),
+          AppFloatingMenuSurface(child: Text('메뉴 표면')),
+          AppSheetSurface(child: AppSheetHandle()),
+          AppDetailSection(title: '상세 섹션', child: Text('섹션 내용')),
+          AppMetricTile(label: '수익률', value: '+4.2%'),
+        ],
+      ),
+    );
+    expect(find.text('내부 패널'), findsOneWidget);
+    expect(find.text('메뉴 표면'), findsOneWidget);
+    expect(find.text('상세 섹션'), findsOneWidget);
+    expect(find.text('섹션 내용'), findsOneWidget);
+    expect(find.text('수익률'), findsOneWidget);
+    expect(find.text('+4.2%'), findsOneWidget);
   });
 
   testWidgets('AssetRow and TransactionRow render tap targets', (tester) async {

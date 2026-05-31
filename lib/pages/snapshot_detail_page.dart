@@ -696,7 +696,7 @@ class _SnapshotEmbeddedCashAccountRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: context.surfaces.surfaceBase,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.radius.rMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1177,7 +1177,7 @@ class _ExpandableSnapshotItemRow extends StatelessWidget {
         iconColor: context.colors.negativeOn,
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
         onTap: holdings.isEmpty && cashAccounts.isEmpty ? null : onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1265,7 +1265,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: context.surfaces.surfaceBase,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(context.radius.rMd),
         ),
         child: Row(
           children: [
@@ -1293,7 +1293,9 @@ class _SnapshotHoldingRow extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: context.surfaces.surfaceRaised,
-                            borderRadius: BorderRadius.circular(999),
+                            borderRadius: BorderRadius.circular(
+                              context.radius.rPill,
+                            ),
                             border: Border.all(
                               color: context.colors.neutralOutline,
                             ),

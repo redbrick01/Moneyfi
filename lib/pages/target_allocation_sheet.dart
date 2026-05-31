@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../components/buttons/app_buttons.dart';
 import '../components/icons/app_icon.dart';
 import '../components/icons/app_icon_button.dart';
+import '../components/panels/app_sheet_surface.dart';
 import '../components/states/inline_error.dart';
 import '../design_system/context_extensions.dart';
 
@@ -28,7 +29,6 @@ Future<bool?> showTargetAllocationSheet({
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
-    showDragHandle: true,
     builder: (context) {
       return _TargetAllocationSheet(
         entries: entries,
@@ -75,142 +75,146 @@ class _TargetAllocationSheetState extends State<_TargetAllocationSheet> {
         : '합계가 ${(sum - 100).toStringAsFixed(1)}% 초과했어요.';
 
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return SafeArea(
+    return AppSheetSurface(
+      heightFactor: 0.82,
       child: Padding(
         padding: EdgeInsets.only(bottom: bottomInset),
-        child: SizedBox(
-          height: MediaQuery.sizeOf(context).height * 0.82,
-          child: Column(
-            children: [
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.lg,
+                context.spacing.sm,
+                context.spacing.lg,
+                context.spacing.sm,
+              ),
+              child: Column(
+                children: [
+                  const AppSheetHandle(),
+                  SizedBox(height: context.spacing.md),
+                  Row(
+                    children: [
+                      Text('목표 비중 설정', style: context.typography.sectionTitle),
+                      const Spacer(),
+                      AppIconButton(
+                        tooltip: '닫기',
+                        onPressed: () => Navigator.of(context).pop(false),
+                        icon: AppIconName.close,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.spacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '합계 ${sum.toStringAsFixed(1)}% / 100%',
+                    style: context.typography.cardTitle,
+                  ),
+                  SizedBox(height: context.spacing.xs),
+                  LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(context.radius.rPill),
+                  ),
+                  SizedBox(height: context.spacing.xs),
+                  Text(statusText, style: context.typography.meta),
+                ],
+              ),
+            ),
+            SizedBox(height: context.spacing.sm),
+            Expanded(
+              child: ListView.separated(
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.lg,
+                  vertical: context.spacing.sm,
+                ),
+                itemBuilder: (context, index) {
+                  final item = widget.entries[index];
+                  return _TargetInputRow(
+                    entry: item,
+                    controller: widget.controllers[item.assetId]!,
+                    onChanged: () => setState(() {}),
+                  );
+                },
+                separatorBuilder: (context, index) =>
+                    SizedBox(height: context.spacing.sm),
+                itemCount: widget.entries.length,
+              ),
+            ),
+            if (_errorMessage != null)
               Padding(
                 padding: EdgeInsets.fromLTRB(
                   context.spacing.lg,
-                  context.spacing.sm,
+                  0,
                   context.spacing.lg,
                   context.spacing.sm,
                 ),
-                child: Row(
-                  children: [
-                    Text('목표 비중 설정', style: context.typography.sectionTitle),
-                    const Spacer(),
-                    AppIconButton(
-                      tooltip: '닫기',
-                      onPressed: () => Navigator.of(context).pop(false),
-                      icon: AppIconName.close,
-                    ),
-                  ],
-                ),
+                child: InlineError(message: _errorMessage!),
               ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: context.spacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '합계 ${sum.toStringAsFixed(1)}% / 100%',
-                      style: context.typography.cardTitle,
-                    ),
-                    SizedBox(height: context.spacing.xs),
-                    LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 8,
-                      borderRadius: BorderRadius.circular(context.radius.rPill),
-                    ),
-                    SizedBox(height: context.spacing.xs),
-                    Text(statusText, style: context.typography.meta),
-                  ],
-                ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.lg,
+                context.spacing.sm,
+                context.spacing.lg,
+                context.spacing.lg,
               ),
-              SizedBox(height: context.spacing.sm),
-              Expanded(
-                child: ListView.separated(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.spacing.lg,
-                    vertical: context.spacing.sm,
-                  ),
-                  itemBuilder: (context, index) {
-                    final item = widget.entries[index];
-                    return _TargetInputRow(
-                      entry: item,
-                      controller: widget.controllers[item.assetId]!,
-                      onChanged: () => setState(() {}),
-                    );
-                  },
-                  separatorBuilder: (context, index) =>
-                      SizedBox(height: context.spacing.sm),
-                  itemCount: widget.entries.length,
-                ),
-              ),
-              if (_errorMessage != null)
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    context.spacing.lg,
-                    0,
-                    context.spacing.lg,
-                    context.spacing.sm,
-                  ),
-                  child: InlineError(message: _errorMessage!),
-                ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  context.spacing.lg,
-                  context.spacing.sm,
-                  context.spacing.lg,
-                  context.spacing.lg,
-                ),
-                child: Column(
-                  children: [
-                    AppPrimaryButton(
-                      label: '저장',
-                      isLoading: _isSaving,
-                      onPressed: canSave
-                          ? () async {
-                              final navigator = Navigator.of(context);
+              child: Column(
+                children: [
+                  AppPrimaryButton(
+                    label: '저장',
+                    isLoading: _isSaving,
+                    onPressed: canSave
+                        ? () async {
+                            final navigator = Navigator.of(context);
+                            setState(() {
+                              _isSaving = true;
+                              _errorMessage = null;
+                            });
+                            try {
+                              await widget.onSave(_buildSaveMap());
+                              if (!mounted) return;
+                              navigator.pop(true);
+                            } catch (error) {
                               setState(() {
-                                _isSaving = true;
-                                _errorMessage = null;
+                                _errorMessage = '저장에 실패했습니다. 다시 시도해 주세요.';
                               });
-                              try {
-                                await widget.onSave(_buildSaveMap());
-                                if (!mounted) return;
-                                navigator.pop(true);
-                              } catch (error) {
+                            } finally {
+                              if (mounted) {
                                 setState(() {
-                                  _errorMessage = '저장에 실패했습니다. 다시 시도해 주세요.';
+                                  _isSaving = false;
                                 });
-                              } finally {
-                                if (mounted) {
-                                  setState(() {
-                                    _isSaving = false;
-                                  });
-                                }
                               }
                             }
-                          : null,
-                    ),
-                    SizedBox(height: context.spacing.xs),
-                    AppGhostButton(
-                      label: '취소',
-                      expand: true,
-                      onPressed: _isSaving
-                          ? null
-                          : () => Navigator.of(context).pop(false),
-                    ),
-                    if (!canSave)
-                      Padding(
-                        padding: EdgeInsets.only(top: context.spacing.xs),
-                        child: Text(
-                          hasInvalid
-                              ? '0~100 사이의 숫자를 입력해 주세요.'
-                              : '합계가 100%여야 저장할 수 있어요.',
-                          style: context.typography.caption,
-                        ),
+                          }
+                        : null,
+                  ),
+                  SizedBox(height: context.spacing.xs),
+                  AppGhostButton(
+                    label: '취소',
+                    expand: true,
+                    onPressed: _isSaving
+                        ? null
+                        : () => Navigator.of(context).pop(false),
+                  ),
+                  if (!canSave)
+                    Padding(
+                      padding: EdgeInsets.only(top: context.spacing.xs),
+                      child: Text(
+                        hasInvalid
+                            ? '0~100 사이의 숫자를 입력해 주세요.'
+                            : '합계가 100%여야 저장할 수 있어요.',
+                        style: context.typography.caption,
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

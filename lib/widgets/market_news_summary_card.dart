@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../components/chips/moneyfy_pill.dart';
+import '../components/panels/app_inner_panel.dart';
+import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../services/market_news_summary_service.dart';
@@ -151,129 +153,118 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
         summary != null &&
         (summary.issues.isNotEmpty || _hasOverallAssessment(summary));
 
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-        boxShadow: context.shadows.level3,
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(context.cardPadding()),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text('종합 뉴스', style: context.typography.sectionTitle),
+    return SectionCard(
+      variant: SectionCardVariant.base,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('종합 뉴스', style: context.typography.sectionTitle),
+              ),
+              if (summary?.newsCount != null)
+                Text(
+                  '${summary!.newsCount}건',
+                  style: context.typography.caption.copyWith(
+                    color: context.colors.neutralTextMuted,
+                    fontWeight: AppFontWeights.semibold,
+                  ),
                 ),
-                if (summary?.newsCount != null)
+            ],
+          ),
+          if (summary?.updatedAt != null ||
+              (summary?.model ?? '').trim().isNotEmpty) ...[
+            SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
+            Wrap(
+              spacing: context.spacing.xs,
+              runSpacing: context.spacing.xs / 2,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (summary?.updatedAt != null)
                   Text(
-                    '${summary!.newsCount}건',
+                    '업데이트 ${_formatSummaryDate(summary!.updatedAt!)}',
                     style: context.typography.caption.copyWith(
                       color: context.colors.neutralTextMuted,
-                      fontWeight: AppFontWeights.semibold,
+                    ),
+                  ),
+                if ((summary?.model ?? '').trim().isNotEmpty)
+                  Text(
+                    '(${summary!.model})',
+                    style: context.typography.caption.copyWith(
+                      color: context.colors.neutralTextMuted,
                     ),
                   ),
               ],
             ),
-            if (summary?.updatedAt != null ||
-                (summary?.model ?? '').trim().isNotEmpty) ...[
-              SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
-              Wrap(
-                spacing: context.spacing.xs,
-                runSpacing: context.spacing.xs / 2,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  if (summary?.updatedAt != null)
-                    Text(
-                      '업데이트 ${_formatSummaryDate(summary!.updatedAt!)}',
-                      style: context.typography.caption.copyWith(
-                        color: context.colors.neutralTextMuted,
+          ],
+          SizedBox(height: context.spacing.md),
+          if (summary == null)
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                '시장 뉴스 요약을 불러오지 못했어요. 저장된 캐시가 없거나 외부 API가 일시적으로 응답하지 않습니다.',
+                textAlign: TextAlign.center,
+                style: context.typography.body.copyWith(
+                  color: context.colors.neutralTextMuted,
+                ),
+              ),
+            )
+          else ...[
+            AppInnerPanel(
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing.sm + context.spacing.xs / 4,
+                vertical: context.spacing.md + context.spacing.xs / 4,
+              ),
+              child: Text(
+                summary.marketSummary,
+                style: context.typography.cardTitle.copyWith(
+                  color: context.colors.neutralText,
+                  fontWeight: AppFontWeights.semibold,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            if (hasDetails) ...[
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: context.spacing.xs / 2),
+                child: Center(
+                  child: SizedBox(
+                    width: context.spacing.lg + context.spacing.xs / 2,
+                    height: context.spacing.lg + context.spacing.xs / 2,
+                    child: IconButton(
+                      onPressed: () =>
+                          setState(() => _isExpanded = !_isExpanded),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      splashRadius: context.spacing.md,
+                      iconSize: VisualSpec.icon.sizeSmall,
+                      icon: AnimatedRotation(
+                        turns: _isExpanded ? 0.5 : 0,
+                        duration: context.motion.fast,
+                        child: const Icon(Icons.keyboard_arrow_down_rounded),
                       ),
+                      tooltip: _isExpanded ? '세부 기사 요약 접기' : '세부 기사 요약 펼치기',
+                      color: context.colors.neutralTextMuted,
                     ),
-                  if ((summary?.model ?? '').trim().isNotEmpty)
-                    Text(
-                      '(${summary!.model})',
-                      style: context.typography.caption.copyWith(
-                        color: context.colors.neutralTextMuted,
-                      ),
-                    ),
-                ],
+                  ),
+                ),
               ),
             ],
-            SizedBox(height: context.spacing.md),
-            if (summary == null)
-              SizedBox(
-                width: double.infinity,
-                child: Text(
-                  '시장 뉴스 요약을 불러오지 못했어요. 저장된 캐시가 없거나 외부 API가 일시적으로 응답하지 않습니다.',
-                  textAlign: TextAlign.center,
-                  style: context.typography.body.copyWith(
-                    color: context.colors.neutralTextMuted,
-                  ),
-                ),
-              )
-            else ...[
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(
-                  horizontal: context.spacing.sm + context.spacing.xs / 4,
-                  vertical: context.spacing.md + context.spacing.xs / 4,
-                ),
-                decoration: _innerNewsCardDecoration(context),
-                child: Text(
-                  summary.marketSummary,
-                  style: context.typography.cardTitle.copyWith(
-                    color: context.colors.neutralText,
-                    fontWeight: AppFontWeights.semibold,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-              if (hasDetails) ...[
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: context.spacing.xs / 2,
-                  ),
-                  child: Center(
-                    child: SizedBox(
-                      width: context.spacing.lg + context.spacing.xs / 2,
-                      height: context.spacing.lg + context.spacing.xs / 2,
-                      child: IconButton(
-                        onPressed: () =>
-                            setState(() => _isExpanded = !_isExpanded),
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        splashRadius: context.spacing.md,
-                        iconSize: VisualSpec.icon.sizeSmall,
-                        icon: AnimatedRotation(
-                          turns: _isExpanded ? 0.5 : 0,
-                          duration: context.motion.fast,
-                          child: const Icon(Icons.keyboard_arrow_down_rounded),
-                        ),
-                        tooltip: _isExpanded ? '세부 기사 요약 접기' : '세부 기사 요약 펼치기',
-                        color: context.colors.neutralTextMuted,
-                      ),
-                    ),
-                  ),
-                ),
+            if (_isExpanded && summary.issues.isNotEmpty) ...[
+              SizedBox(height: context.spacing.xs / 2),
+              for (var index = 0; index < summary.issues.length; index++) ...[
+                _MarketIssueTile(item: summary.issues[index]),
+                if (index != summary.issues.length - 1)
+                  SizedBox(height: context.spacing.sm),
               ],
-              if (_isExpanded && summary.issues.isNotEmpty) ...[
-                SizedBox(height: context.spacing.xs / 2),
-                for (var index = 0; index < summary.issues.length; index++) ...[
-                  _MarketIssueTile(item: summary.issues[index]),
-                  if (index != summary.issues.length - 1)
-                    SizedBox(height: context.spacing.sm),
-                ],
-              ],
-              if (_isExpanded && _hasOverallAssessment(summary)) ...[
-                SizedBox(height: context.spacing.md),
-                _OverallAssessmentCard(summary: summary),
-              ],
+            ],
+            if (_isExpanded && _hasOverallAssessment(summary)) ...[
+              SizedBox(height: context.spacing.md),
+              _OverallAssessmentCard(summary: summary),
             ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -301,10 +292,7 @@ class _MarketIssueTile extends StatelessWidget {
             )
             .toList(growable: false);
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
-      decoration: _innerNewsCardDecoration(context),
+    return AppInnerPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -413,10 +401,7 @@ class _OverallAssessmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
-      decoration: _innerNewsCardDecoration(context),
+    return AppInnerPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -559,12 +544,4 @@ class _ImportanceStyle {
   final String label;
   final Color color;
   final Color background;
-}
-
-BoxDecoration _innerNewsCardDecoration(BuildContext context) {
-  return BoxDecoration(
-    color: context.surfaces.surfaceBase,
-    borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-    boxShadow: context.shadows.level2,
-  );
 }

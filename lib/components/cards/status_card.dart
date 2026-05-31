@@ -35,7 +35,6 @@ class StatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return SectionCard(
-      variant: SectionCardVariant.raised,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

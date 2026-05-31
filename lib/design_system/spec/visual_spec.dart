@@ -220,13 +220,13 @@ class _SurfaceSpec {
   Color cardBase(Brightness brightness) {
     return brightness == Brightness.dark
         ? VisualSpec.brand.darkSurfaceContainer
-        : VisualSpec.brand.lightSurface;
+        : VisualSpec.brand.lightSurfaceContainer;
   }
 
   Color cardRaised(Brightness brightness) {
     return brightness == Brightness.dark
         ? VisualSpec.brand.darkSurfaceHigh
-        : VisualSpec.brand.lightSurfaceContainer;
+        : VisualSpec.brand.lightSurfaceHigh;
   }
 
   Color overlay(Brightness brightness) {

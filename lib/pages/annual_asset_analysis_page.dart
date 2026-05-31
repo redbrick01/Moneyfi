@@ -81,7 +81,7 @@ class _AnnualAssetAnalysisPageState extends State<AnnualAssetAnalysisPage> {
     return Scaffold(
       backgroundColor: context.colors.neutralBackground,
       appBar: AppBar(
-        title: const Text('연도별 자산분석'),
+        title: const Text('연도별 자산 분석'),
         backgroundColor: context.colors.neutralBackground,
       ),
       body: SafeArea(

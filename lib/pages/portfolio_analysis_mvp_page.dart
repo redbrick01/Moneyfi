@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../components/chips/moneyfy_pill.dart';
+import '../components/metrics/app_metric_tile.dart';
+import '../components/panels/app_inner_panel.dart';
 import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
@@ -21,7 +23,7 @@ class PortfolioAnalysisMvpPage extends StatelessWidget {
         final data = snapshot.data;
         return MoneyfyPage(
           title: '포트폴리오 진단',
-          subtitle: '위험 신호와 조정 후보를 먼저 확인해요',
+          subtitle: '위험 신호, 조정 후보, 집중도를 한곳에서 확인해요',
           children: [
             if (snapshot.connectionState == ConnectionState.waiting &&
                 data == null)
@@ -36,7 +38,7 @@ class PortfolioAnalysisMvpPage extends StatelessWidget {
               const _MessageCard(
                 icon: Icons.add_chart_rounded,
                 title: '분석할 자산이 없어요',
-                body: '자산과 보유 종목을 추가하면 MVP 분석 구성을 확인할 수 있어요.',
+                body: '자산과 보유 종목을 추가하면 포트폴리오 진단을 확인할 수 있어요.',
               )
             else ...[
               _OverviewCard(data: data),
@@ -749,14 +751,9 @@ class _AttentionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(bottom: context.spacing.sm),
-      child: Container(
-        width: double.infinity,
+      child: AppInnerPanel(
+        tone: AppInnerPanelTone.raised,
         padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
-        decoration: BoxDecoration(
-          color: context.colors.neutralSurfaceRaised,
-          borderRadius: BorderRadius.circular(context.radius.rMd),
-          border: Border.all(color: context.colors.neutralOutline),
-        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1024,14 +1021,9 @@ class _HhiGauge extends StatelessWidget {
   Widget build(BuildContext context) {
     final markerPosition = (score / 10000).clamp(0.0, 1.0);
 
-    return Container(
-      width: double.infinity,
+    return AppInnerPanel(
+      tone: AppInnerPanelTone.raised,
       padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
-      decoration: BoxDecoration(
-        color: context.colors.neutralSurfaceRaised,
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-        border: Border.all(color: context.colors.neutralOutline),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1225,14 +1217,9 @@ class _MddGauge extends StatelessWidget {
     final drawdown = percent.abs();
     final markerPosition = (drawdown / 50).clamp(0.0, 1.0);
 
-    return Container(
-      width: double.infinity,
+    return AppInnerPanel(
+      tone: AppInnerPanelTone.raised,
       padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
-      decoration: BoxDecoration(
-        color: context.colors.neutralSurfaceRaised,
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-        border: Border.all(color: context.colors.neutralOutline),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1690,40 +1677,11 @@ class _MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 86),
-      padding: EdgeInsets.symmetric(
-        horizontal: context.spacing.sm,
-        vertical: context.spacing.xs + context.spacing.xs / 4,
-      ),
-      decoration: BoxDecoration(
-        color: context.colors.neutralSurfaceRaised,
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-        border: Border.all(color: context.colors.neutralOutline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            data.label,
-            style: context.typography.meta.copyWith(
-              color: context.colors.neutralTextMuted,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              data.value,
-              style: context.typography.cardTitle.copyWith(color: data.accent),
-            ),
-          ),
-        ],
-      ),
+    return AppMetricTile(
+      label: data.label,
+      value: data.value,
+      valueColor: data.accent,
+      minHeight: 86,
     );
   }
 }
@@ -1792,14 +1750,9 @@ class _ContributionRow extends StatelessWidget {
     final color = _valueColor(context, value);
     return Padding(
       padding: EdgeInsets.only(bottom: context.spacing.sm),
-      child: Container(
-        width: double.infinity,
+      child: AppInnerPanel(
+        tone: AppInnerPanelTone.raised,
         padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
-        decoration: BoxDecoration(
-          color: context.colors.neutralSurfaceRaised,
-          borderRadius: BorderRadius.circular(context.radius.rMd),
-          border: Border.all(color: context.colors.neutralOutline),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1897,14 +1850,9 @@ class _CauseRow extends StatelessWidget {
       padding: EdgeInsets.only(
         bottom: context.spacing.xs + context.spacing.xs / 4,
       ),
-      child: Container(
-        width: double.infinity,
+      child: AppInnerPanel(
+        tone: AppInnerPanelTone.raised,
         padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
-        decoration: BoxDecoration(
-          color: context.colors.neutralSurfaceRaised,
-          borderRadius: BorderRadius.circular(context.radius.rMd),
-          border: Border.all(color: context.colors.neutralOutline),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1947,14 +1895,9 @@ class _HoldingConcentrationRow extends StatelessWidget {
         : context.colors.primary;
     return Padding(
       padding: EdgeInsets.only(bottom: context.spacing.sm),
-      child: Container(
-        width: double.infinity,
+      child: AppInnerPanel(
+        tone: AppInnerPanelTone.raised,
         padding: EdgeInsets.all(context.spacing.md),
-        decoration: BoxDecoration(
-          color: context.colors.neutralSurfaceRaised,
-          borderRadius: BorderRadius.circular(context.radius.rMd),
-          border: Border.all(color: context.colors.neutralOutline),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

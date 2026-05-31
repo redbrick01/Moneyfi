@@ -20,7 +20,7 @@ class EmptyStateCard extends StatelessWidget {
     this.secondaryActionLabel,
     this.onSecondaryAction,
     this.variant = EmptyStateVariant.embedded,
-    this.cardVariant = SectionCardVariant.raised,
+    this.cardVariant = SectionCardVariant.base,
   });
 
   final String title;

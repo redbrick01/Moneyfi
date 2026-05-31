@@ -25,7 +25,6 @@ class DetailHeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final resolvedChips = chips ?? const <Widget>[];
     return SectionCard(
-      variant: SectionCardVariant.raised,
       padding: EdgeInsets.all(context.cardPadding()),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
