@@ -88,6 +88,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
             _AnalysisEntryCard(
               icon: Icons.rate_review_rounded,
               title: '투자 회고',
+              subtitle: '오늘 · 주간 · 월간 판단 복기',
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -151,10 +152,12 @@ class _AnalysisEntryCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.onTap,
+    this.subtitle,
   });
 
   final IconData icon;
   final String title;
+  final String? subtitle;
   final VoidCallback onTap;
 
   @override
@@ -184,7 +187,23 @@ class _AnalysisEntryCard extends StatelessWidget {
                 ),
               ),
               SizedBox(width: context.spacing.sm),
-              Expanded(child: Text(title, style: context.typography.cardTitle)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: context.typography.cardTitle),
+                    if (subtitle != null) ...[
+                      SizedBox(height: context.spacing.xs / 2),
+                      Text(
+                        subtitle!,
+                        style: context.typography.meta.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
               SizedBox(width: context.spacing.sm),
               AppIcon(
                 AppIconName.chevronRight,
