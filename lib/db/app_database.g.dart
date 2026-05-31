@@ -12208,6 +12208,1039 @@ class BenchmarkPricesCompanion extends UpdateCompanion<BenchmarkPrice> {
   }
 }
 
+class $DailyInvestmentReviewsTable extends DailyInvestmentReviews
+    with TableInfo<$DailyInvestmentReviewsTable, DailyInvestmentReview> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DailyInvestmentReviewsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _reviewDateMeta = const VerificationMeta(
+    'reviewDate',
+  );
+  @override
+  late final GeneratedColumn<String> reviewDate = GeneratedColumn<String>(
+    'review_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _modeMeta = const VerificationMeta('mode');
+  @override
+  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
+    'mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _performanceNoteMeta = const VerificationMeta(
+    'performanceNote',
+  );
+  @override
+  late final GeneratedColumn<String> performanceNote = GeneratedColumn<String>(
+    'performance_note',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _tradeReviewNoteMeta = const VerificationMeta(
+    'tradeReviewNote',
+  );
+  @override
+  late final GeneratedColumn<String> tradeReviewNote = GeneratedColumn<String>(
+    'trade_review_note',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _selectedDecisionTagsMeta =
+      const VerificationMeta('selectedDecisionTags');
+  @override
+  late final GeneratedColumn<String> selectedDecisionTags =
+      GeneratedColumn<String>(
+        'selected_decision_tags',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('[]'),
+      );
+  static const VerificationMeta _selectedNoTradeReasonsMeta =
+      const VerificationMeta('selectedNoTradeReasons');
+  @override
+  late final GeneratedColumn<String> selectedNoTradeReasons =
+      GeneratedColumn<String>(
+        'selected_no_trade_reasons',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('[]'),
+      );
+  static const VerificationMeta _selectedEmotionsMeta = const VerificationMeta(
+    'selectedEmotions',
+  );
+  @override
+  late final GeneratedColumn<String> selectedEmotions = GeneratedColumn<String>(
+    'selected_emotions',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _principleCheckMeta = const VerificationMeta(
+    'principleCheck',
+  );
+  @override
+  late final GeneratedColumn<String> principleCheck = GeneratedColumn<String>(
+    'principle_check',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('notApplicable'),
+  );
+  static const VerificationMeta _riskNoteMeta = const VerificationMeta(
+    'riskNote',
+  );
+  @override
+  late final GeneratedColumn<String> riskNote = GeneratedColumn<String>(
+    'risk_note',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _insightGoodMeta = const VerificationMeta(
+    'insightGood',
+  );
+  @override
+  late final GeneratedColumn<String> insightGood = GeneratedColumn<String>(
+    'insight_good',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _insightWeakMeta = const VerificationMeta(
+    'insightWeak',
+  );
+  @override
+  late final GeneratedColumn<String> insightWeak = GeneratedColumn<String>(
+    'insight_weak',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _insightRepeatOrAvoidMeta =
+      const VerificationMeta('insightRepeatOrAvoid');
+  @override
+  late final GeneratedColumn<String> insightRepeatOrAvoid =
+      GeneratedColumn<String>(
+        'insight_repeat_or_avoid',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
+  static const VerificationMeta _nextPlanMeta = const VerificationMeta(
+    'nextPlan',
+  );
+  @override
+  late final GeneratedColumn<String> nextPlan = GeneratedColumn<String>(
+    'next_plan',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<String> completedAt = GeneratedColumn<String>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    reviewDate,
+    status,
+    mode,
+    performanceNote,
+    tradeReviewNote,
+    selectedDecisionTags,
+    selectedNoTradeReasons,
+    selectedEmotions,
+    principleCheck,
+    riskNote,
+    insightGood,
+    insightWeak,
+    insightRepeatOrAvoid,
+    nextPlan,
+    createdAt,
+    updatedAt,
+    completedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'daily_investment_reviews';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DailyInvestmentReview> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('review_date')) {
+      context.handle(
+        _reviewDateMeta,
+        reviewDate.isAcceptableOrUnknown(data['review_date']!, _reviewDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reviewDateMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('mode')) {
+      context.handle(
+        _modeMeta,
+        mode.isAcceptableOrUnknown(data['mode']!, _modeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_modeMeta);
+    }
+    if (data.containsKey('performance_note')) {
+      context.handle(
+        _performanceNoteMeta,
+        performanceNote.isAcceptableOrUnknown(
+          data['performance_note']!,
+          _performanceNoteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('trade_review_note')) {
+      context.handle(
+        _tradeReviewNoteMeta,
+        tradeReviewNote.isAcceptableOrUnknown(
+          data['trade_review_note']!,
+          _tradeReviewNoteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('selected_decision_tags')) {
+      context.handle(
+        _selectedDecisionTagsMeta,
+        selectedDecisionTags.isAcceptableOrUnknown(
+          data['selected_decision_tags']!,
+          _selectedDecisionTagsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('selected_no_trade_reasons')) {
+      context.handle(
+        _selectedNoTradeReasonsMeta,
+        selectedNoTradeReasons.isAcceptableOrUnknown(
+          data['selected_no_trade_reasons']!,
+          _selectedNoTradeReasonsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('selected_emotions')) {
+      context.handle(
+        _selectedEmotionsMeta,
+        selectedEmotions.isAcceptableOrUnknown(
+          data['selected_emotions']!,
+          _selectedEmotionsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('principle_check')) {
+      context.handle(
+        _principleCheckMeta,
+        principleCheck.isAcceptableOrUnknown(
+          data['principle_check']!,
+          _principleCheckMeta,
+        ),
+      );
+    }
+    if (data.containsKey('risk_note')) {
+      context.handle(
+        _riskNoteMeta,
+        riskNote.isAcceptableOrUnknown(data['risk_note']!, _riskNoteMeta),
+      );
+    }
+    if (data.containsKey('insight_good')) {
+      context.handle(
+        _insightGoodMeta,
+        insightGood.isAcceptableOrUnknown(
+          data['insight_good']!,
+          _insightGoodMeta,
+        ),
+      );
+    }
+    if (data.containsKey('insight_weak')) {
+      context.handle(
+        _insightWeakMeta,
+        insightWeak.isAcceptableOrUnknown(
+          data['insight_weak']!,
+          _insightWeakMeta,
+        ),
+      );
+    }
+    if (data.containsKey('insight_repeat_or_avoid')) {
+      context.handle(
+        _insightRepeatOrAvoidMeta,
+        insightRepeatOrAvoid.isAcceptableOrUnknown(
+          data['insight_repeat_or_avoid']!,
+          _insightRepeatOrAvoidMeta,
+        ),
+      );
+    }
+    if (data.containsKey('next_plan')) {
+      context.handle(
+        _nextPlanMeta,
+        nextPlan.isAcceptableOrUnknown(data['next_plan']!, _nextPlanMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DailyInvestmentReview map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DailyInvestmentReview(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      reviewDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}review_date'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      mode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mode'],
+      )!,
+      performanceNote: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}performance_note'],
+      )!,
+      tradeReviewNote: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}trade_review_note'],
+      )!,
+      selectedDecisionTags: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}selected_decision_tags'],
+      )!,
+      selectedNoTradeReasons: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}selected_no_trade_reasons'],
+      )!,
+      selectedEmotions: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}selected_emotions'],
+      )!,
+      principleCheck: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}principle_check'],
+      )!,
+      riskNote: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}risk_note'],
+      )!,
+      insightGood: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}insight_good'],
+      )!,
+      insightWeak: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}insight_weak'],
+      )!,
+      insightRepeatOrAvoid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}insight_repeat_or_avoid'],
+      )!,
+      nextPlan: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}next_plan'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}completed_at'],
+      ),
+    );
+  }
+
+  @override
+  $DailyInvestmentReviewsTable createAlias(String alias) {
+    return $DailyInvestmentReviewsTable(attachedDatabase, alias);
+  }
+}
+
+class DailyInvestmentReview extends DataClass
+    implements Insertable<DailyInvestmentReview> {
+  final int id;
+  final String reviewDate;
+  final String status;
+  final String mode;
+  final String performanceNote;
+  final String tradeReviewNote;
+  final String selectedDecisionTags;
+  final String selectedNoTradeReasons;
+  final String selectedEmotions;
+  final String principleCheck;
+  final String riskNote;
+  final String insightGood;
+  final String insightWeak;
+  final String insightRepeatOrAvoid;
+  final String nextPlan;
+  final String createdAt;
+  final String updatedAt;
+  final String? completedAt;
+  const DailyInvestmentReview({
+    required this.id,
+    required this.reviewDate,
+    required this.status,
+    required this.mode,
+    required this.performanceNote,
+    required this.tradeReviewNote,
+    required this.selectedDecisionTags,
+    required this.selectedNoTradeReasons,
+    required this.selectedEmotions,
+    required this.principleCheck,
+    required this.riskNote,
+    required this.insightGood,
+    required this.insightWeak,
+    required this.insightRepeatOrAvoid,
+    required this.nextPlan,
+    required this.createdAt,
+    required this.updatedAt,
+    this.completedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['review_date'] = Variable<String>(reviewDate);
+    map['status'] = Variable<String>(status);
+    map['mode'] = Variable<String>(mode);
+    map['performance_note'] = Variable<String>(performanceNote);
+    map['trade_review_note'] = Variable<String>(tradeReviewNote);
+    map['selected_decision_tags'] = Variable<String>(selectedDecisionTags);
+    map['selected_no_trade_reasons'] = Variable<String>(selectedNoTradeReasons);
+    map['selected_emotions'] = Variable<String>(selectedEmotions);
+    map['principle_check'] = Variable<String>(principleCheck);
+    map['risk_note'] = Variable<String>(riskNote);
+    map['insight_good'] = Variable<String>(insightGood);
+    map['insight_weak'] = Variable<String>(insightWeak);
+    map['insight_repeat_or_avoid'] = Variable<String>(insightRepeatOrAvoid);
+    map['next_plan'] = Variable<String>(nextPlan);
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<String>(completedAt);
+    }
+    return map;
+  }
+
+  DailyInvestmentReviewsCompanion toCompanion(bool nullToAbsent) {
+    return DailyInvestmentReviewsCompanion(
+      id: Value(id),
+      reviewDate: Value(reviewDate),
+      status: Value(status),
+      mode: Value(mode),
+      performanceNote: Value(performanceNote),
+      tradeReviewNote: Value(tradeReviewNote),
+      selectedDecisionTags: Value(selectedDecisionTags),
+      selectedNoTradeReasons: Value(selectedNoTradeReasons),
+      selectedEmotions: Value(selectedEmotions),
+      principleCheck: Value(principleCheck),
+      riskNote: Value(riskNote),
+      insightGood: Value(insightGood),
+      insightWeak: Value(insightWeak),
+      insightRepeatOrAvoid: Value(insightRepeatOrAvoid),
+      nextPlan: Value(nextPlan),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+    );
+  }
+
+  factory DailyInvestmentReview.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DailyInvestmentReview(
+      id: serializer.fromJson<int>(json['id']),
+      reviewDate: serializer.fromJson<String>(json['reviewDate']),
+      status: serializer.fromJson<String>(json['status']),
+      mode: serializer.fromJson<String>(json['mode']),
+      performanceNote: serializer.fromJson<String>(json['performanceNote']),
+      tradeReviewNote: serializer.fromJson<String>(json['tradeReviewNote']),
+      selectedDecisionTags: serializer.fromJson<String>(
+        json['selectedDecisionTags'],
+      ),
+      selectedNoTradeReasons: serializer.fromJson<String>(
+        json['selectedNoTradeReasons'],
+      ),
+      selectedEmotions: serializer.fromJson<String>(json['selectedEmotions']),
+      principleCheck: serializer.fromJson<String>(json['principleCheck']),
+      riskNote: serializer.fromJson<String>(json['riskNote']),
+      insightGood: serializer.fromJson<String>(json['insightGood']),
+      insightWeak: serializer.fromJson<String>(json['insightWeak']),
+      insightRepeatOrAvoid: serializer.fromJson<String>(
+        json['insightRepeatOrAvoid'],
+      ),
+      nextPlan: serializer.fromJson<String>(json['nextPlan']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+      completedAt: serializer.fromJson<String?>(json['completedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'reviewDate': serializer.toJson<String>(reviewDate),
+      'status': serializer.toJson<String>(status),
+      'mode': serializer.toJson<String>(mode),
+      'performanceNote': serializer.toJson<String>(performanceNote),
+      'tradeReviewNote': serializer.toJson<String>(tradeReviewNote),
+      'selectedDecisionTags': serializer.toJson<String>(selectedDecisionTags),
+      'selectedNoTradeReasons': serializer.toJson<String>(
+        selectedNoTradeReasons,
+      ),
+      'selectedEmotions': serializer.toJson<String>(selectedEmotions),
+      'principleCheck': serializer.toJson<String>(principleCheck),
+      'riskNote': serializer.toJson<String>(riskNote),
+      'insightGood': serializer.toJson<String>(insightGood),
+      'insightWeak': serializer.toJson<String>(insightWeak),
+      'insightRepeatOrAvoid': serializer.toJson<String>(insightRepeatOrAvoid),
+      'nextPlan': serializer.toJson<String>(nextPlan),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+      'completedAt': serializer.toJson<String?>(completedAt),
+    };
+  }
+
+  DailyInvestmentReview copyWith({
+    int? id,
+    String? reviewDate,
+    String? status,
+    String? mode,
+    String? performanceNote,
+    String? tradeReviewNote,
+    String? selectedDecisionTags,
+    String? selectedNoTradeReasons,
+    String? selectedEmotions,
+    String? principleCheck,
+    String? riskNote,
+    String? insightGood,
+    String? insightWeak,
+    String? insightRepeatOrAvoid,
+    String? nextPlan,
+    String? createdAt,
+    String? updatedAt,
+    Value<String?> completedAt = const Value.absent(),
+  }) => DailyInvestmentReview(
+    id: id ?? this.id,
+    reviewDate: reviewDate ?? this.reviewDate,
+    status: status ?? this.status,
+    mode: mode ?? this.mode,
+    performanceNote: performanceNote ?? this.performanceNote,
+    tradeReviewNote: tradeReviewNote ?? this.tradeReviewNote,
+    selectedDecisionTags: selectedDecisionTags ?? this.selectedDecisionTags,
+    selectedNoTradeReasons:
+        selectedNoTradeReasons ?? this.selectedNoTradeReasons,
+    selectedEmotions: selectedEmotions ?? this.selectedEmotions,
+    principleCheck: principleCheck ?? this.principleCheck,
+    riskNote: riskNote ?? this.riskNote,
+    insightGood: insightGood ?? this.insightGood,
+    insightWeak: insightWeak ?? this.insightWeak,
+    insightRepeatOrAvoid: insightRepeatOrAvoid ?? this.insightRepeatOrAvoid,
+    nextPlan: nextPlan ?? this.nextPlan,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
+  );
+  DailyInvestmentReview copyWithCompanion(
+    DailyInvestmentReviewsCompanion data,
+  ) {
+    return DailyInvestmentReview(
+      id: data.id.present ? data.id.value : this.id,
+      reviewDate: data.reviewDate.present
+          ? data.reviewDate.value
+          : this.reviewDate,
+      status: data.status.present ? data.status.value : this.status,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      performanceNote: data.performanceNote.present
+          ? data.performanceNote.value
+          : this.performanceNote,
+      tradeReviewNote: data.tradeReviewNote.present
+          ? data.tradeReviewNote.value
+          : this.tradeReviewNote,
+      selectedDecisionTags: data.selectedDecisionTags.present
+          ? data.selectedDecisionTags.value
+          : this.selectedDecisionTags,
+      selectedNoTradeReasons: data.selectedNoTradeReasons.present
+          ? data.selectedNoTradeReasons.value
+          : this.selectedNoTradeReasons,
+      selectedEmotions: data.selectedEmotions.present
+          ? data.selectedEmotions.value
+          : this.selectedEmotions,
+      principleCheck: data.principleCheck.present
+          ? data.principleCheck.value
+          : this.principleCheck,
+      riskNote: data.riskNote.present ? data.riskNote.value : this.riskNote,
+      insightGood: data.insightGood.present
+          ? data.insightGood.value
+          : this.insightGood,
+      insightWeak: data.insightWeak.present
+          ? data.insightWeak.value
+          : this.insightWeak,
+      insightRepeatOrAvoid: data.insightRepeatOrAvoid.present
+          ? data.insightRepeatOrAvoid.value
+          : this.insightRepeatOrAvoid,
+      nextPlan: data.nextPlan.present ? data.nextPlan.value : this.nextPlan,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DailyInvestmentReview(')
+          ..write('id: $id, ')
+          ..write('reviewDate: $reviewDate, ')
+          ..write('status: $status, ')
+          ..write('mode: $mode, ')
+          ..write('performanceNote: $performanceNote, ')
+          ..write('tradeReviewNote: $tradeReviewNote, ')
+          ..write('selectedDecisionTags: $selectedDecisionTags, ')
+          ..write('selectedNoTradeReasons: $selectedNoTradeReasons, ')
+          ..write('selectedEmotions: $selectedEmotions, ')
+          ..write('principleCheck: $principleCheck, ')
+          ..write('riskNote: $riskNote, ')
+          ..write('insightGood: $insightGood, ')
+          ..write('insightWeak: $insightWeak, ')
+          ..write('insightRepeatOrAvoid: $insightRepeatOrAvoid, ')
+          ..write('nextPlan: $nextPlan, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    reviewDate,
+    status,
+    mode,
+    performanceNote,
+    tradeReviewNote,
+    selectedDecisionTags,
+    selectedNoTradeReasons,
+    selectedEmotions,
+    principleCheck,
+    riskNote,
+    insightGood,
+    insightWeak,
+    insightRepeatOrAvoid,
+    nextPlan,
+    createdAt,
+    updatedAt,
+    completedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DailyInvestmentReview &&
+          other.id == this.id &&
+          other.reviewDate == this.reviewDate &&
+          other.status == this.status &&
+          other.mode == this.mode &&
+          other.performanceNote == this.performanceNote &&
+          other.tradeReviewNote == this.tradeReviewNote &&
+          other.selectedDecisionTags == this.selectedDecisionTags &&
+          other.selectedNoTradeReasons == this.selectedNoTradeReasons &&
+          other.selectedEmotions == this.selectedEmotions &&
+          other.principleCheck == this.principleCheck &&
+          other.riskNote == this.riskNote &&
+          other.insightGood == this.insightGood &&
+          other.insightWeak == this.insightWeak &&
+          other.insightRepeatOrAvoid == this.insightRepeatOrAvoid &&
+          other.nextPlan == this.nextPlan &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.completedAt == this.completedAt);
+}
+
+class DailyInvestmentReviewsCompanion
+    extends UpdateCompanion<DailyInvestmentReview> {
+  final Value<int> id;
+  final Value<String> reviewDate;
+  final Value<String> status;
+  final Value<String> mode;
+  final Value<String> performanceNote;
+  final Value<String> tradeReviewNote;
+  final Value<String> selectedDecisionTags;
+  final Value<String> selectedNoTradeReasons;
+  final Value<String> selectedEmotions;
+  final Value<String> principleCheck;
+  final Value<String> riskNote;
+  final Value<String> insightGood;
+  final Value<String> insightWeak;
+  final Value<String> insightRepeatOrAvoid;
+  final Value<String> nextPlan;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<String?> completedAt;
+  const DailyInvestmentReviewsCompanion({
+    this.id = const Value.absent(),
+    this.reviewDate = const Value.absent(),
+    this.status = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.performanceNote = const Value.absent(),
+    this.tradeReviewNote = const Value.absent(),
+    this.selectedDecisionTags = const Value.absent(),
+    this.selectedNoTradeReasons = const Value.absent(),
+    this.selectedEmotions = const Value.absent(),
+    this.principleCheck = const Value.absent(),
+    this.riskNote = const Value.absent(),
+    this.insightGood = const Value.absent(),
+    this.insightWeak = const Value.absent(),
+    this.insightRepeatOrAvoid = const Value.absent(),
+    this.nextPlan = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.completedAt = const Value.absent(),
+  });
+  DailyInvestmentReviewsCompanion.insert({
+    this.id = const Value.absent(),
+    required String reviewDate,
+    required String status,
+    required String mode,
+    this.performanceNote = const Value.absent(),
+    this.tradeReviewNote = const Value.absent(),
+    this.selectedDecisionTags = const Value.absent(),
+    this.selectedNoTradeReasons = const Value.absent(),
+    this.selectedEmotions = const Value.absent(),
+    this.principleCheck = const Value.absent(),
+    this.riskNote = const Value.absent(),
+    this.insightGood = const Value.absent(),
+    this.insightWeak = const Value.absent(),
+    this.insightRepeatOrAvoid = const Value.absent(),
+    this.nextPlan = const Value.absent(),
+    required String createdAt,
+    required String updatedAt,
+    this.completedAt = const Value.absent(),
+  }) : reviewDate = Value(reviewDate),
+       status = Value(status),
+       mode = Value(mode),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<DailyInvestmentReview> custom({
+    Expression<int>? id,
+    Expression<String>? reviewDate,
+    Expression<String>? status,
+    Expression<String>? mode,
+    Expression<String>? performanceNote,
+    Expression<String>? tradeReviewNote,
+    Expression<String>? selectedDecisionTags,
+    Expression<String>? selectedNoTradeReasons,
+    Expression<String>? selectedEmotions,
+    Expression<String>? principleCheck,
+    Expression<String>? riskNote,
+    Expression<String>? insightGood,
+    Expression<String>? insightWeak,
+    Expression<String>? insightRepeatOrAvoid,
+    Expression<String>? nextPlan,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<String>? completedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (reviewDate != null) 'review_date': reviewDate,
+      if (status != null) 'status': status,
+      if (mode != null) 'mode': mode,
+      if (performanceNote != null) 'performance_note': performanceNote,
+      if (tradeReviewNote != null) 'trade_review_note': tradeReviewNote,
+      if (selectedDecisionTags != null)
+        'selected_decision_tags': selectedDecisionTags,
+      if (selectedNoTradeReasons != null)
+        'selected_no_trade_reasons': selectedNoTradeReasons,
+      if (selectedEmotions != null) 'selected_emotions': selectedEmotions,
+      if (principleCheck != null) 'principle_check': principleCheck,
+      if (riskNote != null) 'risk_note': riskNote,
+      if (insightGood != null) 'insight_good': insightGood,
+      if (insightWeak != null) 'insight_weak': insightWeak,
+      if (insightRepeatOrAvoid != null)
+        'insight_repeat_or_avoid': insightRepeatOrAvoid,
+      if (nextPlan != null) 'next_plan': nextPlan,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (completedAt != null) 'completed_at': completedAt,
+    });
+  }
+
+  DailyInvestmentReviewsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? reviewDate,
+    Value<String>? status,
+    Value<String>? mode,
+    Value<String>? performanceNote,
+    Value<String>? tradeReviewNote,
+    Value<String>? selectedDecisionTags,
+    Value<String>? selectedNoTradeReasons,
+    Value<String>? selectedEmotions,
+    Value<String>? principleCheck,
+    Value<String>? riskNote,
+    Value<String>? insightGood,
+    Value<String>? insightWeak,
+    Value<String>? insightRepeatOrAvoid,
+    Value<String>? nextPlan,
+    Value<String>? createdAt,
+    Value<String>? updatedAt,
+    Value<String?>? completedAt,
+  }) {
+    return DailyInvestmentReviewsCompanion(
+      id: id ?? this.id,
+      reviewDate: reviewDate ?? this.reviewDate,
+      status: status ?? this.status,
+      mode: mode ?? this.mode,
+      performanceNote: performanceNote ?? this.performanceNote,
+      tradeReviewNote: tradeReviewNote ?? this.tradeReviewNote,
+      selectedDecisionTags: selectedDecisionTags ?? this.selectedDecisionTags,
+      selectedNoTradeReasons:
+          selectedNoTradeReasons ?? this.selectedNoTradeReasons,
+      selectedEmotions: selectedEmotions ?? this.selectedEmotions,
+      principleCheck: principleCheck ?? this.principleCheck,
+      riskNote: riskNote ?? this.riskNote,
+      insightGood: insightGood ?? this.insightGood,
+      insightWeak: insightWeak ?? this.insightWeak,
+      insightRepeatOrAvoid: insightRepeatOrAvoid ?? this.insightRepeatOrAvoid,
+      nextPlan: nextPlan ?? this.nextPlan,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      completedAt: completedAt ?? this.completedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (reviewDate.present) {
+      map['review_date'] = Variable<String>(reviewDate.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(mode.value);
+    }
+    if (performanceNote.present) {
+      map['performance_note'] = Variable<String>(performanceNote.value);
+    }
+    if (tradeReviewNote.present) {
+      map['trade_review_note'] = Variable<String>(tradeReviewNote.value);
+    }
+    if (selectedDecisionTags.present) {
+      map['selected_decision_tags'] = Variable<String>(
+        selectedDecisionTags.value,
+      );
+    }
+    if (selectedNoTradeReasons.present) {
+      map['selected_no_trade_reasons'] = Variable<String>(
+        selectedNoTradeReasons.value,
+      );
+    }
+    if (selectedEmotions.present) {
+      map['selected_emotions'] = Variable<String>(selectedEmotions.value);
+    }
+    if (principleCheck.present) {
+      map['principle_check'] = Variable<String>(principleCheck.value);
+    }
+    if (riskNote.present) {
+      map['risk_note'] = Variable<String>(riskNote.value);
+    }
+    if (insightGood.present) {
+      map['insight_good'] = Variable<String>(insightGood.value);
+    }
+    if (insightWeak.present) {
+      map['insight_weak'] = Variable<String>(insightWeak.value);
+    }
+    if (insightRepeatOrAvoid.present) {
+      map['insight_repeat_or_avoid'] = Variable<String>(
+        insightRepeatOrAvoid.value,
+      );
+    }
+    if (nextPlan.present) {
+      map['next_plan'] = Variable<String>(nextPlan.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<String>(completedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DailyInvestmentReviewsCompanion(')
+          ..write('id: $id, ')
+          ..write('reviewDate: $reviewDate, ')
+          ..write('status: $status, ')
+          ..write('mode: $mode, ')
+          ..write('performanceNote: $performanceNote, ')
+          ..write('tradeReviewNote: $tradeReviewNote, ')
+          ..write('selectedDecisionTags: $selectedDecisionTags, ')
+          ..write('selectedNoTradeReasons: $selectedNoTradeReasons, ')
+          ..write('selectedEmotions: $selectedEmotions, ')
+          ..write('principleCheck: $principleCheck, ')
+          ..write('riskNote: $riskNote, ')
+          ..write('insightGood: $insightGood, ')
+          ..write('insightWeak: $insightWeak, ')
+          ..write('insightRepeatOrAvoid: $insightRepeatOrAvoid, ')
+          ..write('nextPlan: $nextPlan, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -12244,6 +13277,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BenchmarkPricesTable benchmarkPrices = $BenchmarkPricesTable(
     this,
   );
+  late final $DailyInvestmentReviewsTable dailyInvestmentReviews =
+      $DailyInvestmentReviewsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -12265,6 +13300,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     exchangeRates,
     portfolioDailyReturns,
     benchmarkPrices,
+    dailyInvestmentReviews,
   ];
 }
 
@@ -21078,6 +22114,488 @@ typedef $$BenchmarkPricesTableProcessedTableManager =
       BenchmarkPrice,
       PrefetchHooks Function()
     >;
+typedef $$DailyInvestmentReviewsTableCreateCompanionBuilder =
+    DailyInvestmentReviewsCompanion Function({
+      Value<int> id,
+      required String reviewDate,
+      required String status,
+      required String mode,
+      Value<String> performanceNote,
+      Value<String> tradeReviewNote,
+      Value<String> selectedDecisionTags,
+      Value<String> selectedNoTradeReasons,
+      Value<String> selectedEmotions,
+      Value<String> principleCheck,
+      Value<String> riskNote,
+      Value<String> insightGood,
+      Value<String> insightWeak,
+      Value<String> insightRepeatOrAvoid,
+      Value<String> nextPlan,
+      required String createdAt,
+      required String updatedAt,
+      Value<String?> completedAt,
+    });
+typedef $$DailyInvestmentReviewsTableUpdateCompanionBuilder =
+    DailyInvestmentReviewsCompanion Function({
+      Value<int> id,
+      Value<String> reviewDate,
+      Value<String> status,
+      Value<String> mode,
+      Value<String> performanceNote,
+      Value<String> tradeReviewNote,
+      Value<String> selectedDecisionTags,
+      Value<String> selectedNoTradeReasons,
+      Value<String> selectedEmotions,
+      Value<String> principleCheck,
+      Value<String> riskNote,
+      Value<String> insightGood,
+      Value<String> insightWeak,
+      Value<String> insightRepeatOrAvoid,
+      Value<String> nextPlan,
+      Value<String> createdAt,
+      Value<String> updatedAt,
+      Value<String?> completedAt,
+    });
+
+class $$DailyInvestmentReviewsTableFilterComposer
+    extends Composer<_$AppDatabase, $DailyInvestmentReviewsTable> {
+  $$DailyInvestmentReviewsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reviewDate => $composableBuilder(
+    column: $table.reviewDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get performanceNote => $composableBuilder(
+    column: $table.performanceNote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tradeReviewNote => $composableBuilder(
+    column: $table.tradeReviewNote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get selectedDecisionTags => $composableBuilder(
+    column: $table.selectedDecisionTags,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get selectedNoTradeReasons => $composableBuilder(
+    column: $table.selectedNoTradeReasons,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get selectedEmotions => $composableBuilder(
+    column: $table.selectedEmotions,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get principleCheck => $composableBuilder(
+    column: $table.principleCheck,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get riskNote => $composableBuilder(
+    column: $table.riskNote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get insightGood => $composableBuilder(
+    column: $table.insightGood,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get insightWeak => $composableBuilder(
+    column: $table.insightWeak,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get insightRepeatOrAvoid => $composableBuilder(
+    column: $table.insightRepeatOrAvoid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nextPlan => $composableBuilder(
+    column: $table.nextPlan,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DailyInvestmentReviewsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DailyInvestmentReviewsTable> {
+  $$DailyInvestmentReviewsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reviewDate => $composableBuilder(
+    column: $table.reviewDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get performanceNote => $composableBuilder(
+    column: $table.performanceNote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tradeReviewNote => $composableBuilder(
+    column: $table.tradeReviewNote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get selectedDecisionTags => $composableBuilder(
+    column: $table.selectedDecisionTags,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get selectedNoTradeReasons => $composableBuilder(
+    column: $table.selectedNoTradeReasons,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get selectedEmotions => $composableBuilder(
+    column: $table.selectedEmotions,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get principleCheck => $composableBuilder(
+    column: $table.principleCheck,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get riskNote => $composableBuilder(
+    column: $table.riskNote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get insightGood => $composableBuilder(
+    column: $table.insightGood,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get insightWeak => $composableBuilder(
+    column: $table.insightWeak,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get insightRepeatOrAvoid => $composableBuilder(
+    column: $table.insightRepeatOrAvoid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nextPlan => $composableBuilder(
+    column: $table.nextPlan,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DailyInvestmentReviewsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DailyInvestmentReviewsTable> {
+  $$DailyInvestmentReviewsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get reviewDate => $composableBuilder(
+    column: $table.reviewDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<String> get performanceNote => $composableBuilder(
+    column: $table.performanceNote,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tradeReviewNote => $composableBuilder(
+    column: $table.tradeReviewNote,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get selectedDecisionTags => $composableBuilder(
+    column: $table.selectedDecisionTags,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get selectedNoTradeReasons => $composableBuilder(
+    column: $table.selectedNoTradeReasons,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get selectedEmotions => $composableBuilder(
+    column: $table.selectedEmotions,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get principleCheck => $composableBuilder(
+    column: $table.principleCheck,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get riskNote =>
+      $composableBuilder(column: $table.riskNote, builder: (column) => column);
+
+  GeneratedColumn<String> get insightGood => $composableBuilder(
+    column: $table.insightGood,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get insightWeak => $composableBuilder(
+    column: $table.insightWeak,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get insightRepeatOrAvoid => $composableBuilder(
+    column: $table.insightRepeatOrAvoid,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get nextPlan =>
+      $composableBuilder(column: $table.nextPlan, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$DailyInvestmentReviewsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DailyInvestmentReviewsTable,
+          DailyInvestmentReview,
+          $$DailyInvestmentReviewsTableFilterComposer,
+          $$DailyInvestmentReviewsTableOrderingComposer,
+          $$DailyInvestmentReviewsTableAnnotationComposer,
+          $$DailyInvestmentReviewsTableCreateCompanionBuilder,
+          $$DailyInvestmentReviewsTableUpdateCompanionBuilder,
+          (
+            DailyInvestmentReview,
+            BaseReferences<
+              _$AppDatabase,
+              $DailyInvestmentReviewsTable,
+              DailyInvestmentReview
+            >,
+          ),
+          DailyInvestmentReview,
+          PrefetchHooks Function()
+        > {
+  $$DailyInvestmentReviewsTableTableManager(
+    _$AppDatabase db,
+    $DailyInvestmentReviewsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DailyInvestmentReviewsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DailyInvestmentReviewsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DailyInvestmentReviewsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> reviewDate = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> mode = const Value.absent(),
+                Value<String> performanceNote = const Value.absent(),
+                Value<String> tradeReviewNote = const Value.absent(),
+                Value<String> selectedDecisionTags = const Value.absent(),
+                Value<String> selectedNoTradeReasons = const Value.absent(),
+                Value<String> selectedEmotions = const Value.absent(),
+                Value<String> principleCheck = const Value.absent(),
+                Value<String> riskNote = const Value.absent(),
+                Value<String> insightGood = const Value.absent(),
+                Value<String> insightWeak = const Value.absent(),
+                Value<String> insightRepeatOrAvoid = const Value.absent(),
+                Value<String> nextPlan = const Value.absent(),
+                Value<String> createdAt = const Value.absent(),
+                Value<String> updatedAt = const Value.absent(),
+                Value<String?> completedAt = const Value.absent(),
+              }) => DailyInvestmentReviewsCompanion(
+                id: id,
+                reviewDate: reviewDate,
+                status: status,
+                mode: mode,
+                performanceNote: performanceNote,
+                tradeReviewNote: tradeReviewNote,
+                selectedDecisionTags: selectedDecisionTags,
+                selectedNoTradeReasons: selectedNoTradeReasons,
+                selectedEmotions: selectedEmotions,
+                principleCheck: principleCheck,
+                riskNote: riskNote,
+                insightGood: insightGood,
+                insightWeak: insightWeak,
+                insightRepeatOrAvoid: insightRepeatOrAvoid,
+                nextPlan: nextPlan,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                completedAt: completedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String reviewDate,
+                required String status,
+                required String mode,
+                Value<String> performanceNote = const Value.absent(),
+                Value<String> tradeReviewNote = const Value.absent(),
+                Value<String> selectedDecisionTags = const Value.absent(),
+                Value<String> selectedNoTradeReasons = const Value.absent(),
+                Value<String> selectedEmotions = const Value.absent(),
+                Value<String> principleCheck = const Value.absent(),
+                Value<String> riskNote = const Value.absent(),
+                Value<String> insightGood = const Value.absent(),
+                Value<String> insightWeak = const Value.absent(),
+                Value<String> insightRepeatOrAvoid = const Value.absent(),
+                Value<String> nextPlan = const Value.absent(),
+                required String createdAt,
+                required String updatedAt,
+                Value<String?> completedAt = const Value.absent(),
+              }) => DailyInvestmentReviewsCompanion.insert(
+                id: id,
+                reviewDate: reviewDate,
+                status: status,
+                mode: mode,
+                performanceNote: performanceNote,
+                tradeReviewNote: tradeReviewNote,
+                selectedDecisionTags: selectedDecisionTags,
+                selectedNoTradeReasons: selectedNoTradeReasons,
+                selectedEmotions: selectedEmotions,
+                principleCheck: principleCheck,
+                riskNote: riskNote,
+                insightGood: insightGood,
+                insightWeak: insightWeak,
+                insightRepeatOrAvoid: insightRepeatOrAvoid,
+                nextPlan: nextPlan,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                completedAt: completedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DailyInvestmentReviewsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DailyInvestmentReviewsTable,
+      DailyInvestmentReview,
+      $$DailyInvestmentReviewsTableFilterComposer,
+      $$DailyInvestmentReviewsTableOrderingComposer,
+      $$DailyInvestmentReviewsTableAnnotationComposer,
+      $$DailyInvestmentReviewsTableCreateCompanionBuilder,
+      $$DailyInvestmentReviewsTableUpdateCompanionBuilder,
+      (
+        DailyInvestmentReview,
+        BaseReferences<
+          _$AppDatabase,
+          $DailyInvestmentReviewsTable,
+          DailyInvestmentReview
+        >,
+      ),
+      DailyInvestmentReview,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -21128,4 +22646,9 @@ class $AppDatabaseManager {
       $$PortfolioDailyReturnsTableTableManager(_db, _db.portfolioDailyReturns);
   $$BenchmarkPricesTableTableManager get benchmarkPrices =>
       $$BenchmarkPricesTableTableManager(_db, _db.benchmarkPrices);
+  $$DailyInvestmentReviewsTableTableManager get dailyInvestmentReviews =>
+      $$DailyInvestmentReviewsTableTableManager(
+        _db,
+        _db.dailyInvestmentReviews,
+      );
 }

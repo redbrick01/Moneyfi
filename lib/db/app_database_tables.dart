@@ -272,3 +272,28 @@ class BenchmarkPrices extends Table {
     {benchmarkCode, priceDate},
   ];
 }
+
+class DailyInvestmentReviews extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get reviewDate => text().unique()();
+  TextColumn get status => text()();
+  TextColumn get mode => text()();
+  TextColumn get performanceNote => text().withDefault(const Constant(''))();
+  TextColumn get tradeReviewNote => text().withDefault(const Constant(''))();
+  TextColumn get selectedDecisionTags =>
+      text().withDefault(const Constant('[]'))();
+  TextColumn get selectedNoTradeReasons =>
+      text().withDefault(const Constant('[]'))();
+  TextColumn get selectedEmotions => text().withDefault(const Constant('[]'))();
+  TextColumn get principleCheck =>
+      text().withDefault(const Constant('notApplicable'))();
+  TextColumn get riskNote => text().withDefault(const Constant(''))();
+  TextColumn get insightGood => text().withDefault(const Constant(''))();
+  TextColumn get insightWeak => text().withDefault(const Constant(''))();
+  TextColumn get insightRepeatOrAvoid =>
+      text().withDefault(const Constant(''))();
+  TextColumn get nextPlan => text().withDefault(const Constant(''))();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+  TextColumn get completedAt => text().nullable()();
+}

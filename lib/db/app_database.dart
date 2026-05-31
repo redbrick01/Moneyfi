@@ -39,6 +39,7 @@ const Uuid _uuid = Uuid();
     ExchangeRates,
     PortfolioDailyReturns,
     BenchmarkPrices,
+    DailyInvestmentReviews,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -49,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._internal();
 
   @override
-  int get schemaVersion => 36;
+  int get schemaVersion => 37;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -61,6 +62,7 @@ class AppDatabase extends _$AppDatabase {
       await _ensurePortfolioDiagnosisCacheTable();
       await _ensurePortfolioDailyReturnsTable();
       await _ensureBenchmarkPricesTable();
+      await _ensureDailyInvestmentReviewsTable();
       await customStatement('''
             CREATE TABLE IF NOT EXISTS snapshot_notes (
               snapshot_date TEXT NOT NULL PRIMARY KEY,
@@ -78,6 +80,7 @@ class AppDatabase extends _$AppDatabase {
       await _ensurePortfolioDiagnosisCacheTable();
       await _ensurePortfolioDailyReturnsTable();
       await _ensureBenchmarkPricesTable();
+      await _ensureDailyInvestmentReviewsTable();
 
       if (from < 10 && await _tableExists('assets')) {
         await customStatement(
@@ -282,6 +285,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 36) {
         await _ensureBenchmarkPricesTable();
+      }
+      if (from < 37) {
+        await _ensureDailyInvestmentReviewsTable();
       }
 
       await _ensureSeedExchangeRateIfEmpty();
@@ -610,6 +616,35 @@ class AppDatabase extends _$AppDatabase {
     ''');
     await customStatement(
       'CREATE INDEX IF NOT EXISTS benchmark_prices_code_date_idx ON benchmark_prices(benchmark_code, price_date)',
+    );
+  }
+
+  Future<void> _ensureDailyInvestmentReviewsTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS daily_investment_reviews (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        review_date TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL,
+        mode TEXT NOT NULL,
+        performance_note TEXT NOT NULL DEFAULT '',
+        trade_review_note TEXT NOT NULL DEFAULT '',
+        selected_decision_tags TEXT NOT NULL DEFAULT '[]',
+        selected_no_trade_reasons TEXT NOT NULL DEFAULT '[]',
+        selected_emotions TEXT NOT NULL DEFAULT '[]',
+        principle_check TEXT NOT NULL DEFAULT 'notApplicable',
+        risk_note TEXT NOT NULL DEFAULT '',
+        insight_good TEXT NOT NULL DEFAULT '',
+        insight_weak TEXT NOT NULL DEFAULT '',
+        insight_repeat_or_avoid TEXT NOT NULL DEFAULT '',
+        next_plan TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        completed_at TEXT
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS daily_investment_reviews_date_idx '
+      'ON daily_investment_reviews(review_date)',
     );
   }
 
