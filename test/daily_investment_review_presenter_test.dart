@@ -5,9 +5,13 @@ import 'package:moneyfy/services/investment_review/investment_review_models.dart
 import 'package:moneyfy/services/investment_review/investment_review_periods.dart';
 
 void main() {
-  InvestmentReviewReport report({int buyCount = 0, int sellCount = 0}) {
+  InvestmentReviewReport report({
+    InvestmentReviewPeriodType type = InvestmentReviewPeriodType.today,
+    int buyCount = 0,
+    int sellCount = 0,
+  }) {
     final period = InvestmentReviewPeriodResolver.resolve(
-      InvestmentReviewPeriodType.today,
+      type,
       now: DateTime(2026, 6, 1, 12),
     );
     return InvestmentReviewReport(
@@ -38,6 +42,8 @@ void main() {
     expect(state.status, DailyInvestmentReviewComposerStatus.draft);
     expect(state.mode, DailyInvestmentReviewMode.noTradeDay);
     expect(state.isCompleted, isFalse);
+    expect(state.draft.reviewDate, DateTime(2026, 6, 1));
+    expect(state.draft.mode, DailyInvestmentReviewMode.noTradeDay);
     expect(state.draft.tradeReviewNote, isEmpty);
   });
 
@@ -78,8 +84,16 @@ void main() {
 
     expect(state.status, DailyInvestmentReviewComposerStatus.inProgress);
     expect(state.mode, DailyInvestmentReviewMode.tradingDay);
+    expect(state.draft.reviewDate, DateTime(2026, 6, 1));
+    expect(state.draft.mode, DailyInvestmentReviewMode.tradingDay);
     expect(state.draft.performanceNote, '기존 메모');
     expect(state.draft.tradeReviewNote, '관망 이유');
+    expect(state.draft.selectedNoTradeReasons, ['기다림']);
+    expect(state.draft.selectedEmotions, ['차분함']);
+    expect(
+      state.draft.principleCheck,
+      DailyInvestmentReviewPrincipleCheck.followedRules,
+    );
   });
 
   test('maps completed saved review to completed composer state', () {
@@ -113,5 +127,15 @@ void main() {
     expect(state.isCompleted, isTrue);
     expect(state.savedReview, same(saved));
     expect(state.draft.selectedDecisionTags, ['계획 매매']);
+  });
+
+  test('throws when building daily state from non-today report', () {
+    expect(
+      () => DailyInvestmentReviewPresenter.buildState(
+        report: report(type: InvestmentReviewPeriodType.weekly),
+        savedReview: null,
+      ),
+      throwsArgumentError,
+    );
   });
 }

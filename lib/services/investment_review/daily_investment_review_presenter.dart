@@ -6,6 +6,14 @@ abstract final class DailyInvestmentReviewPresenter {
     required InvestmentReviewReport report,
     required DailyInvestmentReviewEntry? savedReview,
   }) {
+    if (report.period.type != InvestmentReviewPeriodType.today) {
+      throw ArgumentError.value(
+        report.period.type,
+        'report.period.type',
+        'Daily investment review presenter only accepts today reports.',
+      );
+    }
+
     final mode = _modeFrom(report);
     if (savedReview == null) {
       return DailyInvestmentReviewComposerState(
@@ -30,6 +38,8 @@ abstract final class DailyInvestmentReviewPresenter {
       mode: mode,
       savedReview: savedReview,
       draft: DailyInvestmentReviewDraft(
+        // state.mode and draft.mode follow current report activity. savedReview
+        // retains the persisted historical row mode.
         reviewDate: savedReview.reviewDate,
         mode: mode,
         performanceNote: savedReview.performanceNote,
