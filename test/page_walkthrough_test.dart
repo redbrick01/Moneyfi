@@ -17,6 +17,7 @@ import 'package:moneyfy/pages/forms/holding_form_page.dart';
 import 'package:moneyfy/pages/forms/transaction_form_page.dart';
 import 'package:moneyfy/pages/holding_detail_page.dart';
 import 'package:moneyfy/pages/investment_performance_page.dart';
+import 'package:moneyfy/pages/investment_review_page.dart';
 import 'package:moneyfy/pages/login_page.dart';
 import 'package:moneyfy/pages/signup_page.dart';
 import 'package:moneyfy/pages/snapshot_detail_page.dart';
@@ -178,6 +179,22 @@ void main() {
     tester,
   ) async {
     await pumpInteractivePage(tester, const AnalysisPage());
+
+    await tester.scrollUntilVisible(
+      find.text('오늘 · 주간 · 월간 판단 복기'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('오늘 · 주간 · 월간 판단 복기'), findsOneWidget);
+    await tester.tap(find.text('투자 회고').first);
+    await settlePage(tester);
+    expect(find.byType(InvestmentReviewPage), findsOneWidget);
+    expect(find.text('투자 회고'), findsWidgets);
+    expect(find.byTooltip('뒤로'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('뒤로'));
+    await settlePage(tester);
+    expect(find.text('종목별 뉴스'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('포트폴리오 진단'),

@@ -14,6 +14,7 @@ import '../widgets/moneyfy_ui.dart';
 import 'annual_asset_analysis_page.dart';
 import 'dividend_interest_analysis_page.dart';
 import 'investment_performance_page.dart';
+import 'investment_review_page.dart';
 import 'portfolio_analysis_mvp_page.dart';
 import 'snapshot_detail_page.dart';
 
@@ -86,6 +87,19 @@ class _AnalysisPageState extends State<AnalysisPage> {
               child: CompanyNewsSummaryCard(items: bundle.companyNewsSummaries),
             ),
             SizedBox(height: context.spacing.sectionGap),
+            _AnalysisEntryCard(
+              icon: Icons.rate_review_rounded,
+              title: '투자 회고',
+              subtitle: '오늘 · 주간 · 월간 판단 복기',
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const InvestmentReviewPage(),
+                  ),
+                );
+              },
+            ),
+            SizedBox(height: context.spacing.sm),
             _AnalysisEntryCard(
               icon: Icons.insights_rounded,
               title: '포트폴리오 진단',
