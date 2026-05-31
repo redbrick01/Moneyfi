@@ -57,6 +57,9 @@ class _InvestmentReviewPageState extends State<InvestmentReviewPage> {
         FutureBuilder<InvestmentReviewReport>(
           future: _reportFuture,
           builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const _InvestmentReviewLoadingCard();
+            }
             final report = snapshot.data;
             if (report != null) {
               return _InvestmentReviewReportView(report: report);
@@ -378,7 +381,14 @@ class _InvestmentReviewLoadingCard extends StatelessWidget {
       child: Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: context.spacing.md),
-          child: const CircularProgressIndicator(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              SizedBox(height: context.spacing.sm),
+              Text('투자 회고를 불러오는 중이에요.', style: context.typography.body),
+            ],
+          ),
         ),
       ),
     );

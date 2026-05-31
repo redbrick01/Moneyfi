@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
@@ -637,6 +639,66 @@ void main() {
       expect(find.text('주간'), findsWidgets);
       expect(find.text('월간'), findsWidgets);
       expect(find.text('오늘 회고를 만들 기록이 더 필요해요.'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'investment review page shows loading instead of stale data while switching periods',
+    (tester) async {
+      InvestmentReviewReport reportFor(
+        InvestmentReviewPeriodType type,
+        String headline,
+      ) {
+        final period = InvestmentReviewPeriodResolver.resolve(
+          type,
+          now: DateTime(2026, 5, 31),
+        );
+        return InvestmentReviewReport(
+          period: period,
+          metrics: const [],
+          signals: const [],
+          narrative: InvestmentReviewNarrative(
+            headline: headline,
+            summary: '요약입니다.',
+            nextActions: const ['다음 액션입니다.'],
+          ),
+          aiState: const InvestmentReviewAiState.off(),
+          hasEnoughData: true,
+          activity: const InvestmentReviewActivitySummary(buyCount: 1),
+        );
+      }
+
+      final weeklyCompleter = Completer<InvestmentReviewReport>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: InvestmentReviewPage(
+            reportBuilderForTesting: (type) {
+              if (type == InvestmentReviewPeriodType.weekly) {
+                return weeklyCompleter.future;
+              }
+              return Future.value(reportFor(type, '오늘 회고가 준비됐어요.'));
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('오늘 회고가 준비됐어요.'), findsOneWidget);
+
+      await tester.tap(find.text('주간'));
+      await tester.pump();
+
+      expect(find.text('오늘 회고가 준비됐어요.'), findsNothing);
+      expect(find.text('투자 회고를 불러오는 중이에요.'), findsOneWidget);
+
+      weeklyCompleter.complete(
+        reportFor(InvestmentReviewPeriodType.weekly, '주간 회고가 준비됐어요.'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('주간 회고가 준비됐어요.'), findsOneWidget);
     },
   );
 }
