@@ -827,6 +827,26 @@ void main() {
         );
       }
 
+      void expectReadOnlyReport(String headline) {
+        expect(find.text(headline), findsOneWidget);
+        expect(find.text('주요 지표'), findsOneWidget);
+        expect(find.text('리뷰 신호'), findsOneWidget);
+
+        for (final dailyComposerOnlyLabel in [
+          '성과 분석',
+          '매매 복기',
+          '관망 회고',
+          '리스크/멘탈 점검',
+          '핵심 인사이트',
+          '다음 투자 계획',
+          '임시 저장',
+          '회고 완료',
+          '오늘 성과를 만든 원인을 적어보세요.',
+        ]) {
+          expect(find.text(dailyComposerOnlyLabel), findsNothing);
+        }
+      }
+
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
@@ -843,18 +863,12 @@ void main() {
       await tester.tap(find.text('주간'));
       await tester.pumpAndSettle();
 
-      expect(find.text('주간 회고가 준비됐어요.'), findsOneWidget);
-      expect(find.text('주요 지표'), findsOneWidget);
-      expect(find.text('리뷰 신호'), findsOneWidget);
-      expect(find.text('성과 분석'), findsNothing);
+      expectReadOnlyReport('주간 회고가 준비됐어요.');
 
       await tester.tap(find.text('월간'));
       await tester.pumpAndSettle();
 
-      expect(find.text('월간 회고가 준비됐어요.'), findsOneWidget);
-      expect(find.text('주요 지표'), findsOneWidget);
-      expect(find.text('리뷰 신호'), findsOneWidget);
-      expect(find.text('성과 분석'), findsNothing);
+      expectReadOnlyReport('월간 회고가 준비됐어요.');
     },
   );
 
