@@ -91,17 +91,22 @@ class _DashboardSharedData {
   final PortfolioDiagnosisResult? diagnosis;
 }
 
+typedef TodayInvestmentReviewReportBuilder =
+    Future<InvestmentReviewReport> Function();
+
 class PortfolioDashboardPage extends StatefulWidget {
   const PortfolioDashboardPage({
     super.key,
     this.scrollController,
     this.onOpenPortfolioDiagnosis,
     this.dataRefreshTick = 0,
+    this.todayReviewBuilderForTesting,
   });
 
   final ScrollController? scrollController;
   final VoidCallback? onOpenPortfolioDiagnosis;
   final int dataRefreshTick;
+  final TodayInvestmentReviewReportBuilder? todayReviewBuilderForTesting;
 
   @override
   State<PortfolioDashboardPage> createState() => _PortfolioDashboardPageState();
@@ -131,6 +136,10 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
   }
 
   Future<InvestmentReviewReport> _loadTodayReview() {
+    final testingBuilder = widget.todayReviewBuilderForTesting;
+    if (testingBuilder != null) {
+      return testingBuilder();
+    }
     return InvestmentReviewSnapshotBuilder(
       database: AppDatabase.instance,
     ).build(InvestmentReviewPeriodType.today);
@@ -205,6 +214,9 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
           FutureBuilder<InvestmentReviewReport>(
             future: _todayReviewFuture,
             builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox.shrink();
+              }
               final report = snapshot.data;
               if (report == null) {
                 return const SizedBox.shrink();

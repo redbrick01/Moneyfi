@@ -9,6 +9,7 @@ import 'package:moneyfy/pages/forms/cash_transaction_form_page.dart';
 import 'package:moneyfy/pages/forms/transaction_form_page.dart';
 import 'package:moneyfy/pages/investment_performance_page.dart';
 import 'package:moneyfy/pages/investment_review_page.dart';
+import 'package:moneyfy/pages/portfolio_dashboard_page.dart';
 import 'package:moneyfy/services/investment_review/investment_review_models.dart';
 import 'package:moneyfy/services/investment_review/investment_review_periods.dart';
 import 'package:moneyfy/utils/input_validators.dart';
@@ -188,6 +189,26 @@ void main() {
     return find.byWidgetPredicate(
       (widget) =>
           widget is TextField && widget.decoration?.hintText == hintText,
+    );
+  }
+
+  InvestmentReviewReport reviewReport(String headline) {
+    final period = InvestmentReviewPeriodResolver.resolve(
+      InvestmentReviewPeriodType.today,
+      now: DateTime(2026, 5, 31),
+    );
+    return InvestmentReviewReport(
+      period: period,
+      metrics: const [],
+      signals: const [],
+      narrative: InvestmentReviewNarrative(
+        headline: headline,
+        summary: '요약입니다.',
+        nextActions: const ['다음 액션입니다.'],
+      ),
+      aiState: const InvestmentReviewAiState.off(),
+      hasEnoughData: true,
+      activity: const InvestmentReviewActivitySummary(),
     );
   }
 
@@ -750,4 +771,50 @@ void main() {
     await tester.tap(find.text('자세히 보기'));
     expect(tapped, isTrue);
   });
+
+  testWidgets(
+    'portfolio dashboard hides stale investment review while refreshing',
+    (tester) async {
+      final firstReport = Completer<InvestmentReviewReport>();
+      final secondReport = Completer<InvestmentReviewReport>();
+      var callCount = 0;
+
+      Future<InvestmentReviewReport> loadTodayReview() {
+        callCount++;
+        return callCount == 1 ? firstReport.future : secondReport.future;
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: PortfolioDashboardPage(
+            todayReviewBuilderForTesting: loadTodayReview,
+          ),
+        ),
+      );
+
+      firstReport.complete(reviewReport('헤드라인 A'));
+      await tester.pump();
+
+      expect(find.text('헤드라인 A'), findsOneWidget);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: PortfolioDashboardPage(
+            dataRefreshTick: 1,
+            todayReviewBuilderForTesting: loadTodayReview,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('헤드라인 A'), findsNothing);
+
+      secondReport.complete(reviewReport('헤드라인 B'));
+      await tester.pump();
+
+      expect(find.text('헤드라인 B'), findsOneWidget);
+    },
+  );
 }
