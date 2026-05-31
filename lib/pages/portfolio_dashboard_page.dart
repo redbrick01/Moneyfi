@@ -26,6 +26,8 @@ import '../models/asset_item.dart';
 import '../navigation/moneyfy_navigation.dart';
 import '../navigation/moneyfy_routes.dart';
 import '../services/auth_service.dart';
+import '../services/investment_review/daily_investment_review_models.dart';
+import '../services/investment_review/daily_investment_review_repository.dart';
 import '../services/investment_review/investment_review_models.dart';
 import '../services/investment_review/investment_review_snapshot_builder.dart';
 import '../services/market_data_service.dart';
@@ -93,8 +95,20 @@ class _DashboardSharedData {
   final PortfolioDiagnosisResult? diagnosis;
 }
 
+class _TodayInvestmentReviewHomeData {
+  const _TodayInvestmentReviewHomeData({
+    required this.report,
+    required this.reviewStatus,
+  });
+
+  final InvestmentReviewReport report;
+  final DailyInvestmentReviewComposerStatus reviewStatus;
+}
+
 typedef TodayInvestmentReviewReportBuilder =
     Future<InvestmentReviewReport> Function();
+typedef TodayInvestmentReviewLoader =
+    Future<DailyInvestmentReviewEntry?> Function(DateTime date);
 
 class PortfolioDashboardPage extends StatefulWidget {
   const PortfolioDashboardPage({
@@ -103,12 +117,14 @@ class PortfolioDashboardPage extends StatefulWidget {
     this.onOpenPortfolioDiagnosis,
     this.dataRefreshTick = 0,
     this.todayReviewBuilderForTesting,
+    this.todayReviewLoaderForTesting,
   });
 
   final ScrollController? scrollController;
   final VoidCallback? onOpenPortfolioDiagnosis;
   final int dataRefreshTick;
   final TodayInvestmentReviewReportBuilder? todayReviewBuilderForTesting;
+  final TodayInvestmentReviewLoader? todayReviewLoaderForTesting;
 
   @override
   State<PortfolioDashboardPage> createState() => _PortfolioDashboardPageState();
@@ -116,7 +132,7 @@ class PortfolioDashboardPage extends StatefulWidget {
 
 class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
   _AssetSortOption _assetSortOption = _AssetSortOption.custom;
-  late Future<InvestmentReviewReport> _todayReviewFuture;
+  late Future<_TodayInvestmentReviewHomeData> _todayReviewFuture;
   int _refreshTick = 0;
   bool _isEditMode = false;
   bool _isRefreshing = false;
@@ -137,14 +153,54 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
     });
   }
 
-  Future<InvestmentReviewReport> _loadTodayReview() {
+  Future<_TodayInvestmentReviewHomeData> _loadTodayReview() async {
     final testingBuilder = widget.todayReviewBuilderForTesting;
     if (testingBuilder != null) {
-      return testingBuilder();
+      final report = await testingBuilder();
+      return _TodayInvestmentReviewHomeData(
+        report: report,
+        reviewStatus: _statusFromSavedReview(
+          await _loadSavedTodayReview(report.period.from),
+        ),
+      );
     }
-    return InvestmentReviewSnapshotBuilder(
+
+    final report = await InvestmentReviewSnapshotBuilder(
       database: AppDatabase.instance,
     ).build(InvestmentReviewPeriodType.today);
+    return _TodayInvestmentReviewHomeData(
+      report: report,
+      reviewStatus: _statusFromSavedReview(
+        await _loadSavedTodayReview(report.period.from),
+      ),
+    );
+  }
+
+  Future<DailyInvestmentReviewEntry?> _loadSavedTodayReview(DateTime date) {
+    final testingLoader = widget.todayReviewLoaderForTesting;
+    if (testingLoader != null) {
+      return testingLoader(date);
+    }
+    if (widget.todayReviewBuilderForTesting != null) {
+      return Future.value(null);
+    }
+    return DailyInvestmentReviewRepository(
+      database: AppDatabase.instance,
+    ).loadByDate(date);
+  }
+
+  DailyInvestmentReviewComposerStatus _statusFromSavedReview(
+    DailyInvestmentReviewEntry? savedReview,
+  ) {
+    if (savedReview == null) {
+      return DailyInvestmentReviewComposerStatus.draft;
+    }
+    return switch (savedReview.status) {
+      DailyInvestmentReviewStatus.inProgress =>
+        DailyInvestmentReviewComposerStatus.inProgress,
+      DailyInvestmentReviewStatus.completed =>
+        DailyInvestmentReviewComposerStatus.completed,
+    };
   }
 
   void _openInvestmentReview() {
@@ -218,21 +274,22 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
             onCreateAsset: _openAssetForm,
           ),
           SizedBox(height: context.spacing.xl),
-          FutureBuilder<InvestmentReviewReport>(
+          FutureBuilder<_TodayInvestmentReviewHomeData>(
             future: _todayReviewFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SizedBox.shrink();
               }
-              final report = snapshot.data;
-              if (report == null) {
+              final data = snapshot.data;
+              if (data == null) {
                 return const SizedBox.shrink();
               }
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   InvestmentReviewHomeCard(
-                    report: report,
+                    report: data.report,
+                    reviewStatus: data.reviewStatus,
                     onOpen: _openInvestmentReview,
                   ),
                   SizedBox(height: context.spacing.xl),

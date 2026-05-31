@@ -1119,7 +1119,7 @@ void main() {
     },
   );
 
-  testWidgets('investment review home card shows headline and action', (
+  testWidgets('investment review home card shows draft status and action', (
     tester,
   ) async {
     final period = InvestmentReviewPeriodResolver.resolve(
@@ -1133,6 +1133,7 @@ void main() {
         theme: AppTheme.light,
         home: Scaffold(
           body: InvestmentReviewHomeCard(
+            reviewStatus: DailyInvestmentReviewComposerStatus.draft,
             report: InvestmentReviewReport(
               period: period,
               metrics: const [
@@ -1162,8 +1163,62 @@ void main() {
     );
 
     expect(find.text('오늘의 투자 회고'), findsOneWidget);
-    expect(find.text('오늘은 성과 개선이 보여요.'), findsOneWidget);
-    await tester.tap(find.text('자세히 보기'));
+    expect(find.text('오늘 회고 초안이 준비됐어요'), findsOneWidget);
+    expect(find.text('비중을 확인해 보세요.'), findsOneWidget);
+    expect(find.text('오늘은 성과 개선이 보여요.'), findsNothing);
+    await tester.tap(find.text('작성하기'));
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('investment review home card shows completed status and action', (
+    tester,
+  ) async {
+    final period = InvestmentReviewPeriodResolver.resolve(
+      InvestmentReviewPeriodType.today,
+      now: DateTime(2026, 5, 31),
+    );
+    var tapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: InvestmentReviewHomeCard(
+            reviewStatus: DailyInvestmentReviewComposerStatus.completed,
+            report: InvestmentReviewReport(
+              period: period,
+              metrics: const [
+                InvestmentReviewMetric(label: '순 투자성과', value: '+10,000원'),
+              ],
+              signals: const [],
+              narrative: const InvestmentReviewNarrative(
+                headline: '오늘은 성과 개선이 보여요.',
+                summary: '순 투자성과 +10,000원 기준으로 확인했습니다.',
+                nextActions: ['비중을 확인해 보세요.', '현금 비중을 점검해 보세요.', '분산을 확인하세요.'],
+              ),
+              aiState: const InvestmentReviewAiState.off(),
+              hasEnoughData: true,
+              activity: const InvestmentReviewActivitySummary(
+                buyCount: 0,
+                sellCount: 0,
+                incomeCount: 0,
+                cashFlowCount: 0,
+              ),
+            ),
+            onOpen: () {
+              tapped = true;
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('오늘의 투자 회고'), findsOneWidget);
+    expect(find.text('오늘 회고 완료'), findsOneWidget);
+    expect(find.text('비중을 확인해 보세요.'), findsOneWidget);
+    expect(find.text('현금 비중을 점검해 보세요.'), findsOneWidget);
+    expect(find.text('분산을 확인하세요.'), findsNothing);
+    await tester.tap(find.text('보기'));
     expect(tapped, isTrue);
   });
 
@@ -1172,6 +1227,7 @@ void main() {
     (tester) async {
       final firstReport = Completer<InvestmentReviewReport>();
       final secondReport = Completer<InvestmentReviewReport>();
+      DailyInvestmentReviewEntry? savedReview;
       var callCount = 0;
 
       Future<InvestmentReviewReport> loadTodayReview() {
@@ -1184,6 +1240,7 @@ void main() {
           theme: AppTheme.light,
           home: PortfolioDashboardPage(
             todayReviewBuilderForTesting: loadTodayReview,
+            todayReviewLoaderForTesting: (_) async => savedReview,
           ),
         ),
       );
@@ -1191,25 +1248,30 @@ void main() {
       firstReport.complete(reviewReport('헤드라인 A'));
       await tester.pump();
 
-      expect(find.text('헤드라인 A'), findsOneWidget);
+      expect(find.text('오늘 회고 초안이 준비됐어요'), findsOneWidget);
 
+      savedReview = dailyReviewEntry(
+        status: DailyInvestmentReviewStatus.completed,
+        mode: DailyInvestmentReviewMode.noTradeDay,
+      );
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
           home: PortfolioDashboardPage(
             dataRefreshTick: 1,
             todayReviewBuilderForTesting: loadTodayReview,
+            todayReviewLoaderForTesting: (_) async => savedReview,
           ),
         ),
       );
       await tester.pump();
 
-      expect(find.text('헤드라인 A'), findsNothing);
+      expect(find.text('오늘 회고 초안이 준비됐어요'), findsNothing);
 
       secondReport.complete(reviewReport('헤드라인 B'));
       await tester.pump();
 
-      expect(find.text('헤드라인 B'), findsOneWidget);
+      expect(find.text('오늘 회고 완료'), findsOneWidget);
     },
   );
 }
