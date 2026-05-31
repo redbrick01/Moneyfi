@@ -5,7 +5,8 @@ import 'investment_review_narrative_builder.dart';
 import 'investment_review_periods.dart';
 
 class InvestmentReviewSnapshotBuilder {
-  const InvestmentReviewSnapshotBuilder(this._database);
+  const InvestmentReviewSnapshotBuilder({required AppDatabase database})
+    : _database = database;
 
   final AppDatabase _database;
 

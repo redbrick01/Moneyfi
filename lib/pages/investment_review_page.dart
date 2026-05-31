@@ -35,7 +35,7 @@ class _InvestmentReviewPageState extends State<InvestmentReviewPage> {
       return testingLoader(_selected);
     }
     return InvestmentReviewSnapshotBuilder(
-      AppDatabase.instance,
+      database: AppDatabase.instance,
     ).build(_selected);
   }
 

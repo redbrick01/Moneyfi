@@ -11,7 +11,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    builder = InvestmentReviewSnapshotBuilder(db);
+    builder = InvestmentReviewSnapshotBuilder(database: db);
   });
 
   tearDown(() async {
