@@ -1170,6 +1170,32 @@ void main() {
     expect(tapped, isTrue);
   });
 
+  testWidgets(
+    'investment review home card shows in-progress status and action',
+    (tester) async {
+      var tapped = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: InvestmentReviewHomeCard(
+              reviewStatus: DailyInvestmentReviewComposerStatus.inProgress,
+              report: reviewReport('오늘은 성과 개선이 보여요.'),
+              onOpen: () {
+                tapped = true;
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('작성 중인 회고가 있어요'), findsOneWidget);
+      await tester.tap(find.text('이어쓰기'));
+      expect(tapped, isTrue);
+    },
+  );
+
   testWidgets('investment review home card shows completed status and action', (
     tester,
   ) async {
@@ -1221,6 +1247,28 @@ void main() {
     await tester.tap(find.text('보기'));
     expect(tapped, isTrue);
   });
+
+  testWidgets(
+    'portfolio dashboard wires in-progress investment review status',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: PortfolioDashboardPage(
+            todayReviewBuilderForTesting: () async => reviewReport('헤드라인'),
+            todayReviewLoaderForTesting: (_) async => dailyReviewEntry(
+              status: DailyInvestmentReviewStatus.inProgress,
+              mode: DailyInvestmentReviewMode.noTradeDay,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('작성 중인 회고가 있어요'), findsOneWidget);
+      expect(find.text('이어쓰기'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'portfolio dashboard hides stale investment review while refreshing',
