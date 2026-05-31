@@ -159,9 +159,7 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
       final report = await testingBuilder();
       return _TodayInvestmentReviewHomeData(
         report: report,
-        reviewStatus: _statusFromSavedReview(
-          await _loadSavedTodayReview(report.period.from),
-        ),
+        reviewStatus: await _loadTodayReviewStatus(report.period.from),
       );
     }
 
@@ -170,10 +168,18 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
     ).build(InvestmentReviewPeriodType.today);
     return _TodayInvestmentReviewHomeData(
       report: report,
-      reviewStatus: _statusFromSavedReview(
-        await _loadSavedTodayReview(report.period.from),
-      ),
+      reviewStatus: await _loadTodayReviewStatus(report.period.from),
     );
+  }
+
+  Future<DailyInvestmentReviewComposerStatus> _loadTodayReviewStatus(
+    DateTime date,
+  ) async {
+    try {
+      return _statusFromSavedReview(await _loadSavedTodayReview(date));
+    } catch (_) {
+      return DailyInvestmentReviewComposerStatus.draft;
+    }
   }
 
   Future<DailyInvestmentReviewEntry?> _loadSavedTodayReview(DateTime date) {

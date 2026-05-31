@@ -1271,6 +1271,27 @@ void main() {
   );
 
   testWidgets(
+    'portfolio dashboard shows draft status when saved review status load fails',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: PortfolioDashboardPage(
+            todayReviewBuilderForTesting: () async => reviewReport('헤드라인'),
+            todayReviewLoaderForTesting: (_) async {
+              throw StateError('status load failed');
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('오늘 회고 초안이 준비됐어요'), findsOneWidget);
+      expect(find.text('작성하기'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'portfolio dashboard hides stale investment review while refreshing',
     (tester) async {
       final firstReport = Completer<InvestmentReviewReport>();
