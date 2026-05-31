@@ -5,6 +5,9 @@ import 'package:moneyfy/models/asset_item.dart';
 import 'package:moneyfy/pages/forms/cash_transaction_form_page.dart';
 import 'package:moneyfy/pages/forms/transaction_form_page.dart';
 import 'package:moneyfy/pages/investment_performance_page.dart';
+import 'package:moneyfy/pages/investment_review_page.dart';
+import 'package:moneyfy/services/investment_review/investment_review_models.dart';
+import 'package:moneyfy/services/investment_review/investment_review_periods.dart';
 import 'package:moneyfy/utils/input_validators.dart';
 
 import 'package:moneyfy/main.dart';
@@ -592,4 +595,48 @@ void main() {
     );
     expect(button.onPressed, isNull);
   });
+
+  testWidgets(
+    'investment review page shows period segments and low-data state',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: InvestmentReviewPage(
+            reportBuilderForTesting: (type) async {
+              final period = InvestmentReviewPeriodResolver.resolve(
+                type,
+                now: DateTime(2026, 5, 31),
+              );
+              return InvestmentReviewReport(
+                period: period,
+                metrics: const [],
+                signals: const [],
+                narrative: InvestmentReviewNarrative(
+                  headline: '${period.label} 회고를 만들 기록이 더 필요해요.',
+                  summary: '거래나 스냅샷 기록이 쌓이면 보여드릴게요.',
+                  nextActions: const ['거래와 스냅샷 기록을 먼저 쌓아보세요.'],
+                ),
+                aiState: const InvestmentReviewAiState.off(),
+                hasEnoughData: false,
+                activity: const InvestmentReviewActivitySummary(
+                  buyCount: 0,
+                  sellCount: 0,
+                  incomeCount: 0,
+                  cashFlowCount: 0,
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('투자 회고'), findsOneWidget);
+      expect(find.text('오늘'), findsWidgets);
+      expect(find.text('주간'), findsWidgets);
+      expect(find.text('월간'), findsWidgets);
+      expect(find.text('오늘 회고를 만들 기록이 더 필요해요.'), findsOneWidget);
+    },
+  );
 }
