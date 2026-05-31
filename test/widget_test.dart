@@ -11,6 +11,7 @@ import 'package:moneyfy/pages/forms/transaction_form_page.dart';
 import 'package:moneyfy/pages/investment_performance_page.dart';
 import 'package:moneyfy/pages/investment_review_page.dart';
 import 'package:moneyfy/pages/portfolio_dashboard_page.dart';
+import 'package:moneyfy/services/investment_review/daily_investment_review_models.dart';
 import 'package:moneyfy/services/investment_review/investment_review_models.dart';
 import 'package:moneyfy/services/investment_review/investment_review_periods.dart';
 import 'package:moneyfy/utils/input_validators.dart';
@@ -208,6 +209,60 @@ void main() {
       aiState: const InvestmentReviewAiState.off(),
       hasEnoughData: true,
       activity: const InvestmentReviewActivitySummary(),
+    );
+  }
+
+  InvestmentReviewReport todayReviewReport({
+    required String headline,
+    InvestmentReviewActivitySummary activity =
+        const InvestmentReviewActivitySummary(),
+  }) {
+    final period = InvestmentReviewPeriodResolver.resolve(
+      InvestmentReviewPeriodType.today,
+      now: DateTime(2026, 6),
+    );
+    return InvestmentReviewReport(
+      period: period,
+      metrics: const [
+        InvestmentReviewMetric(label: '순 투자성과', value: '+12,000원'),
+      ],
+      signals: const [
+        InvestmentReviewSignal(title: '분산 점검', description: '비중을 확인하세요.'),
+      ],
+      narrative: InvestmentReviewNarrative(
+        headline: headline,
+        summary: '오늘 자동 초안 요약입니다.',
+        nextActions: const ['내일 확인할 가격을 정하세요.'],
+      ),
+      aiState: const InvestmentReviewAiState.off(),
+      hasEnoughData: true,
+      activity: activity,
+      generatedAt: DateTime(2026, 6, 1, 18, 30),
+    );
+  }
+
+  DailyInvestmentReviewEntry dailyReviewEntry({
+    required DailyInvestmentReviewStatus status,
+    required DailyInvestmentReviewMode mode,
+  }) {
+    return DailyInvestmentReviewEntry(
+      id: 1,
+      reviewDate: DateTime(2026, 6),
+      status: status,
+      mode: mode,
+      performanceNote: '성과 메모',
+      tradeReviewNote: '매매 복기 메모',
+      selectedDecisionTags: const ['계획 매매'],
+      selectedNoTradeReasons: const ['목표 가격 대기'],
+      selectedEmotions: const ['차분함'],
+      principleCheck: DailyInvestmentReviewPrincipleCheck.followedRules,
+      riskNote: '리스크 메모',
+      insightGood: '잘한 점',
+      insightWeak: '아쉬운 점',
+      insightRepeatOrAvoid: '반복할 점',
+      nextPlan: '다음 계획',
+      createdAt: DateTime(2026, 6, 1, 18),
+      updatedAt: DateTime(2026, 6, 1, 18, 10),
     );
   }
 
@@ -731,6 +786,126 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('주간 회고가 준비됐어요.'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'today investment review no-trade composer shows draft prompts and reasons',
+    (tester) async {
+      DateTime? loadedDate;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: InvestmentReviewPage(
+            reportBuilderForTesting: (_) async =>
+                todayReviewReport(headline: '오늘 관망 회고가 준비됐어요.'),
+            dailyReviewLoaderForTesting: (date) async {
+              loadedDate = date;
+              return null;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(loadedDate, DateTime(2026, 6));
+      for (final label in [
+        '초안 생성됨',
+        '작성 중',
+        '완료',
+        '자동 초안',
+        '성과 분석',
+        '관망 회고',
+        '리스크/멘탈 점검',
+        '핵심 인사이트',
+        '다음 투자 계획',
+        '임시 저장',
+        '회고 완료',
+        '수정하기',
+      ]) {
+        expect(find.text(label), findsWidgets);
+      }
+      for (final reason in [
+        '원칙에 맞는 기회가 없었음',
+        '목표 가격 대기',
+        '현금 비중 유지',
+        '추가 분석 필요',
+        '변동성이 커서 관망',
+        '충동 매매를 참음',
+        '특별히 기록할 변화 없음',
+      ]) {
+        expect(find.text(reason), findsOneWidget);
+      }
+      expect(find.text('계획 매매'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'today investment review trading composer shows decision prompts and calls actions',
+    (tester) async {
+      DailyInvestmentReviewDraft? savedDraft;
+      DateTime? completedDate;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: InvestmentReviewPage(
+            reportBuilderForTesting: (_) async => todayReviewReport(
+              headline: '오늘 매매 회고가 준비됐어요.',
+              activity: const InvestmentReviewActivitySummary(buyCount: 1),
+            ),
+            dailyReviewLoaderForTesting: (_) async => dailyReviewEntry(
+              status: DailyInvestmentReviewStatus.inProgress,
+              mode: DailyInvestmentReviewMode.tradingDay,
+            ),
+            dailyReviewSaveForTesting: (draft) async {
+              savedDraft = draft;
+            },
+            dailyReviewCompleteForTesting: (date) async {
+              completedDate = date;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final label in [
+        '매매 복기',
+        '계획 매매',
+        '리밸런싱',
+        '손절/익절 원칙',
+        'FOMO',
+        '소문/추천',
+        '충동 매매',
+        '차분함',
+        '불안함',
+        '원칙 준수',
+      ]) {
+        expect(find.text(label), findsWidgets);
+      }
+      expect(find.text('관망 회고'), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.text('임시 저장'),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('임시 저장'));
+      await tester.pumpAndSettle();
+
+      expect(savedDraft, isNotNull);
+      expect(savedDraft!.mode, DailyInvestmentReviewMode.tradingDay);
+
+      await tester.scrollUntilVisible(
+        find.text('회고 완료'),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('회고 완료'));
+      await tester.pumpAndSettle();
+
+      expect(completedDate, DateTime(2026, 6));
     },
   );
 
