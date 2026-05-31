@@ -135,3 +135,22 @@ class DailyInvestmentReviewEntry {
   final DateTime updatedAt;
   final DateTime? completedAt;
 }
+
+enum DailyInvestmentReviewComposerStatus { draft, inProgress, completed }
+
+class DailyInvestmentReviewComposerState {
+  const DailyInvestmentReviewComposerState({
+    required this.status,
+    required this.mode,
+    required this.draft,
+    this.savedReview,
+  });
+
+  final DailyInvestmentReviewComposerStatus status;
+  final DailyInvestmentReviewMode mode;
+  final DailyInvestmentReviewDraft draft;
+  final DailyInvestmentReviewEntry? savedReview;
+
+  bool get isCompleted =>
+      status == DailyInvestmentReviewComposerStatus.completed;
+}
