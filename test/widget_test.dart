@@ -909,6 +909,124 @@ void main() {
     },
   );
 
+  testWidgets('today investment review save success SnackBar', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: InvestmentReviewPage(
+            reportBuilderForTesting: (_) async =>
+                todayReviewReport(headline: '오늘 회고가 준비됐어요.'),
+            dailyReviewLoaderForTesting: (_) async => null,
+            dailyReviewSaveForTesting: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('임시 저장'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('임시 저장'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('오늘 회고를 저장했어요.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'today investment review save failure keeps form and shows SnackBar',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: InvestmentReviewPage(
+              reportBuilderForTesting: (_) async =>
+                  todayReviewReport(headline: '오늘 회고가 준비됐어요.'),
+              dailyReviewLoaderForTesting: (_) async => null,
+              dailyReviewSaveForTesting: (_) async {
+                throw Exception('save failed');
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, '성과 기록 유지');
+      await tester.scrollUntilVisible(
+        find.text('임시 저장'),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('임시 저장'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('회고를 저장하지 못했어요. 다시 시도해 주세요.'), findsOneWidget);
+      final performanceField = tester.widget<TextField>(
+        find.byType(TextField).first,
+      );
+      expect(performanceField.controller!.text, '성과 기록 유지');
+    },
+  );
+
+  testWidgets(
+    'today investment review discard confirmation preserves edits when continuing',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Builder(
+            builder: (context) {
+              return Scaffold(
+                body: Center(
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => InvestmentReviewPage(
+                            reportBuilderForTesting: (_) async =>
+                                todayReviewReport(headline: '오늘 회고가 준비됐어요.'),
+                            dailyReviewLoaderForTesting: (_) async => null,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('회고 열기'),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('회고 열기'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '나가기 전 작성');
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('저장하지 않은 회고가 있어요'), findsOneWidget);
+      expect(find.text('저장하지 않고 나가면 작성 중인 내용이 사라집니다.'), findsOneWidget);
+      expect(find.text('계속 작성'), findsOneWidget);
+      expect(find.text('나가기'), findsOneWidget);
+
+      await tester.tap(find.text('계속 작성'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('저장하지 않은 회고가 있어요'), findsNothing);
+      final performanceField = tester.widget<TextField>(
+        find.byType(TextField).first,
+      );
+      expect(performanceField.controller!.text, '나가기 전 작성');
+    },
+  );
+
   testWidgets('investment review home card shows headline and action', (
     tester,
   ) async {

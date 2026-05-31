@@ -102,10 +102,6 @@ class _InvestmentReviewPageState extends State<InvestmentReviewPage> {
         database: AppDatabase.instance,
       ).saveDraft(draft);
     }
-    if (!mounted) return;
-    setState(() {
-      _tabFuture = _loadTabData(_selected);
-    });
   }
 
   Future<void> _completeDailyReview(DateTime date) async {
@@ -117,6 +113,9 @@ class _InvestmentReviewPageState extends State<InvestmentReviewPage> {
         database: AppDatabase.instance,
       ).markCompleted(date);
     }
+  }
+
+  void _reloadSelectedPeriod() {
     if (!mounted) return;
     setState(() {
       _tabFuture = _loadTabData(_selected);
@@ -148,6 +147,7 @@ class _InvestmentReviewPageState extends State<InvestmentReviewPage> {
                   ),
                   onSaveDraft: _saveDailyReview,
                   onComplete: _completeDailyReview,
+                  onReload: _reloadSelectedPeriod,
                 );
               }
               return _InvestmentReviewReportView(report: report);
@@ -239,12 +239,14 @@ class _DailyInvestmentReviewComposer extends StatefulWidget {
     required this.composerState,
     required this.onSaveDraft,
     required this.onComplete,
+    required this.onReload,
   });
 
   final InvestmentReviewReport report;
   final DailyInvestmentReviewComposerState composerState;
   final DailyInvestmentReviewDraftSaver onSaveDraft;
   final DailyInvestmentReviewCompleter onComplete;
+  final VoidCallback onReload;
 
   @override
   State<_DailyInvestmentReviewComposer> createState() =>
@@ -264,6 +266,7 @@ class _DailyInvestmentReviewComposerState
   late Set<String> _selectedNoTradeReasons;
   late Set<String> _selectedEmotions;
   late DailyInvestmentReviewPrincipleCheck _principleCheck;
+  late DailyInvestmentReviewDraft _initialDraft;
   late bool _isEditing;
   var _isSubmitting = false;
 
@@ -305,11 +308,18 @@ class _DailyInvestmentReviewComposerState
     _selectedNoTradeReasons = {...draft.selectedNoTradeReasons};
     _selectedEmotions = {...draft.selectedEmotions};
     _principleCheck = draft.principleCheck;
+    _initialDraft = draft;
     _isEditing = !widget.composerState.isCompleted;
+    for (final controller in _textControllers) {
+      controller.addListener(_handleFormChanged);
+    }
   }
 
   @override
   void dispose() {
+    for (final controller in _textControllers) {
+      controller.removeListener(_handleFormChanged);
+    }
     _performanceController.dispose();
     _tradeReviewController.dispose();
     _riskController.dispose();
@@ -322,12 +332,40 @@ class _DailyInvestmentReviewComposerState
 
   bool get _canEdit => _isEditing && !_isSubmitting;
 
+  bool get _hasUnsavedChanges =>
+      _isEditing && !_draftEquals(_initialDraft, _draftFromForm());
+
+  List<TextEditingController> get _textControllers => [
+    _performanceController,
+    _tradeReviewController,
+    _riskController,
+    _insightGoodController,
+    _insightWeakController,
+    _insightRepeatController,
+    _nextPlanController,
+  ];
+
+  void _handleFormChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   Future<void> _saveDraft() async {
     setState(() {
       _isSubmitting = true;
     });
     try {
-      await widget.onSaveDraft(_draftFromForm());
+      final draft = _draftFromForm();
+      await widget.onSaveDraft(draft);
+      if (!mounted) return;
+      _initialDraft = draft;
+      _showSnackBar('오늘 회고를 저장했어요.');
+      widget.onReload();
+    } catch (_) {
+      if (mounted) {
+        _showSnackBar('회고를 저장하지 못했어요. 다시 시도해 주세요.');
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -345,13 +383,87 @@ class _DailyInvestmentReviewComposerState
       final draft = _draftFromForm();
       await widget.onSaveDraft(draft);
       await widget.onComplete(draft.reviewDate);
+      if (!mounted) return;
+      _initialDraft = draft;
+      _showSnackBar('오늘 회고를 저장했어요.');
+      widget.onReload();
     } finally {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _isEditing = false;
         });
       }
+    }
+  }
+
+  Future<void> _confirmDiscardAndPop(Object? result) async {
+    final shouldLeave = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('저장하지 않은 회고가 있어요'),
+          content: const Text('저장하지 않고 나가면 작성 중인 내용이 사라집니다.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('계속 작성'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('나가기'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLeave == true && mounted) {
+      Navigator.of(context).pop(result);
+    }
+  }
+
+  bool _draftEquals(
+    DailyInvestmentReviewDraft left,
+    DailyInvestmentReviewDraft right,
+  ) {
+    return left.reviewDate == right.reviewDate &&
+        left.mode == right.mode &&
+        left.performanceNote == right.performanceNote &&
+        left.tradeReviewNote == right.tradeReviewNote &&
+        _sameStringSet(left.selectedDecisionTags, right.selectedDecisionTags) &&
+        _sameStringSet(
+          left.selectedNoTradeReasons,
+          right.selectedNoTradeReasons,
+        ) &&
+        _sameStringSet(left.selectedEmotions, right.selectedEmotions) &&
+        left.principleCheck == right.principleCheck &&
+        left.riskNote == right.riskNote &&
+        left.insightGood == right.insightGood &&
+        left.insightWeak == right.insightWeak &&
+        left.insightRepeatOrAvoid == right.insightRepeatOrAvoid &&
+        left.nextPlan == right.nextPlan;
+  }
+
+  bool _sameStringSet(List<String> left, List<String> right) {
+    if (left.length != right.length) return false;
+    return left.toSet().containsAll(right);
+  }
+
+  void _showSnackBar(String message) {
+    if (Scaffold.maybeOf(context) == null) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _handlePopInvoked(bool didPop, Object? result) async {
+    if (didPop || !_hasUnsavedChanges) return;
+    await _confirmDiscardAndPop(result);
+  }
+
+  Future<void> _handleCompleteFailure() async {
+    if (mounted) {
+      _showSnackBar('회고를 저장하지 못했어요. 다시 시도해 주세요.');
     }
   }
 
@@ -387,86 +499,96 @@ class _DailyInvestmentReviewComposerState
   Widget build(BuildContext context) {
     final isTradingDay =
         widget.composerState.mode == DailyInvestmentReviewMode.tradingDay;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _ComposerHeader(
-          state: widget.composerState,
-          generatedAt: widget.report.generatedAt,
-        ),
-        SizedBox(height: context.spacing.sectionGap),
-        _AutomaticDraftContext(report: widget.report),
-        SizedBox(height: context.spacing.sectionGap),
-        _ComposerTextSection(
-          title: '성과 분석',
-          controller: _performanceController,
-          enabled: _canEdit,
-          hintText: '오늘 성과를 만든 원인을 적어보세요.',
-        ),
-        SizedBox(height: context.spacing.sectionGap),
-        _ComposerModeSection(
-          title: isTradingDay ? '매매 복기' : '관망 회고',
-          controller: _tradeReviewController,
-          enabled: _canEdit,
-          chips: isTradingDay ? _decisionTags : _noTradeReasons,
-          selected: isTradingDay
-              ? _selectedDecisionTags
-              : _selectedNoTradeReasons,
-          onSelected: (chip, selected) {
-            if (isTradingDay) {
-              _toggleString(_selectedDecisionTags, chip, selected);
-            } else {
-              _toggleString(_selectedNoTradeReasons, chip, selected);
-            }
-          },
-          hintText: isTradingDay
-              ? '오늘의 매수/매도 판단과 과정을 복기하세요.'
-              : '거래하지 않은 이유와 관찰한 변화를 기록하세요.',
-        ),
-        SizedBox(height: context.spacing.sectionGap),
-        _RiskMentalSection(
-          enabled: _canEdit,
-          selectedEmotions: _selectedEmotions,
-          emotionTags: _emotionTags,
-          principleCheck: _principleCheck,
-          controller: _riskController,
-          onEmotionSelected: (chip, selected) =>
-              _toggleString(_selectedEmotions, chip, selected),
-          onPrincipleSelected: (value) {
-            setState(() {
-              _principleCheck = value;
-            });
-          },
-        ),
-        SizedBox(height: context.spacing.sectionGap),
-        _InsightSection(
-          enabled: _canEdit,
-          goodController: _insightGoodController,
-          weakController: _insightWeakController,
-          repeatController: _insightRepeatController,
-        ),
-        SizedBox(height: context.spacing.sectionGap),
-        _ComposerTextSection(
-          title: '다음 투자 계획',
-          controller: _nextPlanController,
-          enabled: _canEdit,
-          hintText: '내일 확인할 조건과 행동 기준을 적어보세요.',
-        ),
-        SizedBox(height: context.spacing.sectionGap),
-        _ComposerActions(
-          canEdit: _canEdit,
-          isSubmitting: _isSubmitting,
-          onSave: _saveDraft,
-          onComplete: _completeReview,
-          onEdit: widget.composerState.isCompleted
-              ? () {
-                  setState(() {
-                    _isEditing = true;
-                  });
-                }
-              : null,
-        ),
-      ],
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: _handlePopInvoked,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ComposerHeader(
+            state: widget.composerState,
+            generatedAt: widget.report.generatedAt,
+          ),
+          SizedBox(height: context.spacing.sectionGap),
+          _AutomaticDraftContext(report: widget.report),
+          SizedBox(height: context.spacing.sectionGap),
+          _ComposerTextSection(
+            title: '성과 분석',
+            controller: _performanceController,
+            enabled: _canEdit,
+            hintText: '오늘 성과를 만든 원인을 적어보세요.',
+          ),
+          SizedBox(height: context.spacing.sectionGap),
+          _ComposerModeSection(
+            title: isTradingDay ? '매매 복기' : '관망 회고',
+            controller: _tradeReviewController,
+            enabled: _canEdit,
+            chips: isTradingDay ? _decisionTags : _noTradeReasons,
+            selected: isTradingDay
+                ? _selectedDecisionTags
+                : _selectedNoTradeReasons,
+            onSelected: (chip, selected) {
+              if (isTradingDay) {
+                _toggleString(_selectedDecisionTags, chip, selected);
+              } else {
+                _toggleString(_selectedNoTradeReasons, chip, selected);
+              }
+            },
+            hintText: isTradingDay
+                ? '오늘의 매수/매도 판단과 과정을 복기하세요.'
+                : '거래하지 않은 이유와 관찰한 변화를 기록하세요.',
+          ),
+          SizedBox(height: context.spacing.sectionGap),
+          _RiskMentalSection(
+            enabled: _canEdit,
+            selectedEmotions: _selectedEmotions,
+            emotionTags: _emotionTags,
+            principleCheck: _principleCheck,
+            controller: _riskController,
+            onEmotionSelected: (chip, selected) =>
+                _toggleString(_selectedEmotions, chip, selected),
+            onPrincipleSelected: (value) {
+              setState(() {
+                _principleCheck = value;
+              });
+            },
+          ),
+          SizedBox(height: context.spacing.sectionGap),
+          _InsightSection(
+            enabled: _canEdit,
+            goodController: _insightGoodController,
+            weakController: _insightWeakController,
+            repeatController: _insightRepeatController,
+          ),
+          SizedBox(height: context.spacing.sectionGap),
+          _ComposerTextSection(
+            title: '다음 투자 계획',
+            controller: _nextPlanController,
+            enabled: _canEdit,
+            hintText: '내일 확인할 조건과 행동 기준을 적어보세요.',
+          ),
+          SizedBox(height: context.spacing.sectionGap),
+          _ComposerActions(
+            canEdit: _canEdit,
+            isSubmitting: _isSubmitting,
+            onSave: _saveDraft,
+            onComplete: () async {
+              try {
+                await _completeReview();
+              } catch (_) {
+                await _handleCompleteFailure();
+              }
+            },
+            onEdit: widget.composerState.isCompleted
+                ? () {
+                    setState(() {
+                      _isEditing = true;
+                    });
+                  }
+                : null,
+          ),
+        ],
+      ),
     );
   }
 }
