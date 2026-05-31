@@ -1077,7 +1077,13 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
             MoneyfyFormSection(
               title: '대상 보유',
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    '매수, 매도, 배당, 이자를 기록할 보유 종목을 선택해 주세요.',
+                    style: context.typography.meta,
+                  ),
+                  SizedBox(height: context.spacing.sm),
                   if (_selectedMarketResult == null)
                     MoneyfySelectionField<int>(
                       label: '보유 종목',

@@ -591,7 +591,13 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
         MoneyfyFormSection(
           title: '대상 계좌',
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                '입금, 출금, 이체, 환전을 기록할 현금 계좌를 선택해 주세요.',
+                style: context.typography.meta,
+              ),
+              SizedBox(height: context.spacing.sm),
               MoneyfySelectionField<int>(
                 label: transactionType == '이체' || transactionType == '환전'
                     ? '원천 현금 계좌'
