@@ -124,47 +124,49 @@ class _InvestmentReviewPageState extends State<InvestmentReviewPage> {
 
   @override
   Widget build(BuildContext context) {
-    return MoneyfyPage(
-      title: '투자 회고',
-      children: [
-        _PeriodSegments(selected: _selected, onSelected: _selectPeriod),
-        SizedBox(height: context.spacing.sectionGap),
-        FutureBuilder<_InvestmentReviewTabData>(
-          future: _tabFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const _InvestmentReviewLoadingCard();
-            }
-            final tabData = snapshot.data;
-            if (tabData != null) {
-              final report = tabData.report;
-              if (_selected == InvestmentReviewPeriodType.today) {
-                return _DailyInvestmentReviewComposer(
-                  report: report,
-                  composerState: DailyInvestmentReviewPresenter.buildState(
+    return Scaffold(
+      body: MoneyfyPage(
+        title: '투자 회고',
+        children: [
+          _PeriodSegments(selected: _selected, onSelected: _selectPeriod),
+          SizedBox(height: context.spacing.sectionGap),
+          FutureBuilder<_InvestmentReviewTabData>(
+            future: _tabFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const _InvestmentReviewLoadingCard();
+              }
+              final tabData = snapshot.data;
+              if (tabData != null) {
+                final report = tabData.report;
+                if (_selected == InvestmentReviewPeriodType.today) {
+                  return _DailyInvestmentReviewComposer(
                     report: report,
-                    savedReview: tabData.dailyReview,
-                  ),
-                  onSaveDraft: _saveDailyReview,
-                  onComplete: _completeDailyReview,
-                  onReload: _reloadSelectedPeriod,
+                    composerState: DailyInvestmentReviewPresenter.buildState(
+                      report: report,
+                      savedReview: tabData.dailyReview,
+                    ),
+                    onSaveDraft: _saveDailyReview,
+                    onComplete: _completeDailyReview,
+                    onReload: _reloadSelectedPeriod,
+                  );
+                }
+                return _InvestmentReviewReportView(report: report);
+              }
+              if (snapshot.hasError) {
+                return _InvestmentReviewErrorCard(
+                  onRetry: () {
+                    setState(() {
+                      _tabFuture = _loadTabData(_selected);
+                    });
+                  },
                 );
               }
-              return _InvestmentReviewReportView(report: report);
-            }
-            if (snapshot.hasError) {
-              return _InvestmentReviewErrorCard(
-                onRetry: () {
-                  setState(() {
-                    _tabFuture = _loadTabData(_selected);
-                  });
-                },
-              );
-            }
-            return const _InvestmentReviewLoadingCard();
-          },
-        ),
-      ],
+              return const _InvestmentReviewLoadingCard();
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -382,9 +384,10 @@ class _DailyInvestmentReviewComposerState
     try {
       final draft = _draftFromForm();
       await widget.onSaveDraft(draft);
-      await widget.onComplete(draft.reviewDate);
       if (!mounted) return;
       _initialDraft = draft;
+      await widget.onComplete(draft.reviewDate);
+      if (!mounted) return;
       _showSnackBar('오늘 회고를 저장했어요.');
       widget.onReload();
     } finally {
@@ -450,7 +453,6 @@ class _DailyInvestmentReviewComposerState
   }
 
   void _showSnackBar(String message) {
-    if (Scaffold.maybeOf(context) == null) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));

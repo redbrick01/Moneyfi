@@ -913,13 +913,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light,
-        home: Scaffold(
-          body: InvestmentReviewPage(
-            reportBuilderForTesting: (_) async =>
-                todayReviewReport(headline: '오늘 회고가 준비됐어요.'),
-            dailyReviewLoaderForTesting: (_) async => null,
-            dailyReviewSaveForTesting: (_) async {},
-          ),
+        home: InvestmentReviewPage(
+          reportBuilderForTesting: (_) async =>
+              todayReviewReport(headline: '오늘 회고가 준비됐어요.'),
+          dailyReviewLoaderForTesting: (_) async => null,
+          dailyReviewSaveForTesting: (_) async {},
         ),
       ),
     );
@@ -1113,6 +1111,11 @@ void main() {
         find.byType(TextField).first,
       );
       expect(performanceField.controller!.text, '완료 실패 후 유지');
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('저장하지 않은 회고가 있어요'), findsNothing);
     },
   );
 
