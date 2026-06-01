@@ -404,16 +404,18 @@ void main() {
   ) async {
     await pumpInteractivePage(tester, const InvestmentPerformancePage());
 
-    expect(find.text('성과 판단'), findsOneWidget);
-    expect(find.text('기간 수익률'), findsOneWidget);
-    expect(find.text('참고 벤치마크'), findsOneWidget);
-    expect(find.text('S&P 500'), findsOneWidget);
-    expect(find.text('총자산 변화 검산'), findsOneWidget);
-    expect(find.text('월별 확정 성과'), findsOneWidget);
-    expect(find.text('종목별 기여도'), findsOneWidget);
-    expect(find.text('위험 해석'), findsOneWidget);
-    expect(find.text('Sharpe'), findsOneWidget);
-    expect(find.textContaining('최소 기간 데이터'), findsWidgets);
+    expect(find.text('투자성과 분석'), findsWidgets);
+    expect(find.text('성과 스코어보드'), findsWidgets);
+    expect(find.text('순 투자성과'), findsWidgets);
+    expect(find.text('수익률'), findsWidgets);
+    expect(find.text('벤치마크 대비'), findsWidgets);
+    expect(find.text('리스크'), findsWidgets);
+    expect(find.text('성과 구성'), findsWidgets);
+    expect(find.text('자산 변화 대조'), findsWidgets);
+    expect(find.text('월별 성과 신호'), findsWidgets);
+    expect(find.text('종목별 성과 영향'), findsWidgets);
+    expect(find.text('리스크 신호'), findsWidgets);
+    expect(find.text('데이터 신뢰도'), findsWidgets);
   });
 
   for (final pageCase in _standalonePageCases) {
