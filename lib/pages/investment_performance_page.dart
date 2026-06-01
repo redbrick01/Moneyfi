@@ -56,7 +56,7 @@ class _InvestmentPerformancePageState extends State<InvestmentPerformancePage> {
             );
             return Column(
               children: [
-                _PerformanceJudgmentHeader(
+                _PerformanceScoreboardHeader(
                   viewModel: viewModel,
                   selectedRange: _selectedRange,
                   onRangeSelected: _selectRange,
@@ -123,8 +123,8 @@ class _DateRangeSelector extends StatelessWidget {
   }
 }
 
-class _PerformanceJudgmentHeader extends StatelessWidget {
-  const _PerformanceJudgmentHeader({
+class _PerformanceScoreboardHeader extends StatelessWidget {
+  const _PerformanceScoreboardHeader({
     required this.viewModel,
     required this.selectedRange,
     required this.onRangeSelected,
@@ -136,55 +136,25 @@ class _PerformanceJudgmentHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final report = viewModel.report;
-    final periodReturnText = viewModel.periodReturn.displayText;
-    final amountText = _formatSignedCurrency(report.pureInvestmentPerformance);
-    final purchaseRateText = _formatSignedPercent(
-      report.pureInvestmentPerformanceRate,
-    );
-
     return SectionCard(
-      title: '성과 판단',
+      title: '성과 스코어보드',
+      headerTrailing: _StatusPill(label: viewModel.performanceStatusLabel),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            viewModel.judgment.headlineReason,
+            style: context.typography.meta.copyWith(
+              color: context.colors.neutralTextMuted,
+            ),
+          ),
+          SizedBox(height: context.spacing.md),
           _DateRangeSelector(
             selectedRange: selectedRange,
             onSelected: onRangeSelected,
           ),
           SizedBox(height: context.spacing.md),
-          _JudgmentMetricPair(
-            rateText: periodReturnText,
-            rateValue: viewModel.periodReturn.value,
-            amountText: amountText,
-            amountValue: report.pureInvestmentPerformance,
-            unavailableReason: viewModel.periodReturn.reasonText,
-          ),
-          SizedBox(height: context.spacing.sm),
-          Text(
-            '수익률은 입출금 보정 기준이고, 금액은 실제 손익 규모를 보여줍니다.',
-            style: context.typography.caption.copyWith(
-              color: context.colors.neutralTextMuted,
-            ),
-          ),
-          SizedBox(height: context.spacing.md),
-          Wrap(
-            spacing: context.spacing.sm,
-            runSpacing: context.spacing.xs,
-            children: [
-              _StatusPill(
-                label: purchaseRateText == null
-                    ? '매수 원금 대비 수익률 데이터 부족'
-                    : '매수 원금 대비 $purchaseRateText',
-                value: report.pureInvestmentPerformanceRate,
-              ),
-              _StatusPill(
-                label:
-                    '확정 성과 ${_formatSignedCurrency(report.pureRealizedPerformance)}',
-                value: report.pureRealizedPerformance,
-              ),
-            ],
-          ),
+          _PerformanceScoreboardGrid(viewModel: viewModel),
           SizedBox(height: context.spacing.md),
           _BenchmarkSnapshotStrip(viewModel: viewModel),
         ],
@@ -193,114 +163,118 @@ class _PerformanceJudgmentHeader extends StatelessWidget {
   }
 }
 
-class _JudgmentMetricPair extends StatelessWidget {
-  const _JudgmentMetricPair({
-    required this.rateText,
-    required this.rateValue,
-    required this.amountText,
-    required this.amountValue,
-    required this.unavailableReason,
-  });
+class _PerformanceScoreboardGrid extends StatelessWidget {
+  const _PerformanceScoreboardGrid({required this.viewModel});
 
-  final String rateText;
-  final double? rateValue;
-  final String amountText;
-  final double amountValue;
-  final String? unavailableReason;
+  final _InvestmentPerformanceViewModel viewModel;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 360;
-        final rateBlock = _JudgmentMetricBlock(
-          label: '기간 수익률',
-          value: rateText,
-          numericValue: rateValue,
-          caption: unavailableReason ?? '입출금 보정',
-          primary: true,
-        );
-        final amountBlock = _JudgmentMetricBlock(
-          label: '순 투자성과',
-          value: amountText,
-          numericValue: amountValue,
-          caption: '금액 영향',
-        );
-        if (compact) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              rateBlock,
-              SizedBox(height: context.spacing.sm),
-              amountBlock,
-            ],
-          );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: rateBlock),
-            SizedBox(width: context.spacing.sm),
-            Expanded(child: amountBlock),
-          ],
+        final columnCount = constraints.maxWidth < 520 ? 2 : 4;
+        final tiles = [
+          _PerformanceScoreboardTile(
+            label: '순 투자성과',
+            value: _formatSignedCurrency(
+              viewModel.report.pureInvestmentPerformance,
+            ),
+            caption: '입출금과 이체를 제외한 성과',
+            numericValue: viewModel.report.pureInvestmentPerformance,
+          ),
+          _PerformanceScoreboardTile(
+            label: '수익률',
+            value: viewModel.periodReturn.displayText,
+            caption: viewModel.rangeLabel,
+            numericValue: viewModel.periodReturn.value,
+          ),
+          _PerformanceScoreboardTile(
+            label: '벤치마크 대비',
+            value: viewModel.excessReturn.displayText,
+            caption: viewModel.benchmarkStatusLabel,
+            numericValue: viewModel.excessReturn.value,
+          ),
+          _PerformanceScoreboardTile(
+            label: '리스크',
+            value: viewModel.riskStatusLabel,
+            caption: '변동성과 낙폭 기준',
+          ),
+        ];
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: tiles.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columnCount,
+            crossAxisSpacing: context.spacing.sm,
+            mainAxisSpacing: context.spacing.sm,
+            childAspectRatio: columnCount == 2 ? 1.72 : 1.28,
+          ),
+          itemBuilder: (context, index) => tiles[index],
         );
       },
     );
   }
 }
 
-class _JudgmentMetricBlock extends StatelessWidget {
-  const _JudgmentMetricBlock({
+class _PerformanceScoreboardTile extends StatelessWidget {
+  const _PerformanceScoreboardTile({
     required this.label,
     required this.value,
     required this.caption,
     this.numericValue,
-    this.primary = false,
   });
 
   final String label;
   final String value;
   final String caption;
   final double? numericValue;
-  final bool primary;
 
   @override
   Widget build(BuildContext context) {
     final valueColor = numericValue == null
         ? context.colors.neutralTextMuted
         : _valueColor(context, numericValue!);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: context.typography.meta.copyWith(
-            color: context.colors.neutralTextMuted,
-            fontWeight: AppFontWeights.semibold,
-          ),
+    return Container(
+      padding: EdgeInsets.all(context.spacing.sm),
+      decoration: BoxDecoration(
+        color: context.colors.neutralSurfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(
+          color: context.colors.neutralOutline.withValues(alpha: 0.72),
         ),
-        SizedBox(height: context.spacing.xs),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            value,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
             maxLines: 1,
-            style:
-                (primary
-                        ? context.typography.heroNumber
-                        : context.typography.cardTitle)
-                    .copyWith(color: valueColor),
+            overflow: TextOverflow.ellipsis,
+            style: context.typography.meta.copyWith(
+              color: context.colors.neutralTextMuted,
+              fontWeight: AppFontWeights.semibold,
+            ),
           ),
-        ),
-        SizedBox(height: context.spacing.xs / 2),
-        Text(
-          caption,
-          style: context.typography.caption.copyWith(
-            color: context.colors.neutralTextMuted,
+          SizedBox(height: context.spacing.xs),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: context.typography.cardTitle.copyWith(color: valueColor),
           ),
-        ),
-      ],
+          SizedBox(height: context.spacing.xs / 2),
+          Text(
+            caption,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: context.typography.caption.copyWith(
+              color: context.colors.neutralTextMuted,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -352,17 +326,12 @@ class _BenchmarkSnapshotStrip extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, this.value});
+  const _StatusPill({required this.label});
 
   final String label;
-  final double? value;
 
   @override
   Widget build(BuildContext context) {
-    final hasValue = value != null;
-    final color = hasValue
-        ? _valueColor(context, value!)
-        : context.colors.neutralTextMuted;
     return MoneyfyBadge(
       label: label,
       size: MoneyfyPillSize.md,
@@ -371,7 +340,7 @@ class _StatusPill extends StatelessWidget {
         alpha: 0.56,
       ),
       borderColor: context.colors.neutralOutline.withValues(alpha: 0.52),
-      textColor: color,
+      textColor: context.colors.neutralTextMuted,
     );
   }
 }
