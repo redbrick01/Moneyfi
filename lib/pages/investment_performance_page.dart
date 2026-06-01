@@ -7,6 +7,7 @@ import '../db/app_database.dart';
 import '../design_system/context_extensions.dart';
 import '../models/asset_item.dart';
 import '../services/benchmark_price_service.dart';
+import '../services/investment_performance/performance_judgment.dart';
 import '../utils/display_currency.dart';
 import '../utils/risk_adjusted_performance_calculator.dart';
 import '../widgets/moneyfy_ui.dart';
@@ -2099,6 +2100,7 @@ class _InvestmentPerformanceViewModel {
     required this.benchmarkReturn,
     required this.excessReturn,
     required this.reconciliation,
+    required this.judgment,
   });
 
   factory _InvestmentPerformanceViewModel.fromReport(
@@ -2106,6 +2108,14 @@ class _InvestmentPerformanceViewModel {
     required _PerformanceDateRange selectedRange,
   }) {
     final advanced = report.advancedPerformance;
+    final judgment = resolvePerformanceJudgment(
+      netPerformance: report.pureInvestmentPerformance,
+      periodReturn: advanced.periodReturn,
+      benchmarkDelta: advanced.excessReturn,
+      volatility: advanced.annualizedVolatility,
+      maxDrawdown: advanced.maxDrawdown,
+      dailyReturnCount: advanced.dailyReturnCount,
+    );
     return _InvestmentPerformanceViewModel(
       report: report,
       selectedRange: selectedRange,
@@ -2128,6 +2138,7 @@ class _InvestmentPerformanceViewModel {
             : null,
       ),
       reconciliation: _ReconciliationState.fromReport(report),
+      judgment: judgment,
     );
   }
 
@@ -2137,8 +2148,30 @@ class _InvestmentPerformanceViewModel {
   final _MetricValue benchmarkReturn;
   final _MetricValue excessReturn;
   final _ReconciliationState reconciliation;
+  final PerformanceJudgment judgment;
 
   String get rangeLabel => selectedRange.label;
+
+  String get performanceStatusLabel => switch (judgment.performanceStatus) {
+    PerformanceStatus.good => '양호',
+    PerformanceStatus.neutral => '보통',
+    PerformanceStatus.caution => '주의',
+    PerformanceStatus.unavailable => '계산 불가',
+  };
+
+  String get benchmarkStatusLabel => switch (judgment.benchmarkDeltaStatus) {
+    BenchmarkDeltaStatus.outperforming => '시장 대비 우위',
+    BenchmarkDeltaStatus.similar => '시장과 유사',
+    BenchmarkDeltaStatus.lagging => '시장 대비 열위',
+    BenchmarkDeltaStatus.unavailable => '비교 불가',
+  };
+
+  String get riskStatusLabel => switch (judgment.riskStatus) {
+    RiskStatus.low => '낮음',
+    RiskStatus.normal => '보통',
+    RiskStatus.elevated => '높음',
+    RiskStatus.unavailable => '계산 불가',
+  };
 
   String get benchmarkCaption {
     if (!benchmarkReturn.isAvailable) return benchmarkReturn.reasonText!;
