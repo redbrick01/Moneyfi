@@ -2206,7 +2206,9 @@ class _InvestmentPerformanceViewModel {
 
   String get benchmarkCaption {
     if (!benchmarkReturn.isAvailable) return benchmarkReturn.reasonText!;
-    if (!excessReturn.isAvailable) return excessReturn.reasonText!;
+    if (!excessReturn.isAvailable) {
+      return '포트폴리오 수익률 데이터가 부족해 벤치마크 참고 수익률만 표시합니다.';
+    }
     return '벤치마크는 시장 전체를 대표하지 않는 참고 기준입니다.';
   }
 }
