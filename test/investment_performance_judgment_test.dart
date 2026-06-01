@@ -68,13 +68,104 @@ void main() {
         netPerformance: 90000,
         periodReturn: 0.012,
         benchmarkDelta: 0.001,
-        volatility: null,
-        maxDrawdown: null,
+        volatility: 0.10,
+        maxDrawdown: -0.02,
         dailyReturnCount: 3,
       );
 
       expect(judgment.riskStatus, RiskStatus.unavailable);
       expect(judgment.unavailableReasons, contains('risk'));
+    });
+
+    test('marks performance unavailable when period return is missing', () {
+      final judgment = resolvePerformanceJudgment(
+        netPerformance: 90000,
+        periodReturn: null,
+        benchmarkDelta: 0.001,
+        volatility: 0.10,
+        maxDrawdown: -0.02,
+        dailyReturnCount: 20,
+      );
+
+      expect(judgment.performanceStatus, PerformanceStatus.unavailable);
+      expect(judgment.unavailableReasons, contains('performance'));
+    });
+
+    test('marks risk low at low volatility and drawdown', () {
+      final judgment = resolvePerformanceJudgment(
+        netPerformance: 90000,
+        periodReturn: 0.012,
+        benchmarkDelta: 0.001,
+        volatility: 0.08,
+        maxDrawdown: -0.03,
+        dailyReturnCount: 20,
+      );
+
+      expect(judgment.riskStatus, RiskStatus.low);
+    });
+
+    test('marks risk elevated for high volatility', () {
+      final judgment = resolvePerformanceJudgment(
+        netPerformance: 90000,
+        periodReturn: 0.012,
+        benchmarkDelta: 0.001,
+        volatility: 0.22,
+        maxDrawdown: -0.03,
+        dailyReturnCount: 20,
+      );
+
+      expect(judgment.riskStatus, RiskStatus.elevated);
+    });
+
+    test('marks risk elevated for large drawdown', () {
+      final judgment = resolvePerformanceJudgment(
+        netPerformance: 90000,
+        periodReturn: 0.012,
+        benchmarkDelta: 0.001,
+        volatility: 0.08,
+        maxDrawdown: -0.12,
+        dailyReturnCount: 20,
+      );
+
+      expect(judgment.riskStatus, RiskStatus.elevated);
+    });
+
+    test('marks benchmark delta similar inside threshold band', () {
+      final judgment = resolvePerformanceJudgment(
+        netPerformance: 90000,
+        periodReturn: 0.012,
+        benchmarkDelta: 0.004,
+        volatility: 0.10,
+        maxDrawdown: -0.02,
+        dailyReturnCount: 20,
+      );
+
+      expect(judgment.benchmarkDeltaStatus, BenchmarkDeltaStatus.similar);
+    });
+
+    test('marks benchmark delta boundaries inclusively', () {
+      final outperforming = resolvePerformanceJudgment(
+        netPerformance: 90000,
+        periodReturn: 0.012,
+        benchmarkDelta: 0.005,
+        volatility: 0.10,
+        maxDrawdown: -0.02,
+        dailyReturnCount: 20,
+      );
+      final lagging = resolvePerformanceJudgment(
+        netPerformance: 90000,
+        periodReturn: 0.012,
+        benchmarkDelta: -0.005,
+        volatility: 0.10,
+        maxDrawdown: -0.02,
+        dailyReturnCount: 20,
+      );
+
+      expect(
+        outperforming.benchmarkDeltaStatus,
+        BenchmarkDeltaStatus.outperforming,
+      );
+      expect(lagging.benchmarkDeltaStatus, BenchmarkDeltaStatus.lagging);
     });
   });
 }
