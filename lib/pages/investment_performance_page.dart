@@ -186,13 +186,13 @@ class _PerformanceScoreboardGrid extends StatelessWidget {
           _PerformanceScoreboardTile(
             label: '수익률',
             value: viewModel.periodReturn.displayText,
-            caption: viewModel.rangeLabel,
+            caption: viewModel.periodCaption,
             numericValue: viewModel.periodReturn.value,
           ),
           _PerformanceScoreboardTile(
             label: '벤치마크 대비',
             value: viewModel.excessReturn.displayText,
-            caption: viewModel.benchmarkStatusLabel,
+            caption: viewModel.excessCaption,
             numericValue: viewModel.excessReturn.value,
           ),
           _PerformanceScoreboardTile(
@@ -346,6 +346,22 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
+class _EvidenceSubtitle extends StatelessWidget {
+  const _EvidenceSubtitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: context.typography.meta.copyWith(
+        color: context.colors.neutralTextMuted,
+      ),
+    );
+  }
+}
+
 class _PerformanceAttributionCard extends StatelessWidget {
   const _PerformanceAttributionCard({required this.viewModel});
 
@@ -366,10 +382,12 @@ class _PerformanceAttributionCard extends StatelessWidget {
 
     return SectionCard(
       dense: true,
-      title: '성과 원인',
+      title: '성과 구성',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const _EvidenceSubtitle('순성과를 만든 실현, 평가, 배당/이자, 비용 요인입니다.'),
+          SizedBox(height: context.spacing.md),
           _AttributionInterpretation(entries: entries),
           SizedBox(height: context.spacing.md),
           _AttributionComposition(
@@ -688,7 +706,7 @@ class _PerformanceReconciliationCard extends StatelessWidget {
     final rows = reconciliation.rows;
 
     return SectionCard(
-      title: '총자산 변화 검산',
+      title: '자산 변화 대조',
       footer: Text(
         reconciliation.caption,
         style: context.typography.caption.copyWith(
@@ -696,7 +714,10 @@ class _PerformanceReconciliationCard extends StatelessWidget {
         ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const _EvidenceSubtitle('총자산 변화와 투자성과가 왜 다른지 분리해 봅니다.'),
+          SizedBox(height: context.spacing.md),
           for (var index = 0; index < rows.length; index++) ...[
             _MetricRow(
               label: rows[index].label,
@@ -762,7 +783,7 @@ class _RiskInterpretationCard extends StatelessWidget {
     ];
 
     return SectionCard(
-      title: '위험 해석',
+      title: '리스크 신호',
       footer: Text(
         report.isRiskFreeRateFallback
             ? '무위험수익률은 임시로 0% 기준을 사용했습니다.'
@@ -771,23 +792,31 @@ class _RiskInterpretationCard extends StatelessWidget {
           color: context.colors.neutralTextMuted,
         ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final columns = constraints.maxWidth < 360 ? 1 : 2;
-          final gap = context.spacing.sm;
-          final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
-          return Wrap(
-            spacing: gap,
-            runSpacing: gap,
-            children: [
-              for (final metric in metrics)
-                SizedBox(
-                  width: width,
-                  child: _RiskMetricTile(metric: metric),
-                ),
-            ],
-          );
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _EvidenceSubtitle('변동성, 낙폭, 위험 대비 성과를 판단합니다.'),
+          SizedBox(height: context.spacing.md),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth < 360 ? 1 : 2;
+              final gap = context.spacing.sm;
+              final width =
+                  (constraints.maxWidth - gap * (columns - 1)) / columns;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final metric in metrics)
+                    SizedBox(
+                      width: width,
+                      child: _RiskMetricTile(metric: metric),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -844,10 +873,12 @@ class _DataBasisCard extends StatelessWidget {
       '참고 벤치마크는 ${report.advancedPerformance.benchmarkLabel} 단일 기준입니다.',
     ];
     return SectionCard(
-      title: '데이터 기준/제외 항목',
+      title: '데이터 신뢰도',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const _EvidenceSubtitle('계산 기준과 누락 가능성을 확인합니다.'),
+          SizedBox(height: context.spacing.md),
           for (var index = 0; index < items.length; index++) ...[
             Text(
               items[index],
@@ -872,12 +903,19 @@ class _MonthlyTrendCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty) {
       return SectionCard(
-        title: '월별 확정 성과',
-        child: Text(
-          '월별로 집계할 확정 성과가 아직 없습니다.',
-          style: context.typography.meta.copyWith(
-            color: context.colors.neutralTextMuted,
-          ),
+        title: '월별 성과 신호',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _EvidenceSubtitle('성과가 강했던 달과 약했던 달을 확인합니다.'),
+            SizedBox(height: context.spacing.md),
+            Text(
+              '월별로 집계할 확정 성과가 아직 없습니다.',
+              style: context.typography.meta.copyWith(
+                color: context.colors.neutralTextMuted,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -885,7 +923,7 @@ class _MonthlyTrendCard extends StatelessWidget {
     final visibleItems = items.take(12).toList(growable: false);
     final chartItems = visibleItems.reversed.toList(growable: false);
     return SectionCard(
-      title: '월별 확정 성과',
+      title: '월별 성과 신호',
       headerTrailing: Text(
         '최근 ${visibleItems.length}개월',
         style: context.typography.meta.copyWith(
@@ -895,6 +933,8 @@ class _MonthlyTrendCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const _EvidenceSubtitle('성과가 강했던 달과 약했던 달을 확인합니다.'),
+          SizedBox(height: context.spacing.md),
           Text(
             '미실현 평가 변화는 포함하지 않습니다.',
             style: context.typography.caption.copyWith(
@@ -1055,12 +1095,19 @@ class _HoldingContributionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty) {
       return SectionCard(
-        title: '종목별 기여도',
-        child: Text(
-          '분석할 투자 거래가 아직 없습니다.',
-          style: context.typography.meta.copyWith(
-            color: context.colors.neutralTextMuted,
-          ),
+        title: '종목별 성과 영향',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _EvidenceSubtitle('상위와 하위 기여 종목을 기준으로 판단 근거를 확인합니다.'),
+            SizedBox(height: context.spacing.md),
+            Text(
+              '분석할 투자 거래가 아직 없습니다.',
+              style: context.typography.meta.copyWith(
+                color: context.colors.neutralTextMuted,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -1069,7 +1116,7 @@ class _HoldingContributionCard extends StatelessWidget {
     final sortedItems = _sortHoldingPerformance(filteredItems, sortMode);
 
     return SectionCard(
-      title: '종목별 기여도',
+      title: '종목별 성과 영향',
       headerTrailing: DropdownButtonHideUnderline(
         child: DropdownButton<_HoldingSortMode>(
           value: sortMode,
@@ -1086,6 +1133,8 @@ class _HoldingContributionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const _EvidenceSubtitle('상위와 하위 기여 종목을 기준으로 판단 근거를 확인합니다.'),
+          SizedBox(height: context.spacing.md),
           Text(
             '수수료와 세금은 전체 비용으로 표시되며 종목별로 배분하지 않습니다.',
             style: context.typography.caption.copyWith(
@@ -2104,7 +2153,9 @@ class _InvestmentPerformanceViewModel {
       excessReturn: _MetricValue.percentagePoint(
         advanced.excessReturn,
         reason: advanced.excessReturn == null
-            ? _MetricUnavailableReason.benchmarkMissing
+            ? advanced.periodReturn == null
+                  ? _MetricUnavailableReason.insufficientDailyReturns
+                  : _MetricUnavailableReason.benchmarkMissing
             : null,
       ),
       reconciliation: _ReconciliationState.fromReport(report),
@@ -2143,9 +2194,19 @@ class _InvestmentPerformanceViewModel {
     RiskStatus.unavailable => '계산 불가',
   };
 
+  String get periodCaption {
+    if (!periodReturn.isAvailable) return periodReturn.reasonText!;
+    return rangeLabel;
+  }
+
+  String get excessCaption {
+    if (!excessReturn.isAvailable) return excessReturn.reasonText!;
+    return benchmarkStatusLabel;
+  }
+
   String get benchmarkCaption {
     if (!benchmarkReturn.isAvailable) return benchmarkReturn.reasonText!;
-    if (!excessReturn.isAvailable) return '참고 수익률만 표시합니다.';
+    if (!excessReturn.isAvailable) return excessReturn.reasonText!;
     return '벤치마크는 시장 전체를 대표하지 않는 참고 기준입니다.';
   }
 }
