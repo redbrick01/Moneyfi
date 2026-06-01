@@ -1301,7 +1301,9 @@ void main() {
     expect(find.text('오늘 회고 초안이 준비됐어요'), findsOneWidget);
     expect(find.text('비중을 확인해 보세요.'), findsOneWidget);
     expect(find.text('오늘은 성과 개선이 보여요.'), findsNothing);
-    await tester.tap(find.text('작성하기'));
+    expect(find.text('순 투자성과 +10,000원 기준으로 확인했습니다.'), findsNothing);
+    expect(find.text('작성하기'), findsNothing);
+    await tester.tap(find.text('오늘 회고 초안이 준비됐어요'));
     expect(tapped, isTrue);
   });
 
@@ -1326,7 +1328,8 @@ void main() {
       );
 
       expect(find.text('작성 중인 회고가 있어요'), findsOneWidget);
-      await tester.tap(find.text('이어쓰기'));
+      expect(find.text('이어쓰기'), findsNothing);
+      await tester.tap(find.text('작성 중인 회고가 있어요'));
       expect(tapped, isTrue);
     },
   );
@@ -1377,9 +1380,10 @@ void main() {
     expect(find.text('오늘의 투자 회고'), findsOneWidget);
     expect(find.text('오늘 회고 완료'), findsOneWidget);
     expect(find.text('비중을 확인해 보세요.'), findsOneWidget);
-    expect(find.text('현금 비중을 점검해 보세요.'), findsOneWidget);
+    expect(find.text('현금 비중을 점검해 보세요.'), findsNothing);
     expect(find.text('분산을 확인하세요.'), findsNothing);
-    await tester.tap(find.text('보기'));
+    expect(find.text('보기'), findsNothing);
+    await tester.tap(find.text('오늘 회고 완료'));
     expect(tapped, isTrue);
   });
 
@@ -1401,7 +1405,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('작성 중인 회고가 있어요'), findsOneWidget);
-      expect(find.text('이어쓰기'), findsOneWidget);
+      expect(find.text('이어쓰기'), findsNothing);
     },
   );
 
@@ -1422,7 +1426,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('오늘 회고 초안이 준비됐어요'), findsOneWidget);
-      expect(find.text('작성하기'), findsOneWidget);
+      expect(find.text('작성하기'), findsNothing);
     },
   );
 
@@ -1461,10 +1465,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('오늘 회고 초안이 준비됐어요'), findsOneWidget);
-      expect(find.text('작성하기'), findsOneWidget);
+      expect(find.text('작성하기'), findsNothing);
 
-      await tester.ensureVisible(find.text('작성하기'));
-      await tester.tap(find.text('작성하기'));
+      await tester.ensureVisible(find.text('오늘 회고 초안이 준비됐어요'));
+      await tester.tap(find.text('오늘 회고 초안이 준비됐어요'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(find.text('닫기'));
@@ -1472,7 +1476,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('오늘 회고 완료'), findsOneWidget);
-      expect(find.text('보기'), findsOneWidget);
+      expect(find.text('보기'), findsNothing);
     },
   );
 

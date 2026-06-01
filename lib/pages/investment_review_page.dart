@@ -1171,7 +1171,7 @@ class _MetricRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (metric.isPositive) {
-      true => Colors.green.shade700,
+      true => context.colors.positiveOn,
       false => Theme.of(context).colorScheme.error,
       null => Theme.of(context).colorScheme.onSurface,
     };
@@ -1232,7 +1232,7 @@ class _SignalTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final iconColor = switch (signal.severity) {
-      InvestmentReviewSignalSeverity.positive => Colors.green.shade700,
+      InvestmentReviewSignalSeverity.positive => context.colors.positiveOn,
       InvestmentReviewSignalSeverity.warning => colorScheme.error,
       InvestmentReviewSignalSeverity.info => colorScheme.primary,
     };
