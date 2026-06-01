@@ -1463,6 +1463,7 @@ void main() {
       expect(find.text('오늘 회고 초안이 준비됐어요'), findsOneWidget);
       expect(find.text('작성하기'), findsOneWidget);
 
+      await tester.ensureVisible(find.text('작성하기'));
       await tester.tap(find.text('작성하기'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));

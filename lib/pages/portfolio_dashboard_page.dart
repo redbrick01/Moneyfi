@@ -295,6 +295,28 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
             onCreateAsset: _openAssetForm,
           ),
           SizedBox(height: context.spacing.xl),
+          _AssetSectionBasePlate(
+            sortOption: _assetSortOption,
+            onSortChanged: (value) => setState(() => _assetSortOption = value),
+            onAddPressed: () => _openAssetForm(),
+            child: _AssetListCard(
+              refreshTick: _refreshTick,
+              sortOption: _assetSortOption,
+              onChanged: _markChanged,
+              onCreateAsset: _openAssetForm,
+              isEditMode: _isEditMode,
+              onItemsResolved: (count) {
+                if (_hasVisibleAssets == (count > 0)) return;
+                setState(() {
+                  _hasVisibleAssets = count > 0;
+                  if (!_hasVisibleAssets) {
+                    _isEditMode = false;
+                  }
+                });
+              },
+            ),
+          ),
+          SizedBox(height: context.spacing.xl),
           FutureBuilder<_TodayInvestmentReviewHomeData>(
             future: _todayReviewFuture,
             builder: (context, snapshot) {
@@ -318,28 +340,6 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
               );
             },
           ),
-          _AssetSectionBasePlate(
-            sortOption: _assetSortOption,
-            onSortChanged: (value) => setState(() => _assetSortOption = value),
-            onAddPressed: () => _openAssetForm(),
-            child: _AssetListCard(
-              refreshTick: _refreshTick,
-              sortOption: _assetSortOption,
-              onChanged: _markChanged,
-              onCreateAsset: _openAssetForm,
-              isEditMode: _isEditMode,
-              onItemsResolved: (count) {
-                if (_hasVisibleAssets == (count > 0)) return;
-                setState(() {
-                  _hasVisibleAssets = count > 0;
-                  if (!_hasVisibleAssets) {
-                    _isEditMode = false;
-                  }
-                });
-              },
-            ),
-          ),
-          SizedBox(height: context.spacing.xl),
           _AnalysisSectionBasePlate(
             refreshTick: _refreshTick,
             child: _InsightCard(
