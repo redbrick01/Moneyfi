@@ -173,6 +173,7 @@ class _PerformanceScoreboardGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final columnCount = constraints.maxWidth < 520 ? 2 : 4;
+        final tileHeight = columnCount == 2 ? 132.0 : 124.0;
         final tiles = [
           _PerformanceScoreboardTile(
             label: '순 투자성과',
@@ -208,7 +209,7 @@ class _PerformanceScoreboardGrid extends StatelessWidget {
             crossAxisCount: columnCount,
             crossAxisSpacing: context.spacing.sm,
             mainAxisSpacing: context.spacing.sm,
-            childAspectRatio: columnCount == 2 ? 1.72 : 1.28,
+            mainAxisExtent: tileHeight,
           ),
           itemBuilder: (context, index) => tiles[index],
         );
