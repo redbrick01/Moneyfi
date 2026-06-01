@@ -77,6 +77,20 @@ void main() {
       expect(judgment.unavailableReasons, contains('risk'));
     });
 
+    test('marks risk available at the minimum observation count', () {
+      final judgment = resolvePerformanceJudgment(
+        netPerformance: 90000,
+        periodReturn: 0.012,
+        benchmarkDelta: 0.001,
+        volatility: 0.10,
+        maxDrawdown: -0.02,
+        dailyReturnCount: 20,
+      );
+
+      expect(judgment.riskStatus, isNot(RiskStatus.unavailable));
+      expect(judgment.unavailableReasons, isNot(contains('risk')));
+    });
+
     test('marks performance unavailable when period return is missing', () {
       final judgment = resolvePerformanceJudgment(
         netPerformance: 90000,
