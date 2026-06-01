@@ -1109,6 +1109,58 @@ void main() {
   );
 
   testWidgets(
+    'today investment review asks before leaving edited composer tab',
+    (tester) async {
+      InvestmentReviewReport reportFor(InvestmentReviewPeriodType type) {
+        return switch (type) {
+          InvestmentReviewPeriodType.today => todayReviewReport(
+            headline: '오늘 회고가 준비됐어요.',
+          ),
+          InvestmentReviewPeriodType.weekly => reviewReport('주간 회고가 준비됐어요.'),
+          InvestmentReviewPeriodType.monthly => reviewReport('월간 회고가 준비됐어요.'),
+        };
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: InvestmentReviewPage(
+            reportBuilderForTesting: (type) async => reportFor(type),
+            dailyReviewLoaderForTesting: (_) async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, '탭 이동 전 작성');
+      await tester.ensureVisible(find.text('주간'));
+      await tester.tap(find.text('주간'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('저장하지 않은 회고가 있어요'), findsOneWidget);
+
+      await tester.tap(find.text('계속 작성'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('저장하지 않은 회고가 있어요'), findsNothing);
+      var performanceField = tester.widget<TextField>(
+        find.byType(TextField).first,
+      );
+      expect(performanceField.controller!.text, '탭 이동 전 작성');
+      expect(find.text('오늘 회고가 준비됐어요.'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('주간'));
+      await tester.tap(find.text('주간'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('나가기'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('주간 회고가 준비됐어요.'), findsOneWidget);
+      expect(find.text('성과 분석'), findsNothing);
+    },
+  );
+
+  testWidgets(
     'today investment review complete saves current draft before completing',
     (tester) async {
       DailyInvestmentReviewDraft? savedDraft;
@@ -1371,6 +1423,55 @@ void main() {
 
       expect(find.text('오늘 회고 초안이 준비됐어요'), findsOneWidget);
       expect(find.text('작성하기'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'portfolio dashboard refreshes review status after review closes',
+    (tester) async {
+      var loadCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: PortfolioDashboardPage(
+            todayReviewBuilderForTesting: () async => reviewReport('헤드라인'),
+            todayReviewLoaderForTesting: (_) async {
+              loadCount++;
+              if (loadCount == 1) return null;
+              return dailyReviewEntry(
+                status: DailyInvestmentReviewStatus.completed,
+                mode: DailyInvestmentReviewMode.noTradeDay,
+              );
+            },
+            investmentReviewPageBuilderForTesting: (context) {
+              return Scaffold(
+                body: Center(
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('닫기'),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('오늘 회고 초안이 준비됐어요'), findsOneWidget);
+      expect(find.text('작성하기'), findsOneWidget);
+
+      await tester.tap(find.text('작성하기'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('닫기'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('오늘 회고 완료'), findsOneWidget);
+      expect(find.text('보기'), findsOneWidget);
     },
   );
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -109,6 +110,7 @@ typedef TodayInvestmentReviewReportBuilder =
     Future<InvestmentReviewReport> Function();
 typedef TodayInvestmentReviewLoader =
     Future<DailyInvestmentReviewEntry?> Function(DateTime date);
+typedef InvestmentReviewPageBuilder = WidgetBuilder;
 
 class PortfolioDashboardPage extends StatefulWidget {
   const PortfolioDashboardPage({
@@ -118,6 +120,7 @@ class PortfolioDashboardPage extends StatefulWidget {
     this.dataRefreshTick = 0,
     this.todayReviewBuilderForTesting,
     this.todayReviewLoaderForTesting,
+    this.investmentReviewPageBuilderForTesting,
   });
 
   final ScrollController? scrollController;
@@ -125,6 +128,7 @@ class PortfolioDashboardPage extends StatefulWidget {
   final int dataRefreshTick;
   final TodayInvestmentReviewReportBuilder? todayReviewBuilderForTesting;
   final TodayInvestmentReviewLoader? todayReviewLoaderForTesting;
+  final InvestmentReviewPageBuilder? investmentReviewPageBuilderForTesting;
 
   @override
   State<PortfolioDashboardPage> createState() => _PortfolioDashboardPageState();
@@ -210,9 +214,20 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
   }
 
   void _openInvestmentReview() {
-    Navigator.of(
+    unawaited(_openInvestmentReviewAndRefresh());
+  }
+
+  Future<void> _openInvestmentReviewAndRefresh() async {
+    final pageBuilder =
+        widget.investmentReviewPageBuilderForTesting ??
+        (_) => const InvestmentReviewPage();
+    await Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => const InvestmentReviewPage()));
+    ).push<void>(MaterialPageRoute(builder: pageBuilder));
+    if (!mounted) return;
+    setState(() {
+      _todayReviewFuture = _loadTodayReview();
+    });
   }
 
   @override

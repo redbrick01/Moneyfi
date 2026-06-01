@@ -41,6 +41,7 @@ class InvestmentReviewPage extends StatefulWidget {
 class _InvestmentReviewPageState extends State<InvestmentReviewPage> {
   var _selected = InvestmentReviewPeriodType.today;
   late Future<_InvestmentReviewTabData> _tabFuture;
+  final _todayComposerKey = GlobalKey<_DailyInvestmentReviewComposerState>();
 
   @override
   void initState() {
@@ -85,8 +86,14 @@ class _InvestmentReviewPageState extends State<InvestmentReviewPage> {
     );
   }
 
-  void _selectPeriod(InvestmentReviewPeriodType type) {
+  Future<void> _selectPeriod(InvestmentReviewPeriodType type) async {
     if (type == _selected) return;
+    if (_selected == InvestmentReviewPeriodType.today) {
+      final canLeave =
+          await _todayComposerKey.currentState?.confirmDiscardIfNeeded() ??
+          true;
+      if (!canLeave || !mounted) return;
+    }
     setState(() {
       _selected = type;
       _tabFuture = _loadTabData(type);
@@ -128,7 +135,12 @@ class _InvestmentReviewPageState extends State<InvestmentReviewPage> {
       body: MoneyfyPage(
         title: '투자 회고',
         children: [
-          _PeriodSegments(selected: _selected, onSelected: _selectPeriod),
+          _PeriodSegments(
+            selected: _selected,
+            onSelected: (type) {
+              _selectPeriod(type);
+            },
+          ),
           SizedBox(height: context.spacing.sectionGap),
           FutureBuilder<_InvestmentReviewTabData>(
             future: _tabFuture,
@@ -141,6 +153,7 @@ class _InvestmentReviewPageState extends State<InvestmentReviewPage> {
                 final report = tabData.report;
                 if (_selected == InvestmentReviewPeriodType.today) {
                   return _DailyInvestmentReviewComposer(
+                    key: _todayComposerKey,
                     report: report,
                     composerState: DailyInvestmentReviewPresenter.buildState(
                       report: report,
@@ -237,6 +250,7 @@ class _InvestmentReviewReportView extends StatelessWidget {
 
 class _DailyInvestmentReviewComposer extends StatefulWidget {
   const _DailyInvestmentReviewComposer({
+    super.key,
     required this.report,
     required this.composerState,
     required this.onSaveDraft,
@@ -399,7 +413,8 @@ class _DailyInvestmentReviewComposerState
     }
   }
 
-  Future<void> _confirmDiscardAndPop(Object? result) async {
+  Future<bool> confirmDiscardIfNeeded() async {
+    if (!_hasUnsavedChanges) return true;
     final shouldLeave = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -420,7 +435,12 @@ class _DailyInvestmentReviewComposerState
       },
     );
 
-    if (shouldLeave == true && mounted) {
+    return shouldLeave == true;
+  }
+
+  Future<void> _confirmDiscardAndPop(Object? result) async {
+    final shouldLeave = await confirmDiscardIfNeeded();
+    if (shouldLeave && mounted) {
       Navigator.of(context).pop(result);
     }
   }
