@@ -70,7 +70,7 @@ void main() {
         benchmarkDelta: 0.001,
         volatility: 0.10,
         maxDrawdown: -0.02,
-        dailyReturnCount: 3,
+        dailyReturnCount: 19,
       );
 
       expect(judgment.riskStatus, RiskStatus.unavailable);

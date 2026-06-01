@@ -4,6 +4,8 @@ enum BenchmarkDeltaStatus { outperforming, similar, lagging, unavailable }
 
 enum RiskStatus { low, normal, elevated, unavailable }
 
+const minimumRiskObservationCount = 20;
+
 class PerformanceJudgment {
   const PerformanceJudgment({
     required this.performanceStatus,
@@ -111,7 +113,9 @@ RiskStatus _resolveRiskStatus({
   required int dailyReturnCount,
   required List<String> unavailableReasons,
 }) {
-  if (dailyReturnCount < 5 || volatility == null || maxDrawdown == null) {
+  if (dailyReturnCount < minimumRiskObservationCount ||
+      volatility == null ||
+      maxDrawdown == null) {
     unavailableReasons.add('risk');
     return RiskStatus.unavailable;
   }
