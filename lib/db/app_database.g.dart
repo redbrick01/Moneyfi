@@ -8853,6 +8853,17 @@ class $DailyPortfolioSnapshotItemsTable extends DailyPortfolioSnapshotItems
       'REFERENCES assets (id)',
     ),
   );
+  static const VerificationMeta _assetClientIdMeta = const VerificationMeta(
+    'assetClientId',
+  );
+  @override
+  late final GeneratedColumn<String> assetClientId = GeneratedColumn<String>(
+    'asset_client_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _assetTitleMeta = const VerificationMeta(
     'assetTitle',
   );
@@ -8924,6 +8935,7 @@ class $DailyPortfolioSnapshotItemsTable extends DailyPortfolioSnapshotItems
     id,
     snapshotId,
     assetId,
+    assetClientId,
     assetTitle,
     totalPurchaseAmount,
     totalValuationAmount,
@@ -8961,6 +8973,15 @@ class $DailyPortfolioSnapshotItemsTable extends DailyPortfolioSnapshotItems
       );
     } else if (isInserting) {
       context.missing(_assetIdMeta);
+    }
+    if (data.containsKey('asset_client_id')) {
+      context.handle(
+        _assetClientIdMeta,
+        assetClientId.isAcceptableOrUnknown(
+          data['asset_client_id']!,
+          _assetClientIdMeta,
+        ),
+      );
     }
     if (data.containsKey('asset_title')) {
       context.handle(
@@ -9046,6 +9067,10 @@ class $DailyPortfolioSnapshotItemsTable extends DailyPortfolioSnapshotItems
         DriftSqlType.int,
         data['${effectivePrefix}asset_id'],
       )!,
+      assetClientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_client_id'],
+      ),
       assetTitle: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}asset_title'],
@@ -9084,6 +9109,7 @@ class DailyPortfolioSnapshotItem extends DataClass
   final int id;
   final int snapshotId;
   final int assetId;
+  final String? assetClientId;
   final String assetTitle;
   final double totalPurchaseAmount;
   final double totalValuationAmount;
@@ -9094,6 +9120,7 @@ class DailyPortfolioSnapshotItem extends DataClass
     required this.id,
     required this.snapshotId,
     required this.assetId,
+    this.assetClientId,
     required this.assetTitle,
     required this.totalPurchaseAmount,
     required this.totalValuationAmount,
@@ -9107,6 +9134,9 @@ class DailyPortfolioSnapshotItem extends DataClass
     map['id'] = Variable<int>(id);
     map['snapshot_id'] = Variable<int>(snapshotId);
     map['asset_id'] = Variable<int>(assetId);
+    if (!nullToAbsent || assetClientId != null) {
+      map['asset_client_id'] = Variable<String>(assetClientId);
+    }
     map['asset_title'] = Variable<String>(assetTitle);
     map['total_purchase_amount'] = Variable<double>(totalPurchaseAmount);
     map['total_valuation_amount'] = Variable<double>(totalValuationAmount);
@@ -9121,6 +9151,9 @@ class DailyPortfolioSnapshotItem extends DataClass
       id: Value(id),
       snapshotId: Value(snapshotId),
       assetId: Value(assetId),
+      assetClientId: assetClientId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assetClientId),
       assetTitle: Value(assetTitle),
       totalPurchaseAmount: Value(totalPurchaseAmount),
       totalValuationAmount: Value(totalValuationAmount),
@@ -9139,6 +9172,7 @@ class DailyPortfolioSnapshotItem extends DataClass
       id: serializer.fromJson<int>(json['id']),
       snapshotId: serializer.fromJson<int>(json['snapshotId']),
       assetId: serializer.fromJson<int>(json['assetId']),
+      assetClientId: serializer.fromJson<String?>(json['assetClientId']),
       assetTitle: serializer.fromJson<String>(json['assetTitle']),
       totalPurchaseAmount: serializer.fromJson<double>(
         json['totalPurchaseAmount'],
@@ -9158,6 +9192,7 @@ class DailyPortfolioSnapshotItem extends DataClass
       'id': serializer.toJson<int>(id),
       'snapshotId': serializer.toJson<int>(snapshotId),
       'assetId': serializer.toJson<int>(assetId),
+      'assetClientId': serializer.toJson<String?>(assetClientId),
       'assetTitle': serializer.toJson<String>(assetTitle),
       'totalPurchaseAmount': serializer.toJson<double>(totalPurchaseAmount),
       'totalValuationAmount': serializer.toJson<double>(totalValuationAmount),
@@ -9171,6 +9206,7 @@ class DailyPortfolioSnapshotItem extends DataClass
     int? id,
     int? snapshotId,
     int? assetId,
+    Value<String?> assetClientId = const Value.absent(),
     String? assetTitle,
     double? totalPurchaseAmount,
     double? totalValuationAmount,
@@ -9181,6 +9217,9 @@ class DailyPortfolioSnapshotItem extends DataClass
     id: id ?? this.id,
     snapshotId: snapshotId ?? this.snapshotId,
     assetId: assetId ?? this.assetId,
+    assetClientId: assetClientId.present
+        ? assetClientId.value
+        : this.assetClientId,
     assetTitle: assetTitle ?? this.assetTitle,
     totalPurchaseAmount: totalPurchaseAmount ?? this.totalPurchaseAmount,
     totalValuationAmount: totalValuationAmount ?? this.totalValuationAmount,
@@ -9197,6 +9236,9 @@ class DailyPortfolioSnapshotItem extends DataClass
           ? data.snapshotId.value
           : this.snapshotId,
       assetId: data.assetId.present ? data.assetId.value : this.assetId,
+      assetClientId: data.assetClientId.present
+          ? data.assetClientId.value
+          : this.assetClientId,
       assetTitle: data.assetTitle.present
           ? data.assetTitle.value
           : this.assetTitle,
@@ -9224,6 +9266,7 @@ class DailyPortfolioSnapshotItem extends DataClass
           ..write('id: $id, ')
           ..write('snapshotId: $snapshotId, ')
           ..write('assetId: $assetId, ')
+          ..write('assetClientId: $assetClientId, ')
           ..write('assetTitle: $assetTitle, ')
           ..write('totalPurchaseAmount: $totalPurchaseAmount, ')
           ..write('totalValuationAmount: $totalValuationAmount, ')
@@ -9239,6 +9282,7 @@ class DailyPortfolioSnapshotItem extends DataClass
     id,
     snapshotId,
     assetId,
+    assetClientId,
     assetTitle,
     totalPurchaseAmount,
     totalValuationAmount,
@@ -9253,6 +9297,7 @@ class DailyPortfolioSnapshotItem extends DataClass
           other.id == this.id &&
           other.snapshotId == this.snapshotId &&
           other.assetId == this.assetId &&
+          other.assetClientId == this.assetClientId &&
           other.assetTitle == this.assetTitle &&
           other.totalPurchaseAmount == this.totalPurchaseAmount &&
           other.totalValuationAmount == this.totalValuationAmount &&
@@ -9266,6 +9311,7 @@ class DailyPortfolioSnapshotItemsCompanion
   final Value<int> id;
   final Value<int> snapshotId;
   final Value<int> assetId;
+  final Value<String?> assetClientId;
   final Value<String> assetTitle;
   final Value<double> totalPurchaseAmount;
   final Value<double> totalValuationAmount;
@@ -9276,6 +9322,7 @@ class DailyPortfolioSnapshotItemsCompanion
     this.id = const Value.absent(),
     this.snapshotId = const Value.absent(),
     this.assetId = const Value.absent(),
+    this.assetClientId = const Value.absent(),
     this.assetTitle = const Value.absent(),
     this.totalPurchaseAmount = const Value.absent(),
     this.totalValuationAmount = const Value.absent(),
@@ -9287,6 +9334,7 @@ class DailyPortfolioSnapshotItemsCompanion
     this.id = const Value.absent(),
     required int snapshotId,
     required int assetId,
+    this.assetClientId = const Value.absent(),
     required String assetTitle,
     required double totalPurchaseAmount,
     required double totalValuationAmount,
@@ -9305,6 +9353,7 @@ class DailyPortfolioSnapshotItemsCompanion
     Expression<int>? id,
     Expression<int>? snapshotId,
     Expression<int>? assetId,
+    Expression<String>? assetClientId,
     Expression<String>? assetTitle,
     Expression<double>? totalPurchaseAmount,
     Expression<double>? totalValuationAmount,
@@ -9316,6 +9365,7 @@ class DailyPortfolioSnapshotItemsCompanion
       if (id != null) 'id': id,
       if (snapshotId != null) 'snapshot_id': snapshotId,
       if (assetId != null) 'asset_id': assetId,
+      if (assetClientId != null) 'asset_client_id': assetClientId,
       if (assetTitle != null) 'asset_title': assetTitle,
       if (totalPurchaseAmount != null)
         'total_purchase_amount': totalPurchaseAmount,
@@ -9331,6 +9381,7 @@ class DailyPortfolioSnapshotItemsCompanion
     Value<int>? id,
     Value<int>? snapshotId,
     Value<int>? assetId,
+    Value<String?>? assetClientId,
     Value<String>? assetTitle,
     Value<double>? totalPurchaseAmount,
     Value<double>? totalValuationAmount,
@@ -9342,6 +9393,7 @@ class DailyPortfolioSnapshotItemsCompanion
       id: id ?? this.id,
       snapshotId: snapshotId ?? this.snapshotId,
       assetId: assetId ?? this.assetId,
+      assetClientId: assetClientId ?? this.assetClientId,
       assetTitle: assetTitle ?? this.assetTitle,
       totalPurchaseAmount: totalPurchaseAmount ?? this.totalPurchaseAmount,
       totalValuationAmount: totalValuationAmount ?? this.totalValuationAmount,
@@ -9362,6 +9414,9 @@ class DailyPortfolioSnapshotItemsCompanion
     }
     if (assetId.present) {
       map['asset_id'] = Variable<int>(assetId.value);
+    }
+    if (assetClientId.present) {
+      map['asset_client_id'] = Variable<String>(assetClientId.value);
     }
     if (assetTitle.present) {
       map['asset_title'] = Variable<String>(assetTitle.value);
@@ -9394,6 +9449,7 @@ class DailyPortfolioSnapshotItemsCompanion
           ..write('id: $id, ')
           ..write('snapshotId: $snapshotId, ')
           ..write('assetId: $assetId, ')
+          ..write('assetClientId: $assetClientId, ')
           ..write('assetTitle: $assetTitle, ')
           ..write('totalPurchaseAmount: $totalPurchaseAmount, ')
           ..write('totalValuationAmount: $totalValuationAmount, ')
@@ -9457,6 +9513,17 @@ class $DailyPortfolioSnapshotHoldingItemsTable
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _assetClientIdMeta = const VerificationMeta(
+    'assetClientId',
+  );
+  @override
+  late final GeneratedColumn<String> assetClientId = GeneratedColumn<String>(
+    'asset_client_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _assetTitleMeta = const VerificationMeta(
     'assetTitle',
   );
@@ -9477,6 +9544,17 @@ class $DailyPortfolioSnapshotHoldingItemsTable
     aliasedName,
     true,
     type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _holdingClientIdMeta = const VerificationMeta(
+    'holdingClientId',
+  );
+  @override
+  late final GeneratedColumn<String> holdingClientId = GeneratedColumn<String>(
+    'holding_client_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _holdingNameMeta = const VerificationMeta(
@@ -9572,8 +9650,10 @@ class $DailyPortfolioSnapshotHoldingItemsTable
     id,
     snapshotId,
     assetId,
+    assetClientId,
     assetTitle,
     holdingId,
+    holdingClientId,
     holdingName,
     holdingSymbol,
     currencyCode,
@@ -9612,6 +9692,15 @@ class $DailyPortfolioSnapshotHoldingItemsTable
         assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta),
       );
     }
+    if (data.containsKey('asset_client_id')) {
+      context.handle(
+        _assetClientIdMeta,
+        assetClientId.isAcceptableOrUnknown(
+          data['asset_client_id']!,
+          _assetClientIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('asset_title')) {
       context.handle(
         _assetTitleMeta,
@@ -9624,6 +9713,15 @@ class $DailyPortfolioSnapshotHoldingItemsTable
       context.handle(
         _holdingIdMeta,
         holdingId.isAcceptableOrUnknown(data['holding_id']!, _holdingIdMeta),
+      );
+    }
+    if (data.containsKey('holding_client_id')) {
+      context.handle(
+        _holdingClientIdMeta,
+        holdingClientId.isAcceptableOrUnknown(
+          data['holding_client_id']!,
+          _holdingClientIdMeta,
+        ),
       );
     }
     if (data.containsKey('holding_name')) {
@@ -9732,6 +9830,10 @@ class $DailyPortfolioSnapshotHoldingItemsTable
         DriftSqlType.int,
         data['${effectivePrefix}asset_id'],
       ),
+      assetClientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_client_id'],
+      ),
       assetTitle: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}asset_title'],
@@ -9739,6 +9841,10 @@ class $DailyPortfolioSnapshotHoldingItemsTable
       holdingId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}holding_id'],
+      ),
+      holdingClientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}holding_client_id'],
       ),
       holdingName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -9786,8 +9892,10 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
   final int id;
   final int snapshotId;
   final int? assetId;
+  final String? assetClientId;
   final String assetTitle;
   final int? holdingId;
+  final String? holdingClientId;
   final String holdingName;
   final String holdingSymbol;
   final String currencyCode;
@@ -9800,8 +9908,10 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
     required this.id,
     required this.snapshotId,
     this.assetId,
+    this.assetClientId,
     required this.assetTitle,
     this.holdingId,
+    this.holdingClientId,
     required this.holdingName,
     required this.holdingSymbol,
     required this.currencyCode,
@@ -9819,9 +9929,15 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
     if (!nullToAbsent || assetId != null) {
       map['asset_id'] = Variable<int>(assetId);
     }
+    if (!nullToAbsent || assetClientId != null) {
+      map['asset_client_id'] = Variable<String>(assetClientId);
+    }
     map['asset_title'] = Variable<String>(assetTitle);
     if (!nullToAbsent || holdingId != null) {
       map['holding_id'] = Variable<int>(holdingId);
+    }
+    if (!nullToAbsent || holdingClientId != null) {
+      map['holding_client_id'] = Variable<String>(holdingClientId);
     }
     map['holding_name'] = Variable<String>(holdingName);
     map['holding_symbol'] = Variable<String>(holdingSymbol);
@@ -9841,10 +9957,16 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
       assetId: assetId == null && nullToAbsent
           ? const Value.absent()
           : Value(assetId),
+      assetClientId: assetClientId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assetClientId),
       assetTitle: Value(assetTitle),
       holdingId: holdingId == null && nullToAbsent
           ? const Value.absent()
           : Value(holdingId),
+      holdingClientId: holdingClientId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(holdingClientId),
       holdingName: Value(holdingName),
       holdingSymbol: Value(holdingSymbol),
       currencyCode: Value(currencyCode),
@@ -9865,8 +9987,10 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
       id: serializer.fromJson<int>(json['id']),
       snapshotId: serializer.fromJson<int>(json['snapshotId']),
       assetId: serializer.fromJson<int?>(json['assetId']),
+      assetClientId: serializer.fromJson<String?>(json['assetClientId']),
       assetTitle: serializer.fromJson<String>(json['assetTitle']),
       holdingId: serializer.fromJson<int?>(json['holdingId']),
+      holdingClientId: serializer.fromJson<String?>(json['holdingClientId']),
       holdingName: serializer.fromJson<String>(json['holdingName']),
       holdingSymbol: serializer.fromJson<String>(json['holdingSymbol']),
       currencyCode: serializer.fromJson<String>(json['currencyCode']),
@@ -9888,8 +10012,10 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
       'id': serializer.toJson<int>(id),
       'snapshotId': serializer.toJson<int>(snapshotId),
       'assetId': serializer.toJson<int?>(assetId),
+      'assetClientId': serializer.toJson<String?>(assetClientId),
       'assetTitle': serializer.toJson<String>(assetTitle),
       'holdingId': serializer.toJson<int?>(holdingId),
+      'holdingClientId': serializer.toJson<String?>(holdingClientId),
       'holdingName': serializer.toJson<String>(holdingName),
       'holdingSymbol': serializer.toJson<String>(holdingSymbol),
       'currencyCode': serializer.toJson<String>(currencyCode),
@@ -9905,8 +10031,10 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
     int? id,
     int? snapshotId,
     Value<int?> assetId = const Value.absent(),
+    Value<String?> assetClientId = const Value.absent(),
     String? assetTitle,
     Value<int?> holdingId = const Value.absent(),
+    Value<String?> holdingClientId = const Value.absent(),
     String? holdingName,
     String? holdingSymbol,
     String? currencyCode,
@@ -9919,8 +10047,14 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
     id: id ?? this.id,
     snapshotId: snapshotId ?? this.snapshotId,
     assetId: assetId.present ? assetId.value : this.assetId,
+    assetClientId: assetClientId.present
+        ? assetClientId.value
+        : this.assetClientId,
     assetTitle: assetTitle ?? this.assetTitle,
     holdingId: holdingId.present ? holdingId.value : this.holdingId,
+    holdingClientId: holdingClientId.present
+        ? holdingClientId.value
+        : this.holdingClientId,
     holdingName: holdingName ?? this.holdingName,
     holdingSymbol: holdingSymbol ?? this.holdingSymbol,
     currencyCode: currencyCode ?? this.currencyCode,
@@ -9939,10 +10073,16 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
           ? data.snapshotId.value
           : this.snapshotId,
       assetId: data.assetId.present ? data.assetId.value : this.assetId,
+      assetClientId: data.assetClientId.present
+          ? data.assetClientId.value
+          : this.assetClientId,
       assetTitle: data.assetTitle.present
           ? data.assetTitle.value
           : this.assetTitle,
       holdingId: data.holdingId.present ? data.holdingId.value : this.holdingId,
+      holdingClientId: data.holdingClientId.present
+          ? data.holdingClientId.value
+          : this.holdingClientId,
       holdingName: data.holdingName.present
           ? data.holdingName.value
           : this.holdingName,
@@ -9974,8 +10114,10 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
           ..write('id: $id, ')
           ..write('snapshotId: $snapshotId, ')
           ..write('assetId: $assetId, ')
+          ..write('assetClientId: $assetClientId, ')
           ..write('assetTitle: $assetTitle, ')
           ..write('holdingId: $holdingId, ')
+          ..write('holdingClientId: $holdingClientId, ')
           ..write('holdingName: $holdingName, ')
           ..write('holdingSymbol: $holdingSymbol, ')
           ..write('currencyCode: $currencyCode, ')
@@ -9993,8 +10135,10 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
     id,
     snapshotId,
     assetId,
+    assetClientId,
     assetTitle,
     holdingId,
+    holdingClientId,
     holdingName,
     holdingSymbol,
     currencyCode,
@@ -10011,8 +10155,10 @@ class DailyPortfolioSnapshotHoldingItem extends DataClass
           other.id == this.id &&
           other.snapshotId == this.snapshotId &&
           other.assetId == this.assetId &&
+          other.assetClientId == this.assetClientId &&
           other.assetTitle == this.assetTitle &&
           other.holdingId == this.holdingId &&
+          other.holdingClientId == this.holdingClientId &&
           other.holdingName == this.holdingName &&
           other.holdingSymbol == this.holdingSymbol &&
           other.currencyCode == this.currencyCode &&
@@ -10028,8 +10174,10 @@ class DailyPortfolioSnapshotHoldingItemsCompanion
   final Value<int> id;
   final Value<int> snapshotId;
   final Value<int?> assetId;
+  final Value<String?> assetClientId;
   final Value<String> assetTitle;
   final Value<int?> holdingId;
+  final Value<String?> holdingClientId;
   final Value<String> holdingName;
   final Value<String> holdingSymbol;
   final Value<String> currencyCode;
@@ -10042,8 +10190,10 @@ class DailyPortfolioSnapshotHoldingItemsCompanion
     this.id = const Value.absent(),
     this.snapshotId = const Value.absent(),
     this.assetId = const Value.absent(),
+    this.assetClientId = const Value.absent(),
     this.assetTitle = const Value.absent(),
     this.holdingId = const Value.absent(),
+    this.holdingClientId = const Value.absent(),
     this.holdingName = const Value.absent(),
     this.holdingSymbol = const Value.absent(),
     this.currencyCode = const Value.absent(),
@@ -10057,8 +10207,10 @@ class DailyPortfolioSnapshotHoldingItemsCompanion
     this.id = const Value.absent(),
     required int snapshotId,
     this.assetId = const Value.absent(),
+    this.assetClientId = const Value.absent(),
     required String assetTitle,
     this.holdingId = const Value.absent(),
+    this.holdingClientId = const Value.absent(),
     required String holdingName,
     required String holdingSymbol,
     required String currencyCode,
@@ -10081,8 +10233,10 @@ class DailyPortfolioSnapshotHoldingItemsCompanion
     Expression<int>? id,
     Expression<int>? snapshotId,
     Expression<int>? assetId,
+    Expression<String>? assetClientId,
     Expression<String>? assetTitle,
     Expression<int>? holdingId,
+    Expression<String>? holdingClientId,
     Expression<String>? holdingName,
     Expression<String>? holdingSymbol,
     Expression<String>? currencyCode,
@@ -10096,8 +10250,10 @@ class DailyPortfolioSnapshotHoldingItemsCompanion
       if (id != null) 'id': id,
       if (snapshotId != null) 'snapshot_id': snapshotId,
       if (assetId != null) 'asset_id': assetId,
+      if (assetClientId != null) 'asset_client_id': assetClientId,
       if (assetTitle != null) 'asset_title': assetTitle,
       if (holdingId != null) 'holding_id': holdingId,
+      if (holdingClientId != null) 'holding_client_id': holdingClientId,
       if (holdingName != null) 'holding_name': holdingName,
       if (holdingSymbol != null) 'holding_symbol': holdingSymbol,
       if (currencyCode != null) 'currency_code': currencyCode,
@@ -10115,8 +10271,10 @@ class DailyPortfolioSnapshotHoldingItemsCompanion
     Value<int>? id,
     Value<int>? snapshotId,
     Value<int?>? assetId,
+    Value<String?>? assetClientId,
     Value<String>? assetTitle,
     Value<int?>? holdingId,
+    Value<String?>? holdingClientId,
     Value<String>? holdingName,
     Value<String>? holdingSymbol,
     Value<String>? currencyCode,
@@ -10130,8 +10288,10 @@ class DailyPortfolioSnapshotHoldingItemsCompanion
       id: id ?? this.id,
       snapshotId: snapshotId ?? this.snapshotId,
       assetId: assetId ?? this.assetId,
+      assetClientId: assetClientId ?? this.assetClientId,
       assetTitle: assetTitle ?? this.assetTitle,
       holdingId: holdingId ?? this.holdingId,
+      holdingClientId: holdingClientId ?? this.holdingClientId,
       holdingName: holdingName ?? this.holdingName,
       holdingSymbol: holdingSymbol ?? this.holdingSymbol,
       currencyCode: currencyCode ?? this.currencyCode,
@@ -10155,11 +10315,17 @@ class DailyPortfolioSnapshotHoldingItemsCompanion
     if (assetId.present) {
       map['asset_id'] = Variable<int>(assetId.value);
     }
+    if (assetClientId.present) {
+      map['asset_client_id'] = Variable<String>(assetClientId.value);
+    }
     if (assetTitle.present) {
       map['asset_title'] = Variable<String>(assetTitle.value);
     }
     if (holdingId.present) {
       map['holding_id'] = Variable<int>(holdingId.value);
+    }
+    if (holdingClientId.present) {
+      map['holding_client_id'] = Variable<String>(holdingClientId.value);
     }
     if (holdingName.present) {
       map['holding_name'] = Variable<String>(holdingName.value);
@@ -10198,8 +10364,10 @@ class DailyPortfolioSnapshotHoldingItemsCompanion
           ..write('id: $id, ')
           ..write('snapshotId: $snapshotId, ')
           ..write('assetId: $assetId, ')
+          ..write('assetClientId: $assetClientId, ')
           ..write('assetTitle: $assetTitle, ')
           ..write('holdingId: $holdingId, ')
+          ..write('holdingClientId: $holdingClientId, ')
           ..write('holdingName: $holdingName, ')
           ..write('holdingSymbol: $holdingSymbol, ')
           ..write('currencyCode: $currencyCode, ')
@@ -19911,6 +20079,7 @@ typedef $$DailyPortfolioSnapshotItemsTableCreateCompanionBuilder =
       Value<int> id,
       required int snapshotId,
       required int assetId,
+      Value<String?> assetClientId,
       required String assetTitle,
       required double totalPurchaseAmount,
       required double totalValuationAmount,
@@ -19923,6 +20092,7 @@ typedef $$DailyPortfolioSnapshotItemsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> snapshotId,
       Value<int> assetId,
+      Value<String?> assetClientId,
       Value<String> assetTitle,
       Value<double> totalPurchaseAmount,
       Value<double> totalValuationAmount,
@@ -19996,6 +20166,11 @@ class $$DailyPortfolioSnapshotItemsTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get assetClientId => $composableBuilder(
+    column: $table.assetClientId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20091,6 +20266,11 @@ class $$DailyPortfolioSnapshotItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get assetClientId => $composableBuilder(
+    column: $table.assetClientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get assetTitle => $composableBuilder(
     column: $table.assetTitle,
     builder: (column) => ColumnOrderings(column),
@@ -20180,6 +20360,11 @@ class $$DailyPortfolioSnapshotItemsTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get assetClientId => $composableBuilder(
+    column: $table.assetClientId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get assetTitle => $composableBuilder(
     column: $table.assetTitle,
@@ -20304,6 +20489,7 @@ class $$DailyPortfolioSnapshotItemsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> snapshotId = const Value.absent(),
                 Value<int> assetId = const Value.absent(),
+                Value<String?> assetClientId = const Value.absent(),
                 Value<String> assetTitle = const Value.absent(),
                 Value<double> totalPurchaseAmount = const Value.absent(),
                 Value<double> totalValuationAmount = const Value.absent(),
@@ -20314,6 +20500,7 @@ class $$DailyPortfolioSnapshotItemsTableTableManager
                 id: id,
                 snapshotId: snapshotId,
                 assetId: assetId,
+                assetClientId: assetClientId,
                 assetTitle: assetTitle,
                 totalPurchaseAmount: totalPurchaseAmount,
                 totalValuationAmount: totalValuationAmount,
@@ -20326,6 +20513,7 @@ class $$DailyPortfolioSnapshotItemsTableTableManager
                 Value<int> id = const Value.absent(),
                 required int snapshotId,
                 required int assetId,
+                Value<String?> assetClientId = const Value.absent(),
                 required String assetTitle,
                 required double totalPurchaseAmount,
                 required double totalValuationAmount,
@@ -20336,6 +20524,7 @@ class $$DailyPortfolioSnapshotItemsTableTableManager
                 id: id,
                 snapshotId: snapshotId,
                 assetId: assetId,
+                assetClientId: assetClientId,
                 assetTitle: assetTitle,
                 totalPurchaseAmount: totalPurchaseAmount,
                 totalValuationAmount: totalValuationAmount,
@@ -20435,8 +20624,10 @@ typedef $$DailyPortfolioSnapshotHoldingItemsTableCreateCompanionBuilder =
       Value<int> id,
       required int snapshotId,
       Value<int?> assetId,
+      Value<String?> assetClientId,
       required String assetTitle,
       Value<int?> holdingId,
+      Value<String?> holdingClientId,
       required String holdingName,
       required String holdingSymbol,
       required String currencyCode,
@@ -20451,8 +20642,10 @@ typedef $$DailyPortfolioSnapshotHoldingItemsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int> snapshotId,
       Value<int?> assetId,
+      Value<String?> assetClientId,
       Value<String> assetTitle,
       Value<int?> holdingId,
+      Value<String?> holdingClientId,
       Value<String> holdingName,
       Value<String> holdingSymbol,
       Value<String> currencyCode,
@@ -20518,6 +20711,11 @@ class $$DailyPortfolioSnapshotHoldingItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get assetClientId => $composableBuilder(
+    column: $table.assetClientId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get assetTitle => $composableBuilder(
     column: $table.assetTitle,
     builder: (column) => ColumnFilters(column),
@@ -20525,6 +20723,11 @@ class $$DailyPortfolioSnapshotHoldingItemsTableFilterComposer
 
   ColumnFilters<int> get holdingId => $composableBuilder(
     column: $table.holdingId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get holdingClientId => $composableBuilder(
+    column: $table.holdingClientId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20612,6 +20815,11 @@ class $$DailyPortfolioSnapshotHoldingItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get assetClientId => $composableBuilder(
+    column: $table.assetClientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get assetTitle => $composableBuilder(
     column: $table.assetTitle,
     builder: (column) => ColumnOrderings(column),
@@ -20619,6 +20827,11 @@ class $$DailyPortfolioSnapshotHoldingItemsTableOrderingComposer
 
   ColumnOrderings<int> get holdingId => $composableBuilder(
     column: $table.holdingId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get holdingClientId => $composableBuilder(
+    column: $table.holdingClientId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -20702,6 +20915,11 @@ class $$DailyPortfolioSnapshotHoldingItemsTableAnnotationComposer
   GeneratedColumn<int> get assetId =>
       $composableBuilder(column: $table.assetId, builder: (column) => column);
 
+  GeneratedColumn<String> get assetClientId => $composableBuilder(
+    column: $table.assetClientId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get assetTitle => $composableBuilder(
     column: $table.assetTitle,
     builder: (column) => column,
@@ -20709,6 +20927,11 @@ class $$DailyPortfolioSnapshotHoldingItemsTableAnnotationComposer
 
   GeneratedColumn<int> get holdingId =>
       $composableBuilder(column: $table.holdingId, builder: (column) => column);
+
+  GeneratedColumn<String> get holdingClientId => $composableBuilder(
+    column: $table.holdingClientId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get holdingName => $composableBuilder(
     column: $table.holdingName,
@@ -20818,8 +21041,10 @@ class $$DailyPortfolioSnapshotHoldingItemsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> snapshotId = const Value.absent(),
                 Value<int?> assetId = const Value.absent(),
+                Value<String?> assetClientId = const Value.absent(),
                 Value<String> assetTitle = const Value.absent(),
                 Value<int?> holdingId = const Value.absent(),
+                Value<String?> holdingClientId = const Value.absent(),
                 Value<String> holdingName = const Value.absent(),
                 Value<String> holdingSymbol = const Value.absent(),
                 Value<String> currencyCode = const Value.absent(),
@@ -20832,8 +21057,10 @@ class $$DailyPortfolioSnapshotHoldingItemsTableTableManager
                 id: id,
                 snapshotId: snapshotId,
                 assetId: assetId,
+                assetClientId: assetClientId,
                 assetTitle: assetTitle,
                 holdingId: holdingId,
+                holdingClientId: holdingClientId,
                 holdingName: holdingName,
                 holdingSymbol: holdingSymbol,
                 currencyCode: currencyCode,
@@ -20848,8 +21075,10 @@ class $$DailyPortfolioSnapshotHoldingItemsTableTableManager
                 Value<int> id = const Value.absent(),
                 required int snapshotId,
                 Value<int?> assetId = const Value.absent(),
+                Value<String?> assetClientId = const Value.absent(),
                 required String assetTitle,
                 Value<int?> holdingId = const Value.absent(),
+                Value<String?> holdingClientId = const Value.absent(),
                 required String holdingName,
                 required String holdingSymbol,
                 required String currencyCode,
@@ -20862,8 +21091,10 @@ class $$DailyPortfolioSnapshotHoldingItemsTableTableManager
                 id: id,
                 snapshotId: snapshotId,
                 assetId: assetId,
+                assetClientId: assetClientId,
                 assetTitle: assetTitle,
                 holdingId: holdingId,
+                holdingClientId: holdingClientId,
                 holdingName: holdingName,
                 holdingSymbol: holdingSymbol,
                 currencyCode: currencyCode,

@@ -194,6 +194,7 @@ class DailyPortfolioSnapshotItems extends Table {
   IntColumn get snapshotId =>
       integer().references(DailyPortfolioSnapshots, #id)();
   IntColumn get assetId => integer().references(Assets, #id)();
+  TextColumn get assetClientId => text().nullable()();
   TextColumn get assetTitle => text()();
   RealColumn get totalPurchaseAmount => real()();
   RealColumn get totalValuationAmount => real()();
@@ -207,8 +208,10 @@ class DailyPortfolioSnapshotHoldingItems extends Table {
   IntColumn get snapshotId =>
       integer().references(DailyPortfolioSnapshots, #id)();
   IntColumn get assetId => integer().nullable()();
+  TextColumn get assetClientId => text().nullable()();
   TextColumn get assetTitle => text()();
   IntColumn get holdingId => integer().nullable()();
+  TextColumn get holdingClientId => text().nullable()();
   TextColumn get holdingName => text()();
   TextColumn get holdingSymbol => text()();
   TextColumn get currencyCode => text()();

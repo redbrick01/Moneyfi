@@ -6,6 +6,7 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
 const jsonHeaders = { "Content-Type": "application/json" };
+const pageSize = 1000;
 
 function requireEnv(name: string, value: string) {
   if (!value) {
@@ -28,6 +29,28 @@ function parseNumber(value: unknown) {
     return Number.isFinite(parsed) ? parsed : 0;
   }
   return 0;
+}
+
+async function fetchAllRows<T>(
+  buildQuery: () => {
+    range: (
+      from: number,
+      to: number,
+    ) => Promise<{ data: T[] | null; error: { message: string } | null }>;
+  },
+) {
+  const rows: T[] = [];
+  for (let from = 0;; from += pageSize) {
+    const to = from + pageSize - 1;
+    const { data, error } = await buildQuery().range(from, to);
+    if (error) return { data: rows, error };
+
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+  }
+
+  return { data: rows, error: null };
 }
 
 Deno.serve(async (req) => {
@@ -139,40 +162,48 @@ Deno.serve(async (req) => {
 
     const [itemsResult, holdingItemsResult, cashAccountsResult, notesResult] =
       await Promise.all([
-        supabase
-          .from("daily_portfolio_snapshot_items")
-          .select(
-            "id, snapshot_id, asset_id, asset_client_id, asset_title, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, holding_count, user_id",
-          )
-          .eq("user_id", targetUserId)
-          .in("snapshot_id", snapshotIds)
-          .order("snapshot_id", { ascending: true })
-          .order("asset_title", { ascending: true }),
-        supabase
-          .from("daily_portfolio_snapshot_holding_items")
-          .select(
-            "id, snapshot_id, asset_id, asset_client_id, asset_title, holding_id, holding_client_id, holding_name, holding_symbol, currency_code, quantity, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, user_id",
-          )
-          .eq("user_id", targetUserId)
-          .in("snapshot_id", snapshotIds)
-          .order("snapshot_id", { ascending: true })
-          .order("asset_title", { ascending: true })
-          .order("holding_name", { ascending: true }),
-        supabase
-          .from("daily_portfolio_snapshot_cash_accounts")
-          .select(
-            "id, snapshot_id, asset_id, asset_client_id, asset_title, cash_account_id, cash_account_client_id, cash_account_name, currency_code, balance, note, user_id",
-          )
-          .eq("user_id", targetUserId)
-          .in("snapshot_id", snapshotIds)
-          .order("snapshot_id", { ascending: true })
-          .order("asset_title", { ascending: true })
-          .order("cash_account_name", { ascending: true }),
-        supabase
-          .from("snapshot_notes")
-          .select("snapshot_date, note, user_id, created_at, updated_at")
-          .eq("user_id", targetUserId)
-          .in("snapshot_date", snapshotDates),
+        fetchAllRows(() =>
+          supabase
+            .from("daily_portfolio_snapshot_items")
+            .select(
+              "id, snapshot_id, asset_id, asset_client_id, asset_title, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, holding_count, user_id",
+            )
+            .eq("user_id", targetUserId)
+            .in("snapshot_id", snapshotIds)
+            .order("snapshot_id", { ascending: true })
+            .order("asset_title", { ascending: true })
+        ),
+        fetchAllRows(() =>
+          supabase
+            .from("daily_portfolio_snapshot_holding_items")
+            .select(
+              "id, snapshot_id, asset_id, asset_client_id, asset_title, holding_id, holding_client_id, holding_name, holding_symbol, currency_code, quantity, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, user_id",
+            )
+            .eq("user_id", targetUserId)
+            .in("snapshot_id", snapshotIds)
+            .order("snapshot_id", { ascending: true })
+            .order("asset_title", { ascending: true })
+            .order("holding_name", { ascending: true })
+        ),
+        fetchAllRows(() =>
+          supabase
+            .from("daily_portfolio_snapshot_cash_accounts")
+            .select(
+              "id, snapshot_id, asset_id, asset_client_id, asset_title, cash_account_id, cash_account_client_id, cash_account_name, currency_code, balance, note, user_id",
+            )
+            .eq("user_id", targetUserId)
+            .in("snapshot_id", snapshotIds)
+            .order("snapshot_id", { ascending: true })
+            .order("asset_title", { ascending: true })
+            .order("cash_account_name", { ascending: true })
+        ),
+        fetchAllRows(() =>
+          supabase
+            .from("snapshot_notes")
+            .select("snapshot_date, note, user_id, created_at, updated_at")
+            .eq("user_id", targetUserId)
+            .in("snapshot_date", snapshotDates)
+        ),
       ]);
 
     if (itemsResult.error) {

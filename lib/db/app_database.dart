@@ -50,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._internal();
 
   @override
-  int get schemaVersion => 37;
+  int get schemaVersion => 38;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -63,12 +63,7 @@ class AppDatabase extends _$AppDatabase {
       await _ensurePortfolioDailyReturnsTable();
       await _ensureBenchmarkPricesTable();
       await _ensureDailyInvestmentReviewsTable();
-      await customStatement('''
-            CREATE TABLE IF NOT EXISTS snapshot_notes (
-              snapshot_date TEXT NOT NULL PRIMARY KEY,
-              note TEXT NOT NULL DEFAULT ''
-            )
-          ''');
+      await _createCurrentTablesIfNeeded();
       await _migrateLegacyCashHoldingsToCashAccounts();
       await _backfillAllClientIds();
     },
@@ -5390,6 +5385,7 @@ class AppDatabase extends _$AppDatabase {
               DailyPortfolioSnapshotItemsCompanion.insert(
                 snapshotId: snapshotId,
                 assetId: snapshotAssetId(item),
+                assetClientId: Value(_nullableString(item['asset_client_id'])),
                 assetTitle: assetTitle,
                 totalPurchaseAmount: _readDouble(item['total_purchase_amount']),
                 totalValuationAmount: _readDouble(
@@ -5429,7 +5425,13 @@ class AppDatabase extends _$AppDatabase {
                 profitAmount: _readDouble(holding['profit_amount']),
                 profitRate: _readDouble(holding['profit_rate']),
                 assetId: Value.absentIfNull(snapshotNullableAssetId(holding)),
+                assetClientId: Value.absentIfNull(
+                  _nullableString(holding['asset_client_id']),
+                ),
                 holdingId: Value.absentIfNull(snapshotHoldingId(holding)),
+                holdingClientId: Value.absentIfNull(
+                  _nullableString(holding['holding_client_id']),
+                ),
               ),
             );
           }
@@ -5442,13 +5444,16 @@ class AppDatabase extends _$AppDatabase {
             }
             batch.customStatement(
               'INSERT INTO daily_portfolio_snapshot_cash_accounts '
-              '(snapshot_id, asset_id, asset_title, cash_account_id, cash_account_name, currency_code, balance, note) '
-              'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+              '(snapshot_id, asset_id, asset_client_id, asset_title, cash_account_id, '
+              'cash_account_client_id, cash_account_name, currency_code, balance, note) '
+              'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
               [
                 snapshotId,
                 snapshotNullableAssetId(account),
+                _nullableString(account['asset_client_id']),
                 assetTitle,
                 snapshotCashAccountId(account),
+                _nullableString(account['cash_account_client_id']),
                 cashAccountName,
                 _readString(account['currency_code'], fallback: 'KRW'),
                 _readDouble(account['balance']),
@@ -5461,6 +5466,7 @@ class AppDatabase extends _$AppDatabase {
         await saveSnapshotNote(
           snapshotDate: snapshotDate,
           note: _readString(snapshot['note']),
+          markDirty: false,
         );
         importedCount++;
       }
@@ -6175,13 +6181,16 @@ class AppDatabase extends _$AppDatabase {
         if (asset == null) continue;
         batch.customStatement(
           'INSERT INTO daily_portfolio_snapshot_cash_accounts '
-          '(snapshot_id, asset_id, asset_title, cash_account_id, cash_account_name, currency_code, balance, note) '
-          'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          '(snapshot_id, asset_id, asset_client_id, asset_title, cash_account_id, '
+          'cash_account_client_id, cash_account_name, currency_code, balance, note) '
+          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [
             snapshotId,
             account.assetId,
+            asset.clientId,
             asset.alias.isEmpty ? asset.title : asset.alias,
             account.id,
+            account.clientId,
             account.name,
             account.currencyCode,
             account.balance,
@@ -6602,6 +6611,7 @@ class AppDatabase extends _$AppDatabase {
         id: existing?.id ?? syntheticId--,
         snapshotId: holding.snapshotId,
         assetId: resolvedAssetId ?? -1,
+        assetClientId: matchedAsset?.clientId,
         assetTitle: assetTitle,
         totalPurchaseAmount: nextPurchase,
         totalValuationAmount: nextValuation,
@@ -6696,14 +6706,19 @@ class AppDatabase extends _$AppDatabase {
   Future<void> saveSnapshotNote({
     required String snapshotDate,
     required String note,
+    bool markDirty = true,
   }) async {
+    final lastModifiedAt = _syncTimestamp();
     await customStatement(
       '''
-      INSERT INTO snapshot_notes (snapshot_date, note)
-      VALUES (?, ?)
-      ON CONFLICT(snapshot_date) DO UPDATE SET note = excluded.note
+      INSERT INTO snapshot_notes (snapshot_date, note, dirty, last_modified_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(snapshot_date) DO UPDATE SET
+        note = excluded.note,
+        dirty = excluded.dirty,
+        last_modified_at = excluded.last_modified_at
       ''',
-      [snapshotDate, note],
+      [snapshotDate, note, markDirty ? 1 : 0, lastModifiedAt],
     );
   }
 
@@ -7355,6 +7370,12 @@ class AppDatabase extends _$AppDatabase {
     final dirtyTransactionLineRows = await (select(
       transactionLines,
     )..where((table) => table.dirty.equals(true))).get();
+    final dirtySnapshotNoteRows = await customSelect('''
+      SELECT snapshot_date, note, last_modified_at
+      FROM snapshot_notes
+      WHERE dirty = 1
+      ORDER BY snapshot_date ASC
+      ''').get();
 
     final assetClientIdById = {
       for (final row in await select(assets).get())
@@ -7529,6 +7550,16 @@ class AppDatabase extends _$AppDatabase {
         })
         .whereType<Map<String, Object?>>()
         .toList(growable: false);
+    final snapshotNoteRows = dirtySnapshotNoteRows
+        .map(
+          (row) => <String, Object?>{
+            'snapshot_date': row.read<String>('snapshot_date'),
+            'note': row.read<String>('note'),
+            'last_modified_at':
+                row.read<String?>('last_modified_at') ?? _syncTimestamp(),
+          },
+        )
+        .toList(growable: false);
 
     return {
       'payload_version': 4,
@@ -7538,6 +7569,7 @@ class AppDatabase extends _$AppDatabase {
       'cash_accounts': cashAccountRows,
       'transaction_events': transactionEventRows,
       'transaction_lines': transactionLineRows,
+      'snapshot_notes': snapshotNoteRows,
     };
   }
 
@@ -7700,6 +7732,13 @@ class AppDatabase extends _$AppDatabase {
           'transaction_lines',
         ),
       );
+      await _clearSnapshotNoteDirtyByDates(
+        _acceptedOrPayloadSnapshotDates(
+          acceptedClientIds,
+          payload,
+          'snapshot_notes',
+        ),
+      );
     });
   }
 
@@ -7727,6 +7766,30 @@ class AppDatabase extends _$AppDatabase {
         .toList(growable: false);
   }
 
+  List<String> _acceptedOrPayloadSnapshotDates(
+    Map<String, Object?>? acceptedRows,
+    Map<String, Object?> payload,
+    String key,
+  ) {
+    final accepted = acceptedRows?[key];
+    if (accepted is List) {
+      return accepted
+          .map((value) => value?.toString() ?? '')
+          .where((value) => value.isNotEmpty)
+          .toList(growable: false);
+    }
+    return _payloadSnapshotDates(payload[key]);
+  }
+
+  List<String> _payloadSnapshotDates(Object? rawRows) {
+    if (rawRows is! List) return const [];
+    return rawRows
+        .whereType<Map>()
+        .map((row) => row['snapshot_date']?.toString() ?? '')
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+  }
+
   Future<void> _clearDirtyByClientIds(
     String tableName,
     List<String> clientIds,
@@ -7736,6 +7799,17 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'UPDATE $tableName SET dirty = 0 WHERE client_id IN ($placeholders)',
       clientIds,
+    );
+  }
+
+  Future<void> _clearSnapshotNoteDirtyByDates(
+    List<String> snapshotDates,
+  ) async {
+    if (snapshotDates.isEmpty) return;
+    final placeholders = List.filled(snapshotDates.length, '?').join(', ');
+    await customStatement(
+      'UPDATE snapshot_notes SET dirty = 0 WHERE snapshot_date IN ($placeholders)',
+      snapshotDates,
     );
   }
 
@@ -8224,12 +8298,17 @@ class AppDatabase extends _$AppDatabase {
         'ALTER TABLE daily_portfolio_snapshots ADD COLUMN exchange_rate REAL NOT NULL DEFAULT 1',
       );
     }
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS daily_portfolio_snapshots_date_unique '
+      'ON daily_portfolio_snapshots(snapshot_date)',
+    );
 
     await customStatement('''
       CREATE TABLE IF NOT EXISTS daily_portfolio_snapshot_items (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         snapshot_id INTEGER NOT NULL REFERENCES daily_portfolio_snapshots(id),
         asset_id INTEGER NOT NULL REFERENCES assets(id),
+        asset_client_id TEXT,
         asset_title TEXT NOT NULL,
         total_purchase_amount REAL NOT NULL,
         total_valuation_amount REAL NOT NULL,
@@ -8238,21 +8317,43 @@ class AppDatabase extends _$AppDatabase {
         holding_count INTEGER NOT NULL
       )
     ''');
+    if (!await _columnExists(
+      'daily_portfolio_snapshot_items',
+      'asset_client_id',
+    )) {
+      await customStatement(
+        'ALTER TABLE daily_portfolio_snapshot_items ADD COLUMN asset_client_id TEXT',
+      );
+    }
 
     await customStatement('''
       CREATE TABLE IF NOT EXISTS snapshot_notes (
         snapshot_date TEXT NOT NULL PRIMARY KEY,
-        note TEXT NOT NULL DEFAULT ''
+        note TEXT NOT NULL DEFAULT '',
+        dirty INTEGER NOT NULL DEFAULT 0,
+        last_modified_at TEXT
       )
     ''');
+    if (!await _columnExists('snapshot_notes', 'dirty')) {
+      await customStatement(
+        'ALTER TABLE snapshot_notes ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0',
+      );
+    }
+    if (!await _columnExists('snapshot_notes', 'last_modified_at')) {
+      await customStatement(
+        'ALTER TABLE snapshot_notes ADD COLUMN last_modified_at TEXT',
+      );
+    }
 
     await customStatement('''
       CREATE TABLE IF NOT EXISTS daily_portfolio_snapshot_holding_items (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         snapshot_id INTEGER NOT NULL REFERENCES daily_portfolio_snapshots(id),
         asset_id INTEGER,
+        asset_client_id TEXT,
         asset_title TEXT NOT NULL,
         holding_id INTEGER,
+        holding_client_id TEXT,
         holding_name TEXT NOT NULL,
         holding_symbol TEXT NOT NULL,
         currency_code TEXT NOT NULL,
@@ -8263,20 +8364,54 @@ class AppDatabase extends _$AppDatabase {
         profit_rate REAL NOT NULL
       )
     ''');
+    if (!await _columnExists(
+      'daily_portfolio_snapshot_holding_items',
+      'asset_client_id',
+    )) {
+      await customStatement(
+        'ALTER TABLE daily_portfolio_snapshot_holding_items ADD COLUMN asset_client_id TEXT',
+      );
+    }
+    if (!await _columnExists(
+      'daily_portfolio_snapshot_holding_items',
+      'holding_client_id',
+    )) {
+      await customStatement(
+        'ALTER TABLE daily_portfolio_snapshot_holding_items ADD COLUMN holding_client_id TEXT',
+      );
+    }
 
     await customStatement('''
       CREATE TABLE IF NOT EXISTS daily_portfolio_snapshot_cash_accounts (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         snapshot_id INTEGER NOT NULL REFERENCES daily_portfolio_snapshots(id),
         asset_id INTEGER,
+        asset_client_id TEXT,
         asset_title TEXT NOT NULL,
         cash_account_id INTEGER,
+        cash_account_client_id TEXT,
         cash_account_name TEXT NOT NULL,
         currency_code TEXT NOT NULL,
         balance REAL NOT NULL,
         note TEXT NOT NULL DEFAULT ''
       )
     ''');
+    if (!await _columnExists(
+      'daily_portfolio_snapshot_cash_accounts',
+      'asset_client_id',
+    )) {
+      await customStatement(
+        'ALTER TABLE daily_portfolio_snapshot_cash_accounts ADD COLUMN asset_client_id TEXT',
+      );
+    }
+    if (!await _columnExists(
+      'daily_portfolio_snapshot_cash_accounts',
+      'cash_account_client_id',
+    )) {
+      await customStatement(
+        'ALTER TABLE daily_portfolio_snapshot_cash_accounts ADD COLUMN cash_account_client_id TEXT',
+      );
+    }
 
     await customStatement('''
       CREATE TABLE IF NOT EXISTS asset_allocation_targets (

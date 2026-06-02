@@ -34,6 +34,7 @@ type SyncTable =
   | "cash_accounts"
   | "transaction_events"
   | "transaction_lines";
+type AcceptedSyncKey = SyncTable | "snapshot_notes";
 type MappedTable =
   | "assets"
   | "holdings"
@@ -326,6 +327,85 @@ async function upsertRows(
   };
 }
 
+async function upsertSnapshotNotes(
+  adminClient: SupabaseClient,
+  rows: JsonRow[],
+): Promise<UpsertResult> {
+  if (rows.length === 0) {
+    return { acceptedClientIds: [], conflicts: [] };
+  }
+
+  const userId = String(rows[0].user_id ?? "");
+  const snapshotDates = rows
+    .map((row) => String(row.snapshot_date ?? "").trim())
+    .filter((date) => date.length > 0);
+  if (snapshotDates.length === 0) {
+    return { acceptedClientIds: [], conflicts: [] };
+  }
+
+  const { data: currentRows, error: currentError } = await adminClient
+    .from("snapshot_notes")
+    .select("snapshot_date, updated_at")
+    .eq("user_id", userId)
+    .in("snapshot_date", snapshotDates);
+
+  if (currentError) {
+    throw new Error(
+      `snapshot_notes conflict preload failed: ${currentError.message}`,
+    );
+  }
+
+  const currentUpdatedAtByDate = new Map<string, string | null>();
+  for (const row of currentRows ?? []) {
+    const snapshotDate = String(row.snapshot_date ?? "").trim();
+    if (snapshotDate.length === 0) continue;
+    currentUpdatedAtByDate.set(snapshotDate, asTimestamp(row.updated_at));
+  }
+
+  const acceptedRows: JsonRow[] = [];
+  const conflicts: ConflictRow[] = [];
+  for (const row of rows) {
+    const snapshotDate = String(row.snapshot_date ?? "").trim();
+    if (snapshotDate.length === 0) continue;
+    const clientLastModifiedAt = asTimestamp(row.updated_at);
+    const serverLastModifiedAt = currentUpdatedAtByDate.get(snapshotDate) ??
+      null;
+    if (
+      currentUpdatedAtByDate.has(snapshotDate) &&
+      compareTimestamps(clientLastModifiedAt, serverLastModifiedAt) < 0
+    ) {
+      conflicts.push({
+        table: "snapshot_notes",
+        client_id: snapshotDate,
+        reason: "server_newer",
+        client_last_modified_at: clientLastModifiedAt,
+        server_last_modified_at: serverLastModifiedAt,
+      });
+      continue;
+    }
+    acceptedRows.push(row);
+  }
+
+  if (acceptedRows.length === 0) {
+    return { acceptedClientIds: [], conflicts };
+  }
+
+  const { error } = await adminClient
+    .from("snapshot_notes")
+    .upsert(acceptedRows, { onConflict: "user_id,snapshot_date" });
+
+  if (error) {
+    throw new Error(`snapshot_notes upsert failed: ${error.message}`);
+  }
+
+  return {
+    acceptedClientIds: acceptedRows
+      .map((row) => String(row.snapshot_date ?? "").trim())
+      .filter((date) => date.length > 0),
+    conflicts,
+  };
+}
+
 Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -389,13 +469,15 @@ Deno.serve(async (req) => {
     const rawCashAccountRows = asRows(body.cash_accounts);
     const rawTransactionEventRows = asRows(body.transaction_events);
     const rawTransactionLineRows = asRows(body.transaction_lines);
+    const rawSnapshotNoteRows = asRows(body.snapshot_notes);
     const preservedRows: PreserveSummary[] = [];
-    const acceptedClientIds: Record<SyncTable, string[]> = {
+    const acceptedClientIds: Record<AcceptedSyncKey, string[]> = {
       assets: [],
       holdings: [],
       cash_accounts: [],
       transaction_events: [],
       transaction_lines: [],
+      snapshot_notes: [],
     };
     const conflicts: ConflictRow[] = [];
 
@@ -740,6 +822,31 @@ Deno.serve(async (req) => {
       transactionLineUpsert.acceptedClientIds;
     conflicts.push(...transactionLineUpsert.conflicts);
 
+    const snapshotNoteRows = attachUserId(rawSnapshotNoteRows, userId)
+      .map((row) =>
+        pickColumns(
+          {
+            ...row,
+            updated_at: asTimestamp(row["last_modified_at"]) ??
+              asTimestamp(row["updated_at"]) ??
+              new Date().toISOString(),
+          },
+          [
+            "snapshot_date",
+            "note",
+            "user_id",
+            "updated_at",
+          ],
+        )
+      );
+    const snapshotNotesUpsert = await upsertSnapshotNotes(
+      adminClient,
+      snapshotNoteRows,
+    );
+    acceptedClientIds.snapshot_notes =
+      snapshotNotesUpsert.acceptedClientIds;
+    conflicts.push(...snapshotNotesUpsert.conflicts);
+
     return jsonResponse({
       ok: true,
       step: "done",
@@ -752,6 +859,7 @@ Deno.serve(async (req) => {
         cash_accounts: cashAccountRows.length,
         transaction_events: transactionEventRows.length,
         transaction_lines: transactionLineRows.length,
+        snapshot_notes: snapshotNoteRows.length,
       },
       accepted_client_ids: acceptedClientIds,
       conflict_count: conflicts.length,

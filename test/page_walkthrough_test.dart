@@ -524,6 +524,7 @@ DailyPortfolioSnapshotItem _snapshotItemFor(_WalkthroughIds ids) {
     id: 1,
     snapshotId: 1,
     assetId: ids.stockAssetId,
+    assetClientId: null,
     assetTitle: '주식',
     totalPurchaseAmount: 600000,
     totalValuationAmount: 700000,
