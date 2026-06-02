@@ -2,48 +2,48 @@
 
 ## Bug summary
 
-After login, bottom-tab pages can initially show stale or incorrect local data until the user manually pulls to refresh.
+After login, bottom-tab pages may first show stale/wrong local data until manual pull-refresh.
 
 ## User impact
 
-Users can sign in successfully but see data that does not match the signed-in account on the first visible tab render. This undermines trust in account switching and makes pull-to-refresh feel required after every login.
+User signs in, but first visible tab may show data from wrong account. Trust in account switch drops; pull-refresh feels mandatory after each login.
 
 ## Reproduction or evidence
 
-- User report: after login, strange data appears first; pull-to-refresh shows the correct data.
+- User report: after login, strange data appears first; pull-to-refresh shows correct data.
 - Code evidence:
   - `LoginPage._handleLogin()` calls `AuthService.signIn()` before clearing local data and running post-login sync.
   - `AppShellPage` listens to auth events behind the login route and calls `refreshFromServer()` as soon as a signed-in auth state arrives.
-  - Data tabs are preserved in an `IndexedStack`, so their existing state can render before the post-login sync fully settles.
-  - The prior logout fix already showed that data tabs need an explicit local-data lifecycle scope.
+  - Data tabs preserved in `IndexedStack`, so old state can render before post-login sync settles.
+  - Prior logout fix already showed data tabs need explicit local-data lifecycle scope.
 
 ## Root cause hypothesis
 
-The app does not have a single lifecycle signal for "account data is being replaced" and "account data is ready." Sign-in auth events, login-page cleanup, remote pull, and data-tab refresh can race, leaving preserved tab state visible with pre-sync or intermediate data.
+No single lifecycle signal for "account data replacing" and "account data ready." Sign-in auth events, login cleanup, remote pull, and tab refresh race. Preserved tab state can show pre-sync/intermediate data.
 
 ## Fix strategy
 
-- Add a small app data lifecycle coordinator for local account-data replacement.
-- Let `AppShellPage` listen to this coordinator and:
-  - replace data tabs with a neutral loading/cleanup state while account data is being replaced;
-  - recreate data-tab subtrees when account data becomes ready;
-  - increment refresh ticks so inactive tabs do not keep old futures or cached lists.
-- Have login start the account-data replacement state before local DB cleanup and complete it only after post-login sync succeeds and before the login route pops.
-- Keep existing logout behavior on the same coordinator-style path where possible.
+- Add small app data lifecycle coordinator for local account-data replacement.
+- Let `AppShellPage` listen to coordinator and:
+  - replace data tabs with neutral loading/cleanup state while account data replacing;
+  - recreate data-tab subtrees when account data ready;
+  - increment refresh ticks so inactive tabs drop old futures/cached lists.
+- Login starts account-data replacement before local DB cleanup; completes only after post-login sync succeeds and before login route pops.
+- Keep logout on same coordinator-style path where possible.
 
 ## Non-goals
 
 - No Supabase schema or Edge Function changes.
-- No rewrite of individual tab pages.
-- No change to account credentials or profile flows.
+- No individual tab page rewrite.
+- No account credentials/profile flow change.
 
 ## Regression test plan
 
-- Add a focused widget test for the data-scoped tab wrapper that verifies preserved old content is hidden during account-data replacement and a new scoped child renders afterward.
-- Keep the existing logout stale-tab regression.
+- Add focused widget test for data-scoped tab wrapper: old preserved content hidden during account-data replacement; new scoped child renders afterward.
+- Keep existing logout stale-tab regression.
 - Run `flutter test test/page_walkthrough_test.dart`.
 - Run `flutter analyze`.
 
 ## Risk and rollback notes
 
-Risk is concentrated in shell lifecycle state. If needed, rollback the coordinator and scope-version changes to return to the previous auth-event refresh behavior.
+Risk mainly shell lifecycle state. Rollback: remove coordinator and scope-version changes; return to prior auth-event refresh behavior.

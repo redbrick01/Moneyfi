@@ -1,20 +1,22 @@
 # Simple Patch Docs
 
-구조 개선, 보안/품질 강화, 테스트/CI 보강, 정책 정리처럼 기존 동작을 유지하면서 시스템 신뢰도를 높이는 작업을 보관합니다.
+Simple patch docs keep `plan.md` as canonical source. Per-run reports, audits, verification files, and generated backups were removed after consolidation.
+
+| 작업 | Canonical doc | 상태 요약 |
+| --- | --- | --- |
+| App Database Modularization | [Plan](app_database_modularization/plan.md) | Modularization plan kept as source. |
+| CI/CD Minimum | [Plan](ci_cd_minimum/plan.md) | Minimum CI/CD setup kept in plan. |
+| Design-MD Full Compliance | [Plan](design_md_full_compliance/plan.md) | Audit matrix, component contract, stage notes, and verification merged into plan. |
+| Design Token Unification | [Plan](design_token_unification/plan.md) | Stage plans, reports, audits, and verification merged into plan. |
+| Edge Function Auth | [Plan](edge_function_auth/plan.md) | Edge auth patch kept in plan. |
+| Font Family Tokenization | [Plan](font_family_tokenization/plan.md) | Font-family implementation notes removed after plan retention. |
+| Font Weight Tokenization | [Plan](font_weight_tokenization/plan.md) | Font-weight audit/report removed after plan retention. |
+| Input Validation Hardening | [Plan](input_validation_hardening/plan.md) | Validation hardening kept in plan. |
+| Ledger Numeric Regression | [Plan](ledger_numeric_regression/plan.md) | Numeric regression patch kept in plan. |
+| Supabase Frontend-Only Hidden State | [Plan](supabase_frontend_only_hidden/plan.md) | Supabase hidden-state UI policy kept in plan. |
+| Supabase RLS Hardening | [Plan](supabase_rls_hardening/plan.md) | RLS hardening kept in plan. |
+| Sync Conflict Policy | [Plan](sync_conflict_policy/plan.md) | Sync conflict policy kept in plan. |
+| Transaction History Filter Redesign | this index | 2026-05-29 implementation report archived into index; no active plan kept. |
+| Transaction Tab UI Density | [Plan](transaction_tab_ui_density/plan.md) | Density patch kept in plan. |
 
 프로세스는 [Simple Patch Process Guidelines](../../guides/simple_patch_process_guidelines.md)를 따릅니다.
-
-| 작업 | 문서 |
-| --- | --- |
-| App Database Modularization | [Plan](app_database_modularization/plan.md), [Verification](app_database_modularization/verification_test_plan.md), [Test Report](app_database_modularization/test_report_20260524.md) |
-| CI/CD Minimum | [Plan](ci_cd_minimum/plan.md), [Verification](ci_cd_minimum/verification_test_plan.md), [Test Report](ci_cd_minimum/test_report_20260524.md) |
-| Design Token Unification | [Docs](design_token_unification/README.md), [Plan](design_token_unification/plan.md), [Coverage Matrix](design_token_unification/plan_parts/00_coverage_matrix.md), [Pre-Implementation Check](design_token_unification/pre_implementation_check_20260529.md), [Stage Plans](design_token_unification/plan_parts/01_audit_and_guardrails.md), [Verification](design_token_unification/verification_test_plan.md), [Test Report 02A](design_token_unification/test_report_20260529_batch_02a.md), [Test Report 02C-1](design_token_unification/test_report_20260529_batch_02c_1.md), [Test Report 02C-2](design_token_unification/test_report_20260529_batch_02c_2.md), [Test Report 02D](design_token_unification/test_report_20260529_batch_02d.md), [Test Report 02B](design_token_unification/test_report_20260529_batch_02b.md), [Test Report 03A](design_token_unification/test_report_20260529_stage_03a.md), [Test Report 03B](design_token_unification/test_report_20260529_stage_03b.md), [Test Report 04A](design_token_unification/test_report_20260529_stage_04a.md), [Test Report 04B](design_token_unification/test_report_20260529_stage_04b.md), [Test Report 04C](design_token_unification/test_report_20260529_stage_04c.md), [Test Report 04D](design_token_unification/test_report_20260529_stage_04d.md), [Test Report 05A](design_token_unification/test_report_20260529_stage_05a.md), [Test Report 05B](design_token_unification/test_report_20260529_stage_05b.md), [Test Report 05C](design_token_unification/test_report_20260529_stage_05c.md), [Test Report 05D](design_token_unification/test_report_20260529_stage_05d.md), [Test Report 05E](design_token_unification/test_report_20260529_stage_05e.md), [Test Report 06A](design_token_unification/test_report_20260529_stage_06a.md), [Test Report 06B](design_token_unification/test_report_20260529_stage_06b.md), [Test Report 06C](design_token_unification/test_report_20260529_stage_06c.md), [Test Report 06D](design_token_unification/test_report_20260529_stage_06d.md), [Test Report 07](design_token_unification/test_report_20260529_stage_07.md), [Test Report 07 Follow-up](design_token_unification/test_report_20260529_stage_07_followup.md) |
-| Edge Function Auth | [Plan](edge_function_auth/plan.md), [Verification](edge_function_auth/verification_test_plan.md), [Test Report](edge_function_auth/test_report_20260524.md) |
-| Font Family Tokenization | [Plan](font_family_tokenization/plan.md), [Implementation Report](font_family_tokenization/implementation_report.md) |
-| Font Weight Tokenization | [Plan](font_weight_tokenization/plan.md), [Audit](font_weight_tokenization/weight_audit.md), [Implementation Report](font_weight_tokenization/implementation_report.md) |
-| Input Validation Hardening | [Plan](input_validation_hardening/plan.md), [Verification](input_validation_hardening/verification_test_plan.md), [Test Report](input_validation_hardening/test_report_20260524.md) |
-| Ledger Numeric Regression | [Plan](ledger_numeric_regression/plan.md), [Verification](ledger_numeric_regression/verification_test_plan.md), [Test Report](ledger_numeric_regression/test_report_20260524.md) |
-| Supabase RLS Hardening | [Plan](supabase_rls_hardening/plan.md), [Verification](supabase_rls_hardening/verification_test_plan.md), [Test Report](supabase_rls_hardening/test_report_20260524.md) |
-| Supabase Frontend-Only Hidden State | [Plan](supabase_frontend_only_hidden/plan.md), [Verification](supabase_frontend_only_hidden/verification_test_plan.md), [Test Report](supabase_frontend_only_hidden/test_report_20260525.md) |
-| Sync Conflict Policy | [Plan](sync_conflict_policy/plan.md), [Verification](sync_conflict_policy/verification_test_plan.md), [Test Report](sync_conflict_policy/test_report_20260524.md) |
-| Transaction Tab UI Density | [Plan](transaction_tab_ui_density/plan.md), [Verification](transaction_tab_ui_density/verification_test_plan.md), [Test Report](transaction_tab_ui_density/test_report_20260525.md) |

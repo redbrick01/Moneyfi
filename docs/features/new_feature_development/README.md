@@ -1,16 +1,18 @@
 # New Feature Development Docs
 
-새 화면, 새 사용자 기능, 주요 제품 경험 확장 작업을 보관합니다.
+New feature docs keep `plan.md` as canonical source. Per-run reports and verification files were removed after consolidation.
 
-| 작업 | 문서 |
-| --- | --- |
-| Investment Performance | [README](investment_performance/README.md), [Plan](investment_performance/plan.md), [Verification](investment_performance/verification_test_plan.md), [Test Report](investment_performance/test_report_20260524.md) |
-| Benchmark And Risk-Adjusted Performance | [Plan](risk_adjusted_benchmark_performance/plan.md), [Verification](risk_adjusted_benchmark_performance/verification_test_plan.md), [Implementation 01](risk_adjusted_benchmark_performance/implementation_report_01_calculation_contract.md), [Implementation 02](risk_adjusted_benchmark_performance/implementation_report_02_derived_daily_returns.md), [Implementation 03](risk_adjusted_benchmark_performance/implementation_report_03_benchmark_data.md), [Implementation 04](risk_adjusted_benchmark_performance/implementation_report_04_ui_integration.md), [Implementation 05](risk_adjusted_benchmark_performance/implementation_report_05_supabase_and_sync_safety.md), [Implementation 06](risk_adjusted_benchmark_performance/implementation_report_06_rollout_gate.md), [Implementation 07](risk_adjusted_benchmark_performance/implementation_report_07_benchmark_api_and_dual_comparison.md), [Implementation 08](risk_adjusted_benchmark_performance/implementation_report_08_yahoo_irx_risk_free_rate.md), [Release Gate](risk_adjusted_benchmark_performance/release_gate_06.md), [Plan 07](risk_adjusted_benchmark_performance/plan_parts/07_benchmark_api_and_dual_comparison.md), [Plan 08](risk_adjusted_benchmark_performance/plan_parts/08_yahoo_irx_risk_free_rate.md) |
-| Transaction Management Page | [Plan](transaction_management_page/plan.md), [Verification](transaction_management_page/verification_test_plan.md), [Test Report](transaction_management_page/test_report_20260525.md), [Implementation Report](transaction_management_page/implementation_report_20260525.md) |
-| Transaction Event Rows | [Plan](transaction_event_rows/plan.md), [Verification](transaction_event_rows/verification_test_plan.md), [Test Report](transaction_event_rows/test_report_20260525.md) |
-| Transaction Form Ledger Layout | [Plan](transaction_form_ledger_layout/plan.md), [Verification](transaction_form_ledger_layout/verification_test_plan.md), [Test Report](transaction_form_ledger_layout/test_report_20260525.md) |
-| Sell Quantity Percentage Shortcuts | [Plan](sell_quantity_percentage_shortcuts/plan.md), [Test Report](sell_quantity_percentage_shortcuts/test_report_20260528.md) |
-| Transaction Percentage Shortcuts Expansion | [Plan](transaction_percentage_shortcuts_expansion/plan.md), [Test Report](transaction_percentage_shortcuts_expansion/test_report_20260528.md) |
-| Transaction Event Flow Classification | [Plan](transaction_event_flow_classification/plan.md), [Verification](transaction_event_flow_classification/verification_test_plan.md), [Test Report](transaction_event_flow_classification/test_report_20260525.md), [Implementation Report](transaction_event_flow_classification/implementation_report_20260525.md) |
-| Portfolio Diagnosis | [Plan](portfolio_diagnosis/plan.md), [Verification](portfolio_diagnosis/verification_test_plan.md), [Test Report](portfolio_diagnosis/test_report_20260524.md) |
-| Profile Management Minimum | [Plan](profile_management_minimum/plan.md), [Verification](profile_management_minimum/verification_test_plan.md), [Test Report](profile_management_minimum/test_report_20260524.md) |
+| 작업 | Canonical doc | 상태 요약 |
+| --- | --- | --- |
+| Investment Performance | [Plan](investment_performance/plan.md) | Redesign, inventory, implementation, and verification notes merged into plan. |
+| Investment Review Hub | this index | 2026-05-31 implementation report archived into index; no active plan kept. |
+| Page Flow Redesign | [Plan](page_flow_redesign/plan.md) | Plan A-I, route/test matrices, reports, and 5-tab decision merged into plan. |
+| Portfolio Diagnosis | [Plan](portfolio_diagnosis/plan.md) | Plan remains canonical; old development/test/verification reports removed. |
+| Profile Management Minimum | [Plan](profile_management_minimum/plan.md) | Minimum profile management scope kept in plan. |
+| Benchmark And Risk-Adjusted Performance | [Plan](risk_adjusted_benchmark_performance/plan.md) | Plan parts, implementation reports, release gate, and verification merged into plan. |
+| Sell Quantity Percentage Shortcuts | [Plan](sell_quantity_percentage_shortcuts/plan.md) | Shortcut behavior and test notes kept in plan. |
+| Transaction Event Flow Classification | [Plan](transaction_event_flow_classification/plan.md) | Classification plan kept as source; implementation/test notes removed. |
+| Transaction Event Rows | [Plan](transaction_event_rows/plan.md) | Event row behavior kept in plan. |
+| Transaction Form Ledger Layout | [Plan](transaction_form_ledger_layout/plan.md) | Form ledger layout kept in plan. |
+| Transaction Management Page | [Plan](transaction_management_page/plan.md) | Management page plan kept as source; reports removed. |
+| Transaction Percentage Shortcuts Expansion | [Plan](transaction_percentage_shortcuts_expansion/plan.md) | Percentage shortcut expansion kept in plan. |

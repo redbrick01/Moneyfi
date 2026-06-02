@@ -61,28 +61,27 @@
 
 ## Feature Work Collections
 
-작업 단위 문서는 `plan.md`, `verification_test_plan.md`, `test_report_YYYYMMDD.md`, `implementation_report*.md`, `operational_runbook.md`, `release_gate*.md` 같은 역할별 파일명으로 정리합니다.
+작업 단위 문서는 `plan.md`를 canonical record로 둡니다. 과거 `verification_test_plan.md`, `test_report_YYYYMMDD.md`, `implementation_report*.md`, `operational_runbook.md`, `release_gate*.md`, `plan_parts/`는 핵심만 `plan.md` 또는 분류별 README에 병합하고 제거했습니다.
 
 | 분류 | 인덱스 | 작업 폴더 |
 | --- | --- | --- |
-| 새로운 기능 개발 | [new_feature_development/README](features/new_feature_development/README.md) | `investment_performance`, `portfolio_diagnosis`, `profile_management_minimum`, `risk_adjusted_benchmark_performance`, `sell_quantity_percentage_shortcuts`, `transaction_event_flow_classification`, `transaction_event_rows`, `transaction_form_ledger_layout`, `transaction_management_page`, `transaction_percentage_shortcuts_expansion` |
-| 단순 패치 | [simple_patches/README](features/simple_patches/README.md) | `app_database_modularization`, `ci_cd_minimum`, `design_token_unification`, `edge_function_auth`, `input_validation_hardening`, `ledger_numeric_regression`, `supabase_frontend_only_hidden`, `supabase_rls_hardening`, `sync_conflict_policy`, `transaction_tab_ui_density` |
+| 새로운 기능 개발 | [new_feature_development/README](features/new_feature_development/README.md) | `investment_performance`, `page_flow_redesign`, `portfolio_diagnosis`, `profile_management_minimum`, `risk_adjusted_benchmark_performance`, `sell_quantity_percentage_shortcuts`, `transaction_event_flow_classification`, `transaction_event_rows`, `transaction_form_ledger_layout`, `transaction_management_page`, `transaction_percentage_shortcuts_expansion` |
+| 단순 패치 | [simple_patches/README](features/simple_patches/README.md) | `app_database_modularization`, `ci_cd_minimum`, `design_md_full_compliance`, `design_token_unification`, `edge_function_auth`, `font_family_tokenization`, `font_weight_tokenization`, `input_validation_hardening`, `ledger_numeric_regression`, `supabase_frontend_only_hidden`, `supabase_rls_hardening`, `sync_conflict_policy`, `transaction_tab_ui_density` |
 | 버그 픽스 | [bug_fixes/README](features/bug_fixes/README.md) | `analysis_detail_back_navigation`, `cash_snapshot_profit_fix`, `crypto_sell_quantity_precision`, `external_api_fallbacks`, `ledger_realized_pnl_moving_average_recompute`, `login_initial_stale_tab_data`, `login_sync_failure_ux`, `login_sync_overlay_layout`, `logout_stale_tab_data`, `news_cache_staleness`, `optional_local_config`, `record_only_remote_state_reconcile`, `snapshot_detail_holdings_fix`, `transaction_pull_refresh_remote_sync`, `transaction_record_only_calculation_sync`, `transaction_tab_null_row_crash`, `usd_realized_pnl_currency_basis` |
-| 수동 테스트 | `features/manual_tests/` | macOS 거래 흐름, 분석 페이지 수동 테스트 계획/보고서 |
 | 통합 보고서 | `reports/` | [Implementation Report 2026-05-24](reports/implementation_report_20260524.md) |
 
 ## Feature Folder Rules
 
 | 파일명 | 의미 |
 | --- | --- |
-| `plan.md` | 범위, 설계, 구현 단계 |
-| `verification_test_plan.md` | 자동/수동 검증 계획 |
-| `test_report_YYYYMMDD.md` | 실제 검증 결과 |
-| `implementation_report*.md` | 구현 세부 내용과 잔여 리스크 |
-| `plan_parts/` | 큰 작업을 여러 단계로 나눈 상세 계획 |
-| `tmp_*.md` | 임시 개발 메모. 상위 인덱스에는 직접 연결하지 않음 |
-| `operational_runbook.md` | 배포, 원격 적용, 운영 절차 |
-| `release_gate*.md` | 릴리스 전 승인/차단 조건 |
+| `plan.md` | 범위, 설계, 구현 단계, 핵심 검증 결과를 담는 canonical record |
+| category `README.md` | 작업 목록, 삭제된 과거 리포트의 짧은 상태 요약, canonical link |
+
+삭제/병합 대상:
+
+- `*.original.md`: 임시 압축 백업. 원문 복구 검토 후 제거.
+- `verification_test_plan.md`, `test_report_YYYYMMDD.md`, `implementation_report*.md`: 핵심만 `plan.md` 또는 category README에 병합.
+- `plan_parts/`, `manual_notes/`, `tmp_*.md`, `operational_runbook.md`, `release_gate*.md`: 큰 작업 완료 후 `plan.md`에 요약 병합.
 
 ## Maintenance Checklist
 
@@ -90,5 +89,6 @@
 - 새 기능은 `docs/features/new_feature_development/<work>/`에 둡니다.
 - 구조 개선, 보안/품질 강화, 테스트/CI 보강은 `docs/features/simple_patches/<work>/`에 둡니다.
 - 사용자에게 보이는 실패나 잘못된 계산 수정은 `docs/features/bug_fixes/<work>/`에 둡니다.
+- 작업 완료 후 개별 실행 리포트를 장기 보관하지 말고 `plan.md`에 핵심 결과만 남깁니다.
 - 루트 성격의 장기 문서는 `docs/` 바로 아래에 두고, 일회성 작업 기록은 기능 폴더 안에 둡니다.
 - 비밀값, 개인 계정 정보, service role key는 문서에 적지 않습니다.

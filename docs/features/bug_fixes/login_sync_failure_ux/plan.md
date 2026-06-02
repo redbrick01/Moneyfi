@@ -2,46 +2,46 @@
 
 ## Product Goal
 
-로그인 직후 코어 데이터, 뉴스, 스냅샷 동기화 중 일부가 실패해도 사용자가 현재 상태와 다음 행동을 명확히 이해하도록 안내한다.
+로그인 직후 코어 데이터/뉴스/스냅샷 동기화 일부 실패해도 사용자: 현재 상태 + 다음 행동 명확히 앎.
 
 ## Current Baseline
 
-- LoginPage는 코어 데이터, 뉴스, 스냅샷을 순서대로 처리하고 SyncOverlay에 단계 상태를 표시한다.
-- 실패 문구는 "단계에서 실패했어요" 수준이라 사용자가 재시도해야 하는지, 앱을 계속 써도 되는지 알기 어렵다.
-- 뉴스나 스냅샷처럼 부가 데이터만 실패해도 사용자가 LoginPage에 남을 수 있다.
+- LoginPage: 코어 데이터 -> 뉴스 -> 스냅샷 순서 처리. SyncOverlay에 단계 상태 표시.
+- 실패 copy: "단계에서 실패했어요" 수준. 사용자: 재시도 필요? 앱 계속 써도 됨? 모름.
+- 뉴스/스냅샷 같은 부가 데이터만 실패해도 LoginPage에 남을 수 있음.
 
 ## Success Criteria
 
-- 코어 데이터 실패는 앱 시작에 필요한 데이터가 적용되지 않았음을 명확히 안내한다.
-- 뉴스 실패는 자산/거래 데이터는 적용됐고 뉴스는 나중에 재동기화할 수 있음을 안내한다.
-- 스냅샷 실패는 분석 차트/성과 일부가 최신이 아닐 수 있음을 안내한다.
-- 코어 이후 단계 실패는 앱으로 이동할 수 있는 선택지를 제공한다.
-- SyncOverlay의 실패 상세, 재시도 안내, 단계별 meta가 자동 테스트로 고정된다.
+- 코어 데이터 실패: 앱 시작 필수 데이터 미적용 명확히 안내.
+- 뉴스 실패: 자산/거래 데이터 적용됨. 뉴스 나중 재동기화 가능 안내.
+- 스냅샷 실패: 분석 차트/성과 일부 최신 아닐 수 있음 안내.
+- 코어 이후 단계 실패: 앱 이동 선택지 제공.
+- SyncOverlay 실패 상세, 재시도 안내, 단계별 meta 자동 테스트 고정.
 
 ## Proposed UX
 
-- 실패 카드에는 짧은 제목과 구체적 detail을 함께 표시한다.
-- RetryRow에는 단계별 재시도 판단 기준을 표시한다.
-- 코어 실패의 보조 버튼은 `닫기`로 유지한다.
-- 뉴스/스냅샷 실패의 보조 버튼은 `앱으로 이동`으로 표시하고 LoginPage를 닫는다.
+- 실패 카드: 짧은 제목 + 구체 detail 표시.
+- RetryRow: 단계별 재시도 판단 기준 표시.
+- 코어 실패 보조 버튼: `닫기` 유지.
+- 뉴스/스냅샷 실패 보조 버튼: `앱으로 이동` 표시, LoginPage 닫음.
 
 ## Data/API Changes
 
-- DB schema, Supabase Edge Function, sync payload 계약은 변경하지 않는다.
-- LoginPage와 SyncOverlay의 UI copy 및 close behavior만 변경한다.
+- DB schema, Supabase Edge Function, sync payload 계약 변경 없음.
+- LoginPage + SyncOverlay UI copy, close behavior만 변경.
 
 ## Development Phases
 
-1. LoginPage 동기화 단계와 SyncOverlay 표현 방식 확인.
+1. LoginPage 동기화 단계 + SyncOverlay 표현 확인.
 2. 단계별 실패 copy 모델 추가.
 3. SyncOverlay에 상세 문구, 재시도 문구, close label 주입 지원.
-4. Widget/unit 테스트로 문구와 행동 기준 고정.
-5. 문서와 검증 결과 업데이트.
+4. Widget/unit 테스트로 문구 + 행동 기준 고정.
+5. 문서 + 검증 결과 업데이트.
 
 ## MVP Scope
 
 - LoginPage post-login sync 실패 안내 개선.
-- SyncOverlay의 optional copy prop 추가.
+- SyncOverlay optional copy prop 추가.
 - `sync_overlay_test.dart` 업데이트.
 
 ## Test Plan
@@ -56,12 +56,12 @@ git diff --check
 
 ## Risks And Decisions
 
-- 뉴스/스냅샷 실패는 코어 데이터가 이미 적용된 뒤라 앱 진입을 허용한다.
-- 코어 데이터 실패는 로그인은 됐더라도 로컬 데이터가 비어 있을 수 있으므로 앱 진입보다 재시도를 우선 안내한다.
-- 세부 실패 원인은 서비스가 bool/int로만 반환하므로 이번 patch에서는 사용자 행동 중심 copy로 해결한다.
+- 뉴스/스냅샷 실패: 코어 데이터 이미 적용됨. 앱 진입 허용.
+- 코어 데이터 실패: 로그인 됐어도 로컬 데이터 비었을 수 있음. 앱 진입보다 재시도 우선.
+- 세부 실패 원인: 서비스가 bool/int만 반환. 이번 patch는 사용자 행동 중심 copy로 해결.
 
 ## Feasibility And Feedback
 
-- 기존 SyncOverlay 구조에 optional copy만 추가하면 되어 변경 범위가 작다.
-- 정확한 서버 오류 분류까지 하려면 SyncService의 반환 타입 확장이 필요하므로 이번 MVP에서는 제외한다.
-- 이후에는 네트워크 오류, 인증 만료, payload version mismatch를 구분하는 typed result로 확장할 수 있다.
+- 기존 SyncOverlay 구조에 optional copy만 추가. 변경 범위 작음.
+- 정확한 서버 오류 분류 필요하면 SyncService 반환 타입 확장 필요. 이번 MVP 제외.
+- 이후 typed result로 네트워크 오류, 인증 만료, payload version mismatch 구분 가능.

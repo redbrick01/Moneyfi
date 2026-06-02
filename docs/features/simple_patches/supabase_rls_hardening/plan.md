@@ -2,28 +2,28 @@
 
 ## Product Goal
 
-원격 Supabase DB의 `anon`/`authenticated` 권한과 RLS policy 조합을 실제 상태 기준으로 점검하고, 앱이 필요로 하지 않는 직접 DB 접근 권한을 제거합니다.
+원격 Supabase DB `anon`/`authenticated` 권한 + RLS policy 조합 실제 상태 기준 점검. 앱 불필요 직접 DB 접근 권한 제거.
 
 ## Current Baseline
 
-- 앱은 Supabase 테이블을 직접 호출하지 않고 Edge Functions를 통해 sync, snapshot, news, diagnosis 데이터를 조회/쓰기합니다.
-- 원격 DB 조회 결과 public 테이블 전체에 RLS는 켜져 있었습니다.
-- 원격 DB 조회 결과 여러 사용자 데이터 테이블과 snapshot/ledger 테이블에 `anon`/`authenticated` `ALL` 권한이 남아 있었습니다.
-- 원격 DB 조회 결과 public sequence `USAGE` 권한과 `set_updated_at()` 함수 `EXECUTE` 권한도 `anon`/`authenticated`에 남아 있었습니다.
+- 앱은 Supabase 테이블 직접 호출 안 함. Edge Functions 통해 sync, snapshot, news, diagnosis 데이터 조회/쓰기.
+- 원격 DB public 테이블 전체 RLS 켜짐.
+- 원격 DB 여러 사용자 데이터 테이블 + snapshot/ledger 테이블에 `anon`/`authenticated` `ALL` 권한 남음.
+- 원격 DB public sequence `USAGE` 권한 + `set_updated_at()` 함수 `EXECUTE` 권한도 `anon`/`authenticated`에 남음.
 
 ## Success Criteria
 
-- `anon`/`authenticated`는 공개 읽기 데이터 테이블에만 `SELECT` 권한을 가집니다.
-- 사용자 데이터, snapshot, ledger, diagnosis, token 테이블은 client role direct grant를 갖지 않습니다.
-- public sequence와 internal trigger/helper function에 대한 `anon`/`authenticated` 권한이 없습니다.
-- 사용자 row RLS policy는 `authenticated` role로 제한됩니다.
-- 공개 읽기 테이블은 `anon, authenticated` 대상 `SELECT using (true)` policy만 유지합니다.
+- `anon`/`authenticated`는 공개 읽기 데이터 테이블에만 `SELECT` 권한 보유.
+- 사용자 데이터, snapshot, ledger, diagnosis, token 테이블은 client role direct grant 없음.
+- public sequence + internal trigger/helper function에 `anon`/`authenticated` 권한 없음.
+- 사용자 row RLS policy는 `authenticated` role로 제한.
+- 공개 읽기 테이블은 `anon, authenticated` 대상 `SELECT using (true)` policy만 유지.
 
 ## Data/API Changes
 
-- DB schema shape와 데이터는 변경하지 않습니다.
-- client role grants와 RLS policy role 범위만 변경합니다.
-- Edge Functions는 service role client를 사용하므로 기존 앱 API 호출 경로는 유지됩니다.
+- DB schema shape + 데이터 변경 없음.
+- client role grants + RLS policy role 범위만 변경.
+- Edge Functions는 service role client 사용. 기존 앱 API 호출 경로 유지.
 
 ## Development Phases
 
@@ -41,6 +41,6 @@
 
 ## Risks And Decisions
 
-- Flutter 앱이 직접 `.from()`/`.rpc()`를 쓰지 않는 것을 확인했으므로 사용자 데이터 direct DB grant를 제거합니다.
-- 공개 뉴스/환율 테이블은 기존 문서화된 공개 읽기 의도를 유지해 `SELECT`만 남깁니다.
-- 향후 앱이 직접 Supabase table API를 사용하려면 별도 migration으로 필요한 테이블/operation만 명시적으로 열어야 합니다.
+- Flutter 앱 직접 `.from()`/`.rpc()` 미사용 확인. 사용자 데이터 direct DB grant 제거.
+- 공개 뉴스/환율 테이블은 기존 문서화된 공개 읽기 의도 유지. `SELECT`만 남김.
+- 향후 앱이 직접 Supabase table API 쓰면 별도 migration으로 필요한 테이블/operation만 명시적으로 열기.
