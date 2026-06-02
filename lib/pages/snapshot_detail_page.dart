@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
-
 import '../components/headers/detail_header_card.dart';
 import '../components/icons/app_icon.dart';
 import '../components/icons/app_icon_button.dart';
@@ -11,12 +9,9 @@ import '../components/transaction_history_list.dart';
 import '../design_system/spec.dart';
 import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
-import '../models/asset_item.dart';
 import '../services/market_data_service.dart';
 import '../utils/display_currency.dart';
 import '../widgets/moneyfy_ui.dart';
-
-const String _kSnapshotSlidableGroupTag = 'snapshot_detail_slidable_group';
 
 class SnapshotDetailPage extends StatefulWidget {
   const SnapshotDetailPage({
@@ -42,7 +37,7 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
   String _note = '';
   DailyPortfolioSnapshot? _previousSnapshot;
   double? _previousDayTotalValue;
-  Map<String, DailyPortfolioSnapshotItem> _previousItemByAssetKey = const {};
+  Map<String, _VisibleSnapshotItem> _previousItemByAssetKey = const {};
   final Set<String> _expandedAssetKeys = <String>{};
   bool _isNavigatingSnapshot = false;
   int _transitionDirection = 1;
@@ -92,6 +87,7 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
         .map(_normalizeSnapshotAssetTitle)
         .where((value) => value.isNotEmpty)
         .toSet();
+
     bool isVisibleSnapshotAsset(int? assetId, String assetTitle) {
       if (assetId != null && visibleAssetIds.contains(assetId)) {
         return true;
@@ -102,39 +98,22 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
     }
 
     final currentItems =
-        (await AppDatabase.instance.fetchDisplayPortfolioSnapshotItemsByDates([
+        (await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates([
               snapshotDate,
             ]))
             .where((item) {
               return isVisibleSnapshotAsset(item.assetId, item.assetTitle);
             })
             .toList(growable: false);
-    final storedHoldingItems =
+    final currentHoldingItems =
         (await AppDatabase.instance.fetchPortfolioSnapshotHoldingItemsByDates([
               snapshotDate,
             ]))
-            .where((holding) {
-              return isVisibleSnapshotAsset(
-                holding.assetId,
-                holding.assetTitle,
-              );
-            })
             .toList(growable: false);
-    final currentHoldingItems = _withFallbackSnapshotHoldingItems(
-      storedHoldingItems: storedHoldingItems,
-      currentItems: currentItems,
-      visibleAssets: visibleAssets,
-    );
     final currentCashAccounts =
         (await AppDatabase.instance.fetchPortfolioSnapshotCashAccountsByDates([
               snapshotDate,
             ]))
-            .where((account) {
-              return isVisibleSnapshotAsset(
-                account.assetId,
-                account.assetTitle,
-              );
-            })
             .toList(growable: true);
     final currentTransactions =
         (await AppDatabase.instance.fetchTransactionsForDate(snapshotDate))
@@ -155,7 +134,7 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
         .fetchPortfolioSnapshotByDate(previousSnapshotDate);
     final previousItems = previousSnapshot == null
         ? const <DailyPortfolioSnapshotItem>[]
-        : (await AppDatabase.instance.fetchDisplayPortfolioSnapshotItemsByDates(
+        : (await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates(
                 [previousSnapshotDate],
               ))
               .where((item) {
@@ -167,21 +146,43 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
         .fetchPortfolioSnapshotByDate(previousDaySnapshotDate);
     final previousDayItems = previousDaySnapshot == null
         ? const <DailyPortfolioSnapshotItem>[]
-        : (await AppDatabase.instance.fetchDisplayPortfolioSnapshotItemsByDates(
+        : (await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates(
                 [previousDaySnapshotDate],
               ))
               .where((item) {
                 return isVisibleSnapshotAsset(item.assetId, item.assetTitle);
               })
               .toList(growable: false);
-    final previousDayItemByAssetKey = {
-      for (final item in previousDayItems) _snapshotAssetKey(item): item,
+    final currentVisibleItems = _buildVisibleSnapshotItems(
+      items: currentItems,
+      holdingItemsByAssetKey: _groupSnapshotHoldingItemsByAssetKey(
+        currentHoldingItems,
+      ),
+      cashAccountsByAssetKey: _groupSnapshotCashAccountsByAssetKey(
+        currentCashAccounts,
+      ),
+    );
+    final previousVisibleItemByAssetKey = {
+      for (final item in _buildVisibleSnapshotItems(
+        items: previousItems,
+        holdingItemsByAssetKey: const {},
+        cashAccountsByAssetKey: const {},
+      ))
+        _snapshotAssetKey(item.item): item,
     };
-    final previousDayComparableTotalValue = currentItems.fold<double>(
+    final previousDayVisibleItemByAssetKey = {
+      for (final item in _buildVisibleSnapshotItems(
+        items: previousDayItems,
+        holdingItemsByAssetKey: const {},
+        cashAccountsByAssetKey: const {},
+      ))
+        _snapshotAssetKey(item.item): item,
+    };
+    final previousDayComparableTotalValue = currentVisibleItems.fold<double>(
       0,
       (sum, item) =>
           sum +
-          (previousDayItemByAssetKey[_snapshotAssetKey(item)]
+          (previousDayVisibleItemByAssetKey[_snapshotAssetKey(item.item)]
                   ?.totalValuationAmount ??
               0),
     );
@@ -197,9 +198,7 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
       previousDayTotalValue: previousDaySnapshot == null
           ? null
           : previousDayComparableTotalValue,
-      previousItemByAssetKey: {
-        for (final item in previousItems) _snapshotAssetKey(item): item,
-      },
+      previousItemByAssetKey: previousVisibleItemByAssetKey,
     );
   }
 
@@ -288,102 +287,32 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
     });
   }
 
-  Future<bool> _confirmDelete({
-    required String title,
-    required String message,
-  }) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('삭제'),
-            ),
-          ],
-        );
-      },
-    );
-    return confirmed == true;
-  }
-
-  Future<void> _deleteSnapshotItem(DailyPortfolioSnapshotItem item) async {
-    final confirmed = await _confirmDelete(
-      title: '자산군 삭제',
-      message: '${item.assetTitle} 스냅샷 항목을 삭제할까요?',
-    );
-    if (!confirmed) return;
-
-    await AppDatabase.instance.deletePortfolioSnapshotItem(
-      snapshotItemId: item.id,
-      snapshotId: item.snapshotId,
-      assetId: item.assetId,
-      assetTitle: item.assetTitle,
-    );
-
-    final key = _snapshotAssetKey(item);
-    if (!mounted) return;
-    setState(() {
-      _expandedAssetKeys.remove(key);
-    });
-    await _loadPageData();
-  }
-
-  Future<void> _deleteSnapshotHoldingItem(
-    DailyPortfolioSnapshotHoldingItem holding,
-  ) async {
-    final confirmed = await _confirmDelete(
-      title: '종목 삭제',
-      message: '${holding.holdingName} 스냅샷 항목을 삭제할까요?',
-    );
-    if (!confirmed) return;
-
-    await AppDatabase.instance.deletePortfolioSnapshotHoldingItem(holding.id);
-    await _loadPageData();
-  }
-
   @override
   Widget build(BuildContext context) {
     final currentSnapshot = _currentSnapshot ?? widget.snapshot;
-    final filteredItems = _currentItems.toList(growable: false);
-    final holdingItemsByAssetKey =
-        <String, List<DailyPortfolioSnapshotHoldingItem>>{};
-    for (final holding in _currentHoldingItems) {
-      for (final key in _snapshotHoldingAssetKeys(holding)) {
-        holdingItemsByAssetKey.putIfAbsent(key, () => []).add(holding);
-      }
-    }
-    final cashAccountsByAssetKey = <String, List<SnapshotCashAccountRecord>>{};
-    for (final account in _currentCashAccounts) {
-      final assetId = account.assetId;
-      final keys = {
-        if (assetId != null) 'asset:$assetId',
-        _snapshotAssetTitleKey(account.assetTitle),
-      };
-      for (final key in keys) {
-        cashAccountsByAssetKey.putIfAbsent(key, () => []).add(account);
-      }
-    }
-    final filteredTotalValue = filteredItems.fold<double>(
+    final visibleItems = _buildVisibleSnapshotItems(
+      items: _currentItems,
+      holdingItemsByAssetKey: _groupSnapshotHoldingItemsByAssetKey(
+        _currentHoldingItems,
+      ),
+      cashAccountsByAssetKey: _groupSnapshotCashAccountsByAssetKey(
+        _currentCashAccounts,
+      ),
+    );
+    final previousVisibleItemByAssetKey = _previousItemByAssetKey;
+    final filteredTotalValue = visibleItems.fold<double>(
       0,
       (sum, item) => sum + item.totalValuationAmount,
     );
-    final filteredTotalPurchase = filteredItems.fold<double>(
+    final filteredTotalPurchase = visibleItems.fold<double>(
       0,
       (sum, item) => sum + item.totalPurchaseAmount,
     );
-    final filteredPreviousTotalValue = filteredItems.fold<double>(
+    final filteredPreviousTotalValue = visibleItems.fold<double>(
       0,
       (sum, item) =>
           sum +
-          (_previousItemByAssetKey[_snapshotAssetKey(item)]
+          (previousVisibleItemByAssetKey[_snapshotAssetKey(item.item)]
                   ?.totalValuationAmount ??
               0),
     );
@@ -495,53 +424,47 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
                     MoneyfySectionCard(
                       title: '자산군별 구성',
                       headerBottomSpacing: 18,
-                      child: SlidableAutoCloseBehavior(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (final item in filteredItems) ...[
-                              _ExpandableSnapshotItemRow(
-                                item: item,
-                                previousItem:
-                                    _previousItemByAssetKey[_snapshotAssetKey(
-                                      item,
-                                    )],
-                                totalValue: filteredTotalValue,
-                                holdings: _snapshotRowsForAsset(
-                                  holdingItemsByAssetKey,
-                                  item,
-                                ),
-                                cashAccounts: _snapshotRowsForAsset(
-                                  cashAccountsByAssetKey,
-                                  item,
-                                ),
-                                renderCashAccountsAsPrimaryList:
-                                    item.assetTitle == '현금',
-                                isExpanded: _expandedAssetKeys.contains(
-                                  _snapshotAssetKey(item),
-                                ),
-                                onDelete: () => _deleteSnapshotItem(item),
-                                onDeleteHolding: _deleteSnapshotHoldingItem,
-                                onTap: () {
-                                  final key = _snapshotAssetKey(item);
-                                  setState(() {
-                                    if (_expandedAssetKeys.contains(key)) {
-                                      _expandedAssetKeys.remove(key);
-                                    } else {
-                                      _expandedAssetKeys.add(key);
-                                    }
-                                  });
-                                },
-                              ),
-                              if (item != filteredItems.last) ...[
-                                const SizedBox(height: 14),
-                                AppDivider(),
-                                const SizedBox(height: 14),
+                      child: visibleItems.isEmpty
+                          ? Text(
+                              '표시할 스냅샷 항목이 없습니다.',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: context.colors.neutralTextMuted,
+                                  ),
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (final item in visibleItems) ...[
+                                  _ExpandableSnapshotItemRow(
+                                    item: item,
+                                    previousItem:
+                                        previousVisibleItemByAssetKey[_snapshotAssetKey(
+                                          item.item,
+                                        )],
+                                    totalValue: filteredTotalValue,
+                                    isExpanded: _expandedAssetKeys.contains(
+                                      _snapshotAssetKey(item.item),
+                                    ),
+                                    onTap: () {
+                                      final key = _snapshotAssetKey(item.item);
+                                      setState(() {
+                                        if (_expandedAssetKeys.contains(key)) {
+                                          _expandedAssetKeys.remove(key);
+                                        } else {
+                                          _expandedAssetKeys.add(key);
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  if (item != visibleItems.last) ...[
+                                    const SizedBox(height: 14),
+                                    AppDivider(),
+                                    const SizedBox(height: 14),
+                                  ],
+                                ],
                               ],
-                            ],
-                          ],
-                        ),
-                      ),
+                            ),
                     ),
                     const SizedBox(height: 16),
                     _SnapshotTransactionsCard(
@@ -582,11 +505,33 @@ class _SnapshotAuxiliaryData {
   final String note;
   final DailyPortfolioSnapshot? previousSnapshot;
   final double? previousDayTotalValue;
-  final Map<String, DailyPortfolioSnapshotItem> previousItemByAssetKey;
+  final Map<String, _VisibleSnapshotItem> previousItemByAssetKey;
+}
+
+class _VisibleSnapshotItem {
+  const _VisibleSnapshotItem({
+    required this.item,
+    required this.holdings,
+    required this.cashAccounts,
+  });
+
+  final DailyPortfolioSnapshotItem item;
+  final List<DailyPortfolioSnapshotHoldingItem> holdings;
+  final List<SnapshotCashAccountRecord> cashAccounts;
+
+  String get assetTitle => item.assetTitle;
+  double get totalPurchaseAmount => item.totalPurchaseAmount;
+  double get totalValuationAmount => item.totalValuationAmount;
+  double get profitAmount => item.profitAmount;
+  double get profitRate => item.profitRate;
 }
 
 String _snapshotAssetKey(DailyPortfolioSnapshotItem item) {
-  return 'asset:${item.assetId}';
+  final assetId = item.assetId;
+  if (assetId > 0) {
+    return 'asset:$assetId';
+  }
+  return _snapshotAssetTitleKey(item.assetTitle);
 }
 
 Set<String> _snapshotAssetKeys(DailyPortfolioSnapshotItem item) {
@@ -607,70 +552,66 @@ List<T> _snapshotRowsForAsset<T>(
   return rows;
 }
 
-List<DailyPortfolioSnapshotHoldingItem> _withFallbackSnapshotHoldingItems({
-  required List<DailyPortfolioSnapshotHoldingItem> storedHoldingItems,
-  required List<DailyPortfolioSnapshotItem> currentItems,
-  required List<AssetItem> visibleAssets,
-}) {
-  final results = [...storedHoldingItems];
-  final assetsById = {
-    for (final asset in visibleAssets)
-      if (asset.id != null) asset.id!: asset,
-  };
-  final assetsByTitle = {
-    for (final asset in visibleAssets)
-      _snapshotAssetTitleKey(asset.displayName): asset,
-  };
-  var syntheticId = -1;
-
-  for (final item in currentItems) {
-    if (_hasSnapshotHoldingRowsForAsset(results, item)) continue;
-
-    final asset =
-        assetsById[item.assetId] ??
-        assetsByTitle[_snapshotAssetTitleKey(item.assetTitle)];
-    if (asset == null) continue;
-
-    for (final holding in asset.visibleHoldings.where(
-      (holding) => !holding.isCashLike,
-    )) {
-      results.add(
-        DailyPortfolioSnapshotHoldingItem(
-          id: syntheticId--,
-          snapshotId: item.snapshotId,
-          assetId: asset.id ?? item.assetId,
-          assetTitle: item.assetTitle,
-          holdingId: holding.id,
-          holdingName: holding.name,
-          holdingSymbol: holding.symbol,
-          currencyCode: holding.currencyCode,
-          quantity: holding.quantity,
-          totalPurchaseAmount: holding.purchaseAmount,
-          totalValuationAmount: holding.valuationAmount,
-          profitAmount: holding.profitAmount,
-          profitRate: holding.profitRate,
-        ),
-      );
+Map<String, List<DailyPortfolioSnapshotHoldingItem>>
+_groupSnapshotHoldingItemsByAssetKey(
+  List<DailyPortfolioSnapshotHoldingItem> rows,
+) {
+  final rowsByAssetKey = <String, List<DailyPortfolioSnapshotHoldingItem>>{};
+  for (final row in rows) {
+    for (final key in _snapshotHoldingAssetKeys(row)) {
+      rowsByAssetKey.putIfAbsent(key, () => []).add(row);
     }
   }
-
-  return results;
+  return rowsByAssetKey;
 }
 
-bool _hasSnapshotHoldingRowsForAsset(
-  List<DailyPortfolioSnapshotHoldingItem> rows,
-  DailyPortfolioSnapshotItem item,
-) {
-  final itemKeys = _snapshotAssetKeys(item);
-  return rows.any(
-    (row) => _snapshotHoldingAssetKeys(row).any(itemKeys.contains),
-  );
+Map<String, List<SnapshotCashAccountRecord>>
+_groupSnapshotCashAccountsByAssetKey(List<SnapshotCashAccountRecord> rows) {
+  final rowsByAssetKey = <String, List<SnapshotCashAccountRecord>>{};
+  for (final row in rows) {
+    for (final key in _snapshotCashAccountAssetKeys(row)) {
+      rowsByAssetKey.putIfAbsent(key, () => []).add(row);
+    }
+  }
+  return rowsByAssetKey;
+}
+
+List<_VisibleSnapshotItem> _buildVisibleSnapshotItems({
+  required List<DailyPortfolioSnapshotItem> items,
+  required Map<String, List<DailyPortfolioSnapshotHoldingItem>>
+  holdingItemsByAssetKey,
+  required Map<String, List<SnapshotCashAccountRecord>> cashAccountsByAssetKey,
+}) {
+  final visibleItems = <_VisibleSnapshotItem>[];
+
+  for (final item in items) {
+    final holdings = _snapshotRowsForAsset(holdingItemsByAssetKey, item);
+    final cashAccounts = _snapshotRowsForAsset(cashAccountsByAssetKey, item);
+
+    visibleItems.add(
+      _VisibleSnapshotItem(
+        item: item,
+        holdings: holdings,
+        cashAccounts: cashAccounts,
+      ),
+    );
+  }
+
+  return visibleItems;
 }
 
 Set<String> _snapshotHoldingAssetKeys(DailyPortfolioSnapshotHoldingItem item) {
   final assetId = item.assetId;
   return {
-    if (assetId != null) 'asset:$assetId',
+    if (assetId != null && assetId > 0) 'asset:$assetId',
+    _snapshotAssetTitleKey(item.assetTitle),
+  };
+}
+
+Set<String> _snapshotCashAccountAssetKeys(SnapshotCashAccountRecord item) {
+  final assetId = item.assetId;
+  return {
+    if (assetId != null && assetId > 0) 'asset:$assetId',
     _snapshotAssetTitleKey(item.assetTitle),
   };
 }
@@ -1053,8 +994,8 @@ class _SnapshotItemRow extends StatelessWidget {
     required this.totalValue,
   });
 
-  final DailyPortfolioSnapshotItem item;
-  final DailyPortfolioSnapshotItem? previousItem;
+  final _VisibleSnapshotItem item;
+  final _VisibleSnapshotItem? previousItem;
   final double totalValue;
 
   @override
@@ -1146,96 +1087,76 @@ class _ExpandableSnapshotItemRow extends StatelessWidget {
     required this.item,
     required this.previousItem,
     required this.totalValue,
-    required this.holdings,
-    required this.cashAccounts,
-    required this.renderCashAccountsAsPrimaryList,
     required this.isExpanded,
-    required this.onDelete,
-    required this.onDeleteHolding,
     required this.onTap,
   });
 
-  final DailyPortfolioSnapshotItem item;
-  final DailyPortfolioSnapshotItem? previousItem;
+  final _VisibleSnapshotItem item;
+  final _VisibleSnapshotItem? previousItem;
   final double totalValue;
-  final List<DailyPortfolioSnapshotHoldingItem> holdings;
-  final List<SnapshotCashAccountRecord> cashAccounts;
-  final bool renderCashAccountsAsPrimaryList;
   final bool isExpanded;
-  final VoidCallback onDelete;
-  final ValueChanged<DailyPortfolioSnapshotHoldingItem> onDeleteHolding;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Slidable(
-      key: ValueKey('snapshot-item-${item.id}'),
-      groupTag: _kSnapshotSlidableGroupTag,
-      endActionPane: moneyfySingleSlideActionPane(
-        onPressed: onDelete,
-        icon: VisualSpec.icon.delete,
-        iconColor: context.colors.negativeOn,
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
-        onTap: holdings.isEmpty && cashAccounts.isEmpty ? null : onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _SnapshotItemRow(
-                      item: item,
-                      previousItem: previousItem,
-                      totalValue: totalValue,
-                    ),
+    final holdings = item.holdings;
+    final cashAccounts = item.cashAccounts;
+    final renderCashAccountsAsPrimaryList = item.assetTitle == '현금';
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(VisualSpec.surface.radiusCard),
+      onTap: holdings.isEmpty && cashAccounts.isEmpty ? null : onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _SnapshotItemRow(
+                    item: item,
+                    previousItem: previousItem,
+                    totalValue: totalValue,
                   ),
-                ],
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topCenter,
-                child: isExpanded
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Column(
-                          children: [
-                            if (holdings.isNotEmpty) ...[
-                              for (final holding in holdings) ...[
-                                _SnapshotHoldingRow(
-                                  holding: holding,
-                                  onDelete: () => onDeleteHolding(holding),
-                                ),
-                                if (holding != holdings.last)
-                                  const SizedBox(height: 10),
-                              ],
-                            ],
-                            if (cashAccounts.isNotEmpty) ...[
-                              if (!renderCashAccountsAsPrimaryList) ...[
-                                if (holdings.isNotEmpty)
-                                  const SizedBox(height: 14),
-                                const _SnapshotSectionLabel(title: '현금 계좌'),
+                ),
+              ],
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: isExpanded
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Column(
+                        children: [
+                          if (holdings.isNotEmpty) ...[
+                            for (final holding in holdings) ...[
+                              _SnapshotHoldingRow(holding: holding),
+                              if (holding != holdings.last)
                                 const SizedBox(height: 10),
-                              ],
-                              for (final account in cashAccounts) ...[
-                                _SnapshotEmbeddedCashAccountRow(
-                                  account: account,
-                                ),
-                                if (account != cashAccounts.last)
-                                  const SizedBox(height: 10),
-                              ],
                             ],
                           ],
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
+                          if (cashAccounts.isNotEmpty) ...[
+                            if (!renderCashAccountsAsPrimaryList) ...[
+                              if (holdings.isNotEmpty)
+                                const SizedBox(height: 14),
+                              const _SnapshotSectionLabel(title: '현금 계좌'),
+                              const SizedBox(height: 10),
+                            ],
+                            for (final account in cashAccounts) ...[
+                              _SnapshotEmbeddedCashAccountRow(account: account),
+                              if (account != cashAccounts.last)
+                                const SizedBox(height: 10),
+                            ],
+                          ],
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
         ),
       ),
     );
@@ -1243,116 +1164,106 @@ class _ExpandableSnapshotItemRow extends StatelessWidget {
 }
 
 class _SnapshotHoldingRow extends StatelessWidget {
-  const _SnapshotHoldingRow({required this.holding, required this.onDelete});
+  const _SnapshotHoldingRow({required this.holding});
 
   final DailyPortfolioSnapshotHoldingItem holding;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Slidable(
-      key: ValueKey('snapshot-holding-${holding.id}'),
-      groupTag: _kSnapshotSlidableGroupTag,
-      endActionPane: moneyfySingleSlideActionPane(
-        onPressed: onDelete,
-        icon: VisualSpec.icon.delete,
-        iconColor: context.colors.negativeOn,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.surfaces.surfaceBase,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
       ),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: context.surfaces.surfaceBase,
-          borderRadius: BorderRadius.circular(context.radius.rMd),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    holding.holdingName,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: AppFontWeights.semibold,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (holding.holdingSymbol.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: context.surfaces.surfaceRaised,
-                            borderRadius: BorderRadius.circular(
-                              context.radius.rPill,
-                            ),
-                            border: Border.all(
-                              color: context.colors.neutralOutline,
-                            ),
-                          ),
-                          child: Text(
-                            holding.holdingSymbol,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: context.colors.neutralTextMuted,
-                              fontWeight: AppFontWeights.semibold,
-                            ),
-                          ),
-                        ),
-                      Text(
-                        '${holding.quantity}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: context.colors.neutralTextMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _formatCurrency(holding.totalValuationAmount),
+                  holding.holdingName,
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: context.colors.neutralText,
                     fontWeight: AppFontWeights.semibold,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                const SizedBox(height: 2),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(
-                      _formatSignedCurrency(holding.profitAmount),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: _changeColor(context, holding.profitAmount),
-                        fontWeight: AppFontWeights.semibold,
+                    if (holding.holdingSymbol.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: context.surfaces.surfaceRaised,
+                          borderRadius: BorderRadius.circular(
+                            context.radius.rPill,
+                          ),
+                          border: Border.all(
+                            color: context.colors.neutralOutline,
+                          ),
+                        ),
+                        child: Text(
+                          holding.holdingSymbol,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: context.colors.neutralTextMuted,
+                            fontWeight: AppFontWeights.semibold,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    DeltaChip(
-                      value: holding.profitAmount,
-                      percent: holding.profitRate,
-                      mode: DeltaChipMode.percent,
-                      vivid: true,
+                    Text(
+                      '${holding.quantity}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: context.colors.neutralTextMuted,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _formatCurrency(holding.totalValuationAmount),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: context.colors.neutralText,
+                  fontWeight: AppFontWeights.semibold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _formatSignedCurrency(holding.profitAmount),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: _changeColor(context, holding.profitAmount),
+                      fontWeight: AppFontWeights.semibold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  DeltaChip(
+                    value: holding.profitAmount,
+                    percent: holding.profitRate,
+                    mode: DeltaChipMode.percent,
+                    vivid: true,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
