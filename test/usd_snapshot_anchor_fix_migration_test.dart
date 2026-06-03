@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final migration = File(
-    'supabase/migrations/20260529020915_fix_usd_snapshot_anchor_realized_pnl_currency_basis.sql',
+    'supabase/migrations/20260529023219_fix_usd_snapshot_anchor_realized_pnl_currency_basis.sql',
   );
 
   test(

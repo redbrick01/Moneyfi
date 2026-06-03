@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final migration = File(
-    'supabase/migrations/20260529014953_seed_existing_usd_currency_basis.sql',
+    'supabase/migrations/20260529022735_seed_existing_usd_currency_basis.sql',
   );
 
   test('USD currency basis seed migration keeps seed rows explicit', () {
