@@ -46,7 +46,7 @@ class _ExpandableTileState extends State<ExpandableTile>
       toggled: _expanded,
       child: Container(
         decoration: BoxDecoration(
-          color: context.surfaces.surfaceBase,
+          color: context.colors.neutralSurfaceBase,
           borderRadius: BorderRadius.circular(context.radius.rMd),
         ),
         child: InkWell(
@@ -69,8 +69,8 @@ class _ExpandableTileState extends State<ExpandableTile>
                 Container(
                   decoration: BoxDecoration(
                     color: _expanded
-                        ? context.surfaces.surfaceRaised
-                        : context.surfaces.surfaceBase,
+                        ? context.colors.neutralSurfaceRaised
+                        : context.colors.neutralSurfaceBase,
                     borderRadius: BorderRadius.circular(context.radius.rMd),
                   ),
                   padding: EdgeInsets.all(context.spacing.xs),

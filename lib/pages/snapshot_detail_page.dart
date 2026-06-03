@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../components/headers/detail_header_card.dart';
 import '../components/icons/app_icon.dart';
 import '../components/icons/app_icon_button.dart';
+import '../components/panels/app_inner_panel.dart';
 import '../components/chips/delta_chip.dart';
 import '../components/rows/transaction_row.dart';
 import '../components/separators/app_divider.dart';
@@ -632,13 +633,9 @@ class _SnapshotEmbeddedCashAccountRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
+    return AppInnerPanel(
+      tone: AppInnerPanelTone.raised,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceBase,
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1172,13 +1169,9 @@ class _SnapshotHoldingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      width: double.infinity,
+    return AppInnerPanel(
+      tone: AppInnerPanelTone.raised,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceBase,
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-      ),
       child: Row(
         children: [
           Expanded(
