@@ -13,6 +13,8 @@ abstract final class MoneyfyRouteNames {
   static const portfolioDiagnosis = 'portfolioDiagnosis';
   static const investmentPerformance = 'investmentPerformance';
   static const dividendInterest = 'dividendInterest';
+  static const equityResearch = 'equityResearch';
+  static const redditPostSummaries = 'redditPostSummaries';
 
   static const login = 'login';
   static const signup = 'signup';
@@ -66,6 +68,8 @@ abstract final class MoneyfyRoutePaths {
   static const portfolioDiagnosis = '/analysis/portfolio-diagnosis';
   static const investmentPerformance = '/analysis/investment-performance';
   static const dividendInterest = '/analysis/dividend-interest';
+  static const equityResearch = '/analysis/equity-research';
+  static const redditPostSummaries = '/analysis/reddit-post-summaries';
 
   static const login = '/login';
   static const signup = '/signup';

@@ -117,6 +117,20 @@ class _AnalysisPageState extends State<AnalysisPage> {
             ),
             SizedBox(height: context.spacing.sm),
             _AnalysisEntryCard(
+              icon: Icons.manage_search_rounded,
+              title: '기업 리서치',
+              subtitle: '투자 논지 · 리스크 · 출처',
+              onTap: context.openEquityResearch,
+            ),
+            SizedBox(height: context.spacing.sm),
+            _AnalysisEntryCard(
+              icon: Icons.forum_rounded,
+              title: 'Reddit 요약',
+              subtitle: '핵심 게시글 · 댓글 인사이트',
+              onTap: context.openRedditPostSummaries,
+            ),
+            SizedBox(height: context.spacing.sm),
+            _AnalysisEntryCard(
               icon: Icons.insert_chart_outlined_rounded,
               title: '통계',
               onTap: context.openStatistics,

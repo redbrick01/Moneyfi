@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../pages/asset_detail_page.dart';
 import '../pages/cash_account_detail_page.dart';
 import '../pages/dividend_interest_analysis_page.dart';
+import '../pages/equity_research_page.dart';
 import '../pages/forms/asset_form_page.dart';
 import '../pages/forms/cash_account_form_page.dart';
 import '../pages/forms/cash_transaction_form_page.dart';
@@ -13,6 +14,7 @@ import '../pages/holding_detail_page.dart';
 import '../pages/investment_performance_page.dart';
 import '../pages/login_page.dart';
 import '../pages/portfolio_analysis_mvp_page.dart';
+import '../pages/reddit_post_summaries_page.dart';
 import '../pages/statistics_page.dart';
 import '../pages/signup_page.dart';
 import 'moneyfy_routes.dart';
@@ -229,6 +231,32 @@ extension MoneyfyNavigation on BuildContext {
       );
     }
     return push<void>(MoneyfyRoutePaths.dividendInterest);
+  }
+
+  Future<void> openEquityResearch() {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(name: MoneyfyRoutePaths.equityResearch),
+          builder: (_) => const EquityResearchPage(),
+        ),
+      );
+    }
+    return push<void>(MoneyfyRoutePaths.equityResearch);
+  }
+
+  Future<void> openRedditPostSummaries() {
+    if (!_hasRouter) {
+      return Navigator.of(this).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(
+            name: MoneyfyRoutePaths.redditPostSummaries,
+          ),
+          builder: (_) => const RedditPostSummariesPage(),
+        ),
+      );
+    }
+    return push<void>(MoneyfyRoutePaths.redditPostSummaries);
   }
 
   Future<void> openStatistics() {

@@ -5,6 +5,7 @@ import '../pages/asset_detail_page.dart';
 import '../pages/app_shell_page.dart';
 import '../pages/cash_account_detail_page.dart';
 import '../pages/dividend_interest_analysis_page.dart';
+import '../pages/equity_research_page.dart';
 import '../pages/forms/asset_form_page.dart';
 import '../pages/forms/cash_account_form_page.dart';
 import '../pages/forms/cash_transaction_form_page.dart';
@@ -15,6 +16,7 @@ import '../pages/investment_performance_page.dart';
 import '../pages/login_page.dart';
 import '../pages/signup_page.dart';
 import '../pages/portfolio_analysis_mvp_page.dart';
+import '../pages/reddit_post_summaries_page.dart';
 import '../pages/startup_gate.dart';
 import 'moneyfy_routes.dart';
 
@@ -158,6 +160,16 @@ GoRouter buildMoneyfyRouter({
         path: MoneyfyRoutePaths.dividendInterest,
         name: MoneyfyRouteNames.dividendInterest,
         builder: (context, state) => const DividendInterestAnalysisPage(),
+      ),
+      GoRoute(
+        path: MoneyfyRoutePaths.equityResearch,
+        name: MoneyfyRouteNames.equityResearch,
+        builder: (context, state) => const EquityResearchPage(),
+      ),
+      GoRoute(
+        path: MoneyfyRoutePaths.redditPostSummaries,
+        name: MoneyfyRouteNames.redditPostSummaries,
+        builder: (context, state) => const RedditPostSummariesPage(),
       ),
       GoRoute(
         path: MoneyfyRoutePaths.login,
