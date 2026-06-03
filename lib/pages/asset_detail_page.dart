@@ -1123,8 +1123,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     bool leadingEmptySlot = false,
     bool reorderable = false,
   }) {
-    return MoneyfySurfaceCard(
-      variant: MoneyfySurfaceCardVariant.base,
+    return AppInnerPanel(
       padding: EdgeInsets.zero,
       child: SlidableAutoCloseBehavior(
         child: reorderable
@@ -1228,8 +1227,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     bool leadingEmptySlot = false,
     bool reorderable = false,
   }) {
-    return MoneyfySurfaceCard(
-      variant: MoneyfySurfaceCardVariant.base,
+    return AppInnerPanel(
       padding: EdgeInsets.zero,
       child: SlidableAutoCloseBehavior(
         child: reorderable
