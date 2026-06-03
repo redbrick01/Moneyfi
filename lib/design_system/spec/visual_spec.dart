@@ -94,6 +94,31 @@ class _BrandSpec {
   final Color chart07 = const Color(0xFFDEE1E6);
   final Color chart08 = const Color(0xFFEEF0F3);
 
+  // Allocation rank palette (10)
+  final Color allocationRank01 = const Color(0xFF3A6DFF);
+  final Color allocationRank02 = const Color(0xFF2DA4FF);
+  final Color allocationRank03 = const Color(0xFF5B7CFA);
+  final Color allocationRank04 = const Color(0xFF4CB7D8);
+  final Color allocationRank05 = const Color(0xFF5AC8A8);
+  final Color allocationRank06 = const Color(0xFF7B8EF7);
+  final Color allocationRank07 = const Color(0xFF8FB7FF);
+  final Color allocationRank08 = const Color(0xFFA8C4FF);
+  final Color allocationRank09 = const Color(0xFF73D6F2);
+  final Color allocationRank10 = const Color(0xFF9AA8FF);
+
+  List<Color> get allocationRankPalette => <Color>[
+    allocationRank01,
+    allocationRank02,
+    allocationRank03,
+    allocationRank04,
+    allocationRank05,
+    allocationRank06,
+    allocationRank07,
+    allocationRank08,
+    allocationRank09,
+    allocationRank10,
+  ];
+
   List<Color> get chartPalette => <Color>[
     chart01,
     chart02,

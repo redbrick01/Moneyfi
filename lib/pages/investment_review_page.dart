@@ -727,13 +727,15 @@ class _AutomaticDraftContext extends StatelessWidget {
           ),
           if (report.metrics.isNotEmpty) ...[
             SizedBox(height: context.spacing.md),
-            for (final metric in report.metrics)
-              _DraftContextLine(label: metric.label, value: metric.value),
+            _DraftMetricLines(metrics: report.metrics),
           ],
           if (report.signals.isNotEmpty) ...[
             SizedBox(height: context.spacing.md),
-            for (final signal in report.signals)
-              _DraftContextLine(label: signal.title, value: signal.description),
+            for (var index = 0; index < report.signals.length; index++)
+              _DraftSignalLine(
+                signal: report.signals[index],
+                showDivider: index != report.signals.length - 1,
+              ),
           ],
           SizedBox(height: context.spacing.md),
           for (final action in report.narrative.nextActions)
@@ -744,28 +746,76 @@ class _AutomaticDraftContext extends StatelessWidget {
   }
 }
 
-class _DraftContextLine extends StatelessWidget {
-  const _DraftContextLine({required this.label, required this.value});
+class _DraftMetricLines extends StatelessWidget {
+  const _DraftMetricLines({required this.metrics});
 
-  final String label;
-  final String value;
+  final List<InvestmentReviewMetric> metrics;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: context.spacing.xs),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: Text(label, style: context.typography.meta)),
-          SizedBox(width: context.spacing.sm),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: context.typography.body,
+    final dividerColor = Theme.of(
+      context,
+    ).colorScheme.outlineVariant.withValues(alpha: 0.58);
+
+    return Column(
+      children: [
+        for (var index = 0; index < metrics.length; index++) ...[
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: context.spacing.xs / 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    metrics[index].label,
+                    style: context.typography.meta,
+                  ),
+                ),
+                SizedBox(width: context.spacing.md),
+                Flexible(
+                  child: Text(
+                    metrics[index].value,
+                    textAlign: TextAlign.end,
+                    style: context.typography.body.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+          if (index != metrics.length - 1)
+            Divider(height: 1, thickness: 1, color: dividerColor),
+        ],
+      ],
+    );
+  }
+}
+
+class _DraftSignalLine extends StatelessWidget {
+  const _DraftSignalLine({required this.signal, required this.showDivider});
+
+  final InvestmentReviewSignal signal;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    final dividerColor = Theme.of(
+      context,
+    ).colorScheme.outlineVariant.withValues(alpha: 0.58);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: showDivider ? context.spacing.sm : 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(signal.title, style: context.typography.meta),
+          SizedBox(height: context.spacing.xs / 2),
+          Text(signal.description, style: context.typography.body),
+          if (showDivider) ...[
+            SizedBox(height: context.spacing.sm),
+            Divider(height: 1, thickness: 1, color: dividerColor),
+          ],
         ],
       ),
     );

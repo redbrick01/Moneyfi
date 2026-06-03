@@ -1366,28 +1366,55 @@ class _MetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const spacing = 12.0;
-        final tileWidth = (constraints.maxWidth - spacing) / 2;
+    final rows = <List<_MetricTileData>>[
+      for (var index = 0; index < items.length; index += 2)
+        [items[index], if (index + 1 < items.length) items[index + 1]],
+    ];
 
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [
-            for (var index = 0; index < items.length; index++)
-              SizedBox(
-                width: index == items.length - 1 && items.length.isOdd
-                    ? constraints.maxWidth
-                    : tileWidth,
-                child: _MetricTile(
-                  label: items[index].label,
-                  value: items[index].value,
-                ),
-              ),
+    return Column(
+      children: [
+        for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) ...[
+          _MetricGridRow(items: rows[rowIndex]),
+          if (rowIndex != rows.length - 1)
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.58),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _MetricGridRow extends StatelessWidget {
+  const _MetricGridRow({required this.items});
+
+  final List<_MetricTileData> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final dividerColor = Theme.of(
+      context,
+    ).colorScheme.outlineVariant.withValues(alpha: 0.58);
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _MetricTile(label: items[0].label, value: items[0].value),
+          ),
+          if (items.length > 1) ...[
+            VerticalDivider(width: 1, thickness: 1, color: dividerColor),
+            Expanded(
+              child: _MetricTile(label: items[1].label, value: items[1].value),
+            ),
           ],
-        );
-      },
+        ],
+      ),
     );
   }
 }
@@ -1422,10 +1449,6 @@ class _WeekRangeBar extends StatelessWidget {
         context.spacing.sm,
         context.spacing.xs,
         context.spacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: context.colors.neutralSurfaceRaised,
-        borderRadius: BorderRadius.circular(context.radius.rMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1651,10 +1674,6 @@ class _MetricTile extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(minHeight: 92),
       padding: EdgeInsets.all(context.spacing.sm + context.spacing.xs / 4),
-      decoration: BoxDecoration(
-        color: context.colors.neutralSurfaceRaised,
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

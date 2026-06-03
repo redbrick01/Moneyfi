@@ -25,7 +25,6 @@ import '../navigation/moneyfy_navigation.dart';
 import '../navigation/moneyfy_routes.dart';
 import '../services/market_data_service.dart';
 import '../services/portfolio_diagnosis_service.dart';
-import '../theme/moneyfy_theme.dart';
 import '../ui_scaffold/app_page_scaffold.dart';
 import '../utils/display_currency.dart';
 import 'forms/asset_form_page.dart';
@@ -473,24 +472,31 @@ List<_AllocationItem> _buildAllocations(List<AssetItem> assets) {
     0,
     (sum, entry) => sum + entry.amount,
   );
+  entries.sort((a, b) {
+    final amountCompare = b.amount.compareTo(a.amount);
+    if (amountCompare != 0) return amountCompare;
+    return a.asset.displayName.compareTo(b.asset.displayName);
+  });
 
   return entries
+      .asMap()
+      .entries
       .map(
         (entry) => _AllocationItem(
-          assetId: entry.asset.id!,
-          label: entry.asset.displayName,
-          amount: entry.amount,
-          ratio: totalValue == 0 ? 0 : (entry.amount / totalValue) * 100,
-          color: MoneyfyChartPalette.colorForAsset(
-            entry.asset.displayName,
-            assetType: entry.asset.assetType,
-            assetId: entry.asset.id,
-            fallback: ThemeData.light().colorScheme.outline,
-          ),
-          icon: entry.asset.icon,
+          assetId: entry.value.asset.id!,
+          label: entry.value.asset.displayName,
+          amount: entry.value.amount,
+          ratio: totalValue == 0 ? 0 : (entry.value.amount / totalValue) * 100,
+          color: _rankedAllocationColor(entry.key),
+          icon: entry.value.asset.icon,
         ),
       )
       .toList();
+}
+
+Color _rankedAllocationColor(int rank) {
+  final colors = VisualSpec.brand.allocationRankPalette;
+  return colors[rank % colors.length];
 }
 
 class _AllocationSectionCard extends StatelessWidget {

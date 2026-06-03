@@ -75,9 +75,12 @@ class _TargetAllocationSheetState extends State<_TargetAllocationSheet> {
         : '합계가 ${(sum - 100).toStringAsFixed(1)}% 초과했어요.';
 
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final isKeyboardOpen = bottomInset > 0;
     return AppSheetSurface(
-      heightFactor: 0.82,
-      child: Padding(
+      heightFactor: isKeyboardOpen ? 0.96 : 0.82,
+      child: AnimatedPadding(
+        duration: context.motion.fast,
+        curve: Curves.easeOutCubic,
         padding: EdgeInsets.only(bottom: bottomInset),
         child: Column(
           children: [
@@ -129,9 +132,13 @@ class _TargetAllocationSheetState extends State<_TargetAllocationSheet> {
             SizedBox(height: context.spacing.sm),
             Expanded(
               child: ListView.separated(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.symmetric(
                   horizontal: context.spacing.lg,
-                  vertical: context.spacing.sm,
+                  vertical: isKeyboardOpen
+                      ? context.spacing.xs
+                      : context.spacing.sm,
                 ),
                 itemBuilder: (context, index) {
                   final item = widget.entries[index];
@@ -156,63 +163,15 @@ class _TargetAllocationSheetState extends State<_TargetAllocationSheet> {
                 ),
                 child: InlineError(message: _errorMessage!),
               ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.spacing.lg,
-                context.spacing.sm,
-                context.spacing.lg,
-                context.spacing.lg,
-              ),
-              child: Column(
-                children: [
-                  AppPrimaryButton(
-                    label: '저장',
-                    isLoading: _isSaving,
-                    onPressed: canSave
-                        ? () async {
-                            final navigator = Navigator.of(context);
-                            setState(() {
-                              _isSaving = true;
-                              _errorMessage = null;
-                            });
-                            try {
-                              await widget.onSave(_buildSaveMap());
-                              if (!mounted) return;
-                              navigator.pop(true);
-                            } catch (error) {
-                              setState(() {
-                                _errorMessage = '저장에 실패했습니다. 다시 시도해 주세요.';
-                              });
-                            } finally {
-                              if (mounted) {
-                                setState(() {
-                                  _isSaving = false;
-                                });
-                              }
-                            }
-                          }
-                        : null,
-                  ),
-                  SizedBox(height: context.spacing.xs),
-                  AppGhostButton(
-                    label: '취소',
-                    expand: true,
-                    onPressed: _isSaving
-                        ? null
-                        : () => Navigator.of(context).pop(false),
-                  ),
-                  if (!canSave)
-                    Padding(
-                      padding: EdgeInsets.only(top: context.spacing.xs),
-                      child: Text(
-                        hasInvalid
-                            ? '0~100 사이의 숫자를 입력해 주세요.'
-                            : '합계가 100%여야 저장할 수 있어요.',
-                        style: context.typography.caption,
-                      ),
-                    ),
-                ],
-              ),
+            _TargetActionFooter(
+              canSave: canSave,
+              isCompact: isKeyboardOpen,
+              isSaving: _isSaving,
+              hasInvalid: hasInvalid,
+              onCancel: _isSaving
+                  ? null
+                  : () => Navigator.of(context).pop(false),
+              onSave: canSave ? _handleSave : null,
             ),
           ],
         ),
@@ -246,6 +205,104 @@ class _TargetAllocationSheetState extends State<_TargetAllocationSheet> {
   double? _parseRatio(String? text) {
     if (text == null || text.trim().isEmpty) return 0;
     return double.tryParse(text.trim());
+  }
+
+  Future<void> _handleSave() async {
+    final navigator = Navigator.of(context);
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
+    try {
+      await widget.onSave(_buildSaveMap());
+      if (!mounted) return;
+      navigator.pop(true);
+    } catch (error) {
+      setState(() {
+        _errorMessage = '저장에 실패했습니다. 다시 시도해 주세요.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+}
+
+class _TargetActionFooter extends StatelessWidget {
+  const _TargetActionFooter({
+    required this.canSave,
+    required this.isCompact,
+    required this.isSaving,
+    required this.hasInvalid,
+    required this.onCancel,
+    required this.onSave,
+  });
+
+  final bool canSave;
+  final bool isCompact;
+  final bool isSaving;
+  final bool hasInvalid;
+  final VoidCallback? onCancel;
+  final VoidCallback? onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isCompact) {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(
+          context.spacing.lg,
+          context.spacing.xs,
+          context.spacing.lg,
+          context.spacing.sm,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: AppGhostButton(
+                label: '취소',
+                expand: true,
+                onPressed: onCancel,
+              ),
+            ),
+            SizedBox(width: context.spacing.sm),
+            Expanded(
+              child: AppPrimaryButton(
+                label: '저장',
+                isLoading: isSaving,
+                onPressed: onSave,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        context.spacing.lg,
+        context.spacing.sm,
+        context.spacing.lg,
+        context.spacing.lg,
+      ),
+      child: Column(
+        children: [
+          AppPrimaryButton(label: '저장', isLoading: isSaving, onPressed: onSave),
+          SizedBox(height: context.spacing.xs),
+          AppGhostButton(label: '취소', expand: true, onPressed: onCancel),
+          if (!canSave)
+            Padding(
+              padding: EdgeInsets.only(top: context.spacing.xs),
+              child: Text(
+                hasInvalid ? '0~100 사이의 숫자를 입력해 주세요.' : '합계가 100%여야 저장할 수 있어요.',
+                style: context.typography.caption,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 
