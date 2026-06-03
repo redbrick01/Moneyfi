@@ -164,7 +164,9 @@ GoRouter buildMoneyfyRouter({
       GoRoute(
         path: MoneyfyRoutePaths.equityResearch,
         name: MoneyfyRouteNames.equityResearch,
-        builder: (context, state) => const EquityResearchPage(),
+        builder: (context, state) => EquityResearchPage(
+          initialTicker: state.uri.queryParameters['ticker'],
+        ),
       ),
       GoRoute(
         path: MoneyfyRoutePaths.redditPostSummaries,

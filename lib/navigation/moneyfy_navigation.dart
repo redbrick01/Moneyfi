@@ -233,16 +233,21 @@ extension MoneyfyNavigation on BuildContext {
     return push<void>(MoneyfyRoutePaths.dividendInterest);
   }
 
-  Future<void> openEquityResearch() {
+  Future<void> openEquityResearch({String? ticker}) {
     if (!_hasRouter) {
       return Navigator.of(this).push(
         MaterialPageRoute<void>(
           settings: const RouteSettings(name: MoneyfyRoutePaths.equityResearch),
-          builder: (_) => const EquityResearchPage(),
+          builder: (_) => EquityResearchPage(initialTicker: ticker),
         ),
       );
     }
-    return push<void>(MoneyfyRoutePaths.equityResearch);
+    final normalizedTicker = ticker?.trim().toUpperCase() ?? '';
+    return push<void>(
+      normalizedTicker.isEmpty
+          ? MoneyfyRoutePaths.equityResearch
+          : MoneyfyRoutePaths.equityResearchForTicker(normalizedTicker),
+    );
   }
 
   Future<void> openRedditPostSummaries() {

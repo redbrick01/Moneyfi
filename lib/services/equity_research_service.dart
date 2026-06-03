@@ -6,7 +6,6 @@ class EquityResearchService {
   EquityResearchService._();
 
   static final EquityResearchService instance = EquityResearchService._();
-  static const _schemaName = 'equity_research';
 
   Future<List<EquityResearchReportSummary>> fetchReports({
     int limit = 30,
@@ -17,36 +16,40 @@ class EquityResearchService {
     }
 
     try {
-      final schema = AuthService.client.schema(_schemaName);
-      final reportRows = await schema
-          .from('research_reports')
-          .select(_reportColumns)
-          .order('report_date', ascending: false)
-          .order('id', ascending: false)
-          .limit(limit);
-      final reports = reportRows
-          .whereType<Map>()
-          .map((row) => row.map((key, value) => MapEntry('$key', value)))
-          .toList(growable: false);
-      if (reports.isEmpty) return const [];
-
-      final companyIds = reports
-          .map((row) => _readInt(row['company_id']))
-          .where((id) => id > 0)
-          .toSet()
-          .toList(growable: false);
-      final companiesById = await _fetchCompaniesById(companyIds);
-
-      return reports
-          .map(
-            (row) => EquityResearchReportSummary.fromJson(
-              row,
-              companiesById[_readInt(row['company_id'])],
-            ),
-          )
-          .toList(growable: false);
+      final response = await AuthService.client.rpc<Object>(
+        'get_equity_research_reports',
+        params: {'p_limit': limit},
+      );
+      return _asMapList(
+        response,
+      ).map(EquityResearchReportSummary.fromRpcJson).toList(growable: false);
     } catch (error, stackTrace) {
       debugPrint('[equity-research] failed error=$error');
+      debugPrintStack(stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<EquityResearchReportSummary?> fetchLatestReportForTicker(
+    String ticker,
+  ) async {
+    final normalizedTicker = ticker.trim().toUpperCase();
+    if (normalizedTicker.isEmpty) return null;
+    if (!await AuthService.ensureInitialized()) {
+      debugPrint('[equity-research-latest] skipped: auth not initialized');
+      return null;
+    }
+
+    try {
+      final response = await AuthService.client.rpc<Object>(
+        'get_latest_equity_research_report',
+        params: {'p_ticker': normalizedTicker},
+      );
+      final row = _asMap(response);
+      if (row == null || row.isEmpty) return null;
+      return EquityResearchReportSummary.fromRpcJson(row);
+    } catch (error, stackTrace) {
+      debugPrint('[equity-research-latest] failed error=$error');
       debugPrintStack(stackTrace: stackTrace);
       rethrow;
     }
@@ -59,133 +62,39 @@ class EquityResearchService {
     }
 
     try {
-      final schema = AuthService.client.schema(_schemaName);
-      final results = await Future.wait<Object>([
-        schema
-            .from('report_sections')
-            .select(_sectionColumns)
-            .eq('report_id', reportId)
-            .order('sort_order', ascending: true)
-            .order('id', ascending: true),
-        schema
-            .from('company_metrics')
-            .select(_metricColumns)
-            .eq('report_id', reportId)
-            .order('id', ascending: true),
-        schema
-            .from('investment_theses')
-            .select(_thesisColumns)
-            .eq('report_id', reportId)
-            .order('sort_order', ascending: true)
-            .order('id', ascending: true),
-        schema
-            .from('risks')
-            .select(_riskColumns)
-            .eq('report_id', reportId)
-            .order('sort_order', ascending: true)
-            .order('id', ascending: true),
-        schema
-            .from('catalysts')
-            .select(_catalystColumns)
-            .eq('report_id', reportId)
-            .order('sort_order', ascending: true)
-            .order('id', ascending: true),
-        schema
-            .from('valuation_views')
-            .select(_valuationColumns)
-            .eq('report_id', reportId)
-            .order('id', ascending: true),
-        schema
-            .from('scenarios')
-            .select(_scenarioColumns)
-            .eq('report_id', reportId)
-            .order('sort_order', ascending: true)
-            .order('id', ascending: true),
-        schema
-            .from('monitoring_indicators')
-            .select(_monitoringColumns)
-            .eq('report_id', reportId)
-            .order('sort_order', ascending: true)
-            .order('id', ascending: true),
-        _fetchSourceDocuments(reportId),
-      ]);
+      final response = await AuthService.client.rpc<Object>(
+        'get_equity_research_report_detail',
+        params: {'p_report_id': reportId},
+      );
+      final row = _asMap(response);
+      if (row == null) return EquityResearchReportDetail.empty(reportId);
 
       return EquityResearchReportDetail(
         reportId: reportId,
-        sections: _mapRows(results[0], EquityResearchSection.fromJson),
-        metrics: _mapRows(results[1], EquityResearchMetric.fromJson),
-        theses: _mapRows(results[2], EquityResearchThesis.fromJson),
-        risks: _mapRows(results[3], EquityResearchRisk.fromJson),
-        catalysts: _mapRows(results[4], EquityResearchCatalyst.fromJson),
+        sections: _mapRows(row['sections'], EquityResearchSection.fromJson),
+        metrics: _mapRows(row['metrics'], EquityResearchMetric.fromJson),
+        theses: _mapRows(row['theses'], EquityResearchThesis.fromJson),
+        risks: _mapRows(row['risks'], EquityResearchRisk.fromJson),
+        catalysts: _mapRows(row['catalysts'], EquityResearchCatalyst.fromJson),
         valuationViews: _mapRows(
-          results[5],
+          row['valuation_views'],
           EquityResearchValuationView.fromJson,
         ),
-        scenarios: _mapRows(results[6], EquityResearchScenario.fromJson),
+        scenarios: _mapRows(row['scenarios'], EquityResearchScenario.fromJson),
         monitoringIndicators: _mapRows(
-          results[7],
+          row['monitoring_indicators'],
           EquityResearchMonitoringIndicator.fromJson,
         ),
-        sourceDocuments: results[8] as List<EquityResearchSourceDocument>,
+        sourceDocuments: _mapRows(
+          row['source_documents'],
+          EquityResearchSourceDocument.fromJson,
+        ),
       );
     } catch (error, stackTrace) {
       debugPrint('[equity-research-detail] failed error=$error');
       debugPrintStack(stackTrace: stackTrace);
       rethrow;
     }
-  }
-
-  Future<Map<int, EquityResearchCompany>> _fetchCompaniesById(
-    List<int> companyIds,
-  ) async {
-    if (companyIds.isEmpty) return const {};
-    final rows = await AuthService.client
-        .schema(_schemaName)
-        .from('companies')
-        .select(_companyColumns)
-        .inFilter('id', companyIds);
-    return {
-      for (final row in rows.whereType<Map>())
-        _readInt(row['id']): EquityResearchCompany.fromJson(
-          row.map((key, value) => MapEntry('$key', value)),
-        ),
-    };
-  }
-
-  Future<List<EquityResearchSourceDocument>> _fetchSourceDocuments(
-    int reportId,
-  ) async {
-    final schema = AuthService.client.schema(_schemaName);
-    final refRows = await schema
-        .from('report_source_documents')
-        .select('source_document_id,role,sort_order')
-        .eq('report_id', reportId)
-        .order('sort_order', ascending: true);
-    final refs = refRows
-        .whereType<Map>()
-        .map((row) => row.map((key, value) => MapEntry('$key', value)))
-        .toList(growable: false);
-    final ids = refs
-        .map((row) => _readInt(row['source_document_id']))
-        .where((id) => id > 0)
-        .toList(growable: false);
-    if (ids.isEmpty) return const [];
-
-    final documentRows = await schema
-        .from('source_documents')
-        .select(_sourceDocumentColumns)
-        .inFilter('id', ids)
-        .order('published_date', ascending: false);
-    final documentsById = {
-      for (final row in documentRows.whereType<Map>())
-        _readInt(row['id']): EquityResearchSourceDocument.fromJson(
-          row.map((key, value) => MapEntry('$key', value)),
-        ),
-    };
-    return refs
-        .map((row) => documentsById[_readInt(row['source_document_id'])])
-        .whereType<EquityResearchSourceDocument>()
-        .toList(growable: false);
   }
 
   static List<T> _mapRows<T>(
@@ -199,147 +108,18 @@ class EquityResearchService {
         .toList(growable: false);
   }
 
-  static final _companyColumns = [
-    'id',
-    'ticker',
-    'exchange',
-    'company_name',
-    'sector',
-    'industry',
-    'currency',
-  ].join(',');
+  static List<Map<String, dynamic>> _asMapList(Object? value) {
+    if (value is! Iterable) return const [];
+    return value
+        .whereType<Map>()
+        .map((row) => row.map((key, value) => MapEntry('$key', value)))
+        .toList(growable: false);
+  }
 
-  static final _reportColumns = [
-    'id',
-    'company_id',
-    'report_slug',
-    'title',
-    'report_type',
-    'report_date',
-    'as_of_date',
-    'author',
-    'language',
-    'summary',
-    'one_line_conclusion',
-    'investment_stance',
-    'confidence_level',
-    'is_investment_advice',
-    'created_at',
-    'updated_at',
-  ].join(',');
-
-  static final _sectionColumns = [
-    'id',
-    'parent_section_id',
-    'section_no',
-    'title',
-    'section_type',
-    'sort_order',
-    'body',
-  ].join(',');
-
-  static final _metricColumns = [
-    'id',
-    'metric_name',
-    'metric_value',
-    'metric_text',
-    'metric_unit',
-    'currency',
-    'fiscal_period',
-    'period_end_date',
-    'yoy_change_pct',
-    'qoq_change_pct',
-    'notes',
-  ].join(',');
-
-  static final _thesisColumns = [
-    'id',
-    'thesis_side',
-    'title',
-    'thesis_text',
-    'importance_score',
-    'sort_order',
-  ].join(',');
-
-  static final _riskColumns = [
-    'id',
-    'risk_category',
-    'title',
-    'description',
-    'probability_level',
-    'impact_level',
-    'time_horizon',
-    'mitigation_or_watchpoint',
-    'sort_order',
-  ].join(',');
-
-  static final _catalystColumns = [
-    'id',
-    'catalyst_category',
-    'title',
-    'description',
-    'expected_timing',
-    'expected_direction',
-    'sort_order',
-  ].join(',');
-
-  static final _valuationColumns = [
-    'id',
-    'valuation_method',
-    'stance',
-    'rating',
-    'price_at_analysis',
-    'target_price',
-    'target_price_low',
-    'target_price_high',
-    'fair_value',
-    'implied_upside_pct',
-    'currency',
-    'time_horizon',
-    'key_assumptions',
-    'notes',
-  ].join(',');
-
-  static final _scenarioColumns = [
-    'id',
-    'scenario_name',
-    'scenario_title',
-    'summary',
-    'valuation_anchor',
-    'expected_outcome',
-    'sort_order',
-  ].join(',');
-
-  static final _monitoringColumns = [
-    'id',
-    'area',
-    'indicator_name',
-    'positive_signal',
-    'negative_signal',
-    'check_frequency',
-    'source_hint',
-    'sort_order',
-  ].join(',');
-
-  static final _sourceDocumentColumns = [
-    'id',
-    'source_name',
-    'publisher',
-    'analyst_or_author',
-    'document_title',
-    'document_type',
-    'published_date',
-    'url',
-    'access_type',
-    'source_quality_grade',
-    'stance',
-    'rating',
-    'price_target',
-    'price_target_currency',
-    'fair_value',
-    'fair_value_currency',
-    'notes',
-  ].join(',');
+  static Map<String, dynamic>? _asMap(Object? value) {
+    if (value is! Map) return null;
+    return value.map((key, value) => MapEntry('$key', value));
+  }
 }
 
 class EquityResearchCompany {
@@ -417,6 +197,14 @@ class EquityResearchReportSummary {
       isInvestmentAdvice: _readBool(json['is_investment_advice']),
       createdAt: _readDateTime(json['created_at']),
       updatedAt: _readDateTime(json['updated_at']),
+    );
+  }
+
+  factory EquityResearchReportSummary.fromRpcJson(Map<String, dynamic> json) {
+    final companyJson = EquityResearchService._asMap(json['company']);
+    return EquityResearchReportSummary.fromJson(
+      json,
+      companyJson == null ? null : EquityResearchCompany.fromJson(companyJson),
     );
   }
 

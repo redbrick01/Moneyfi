@@ -167,6 +167,10 @@ abstract final class MoneyfyRoutePaths {
   static String cashTransactionEdit(int transactionId) =>
       '/cash-transactions/$transactionId/edit';
 
+  static String equityResearchForTicker(String ticker) {
+    return _withQuery(equityResearch, {'ticker': ticker.trim().toUpperCase()});
+  }
+
   static String _withOptionalQuery(String path, String key, String? value) {
     if (value == null || value.isEmpty) {
       return path;

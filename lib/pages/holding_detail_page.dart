@@ -14,10 +14,12 @@ import '../models/asset_item.dart';
 import '../models/market_snapshot.dart';
 import '../navigation/moneyfy_navigation.dart';
 import '../services/company_news_summary_service.dart';
+import '../services/equity_research_service.dart';
 import '../services/market_data_service.dart';
 import '../services/sync_service.dart';
 import '../utils/display_currency.dart';
 import '../widgets/company_news_summary_card.dart';
+import '../widgets/equity_research_report_card.dart';
 import '../widgets/moneyfy_ui.dart';
 import 'forms/cash_account_form_page.dart';
 import 'forms/holding_form_page.dart';
@@ -43,6 +45,8 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   static const String _kSlidableGroupTag = 'holding_detail_slidable_group';
   Future<CompanyNewsSummaryItem?>? _companyNewsFuture;
   String? _companyNewsSymbol;
+  Future<EquityResearchReportSummary?>? _equityResearchFuture;
+  String? _equityResearchSymbol;
   bool _isHeroDetailExpanded = false;
   late Future<HoldingItem?> _holdingFuture;
   Future<HoldingMarketSnapshot>? _marketSnapshotFuture;
@@ -119,6 +123,16 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
           .fetchSummaryForSymbol(normalized);
     }
     return _companyNewsFuture!;
+  }
+
+  Future<EquityResearchReportSummary?> _equityResearchForSymbol(String symbol) {
+    final normalized = symbol.trim().toUpperCase();
+    if (_equityResearchFuture == null || _equityResearchSymbol != normalized) {
+      _equityResearchSymbol = normalized;
+      _equityResearchFuture = EquityResearchService.instance
+          .fetchLatestReportForTicker(normalized);
+    }
+    return _equityResearchFuture!;
   }
 
   Future<HoldingMarketSnapshot> _marketSnapshotFor(HoldingItem holding) {
@@ -610,6 +624,30 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                 title: '종목 뉴스',
                                 emptyMessage: '표시할 종목 뉴스가 없습니다.',
                                 items: [item],
+                              );
+                            },
+                          ),
+                          SizedBox(
+                            height: context.spacing.md + context.spacing.xs / 2,
+                          ),
+                          FutureBuilder<EquityResearchReportSummary?>(
+                            future: _equityResearchForSymbol(
+                              displayHolding.symbol,
+                            ),
+                            builder: (context, researchSnapshot) {
+                              if (researchSnapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const SizedBox.shrink();
+                              }
+
+                              final report = researchSnapshot.data;
+                              if (report == null) {
+                                return const SizedBox.shrink();
+                              }
+
+                              return EquityResearchReportCard(
+                                title: '최신 리서치',
+                                reports: [report],
                               );
                             },
                           ),
