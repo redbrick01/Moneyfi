@@ -48,6 +48,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
   final Map<int, TextEditingController> _targetControllers = {};
   late Future<_PortfolioPageData> _pageFuture;
   String? _selectedAssetLabel;
+  String? _selectedHoldingLabel;
   bool _isGeneratingDiagnosis = false;
 
   @override
@@ -169,6 +170,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
         if (_selectedAssetLabel != null &&
             !items.any((element) => element.label == _selectedAssetLabel)) {
           _selectedAssetLabel = null;
+          _selectedHoldingLabel = null;
         }
 
         _syncTargetControllers(items, data.targetRatios);
@@ -202,9 +204,20 @@ class _PortfolioPageState extends State<PortfolioPage> {
                     _AllocationSectionCard(
                       items: items,
                       selectedAssetLabel: _selectedAssetLabel,
+                      selectedHoldingLabel: _selectedHoldingLabel,
                       onSelectAsset: (label) {
                         setState(() {
-                          _selectedAssetLabel = _selectedAssetLabel == label
+                          if (_selectedAssetLabel == label) {
+                            _selectedAssetLabel = null;
+                          } else {
+                            _selectedAssetLabel = label;
+                          }
+                          _selectedHoldingLabel = null;
+                        });
+                      },
+                      onSelectHolding: (label) {
+                        setState(() {
+                          _selectedHoldingLabel = _selectedHoldingLabel == label
                               ? null
                               : label;
                         });
@@ -451,6 +464,7 @@ class _AllocationItem {
     required this.ratio,
     required this.color,
     required this.icon,
+    required this.holdings,
   });
 
   final int assetId;
@@ -459,6 +473,7 @@ class _AllocationItem {
   final double ratio;
   final Color color;
   final IconData icon;
+  final List<HoldingItem> holdings;
 }
 
 List<_AllocationItem> _buildAllocations(List<AssetItem> assets) {
@@ -489,6 +504,7 @@ List<_AllocationItem> _buildAllocations(List<AssetItem> assets) {
           ratio: totalValue == 0 ? 0 : (entry.value.amount / totalValue) * 100,
           color: _rankedAllocationColor(entry.key),
           icon: entry.value.asset.icon,
+          holdings: entry.value.asset.visibleHoldings,
         ),
       )
       .toList();
@@ -503,13 +519,17 @@ class _AllocationSectionCard extends StatelessWidget {
   const _AllocationSectionCard({
     required this.items,
     required this.selectedAssetLabel,
+    required this.selectedHoldingLabel,
     required this.onSelectAsset,
+    required this.onSelectHolding,
     required this.onOpenAssetDetail,
   });
 
   final List<_AllocationItem> items;
   final String? selectedAssetLabel;
+  final String? selectedHoldingLabel;
   final ValueChanged<String> onSelectAsset;
+  final ValueChanged<String> onSelectHolding;
   final ValueChanged<int> onOpenAssetDetail;
 
   @override
@@ -520,6 +540,21 @@ class _AllocationSectionCard extends StatelessWidget {
     final selectedItem = selectedIndex == null || selectedIndex < 0
         ? null
         : items[selectedIndex];
+    final selectedAssetItem = selectedItem;
+    final holdingItems = selectedAssetItem == null
+        ? const <_AllocationItem>[]
+        : _buildHoldingAllocationItems(selectedAssetItem);
+    final showHoldingBreakdown = holdingItems.isNotEmpty;
+    final selectedHoldingIndex = showHoldingBreakdown
+        ? holdingItems.indexWhere((item) => item.label == selectedHoldingLabel)
+        : -1;
+    final selectedHoldingItem = selectedHoldingIndex < 0
+        ? null
+        : holdingItems[selectedHoldingIndex];
+    final chartItems = showHoldingBreakdown ? holdingItems : items;
+    final chartSelectedIndex = showHoldingBreakdown
+        ? (selectedHoldingIndex < 0 ? null : selectedHoldingIndex)
+        : selectedIndex;
     final sorted = [...items]..sort((a, b) => b.ratio.compareTo(a.ratio));
     final topOne = sorted.isEmpty ? null : sorted.first;
     final topThreeRatio = sorted
@@ -540,23 +575,22 @@ class _AllocationSectionCard extends StatelessWidget {
                 VisualSpec.chart.donutMin,
                 VisualSpec.chart.donutMax,
               );
-              final legend = ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 240),
-                child: SingleChildScrollView(
-                  child: SlidableAutoCloseBehavior(
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < items.length; i++)
-                          Padding(
-                            padding: EdgeInsets.only(
-                              bottom: i == items.length - 1
-                                  ? 0
-                                  : context.spacing.xs,
-                            ),
-                            child: _SwipeToOpenAssetDetail(
-                              label: items[i].label,
-                              onOpen: () => onOpenAssetDetail(items[i].assetId),
-                              child: AllocationLegendRow(
+              final legend = SlidableAutoCloseBehavior(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < items.length; i++)
+                      Padding(
+                        padding: EdgeInsets.only(
+                          bottom: i == items.length - 1
+                              ? 0
+                              : context.spacing.xs,
+                        ),
+                        child: _SwipeToOpenAssetDetail(
+                          label: items[i].label,
+                          onOpen: () => onOpenAssetDetail(items[i].assetId),
+                          child: Column(
+                            children: [
+                              AllocationLegendRow(
                                 color: items[i].color,
                                 icon: items[i].icon,
                                 title: items[i].label,
@@ -566,25 +600,46 @@ class _AllocationSectionCard extends StatelessWidget {
                                 isSelected: selectedIndex == i,
                                 onTap: () => onSelectAsset(items[i].label),
                               ),
-                            ),
+                              if (selectedIndex == i &&
+                                  showHoldingBreakdown) ...[
+                                SizedBox(height: context.spacing.xs),
+                                _HoldingBreakdownList(
+                                  items: holdingItems,
+                                  selectedLabel: selectedHoldingLabel,
+                                  onSelectHolding: onSelectHolding,
+                                ),
+                              ],
+                            ],
                           ),
-                      ],
-                    ),
-                  ),
+                        ),
+                      ),
+                  ],
                 ),
               );
 
               final chart = _InteractiveDonutChart(
                 size: chartSize,
-                items: items,
-                selectedIndex: selectedIndex,
-                centerTitle: selectedItem?.label,
-                centerValue: selectedItem == null
+                items: chartItems,
+                selectedIndex: chartSelectedIndex,
+                centerTitle: showHoldingBreakdown
+                    ? selectedHoldingItem?.label ?? selectedAssetItem?.label
+                    : selectedItem?.label,
+                centerValue: showHoldingBreakdown
+                    ? selectedHoldingItem == null
+                          ? _formatCurrency(selectedAssetItem?.amount ?? 0)
+                          : '${selectedHoldingItem.ratio.toStringAsFixed(1)}%'
+                    : selectedItem == null
                     ? _formatCurrency(
                         items.fold<double>(0, (sum, item) => sum + item.amount),
                       )
                     : '${selectedItem.ratio.toStringAsFixed(1)}%',
-                onTapSlice: (index) => onSelectAsset(items[index].label),
+                onTapSlice: (index) {
+                  if (showHoldingBreakdown) {
+                    onSelectHolding(holdingItems[index].label);
+                  } else {
+                    onSelectAsset(items[index].label);
+                  }
+                },
               );
 
               if (constraints.maxWidth < 380) {
@@ -619,6 +674,156 @@ class _AllocationSectionCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+List<_AllocationItem> _buildHoldingAllocationItems(_AllocationItem assetItem) {
+  final entries = assetItem.holdings
+      .map((holding) => (holding: holding, amount: holding.valuationAmount))
+      .where((entry) => entry.amount > 0)
+      .toList();
+  final totalValue = entries.fold<double>(
+    0,
+    (sum, entry) => sum + entry.amount,
+  );
+  entries.sort((a, b) {
+    final amountCompare = b.amount.compareTo(a.amount);
+    if (amountCompare != 0) return amountCompare;
+    return a.holding.name.compareTo(b.holding.name);
+  });
+
+  return entries
+      .asMap()
+      .entries
+      .map(
+        (entry) => _AllocationItem(
+          assetId: assetItem.assetId,
+          label: entry.value.holding.name,
+          amount: entry.value.amount,
+          ratio: totalValue == 0 ? 0 : (entry.value.amount / totalValue) * 100,
+          color: _rankedAllocationColor(entry.key),
+          icon: assetItem.icon,
+          holdings: const [],
+        ),
+      )
+      .toList(growable: false);
+}
+
+class _HoldingBreakdownList extends StatelessWidget {
+  const _HoldingBreakdownList({
+    required this.items,
+    required this.selectedLabel,
+    required this.onSelectHolding,
+  });
+
+  final List<_AllocationItem> items;
+  final String? selectedLabel;
+  final ValueChanged<String> onSelectHolding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(left: context.spacing.md),
+      child: Column(
+        children: [
+          for (var i = 0; i < items.length; i++)
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: i == items.length - 1 ? 0 : context.spacing.xs,
+              ),
+              child: _HoldingLegendRow(
+                item: items[i],
+                isSelected: selectedLabel == items[i].label,
+                onTap: () => onSelectHolding(items[i].label),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HoldingLegendRow extends StatelessWidget {
+  const _HoldingLegendRow({
+    required this.item,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final _AllocationItem item;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AnimatedContainer(
+      duration: Duration(milliseconds: VisualSpec.chart.animFastMs),
+      curve: VisualSpec.chart.animCurve,
+      decoration: BoxDecoration(
+        color: isSelected
+            ? colorScheme.surfaceContainerHighest
+            : colorScheme.surfaceContainerLow.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(context.radius.rSm),
+        border: Border.all(
+          color: isSelected
+              ? context.colors.primary.withValues(alpha: 0.24)
+              : colorScheme.outlineVariant.withValues(alpha: 0.16),
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(context.radius.rSm),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: context.spacing.sm,
+            vertical: context.spacing.xs,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: VisualSpec.chart.legendDot - 2,
+                height: VisualSpec.chart.legendDot - 2,
+                decoration: BoxDecoration(
+                  color: item.color,
+                  borderRadius: BorderRadius.circular(
+                    VisualSpec.chart.legendDotRadius,
+                  ),
+                ),
+              ),
+              SizedBox(width: context.spacing.sm),
+              Expanded(
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.typography.caption.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              SizedBox(width: context.spacing.sm),
+              Text(
+                _formatCurrency(item.amount),
+                style: context.typography.caption.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: AppFontWeights.semibold,
+                ),
+              ),
+              SizedBox(width: context.spacing.xs),
+              MoneyfyBadge(
+                label: '${item.ratio.toStringAsFixed(1)}%',
+                size: MoneyfyPillSize.sm,
+                variant: MoneyfyPillVariant.outline,
+                backgroundColor: colorScheme.surface,
+                borderColor: colorScheme.outlineVariant,
+                textColor: colorScheme.onSurface,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

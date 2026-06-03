@@ -96,15 +96,15 @@ class _BrandSpec {
 
   // Allocation rank palette (10)
   final Color allocationRank01 = const Color(0xFF3A6DFF);
-  final Color allocationRank02 = const Color(0xFF2DA4FF);
-  final Color allocationRank03 = const Color(0xFF5B7CFA);
-  final Color allocationRank04 = const Color(0xFF4CB7D8);
-  final Color allocationRank05 = const Color(0xFF5AC8A8);
-  final Color allocationRank06 = const Color(0xFF7B8EF7);
-  final Color allocationRank07 = const Color(0xFF8FB7FF);
-  final Color allocationRank08 = const Color(0xFFA8C4FF);
-  final Color allocationRank09 = const Color(0xFF73D6F2);
-  final Color allocationRank10 = const Color(0xFF9AA8FF);
+  final Color allocationRank02 = const Color(0xFF00A6D6);
+  final Color allocationRank03 = const Color(0xFF00B879);
+  final Color allocationRank04 = const Color(0xFF7C5CFF);
+  final Color allocationRank05 = const Color(0xFFE3A300);
+  final Color allocationRank06 = const Color(0xFFFF6B6B);
+  final Color allocationRank07 = const Color(0xFF3357C8);
+  final Color allocationRank08 = const Color(0xFF00A99D);
+  final Color allocationRank09 = const Color(0xFFD85BBE);
+  final Color allocationRank10 = const Color(0xFF6A7A99);
 
   List<Color> get allocationRankPalette => <Color>[
     allocationRank01,
@@ -119,16 +119,7 @@ class _BrandSpec {
     allocationRank10,
   ];
 
-  List<Color> get chartPalette => <Color>[
-    chart01,
-    chart02,
-    chart03,
-    chart04,
-    chart05,
-    chart06,
-    chart07,
-    chart08,
-  ];
+  List<Color> get chartPalette => allocationRankPalette;
 
   Map<String, Color> get assetTypeChartColors => <String, Color>{
     '주식': chart01,
