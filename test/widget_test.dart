@@ -11,6 +11,8 @@ import 'package:moneyfy/pages/forms/transaction_form_page.dart';
 import 'package:moneyfy/pages/investment_performance_page.dart';
 import 'package:moneyfy/pages/investment_review_page.dart';
 import 'package:moneyfy/pages/portfolio_dashboard_page.dart';
+import 'package:moneyfy/pages/reddit_post_summaries_page.dart';
+import 'package:moneyfy/services/reddit_post_summary_service.dart';
 import 'package:moneyfy/services/investment_review/daily_investment_review_models.dart';
 import 'package:moneyfy/services/investment_review/investment_review_models.dart';
 import 'package:moneyfy/services/investment_review/investment_review_periods.dart';
@@ -56,6 +58,143 @@ void main() {
     expect(calculatePerformanceRate(250000, 1000000), 25);
     expect(calculatePerformanceRate(-50000, 1000000), -5);
     expect(calculatePerformanceRate(250000, 0), isNull);
+  });
+
+  testWidgets('reddit summary card presents compact visual hierarchy', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: RedditPostSummariesPage(
+          initialItemsForTesting: [
+            RedditPostSummaryItem(
+              postRedditId: 'abc',
+              subreddit: 'ValueInvesting',
+              title: 'OpenAI IPO expectations and Microsoft debate',
+              url: 'https://reddit.com/r/ValueInvesting/comments/abc',
+              score: 0,
+              commentCount: 0,
+              postedAt: DateTime(2026, 6, 3, 11, 2),
+              model: 'test',
+              isValuable: true,
+              qualityLabel: 'summary',
+              confidence: 0.9,
+              tickers: const ['MSFT', 'AMZN', 'GOOGL'],
+              titleKo: 'OpenAI IPO 기대와 Microsoft 이해상충 논쟁',
+              postSummaryKo:
+                  'OpenAI IPO가 Microsoft 지분가치에는 호재지만 Azure 우위 약화 논쟁이 붙었다.',
+              commentsSummaryKo: '회의론은 글 전개가 과도하게 단순화됐다고 봤다.',
+              analysisReasonsKo: '',
+              analyzedAt: DateTime(2026, 6, 3, 11, 5),
+              importanceModel: 'test',
+              importanceLabel: 'high',
+              importanceScore: 88,
+              categoryLabel: '플랫폼',
+              importanceReasonsKo: '계약 구조와 Azure 성장률 둔화 리스크를 함께 봐야 함',
+              judgedAt: DateTime(2026, 6, 3, 11, 6),
+              insightModel: 'test',
+              insightKo: 'OpenAI 가치 상승이 곧바로 Microsoft의 장기 우위로 이어지는지는 별개 문제다.',
+              insightGeneratedAt: DateTime(2026, 6, 3, 11, 7),
+              syncedAt: DateTime(2026, 6, 3, 11, 8),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('핵심 요약'), findsNothing);
+    expect(find.text('게시글'), findsOneWidget);
+    expect(find.text('댓글'), findsOneWidget);
+    expect(find.text('근거'), findsOneWidget);
+    expect(find.text('summary'), findsNothing);
+    expect(find.text('ValueInvesting'), findsNothing);
+    expect(find.text('점수 0'), findsNothing);
+    expect(find.text('댓글 0'), findsNothing);
+    expect(find.text('88'), findsOneWidget);
+    expect(find.text('high 88'), findsNothing);
+
+    final titleText = tester.widget<Text>(
+      find.text('OpenAI IPO 기대와 Microsoft 이해상충 논쟁'),
+    );
+    expect(titleText.textAlign, TextAlign.start);
+    expect(titleText.maxLines, isNull);
+    expect(titleText.overflow, isNull);
+  });
+
+  testWidgets('reddit summaries sort by latest summary sync time', (
+    tester,
+  ) async {
+    RedditPostSummaryItem item({
+      required String id,
+      required String title,
+      required DateTime postedAt,
+      required DateTime syncedAt,
+    }) {
+      return RedditPostSummaryItem(
+        postRedditId: id,
+        subreddit: 'ValueInvesting',
+        title: title,
+        url: 'https://reddit.com/r/ValueInvesting/comments/$id',
+        score: 0,
+        commentCount: 0,
+        postedAt: postedAt,
+        model: 'test',
+        isValuable: true,
+        qualityLabel: 'summary',
+        confidence: 0.9,
+        tickers: const [],
+        titleKo: '',
+        postSummaryKo: '요약',
+        commentsSummaryKo: '',
+        analysisReasonsKo: '',
+        analyzedAt: syncedAt.subtract(const Duration(minutes: 3)),
+        importanceModel: 'test',
+        importanceLabel: 'medium',
+        importanceScore: 50,
+        categoryLabel: '기타',
+        importanceReasonsKo: '',
+        judgedAt: syncedAt.subtract(const Duration(minutes: 2)),
+        insightModel: 'test',
+        insightKo: '',
+        insightGeneratedAt: syncedAt.subtract(const Duration(minutes: 1)),
+        syncedAt: syncedAt,
+      );
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: RedditPostSummariesPage(
+          initialItemsForTesting: [
+            item(
+              id: 'old-post-new-summary',
+              title: 'Older post but newly synced summary',
+              postedAt: DateTime(2026, 5, 28, 9),
+              syncedAt: DateTime(2026, 6, 4, 12),
+            ),
+            item(
+              id: 'new-post-old-summary',
+              title: 'Newer post but older synced summary',
+              postedAt: DateTime(2026, 6, 3, 9),
+              syncedAt: DateTime(2026, 6, 3, 10),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final latestSummaryTop = tester.getTopLeft(
+      find.text('Older post but newly synced summary'),
+    );
+    final olderSummaryTop = tester.getTopLeft(
+      find.text('Newer post but older synced summary'),
+    );
+
+    expect(latestSummaryTop.dy, lessThan(olderSummaryTop.dy));
+    expect(find.text('06.04 12:00'), findsOneWidget);
   });
 
   HoldingItem holding({

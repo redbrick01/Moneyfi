@@ -34,7 +34,9 @@ extension on _RedditPostSort {
 }
 
 class RedditPostSummariesPage extends StatefulWidget {
-  const RedditPostSummariesPage({super.key});
+  const RedditPostSummariesPage({super.key, this.initialItemsForTesting});
+
+  final List<RedditPostSummaryItem>? initialItemsForTesting;
 
   @override
   State<RedditPostSummariesPage> createState() =>
@@ -70,6 +72,13 @@ class _RedditPostSummariesPageState extends State<RedditPostSummariesPage> {
   }
 
   Future<_RedditPostPageData> _loadPageData() async {
+    final testingItems = widget.initialItemsForTesting;
+    if (testingItems != null) {
+      return _RedditPostPageData(
+        dates: _summaryDates(testingItems),
+        items: testingItems,
+      );
+    }
     final datesFuture = RedditPostSummaryService.instance.fetchSummaryDates();
     final summariesFuture = RedditPostSummaryService.instance.fetchSummaries(
       postedDate: _selectedDate,
@@ -228,6 +237,18 @@ class _RedditPostSummariesPageState extends State<RedditPostSummariesPage> {
             .toSet()
             .toList(growable: false)
           ..sort();
+    return values;
+  }
+
+  List<DateTime> _summaryDates(List<RedditPostSummaryItem> items) {
+    final values =
+        items
+            .map(_summaryDateTime)
+            .whereType<DateTime>()
+            .map((date) => DateTime(date.year, date.month, date.day))
+            .toSet()
+            .toList(growable: false)
+          ..sort((a, b) => b.compareTo(a));
     return values;
   }
 
@@ -1052,74 +1073,33 @@ class _RedditPostSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      variant: SectionCardVariant.outline,
+      variant: SectionCardVariant.base,
+      dense: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: context.spacing.xs,
-            runSpacing: context.spacing.xs,
-            children: [
-              MoneyfyBadge(
-                label: item.subreddit,
-                size: MoneyfyPillSize.sm,
-                backgroundColor: context.colors.neutralSurfaceRaised,
-                textColor: context.colors.neutralText,
-              ),
-              if (item.categoryLabel.isNotEmpty)
-                MoneyfyBadge(
-                  label: item.categoryLabel,
-                  size: MoneyfyPillSize.sm,
-                  variant: MoneyfyPillVariant.outline,
-                  backgroundColor: context.colors.neutralSurfaceBase,
-                  textColor: context.colors.neutralTextMuted,
-                ),
-              if (item.importanceLabel.isNotEmpty)
-                MoneyfyBadge(
-                  label:
-                      '${item.importanceLabel} ${item.importanceScore.toString()}',
-                  size: MoneyfyPillSize.sm,
-                  backgroundColor: _importanceBackground(context, item),
-                  textColor: _importanceText(context, item),
-                ),
-            ],
-          ),
+          _PostBadgeStrip(item: item),
           SizedBox(height: context.spacing.sm),
           _PostTitleLink(item: item),
-          SizedBox(height: context.spacing.xs),
-          _PostMetricStrip(item: item),
-          if (item.tickers.isNotEmpty) ...[
-            SizedBox(height: context.spacing.sm),
-            Wrap(
-              spacing: context.spacing.xs,
-              runSpacing: context.spacing.xs,
-              children: [
-                for (final ticker in item.tickers)
-                  MoneyfyBadge(
-                    label: ticker,
-                    size: MoneyfyPillSize.sm,
-                    variant: MoneyfyPillVariant.outline,
-                    backgroundColor: context.colors.neutralSurfaceBase,
-                    textColor: context.colors.primary,
-                  ),
-              ],
-            ),
-          ],
           if (item.hasInsight) ...[
-            SizedBox(height: context.spacing.md),
+            SizedBox(height: context.spacing.sm),
             _InsightBlock(body: item.insightKo),
           ],
           if (item.hasPostSummary) ...[
             SizedBox(height: context.spacing.md),
-            _SummaryBlock(title: '게시글 요약', body: item.postSummaryKo),
+            _SummaryBlock(title: '게시글', body: item.postSummaryKo),
           ],
           if (item.hasCommentsSummary) ...[
             SizedBox(height: context.spacing.md),
-            _SummaryBlock(title: '댓글 요약', body: item.commentsSummaryKo),
+            _SummaryBlock(title: '댓글', body: item.commentsSummaryKo),
           ],
           if (item.importanceReasonsKo.isNotEmpty) ...[
             SizedBox(height: context.spacing.md),
-            _SummaryBlock(title: '중요도 근거', body: item.importanceReasonsKo),
+            _SummaryBlock(title: '근거', body: item.importanceReasonsKo),
+          ],
+          if (item.tickers.isNotEmpty) ...[
+            SizedBox(height: context.spacing.md),
+            _TickerStrip(tickers: item.tickers),
           ],
         ],
       ),
@@ -1145,6 +1125,8 @@ class _PostTitleLink extends StatelessWidget {
             Expanded(
               child: Text(
                 item.displayTitle,
+                softWrap: true,
+                textAlign: TextAlign.start,
                 style: context.typography.cardTitle.copyWith(
                   color: context.colors.neutralText,
                   fontWeight: AppFontWeights.semibold,
@@ -1154,6 +1136,78 @@ class _PostTitleLink extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PostBadgeStrip extends StatelessWidget {
+  const _PostBadgeStrip({required this.item});
+
+  final RedditPostSummaryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: context.spacing.xs,
+      runSpacing: context.spacing.xs,
+      children: [
+        _ImportanceScorePill(item: item),
+        if (item.categoryLabel.isNotEmpty)
+          MoneyfyBadge(
+            label: item.categoryLabel,
+            size: MoneyfyPillSize.sm,
+            variant: MoneyfyPillVariant.outline,
+            backgroundColor: context.colors.neutralSurfaceBase,
+            textColor: context.colors.neutralTextMuted,
+          ),
+        if (_summaryDateTime(item) != null)
+          _PostMetricPill(
+            icon: Icons.calendar_month_rounded,
+            label: _formatDateTime(_summaryDateTime(item)!),
+          ),
+      ],
+    );
+  }
+}
+
+class _ImportanceScorePill extends StatelessWidget {
+  const _ImportanceScorePill({required this.item});
+
+  final RedditPostSummaryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return MoneyfyBadge(
+      label: item.importanceScore.toString(),
+      size: MoneyfyPillSize.sm,
+      variant: MoneyfyPillVariant.tonal,
+      backgroundColor: _importanceBackground(context, item),
+      borderColor: _importanceText(context, item).withValues(alpha: 0.24),
+      textColor: _importanceText(context, item),
+    );
+  }
+}
+
+class _TickerStrip extends StatelessWidget {
+  const _TickerStrip({required this.tickers});
+
+  final List<String> tickers;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: context.spacing.xs,
+      runSpacing: context.spacing.xs,
+      children: [
+        for (final ticker in tickers)
+          MoneyfyBadge(
+            label: ticker,
+            size: MoneyfyPillSize.sm,
+            variant: MoneyfyPillVariant.outline,
+            backgroundColor: context.colors.neutralSurfaceBase,
+            textColor: context.colors.primary,
+          ),
+      ],
     );
   }
 }
@@ -1170,40 +1224,6 @@ Future<void> _openPostUrl(BuildContext context, String url) async {
   }
 }
 
-class _PostMetricStrip extends StatelessWidget {
-  const _PostMetricStrip({required this.item});
-
-  final RedditPostSummaryItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: context.spacing.xs,
-      runSpacing: context.spacing.xs,
-      children: [
-        if (_summaryDateTime(item) != null)
-          _PostMetricPill(
-            icon: Icons.calendar_month_rounded,
-            label: _formatDateTime(_summaryDateTime(item)!),
-          ),
-        _PostMetricPill(
-          icon: Icons.arrow_upward_rounded,
-          label: '점수 ${item.score.toString()}',
-        ),
-        _PostMetricPill(
-          icon: Icons.chat_bubble_outline_rounded,
-          label: '댓글 ${item.commentCount.toString()}',
-        ),
-        if (item.qualityLabel.isNotEmpty)
-          _PostMetricPill(
-            icon: Icons.verified_rounded,
-            label: item.qualityLabel,
-          ),
-      ],
-    );
-  }
-}
-
 class _PostMetricPill extends StatelessWidget {
   const _PostMetricPill({required this.icon, required this.label});
 
@@ -1216,17 +1236,17 @@ class _PostMetricPill extends StatelessWidget {
       context,
       size: MoneyfyPillSize.sm,
       tone: MoneyfyPillTone.neutral,
-      variant: MoneyfyPillVariant.outline,
+      variant: MoneyfyPillVariant.soft,
     );
 
     return Container(
       constraints: BoxConstraints(minHeight: pillStyle.height),
       padding: pillStyle.padding,
       decoration: BoxDecoration(
-        color: pillStyle.background,
+        color: context.colors.neutralSurfaceBase,
         borderRadius: BorderRadius.circular(pillStyle.radius),
         border: Border.all(
-          color: pillStyle.border,
+          color: context.colors.neutralOutline.withValues(alpha: 0.44),
           width: pillStyle.borderWidth,
         ),
       ),
@@ -1236,13 +1256,13 @@ class _PostMetricPill extends StatelessWidget {
           Icon(
             icon,
             size: VisualSpec.icon.chipIcon,
-            color: pillStyle.foreground,
+            color: context.colors.neutralTextMuted,
           ),
           SizedBox(width: context.spacing.xs / 2),
           Text(
             label,
             style: pillStyle.textStyle.copyWith(
-              color: pillStyle.foreground,
+              color: context.colors.neutralTextMuted,
               fontWeight: AppFontWeights.regular,
             ),
           ),
@@ -1260,9 +1280,42 @@ class _SummaryBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppInnerPanel(
-      tone: AppInnerPanelTone.base,
-      padding: EdgeInsets.all(context.spacing.sm),
+    return _PostSectionBlock(
+      title: title,
+      child: Text(
+        body,
+        style: context.typography.body.copyWith(
+          color: context.colors.neutralText,
+          height: 1.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _PostSectionBlock extends StatelessWidget {
+  const _PostSectionBlock({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        left: context.spacing.sm,
+        top: context.spacing.xs,
+        bottom: context.spacing.xs,
+      ),
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: context.colors.neutralOutline,
+            width: VisualSpec.surface.borderWidth * 2,
+          ),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1274,13 +1327,7 @@ class _SummaryBlock extends StatelessWidget {
             ),
           ),
           SizedBox(height: context.spacing.xs),
-          Text(
-            body,
-            style: context.typography.body.copyWith(
-              color: context.colors.neutralText,
-              height: 1.5,
-            ),
-          ),
+          child,
         ],
       ),
     );
@@ -1295,8 +1342,9 @@ class _InsightBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppInnerPanel(
-      tone: AppInnerPanelTone.base,
+      tone: AppInnerPanelTone.raised,
       padding: EdgeInsets.all(context.spacing.sm),
+      showBorder: false,
       child: Text(
         body,
         style: context.typography.body.copyWith(
@@ -1365,7 +1413,7 @@ class _RedditPostEmptyState extends StatelessWidget {
 
 String _formatDateTime(DateTime value) {
   String two(int number) => number.toString().padLeft(2, '0');
-  return '${value.year}.${two(value.month)}.${two(value.day)} '
+  return '${two(value.month)}.${two(value.day)} '
       '${two(value.hour)}:${two(value.minute)}';
 }
 
@@ -1383,11 +1431,7 @@ int _compareDateDesc(DateTime? a, DateTime? b) {
 }
 
 DateTime? _summaryDateTime(RedditPostSummaryItem item) {
-  return item.postedAt ??
-      item.syncedAt ??
-      item.insightGeneratedAt ??
-      item.judgedAt ??
-      item.analyzedAt;
+  return item.summaryDateTime;
 }
 
 bool _sameDate(DateTime? a, DateTime? b) {

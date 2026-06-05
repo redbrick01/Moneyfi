@@ -30,10 +30,7 @@ class RedditPostSummaryService {
         final end = start.add(const Duration(days: 1));
         final startIso = start.toUtc().toIso8601String();
         final endIso = end.toUtc().toIso8601String();
-        query = query.or(
-          'and(posted_at.gte.$startIso,posted_at.lt.$endIso),'
-          'and(posted_at.is.null,synced_at.gte.$startIso,synced_at.lt.$endIso)',
-        );
+        query = query.gte('synced_at', startIso).lt('synced_at', endIso);
       }
 
       final response = await query
@@ -65,16 +62,14 @@ class RedditPostSummaryService {
     try {
       final response = await AuthService.client
           .from('reddit_post_summaries')
-          .select('posted_at,synced_at')
+          .select('synced_at')
           .order('synced_at', ascending: false)
-          .order('posted_at', ascending: false)
           .limit(limit);
 
       final seen = <String>{};
       final dates = <DateTime>[];
       for (final row in response.whereType<Map>()) {
-        final dateTime =
-            _readDateTime(row['posted_at']) ?? _readDateTime(row['synced_at']);
+        final dateTime = _readDateTime(row['synced_at']);
         if (dateTime == null) continue;
         final date = DateTime(dateTime.year, dateTime.month, dateTime.day);
         final key = _dateKey(date);
@@ -216,6 +211,9 @@ class RedditPostSummaryItem {
   bool get hasInsight => insightKo.trim().isNotEmpty;
   bool get hasPostSummary => postSummaryKo.trim().isNotEmpty;
   bool get hasCommentsSummary => commentsSummaryKo.trim().isNotEmpty;
+  DateTime? get summaryDateTime {
+    return syncedAt ?? insightGeneratedAt ?? judgedAt ?? analyzedAt ?? postedAt;
+  }
 
   bool matches(String query) {
     final normalized = query.trim().toLowerCase();
