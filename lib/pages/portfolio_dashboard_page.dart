@@ -1864,6 +1864,7 @@ class _AssetRow extends StatelessWidget {
     final rowChild = AssetRow(
       minHeight: _AssetListCard._kAssetRowHeight,
       leadingSlotWidth: _AssetListCard._kAssetLeadingSlotWidth,
+      titleMinWidthFraction: showSecondaryValue ? 0.30 : null,
       leading: Container(
         width: _AssetListCard._kAssetIconBoxSize,
         height: _AssetListCard._kAssetIconBoxSize,
@@ -2002,12 +2003,18 @@ class _AssetProfitLine extends StatelessWidget {
           ),
         ),
         SizedBox(width: context.spacing.xs),
-        DeltaChip(
-          value: profitAmount,
-          percent: profitRate,
-          mode: DeltaChipMode.percent,
-          vivid: true,
-          compact: true,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerRight,
+          child: Text(
+            app_number.formatSignedPercent(profitRate),
+            maxLines: 1,
+            textAlign: TextAlign.right,
+            style: context.typography.caption.copyWith(
+              color: amountColor,
+              fontWeight: AppFontWeights.semibold,
+            ),
+          ),
         ),
       ],
     );

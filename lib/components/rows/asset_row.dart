@@ -20,6 +20,7 @@ class AssetRow extends StatelessWidget {
     this.trailingAccessory,
     this.minHeight = 76,
     this.leadingSlotWidth,
+    this.titleMinWidthFraction,
   });
 
   final Widget leading;
@@ -34,6 +35,7 @@ class AssetRow extends StatelessWidget {
   final Widget? trailingAccessory;
   final double minHeight;
   final double? leadingSlotWidth;
+  final double? titleMinWidthFraction;
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +63,13 @@ class AssetRow extends StatelessWidget {
               accessoryReserve,
         );
         final hasDeltaLine = deltaChip != null;
-        final minTitleWidth = hasDeltaLine ? 40.0 : 48.0;
+        final titleWidthFloor = titleMinWidthFraction == null
+            ? 0.0
+            : availableWidth * titleMinWidthFraction!.clamp(0.0, 1.0);
+        final minTitleWidth = math.max(
+          hasDeltaLine ? 40.0 : 48.0,
+          titleWidthFloor,
+        );
         final trailingWidthTarget =
             (availableWidth * (hasDeltaLine ? 0.72 : 0.42)).clamp(
               hasDeltaLine ? 148.0 : 80.0,

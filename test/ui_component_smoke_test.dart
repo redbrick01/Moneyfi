@@ -94,6 +94,42 @@ void main() {
     expect(find.text('매수'), findsOneWidget);
   });
 
+  testWidgets('AssetRow can reserve at least half width for title', (
+    tester,
+  ) async {
+    await pumpUi(
+      tester,
+      SizedBox(
+        width: 320,
+        child: AssetRow(
+          leading: const SizedBox.shrink(),
+          showLeading: false,
+          title: '미국AI테스트보유종목장기이름',
+          subtitle: 'TEST · 20',
+          amountText: '₩1,923,040',
+          titleMinWidthFraction: 0.5,
+          deltaChip: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text('+₩367,600'),
+                SizedBox(width: 8),
+                Text('+32.9%'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final titleBox = tester.renderObject<RenderBox>(
+      find.text('미국AI테스트보유종목장기이름'),
+    );
+    expect(titleBox.constraints.maxWidth, greaterThanOrEqualTo(100));
+  });
+
   testWidgets('State widgets render', (tester) async {
     await pumpUi(
       tester,

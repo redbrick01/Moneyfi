@@ -6,6 +6,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import '../components/buttons/app_buttons.dart';
 import '../components/chips/delta_chip.dart';
 import '../components/chips/moneyfy_pill.dart';
+import '../components/formatters/number_format.dart' as app_number;
 import '../components/panels/app_detail_section.dart';
 import '../components/panels/app_floating_menu_surface.dart';
 import '../components/panels/app_inner_panel.dart';
@@ -15,6 +16,7 @@ import '../design_system/context_extensions.dart';
 import '../design_system/spec.dart';
 import '../db/app_database.dart';
 import '../models/asset_item.dart';
+import '../models/market_snapshot.dart';
 import '../navigation/moneyfy_navigation.dart';
 import '../navigation/moneyfy_routes.dart';
 import '../services/market_data_service.dart';
@@ -61,6 +63,8 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
 
   _HoldingSortOption _holdingSortOption = _HoldingSortOption.custom;
   bool _isHeroDetailExpanded = false;
+  bool _showHoldingMarketQuote = false;
+  final Map<String, Future<HoldingMarketSnapshot>> _holdingMarketSnapshots = {};
   late Future<_AssetDetailData?> _detailFuture;
   int _missingAssetRetryCount = 0;
   static const int _kMaxMissingAssetRetries = 3;
@@ -77,6 +81,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
       if (resetMissingRetry) {
         _missingAssetRetryCount = 0;
       }
+      _holdingMarketSnapshots.clear();
       _detailFuture = _loadAssetDetailData();
     });
   }
@@ -185,6 +190,17 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     );
     if (!mounted) return;
     _reloadDetail();
+  }
+
+  Future<HoldingMarketSnapshot> _marketSnapshotForHolding(HoldingItem holding) {
+    final cacheKey =
+        '${holding.id}|${holding.clientId}|${holding.symbol}|'
+        '${holding.exchangeCode}|${holding.currencyCode}|'
+        '${holding.currentPrice}|${holding.quantity}';
+    return _holdingMarketSnapshots.putIfAbsent(
+      cacheKey,
+      () => MarketDataService.instance.fetchSnapshot(holding),
+    );
   }
 
   Future<int?> _resolveCurrentAssetId(AssetItem? item) async {
@@ -826,6 +842,13 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            _HoldingDisplayModeToggle(
+                              showMarketQuote: _showHoldingMarketQuote,
+                              onChanged: (value) => setState(
+                                () => _showHoldingMarketQuote = value,
+                              ),
+                            ),
+                            SizedBox(width: context.spacing.xs),
                             PopupMenuButton<_HoldingSortOption>(
                               tooltip: '정렬',
                               initialValue: _holdingSortOption,
@@ -913,6 +936,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                 context: context,
                                 visibleHoldings: visibleInvestmentHoldings,
                                 hiddenHoldings: hiddenInvestmentHoldings,
+                                showMarketQuote: _showHoldingMarketQuote,
                               ),
                       ),
                       SizedBox(height: context.spacing.md),
@@ -1068,12 +1092,14 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     required BuildContext context,
     required List<HoldingItem> visibleHoldings,
     required List<HoldingItem> hiddenHoldings,
+    required bool showMarketQuote,
   }) {
     if (hiddenHoldings.isEmpty || visibleHoldings.isEmpty) {
       return _buildHoldingCard(
         context,
         hiddenHoldings.isEmpty ? visibleHoldings : hiddenHoldings,
         reorderable: true,
+        showMarketQuote: showMarketQuote,
       );
     }
     final frontHeight = _assetCardHeight(
@@ -1100,6 +1126,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
               context,
               hiddenHoldings,
               leadingEmptySlot: true,
+              showMarketQuote: showMarketQuote,
             ),
           ),
           Positioned(
@@ -1110,6 +1137,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
               context,
               visibleHoldings,
               reorderable: true,
+              showMarketQuote: showMarketQuote,
             ),
           ),
         ],
@@ -1122,6 +1150,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     List<HoldingItem> items, {
     bool leadingEmptySlot = false,
     bool reorderable = false,
+    bool showMarketQuote = false,
   }) {
     return AppInnerPanel(
       padding: EdgeInsets.zero,
@@ -1145,6 +1174,10 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                         index: index,
                         child: _HoldingRow(
                           holding: holding,
+                          showMarketQuote: showMarketQuote,
+                          marketSnapshotFuture: showMarketQuote
+                              ? _marketSnapshotForHolding(holding)
+                              : null,
                           onChanged: _reloadDetail,
                           onToggleHidden: () => _toggleHoldingHidden(holding),
                         ),
@@ -1161,6 +1194,10 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                   for (var index = 0; index < items.length; index++) ...[
                     _HoldingRow(
                       holding: items[index],
+                      showMarketQuote: showMarketQuote,
+                      marketSnapshotFuture: showMarketQuote
+                          ? _marketSnapshotForHolding(items[index])
+                          : null,
                       onChanged: _reloadDetail,
                       onToggleHidden: () => _toggleHoldingHidden(items[index]),
                     ),
@@ -1553,47 +1590,174 @@ class _HoldingSortMenuRow extends StatelessWidget {
   }
 }
 
+class _HoldingDisplayModeToggle extends StatelessWidget {
+  const _HoldingDisplayModeToggle({
+    required this.showMarketQuote,
+    required this.onChanged,
+  });
+
+  final bool showMarketQuote;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: context.surfaces.surfaceRaised,
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        border: Border.all(
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.7),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _HoldingDisplayModeSegment(
+            label: '수익',
+            selected: !showMarketQuote,
+            onTap: () => onChanged(false),
+          ),
+          _HoldingDisplayModeSegment(
+            label: '시세',
+            selected: showMarketQuote,
+            onTap: () => onChanged(true),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HoldingDisplayModeSegment extends StatelessWidget {
+  const _HoldingDisplayModeSegment({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: selected ? null : onTap,
+      borderRadius: BorderRadius.circular(context.radius.rSm),
+      child: AnimatedContainer(
+        duration: context.motion.fast,
+        curve: Curves.easeOut,
+        width: 42,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? context.surfaces.surfaceBase : Colors.transparent,
+          borderRadius: BorderRadius.circular(context.radius.rSm),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          style: context.typography.meta.copyWith(
+            color: selected
+                ? colorScheme.onSurface
+                : colorScheme.onSurfaceVariant,
+            fontWeight: selected
+                ? AppFontWeights.semibold
+                : AppFontWeights.regular,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HoldingRow extends StatelessWidget {
   const _HoldingRow({
     required this.holding,
+    required this.showMarketQuote,
+    this.marketSnapshotFuture,
     required this.onChanged,
     required this.onToggleHidden,
   });
 
+  static const double _kHoldingQuantitySlotWidth = 112;
+
   final HoldingItem holding;
+  final bool showMarketQuote;
+  final Future<HoldingMarketSnapshot>? marketSnapshotFuture;
   final VoidCallback onChanged;
   final VoidCallback onToggleHidden;
 
   @override
   Widget build(BuildContext context) {
-    final subtitleParts = <String>[
-      if (holding.symbol.trim().isNotEmpty) holding.symbol.trim(),
-      holding.quantityText,
-    ].where((value) => value.trim().isNotEmpty).toList(growable: false);
+    final subtitle = holding.quantityText.trim();
+    final colorScheme = Theme.of(context).colorScheme;
+    final fallbackMarket = HoldingMarketSnapshot.fallback(holding);
+    final displayContent = showMarketQuote
+        ? FutureBuilder<HoldingMarketSnapshot>(
+            future: marketSnapshotFuture,
+            initialData: fallbackMarket,
+            builder: (context, snapshot) {
+              final market = snapshot.data ?? fallbackMarket;
+              return _HoldingRowContent(
+                holding: holding,
+                subtitle: subtitle,
+                amountText: market.currentPrice,
+                metricLine: _HoldingMarketQuoteLine(
+                  dayChange: market.dayChange,
+                  dayChangeRate: market.dayChangeRate,
+                ),
+              );
+            },
+          )
+        : _HoldingRowContent(
+            holding: holding,
+            subtitle: subtitle,
+            amountText: holding.value,
+            metricLine: _HoldingProfitLine(
+              profitAmount: holding.profitAmount,
+              profitRate: holding.profitRate,
+            ),
+          );
 
-    final rowChild = AssetRow(
-      minHeight: 80,
-      leading: const SizedBox.shrink(),
-      showLeading: false,
-      title: holding.name,
-      subtitle: subtitleParts.isEmpty ? null : subtitleParts.join(' · '),
-      amountText: holding.value,
-      deltaChip: _HoldingProfitLine(
-        profitAmount: holding.profitAmount,
-        profitRate: holding.profitRate,
-      ),
-      isHidden: holding.isHidden,
-      showChevron: false,
-      onTap: () async {
-        if (holding.id == null) return;
-        await context.openHoldingDetail(
-          HoldingDetailRouteArgs(
-            holdingId: holding.id!,
-            holdingClientId: holding.clientId,
+    final rowChild = Material(
+      color: VisualSpec.surface.transparent,
+      child: InkWell(
+        onTap: () async {
+          if (holding.id == null) return;
+          await context.openHoldingDetail(
+            HoldingDetailRouteArgs(
+              holdingId: holding.id!,
+              holdingClientId: holding.clientId,
+            ),
+          );
+          onChanged();
+        },
+        borderRadius: BorderRadius.circular(context.radius.rMd),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) {
+            return colorScheme.onSurface.withValues(alpha: 0.08);
+          }
+          if (states.contains(WidgetState.hovered)) {
+            return colorScheme.onSurface.withValues(alpha: 0.05);
+          }
+          return null;
+        }),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 80),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacing.md,
+              vertical: context.spacing.sm,
+            ),
+            child: displayContent,
           ),
-        );
-        onChanged();
-      },
+        ),
+      ),
     );
 
     return Slidable(
@@ -1618,6 +1782,75 @@ class _HoldingRow extends StatelessWidget {
               )
             : rowChild,
       ),
+    );
+  }
+}
+
+class _HoldingRowContent extends StatelessWidget {
+  const _HoldingRowContent({
+    required this.holding,
+    required this.subtitle,
+    required this.amountText,
+    required this.metricLine,
+  });
+
+  final HoldingItem holding;
+  final String subtitle;
+  final String amountText;
+  final Widget metricLine;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                holding.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.typography.cardTitle,
+              ),
+            ),
+            SizedBox(width: context.spacing.sm),
+            Flexible(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    amountText,
+                    maxLines: 1,
+                    textAlign: TextAlign.right,
+                    style: context.typography.cardTitle.copyWith(
+                      fontWeight: AppFontWeights.semibold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: context.spacing.xs / 2),
+        Row(
+          children: [
+            SizedBox(
+              width: _HoldingRow._kHoldingQuantitySlotWidth,
+              child: Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.typography.meta,
+              ),
+            ),
+            SizedBox(width: context.spacing.xs),
+            Expanded(child: metricLine),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -1660,11 +1893,71 @@ class _HoldingProfitLine extends StatelessWidget {
           ),
         ),
         SizedBox(width: context.spacing.xs),
-        DeltaChip(
-          value: profitAmount,
-          percent: profitRate,
-          mode: DeltaChipMode.percent,
-          vivid: true,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerRight,
+          child: Text(
+            app_number.formatSignedPercent(profitRate),
+            maxLines: 1,
+            textAlign: TextAlign.right,
+            style: context.typography.body.copyWith(
+              color: amountColor,
+              fontWeight: AppFontWeights.semibold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HoldingMarketQuoteLine extends StatelessWidget {
+  const _HoldingMarketQuoteLine({
+    required this.dayChange,
+    required this.dayChangeRate,
+  });
+
+  final String dayChange;
+  final String dayChangeRate;
+
+  @override
+  Widget build(BuildContext context) {
+    final amountColor = _valueStringColor(context, dayChange);
+    return Row(
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                dayChange,
+                maxLines: 1,
+                textAlign: TextAlign.right,
+                style: context.typography.body.copyWith(
+                  color: amountColor,
+                  fontWeight: AppFontWeights.semibold,
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: context.spacing.xs),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerRight,
+          child: Text(
+            dayChangeRate,
+            maxLines: 1,
+            textAlign: TextAlign.right,
+            style: context.typography.body.copyWith(
+              color: amountColor,
+              fontWeight: AppFontWeights.semibold,
+            ),
+          ),
         ),
       ],
     );
