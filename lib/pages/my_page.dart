@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,6 +15,7 @@ import '../design_system/context_extensions.dart';
 import '../db/app_database.dart';
 import '../navigation/moneyfy_navigation.dart';
 import '../services/auth_service.dart';
+import '../services/gpt_db_summary_builder.dart';
 import '../services/market_data_service.dart';
 import '../services/sync_service.dart';
 import '../ui_scaffold/app_page_scaffold.dart';
@@ -575,157 +574,16 @@ class _LoggedInViewState extends State<_LoggedInView> {
       final targetRatios = await db.fetchAssetAllocationTargets();
       final transactionDates = await db.fetchTransactionDates();
       final snapshots = await db.fetchRecentPortfolioSnapshots(maxDates: 24);
-      final visibleAssets = assets
-          .where((asset) => !asset.isHidden)
-          .toList(growable: false);
-      final allHoldings = assets
-          .expand((asset) => asset.holdings)
-          .toList(growable: false);
-      final visibleHoldings = visibleAssets
-          .expand((asset) => asset.visibleHoldings)
-          .toList(growable: false);
-      final allTransactions = assets
-          .expand(
-            (asset) => asset.holdings.expand((holding) => holding.transactions),
-          )
-          .toList(growable: false);
-      final totalValuation = visibleAssets.fold<double>(
-        0,
-        (sum, asset) => sum + asset.totalValuationAmount,
+      final payload = buildGptDbSummaryPayload(
+        assets: assets,
+        targetRatios: targetRatios,
+        transactionDates: transactionDates,
+        snapshots: snapshots,
       );
-      final totalPurchase = visibleAssets.fold<double>(
-        0,
-        (sum, asset) => sum + asset.totalPurchaseAmount,
+
+      await Clipboard.setData(
+        ClipboardData(text: buildGptDbSummaryReportText(payload)),
       );
-      final totalProfit = totalValuation - totalPurchase;
-      final totalProfitRate = totalPurchase == 0
-          ? 0.0
-          : (totalProfit / totalPurchase) * 100;
-      final sortedHoldingsByValue = [...visibleHoldings]
-        ..sort((a, b) => b.valuationAmount.compareTo(a.valuationAmount));
-      final hiddenValuation = assets
-          .where((asset) => asset.isHidden)
-          .fold<double>(0, (sum, asset) => sum + asset.backendValuationAmount);
-      final firstTransactionDate = transactionDates.isEmpty
-          ? null
-          : transactionDates.reduce((a, b) => a.compareTo(b) <= 0 ? a : b);
-      final lastTransactionDate = transactionDates.isEmpty
-          ? null
-          : transactionDates.reduce((a, b) => a.compareTo(b) >= 0 ? a : b);
-
-      double ratioOfTotal(double amount) {
-        if (totalValuation == 0) return 0;
-        return (amount / totalValuation) * 100;
-      }
-
-      final payload = <String, Object?>{
-        'generated_at': DateTime.now().toIso8601String(),
-        'timezone': DateTime.now().timeZoneName,
-        'scope':
-            'AI 진단용 핵심 데이터. 보유 자산 전체는 포함하고, 사용자 식별값/거래 원장/client_id/id/전체 스냅샷 상세는 제외.',
-        'summary': <String, Object?>{
-          'visible_asset_count': visibleAssets.length,
-          'hidden_asset_count': assets.length - visibleAssets.length,
-          'holding_count': allHoldings.length,
-          'visible_holding_count': visibleHoldings.length,
-          'hidden_holding_count': allHoldings
-              .where((holding) => holding.isHidden)
-              .length,
-          'transaction_count': allTransactions.length,
-          'target_ratio_count': targetRatios.length,
-          'snapshot_count': snapshots.length,
-          'transaction_date_count': transactionDates.length,
-          'first_transaction_date': firstTransactionDate,
-          'last_transaction_date': lastTransactionDate,
-          'total_visible_valuation_krw': totalValuation,
-          'total_visible_purchase_krw': totalPurchase,
-          'total_visible_profit_krw': totalProfit,
-          'total_visible_profit_rate': totalProfitRate,
-          'hidden_valuation_krw': hiddenValuation,
-        },
-        'asset_allocation': visibleAssets
-            .map((asset) {
-              final targetRatio = asset.id == null
-                  ? null
-                  : targetRatios[asset.id!];
-              return <String, Object?>{
-                'asset_type': asset.assetType,
-                'name': asset.displayName,
-                'currency_code': asset.currencyCode,
-                'valuation_krw': asset.totalValuationAmount,
-                'purchase_krw': asset.totalPurchaseAmount,
-                'profit_krw': asset.totalProfitAmount,
-                'profit_rate': asset.totalProfitRate,
-                'allocation_rate': ratioOfTotal(asset.totalValuationAmount),
-                'target_ratio': targetRatio,
-                'target_gap': targetRatio == null
-                    ? null
-                    : ratioOfTotal(asset.totalValuationAmount) - targetRatio,
-                'visible_holding_count': asset.visibleHoldings.length,
-                'transaction_count': asset.holdings.fold<int>(
-                  0,
-                  (sum, holding) => sum + holding.transactions.length,
-                ),
-              };
-            })
-            .toList(growable: false),
-        'asset_type_allocation': visibleAssets
-            .fold<Map<String, double>>(<String, double>{}, (acc, asset) {
-              acc.update(
-                asset.assetType,
-                (value) => value + asset.totalValuationAmount,
-                ifAbsent: () => asset.totalValuationAmount,
-              );
-              return acc;
-            })
-            .entries
-            .map(
-              (entry) => <String, Object?>{
-                'asset_type': entry.key,
-                'valuation_krw': entry.value,
-                'allocation_rate': ratioOfTotal(entry.value),
-              },
-            )
-            .toList(growable: false),
-        'holdings': sortedHoldingsByValue
-            .map(
-              (holding) => <String, Object?>{
-                'asset_type': holding.assetType,
-                'asset_name': holding.assetTitle,
-                'name': holding.name,
-                'symbol': holding.symbol,
-                'currency_code': holding.currencyCode,
-                'valuation_krw': holding.valuationAmount,
-                'purchase_krw': holding.purchaseAmount,
-                'profit_krw': holding.profitAmount,
-                'profit_rate': holding.profitRate,
-                'allocation_rate': ratioOfTotal(holding.valuationAmount),
-                'transaction_count': holding.transactions.length,
-              },
-            )
-            .toList(growable: false),
-        'recent_snapshots': snapshots
-            .take(12)
-            .map(
-              (snapshot) => <String, Object?>{
-                'snapshot_date': snapshot.snapshotDate,
-                'total_purchase_krw': snapshot.totalPurchaseAmount,
-                'total_valuation_krw': snapshot.totalValuationAmount,
-                'profit_krw': snapshot.profitAmount,
-                'profit_rate': snapshot.profitRate,
-                'exchange_rate': snapshot.exchangeRate,
-              },
-            )
-            .toList(growable: false),
-      };
-
-      final reportText = StringBuffer()
-        ..writeln('아래는 MONEYFY 내부 DB 핵심 요약입니다.')
-        ..writeln('전체 원장이 아니라 진단에 필요한 요약값만 포함했어. 이 값을 바탕으로 포트폴리오를 분석해줘.')
-        ..writeln('')
-        ..writeln(const JsonEncoder.withIndent('  ').convert(payload));
-
-      await Clipboard.setData(ClipboardData(text: reportText.toString()));
       if (!mounted) return;
       AppSnackBar.showSuccess(
         context,
