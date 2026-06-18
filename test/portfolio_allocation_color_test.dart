@@ -128,6 +128,85 @@ void main() {
     expect(quoteLine, contains('dayChange'));
     expect(quoteLine, contains('dayChangeRate'));
   });
+
+  test('dashboard diagnosis risk badge uses pill tokens', () {
+    final source = File(
+      'lib/pages/portfolio_dashboard_page.dart',
+    ).readAsStringSync();
+    final badgeSource = _classSource(source, 'class _DashboardDiagnosisBadge');
+
+    expect(badgeSource, contains('MoneyfyPillTone'));
+    expect(badgeSource, contains('MoneyfyPillSize.sm'));
+    expect(badgeSource, contains('MoneyfyPillVariant'));
+    expect(badgeSource, contains('VisualSpec.pill.heightSm'));
+    expect(badgeSource, isNot(contains('backgroundColor')));
+    expect(badgeSource, isNot(contains('textColor')));
+    expect(badgeSource, isNot(contains('borderColor')));
+  });
+
+  test('dashboard cards use shared section header spacing', () {
+    final source = File(
+      'lib/pages/portfolio_dashboard_page.dart',
+    ).readAsStringSync();
+    final assetBasePlate = _classSource(source, 'class _AssetSectionBasePlate');
+    final analysisBasePlate = _classSource(
+      source,
+      'class _AnalysisSectionBasePlate',
+    );
+
+    for (final basePlate in [assetBasePlate, analysisBasePlate]) {
+      expect(basePlate, contains('title:'));
+      expect(basePlate, contains('headerTrailing:'));
+      expect(basePlate, contains('useSectionTitle: false'));
+      expect(basePlate, isNot(contains('headerHeight')));
+      expect(
+        basePlate,
+        isNot(contains('SizedBox(height: context.cardPadding())')),
+      );
+    }
+  });
+
+  test('statistics total asset trend can switch monthly and weekly cards', () {
+    final source = File('lib/pages/statistics_page.dart').readAsStringSync();
+    final pageState = _classSource(source, 'class _StatisticsPageState');
+    final monthlyTrend = _classSource(source, 'class _MonthlyTrendSection');
+    final monthlyTrendState = _classSource(
+      source,
+      'class _MonthlyTrendSectionState',
+    );
+    final trendSwitcher = _classSource(source, 'class _TrendViewSwitcher');
+
+    expect(pageState, contains('_buildRecentWeekStatisticsData'));
+    expect(monthlyTrend, contains('_TotalAssetTrendView'));
+    expect(monthlyTrendState, contains('_TrendViewSwitcher'));
+    expect(monthlyTrendState, contains('headerTrailing'));
+    expect(source, contains('최근 7일 총자산 변화'));
+    expect(trendSwitcher, contains('AppIconName.chevronLeft'));
+    expect(trendSwitcher, contains('AppIconName.chevronRight'));
+  });
+
+  test('statistics weekly trend hides asset groups and x axis dates', () {
+    final source = File('lib/pages/statistics_page.dart').readAsStringSync();
+    final weeklyBuilder = _functionSource(
+      source,
+      '_StatisticsData _buildRecentWeekStatisticsData',
+    );
+    final monthlyTrendState = _classSource(
+      source,
+      'class _MonthlyTrendSectionState',
+    );
+
+    expect(weeklyBuilder, contains('subtract(const Duration(days: 6))'));
+    expect(weeklyBuilder, contains('series: const []'));
+    expect(
+      monthlyTrendState,
+      contains(
+        'if (_trendView == _TotalAssetTrendView.monthly) ...activeData.series',
+      ),
+    );
+    expect(monthlyTrendState, contains('showXAxisLabels'));
+    expect(monthlyTrendState, contains('_TotalAssetTrendView.monthly'));
+  });
 }
 
 String _functionSource(String source, String signature) {

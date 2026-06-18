@@ -368,97 +368,65 @@ class _AssetSectionBasePlate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const headerHeight = 56.0;
-    final horizontalPadding = context.cardPadding();
     return SectionCard(
       variant: SectionCardVariant.base,
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      title: '자산',
+      useSectionTitle: false,
+      headerTrailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(height: context.cardPadding()),
-          SizedBox(
-            height: headerHeight,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    '자산',
-                    style: context.typography.cardTitle.copyWith(
-                      fontSize: context.fontSizes.s18,
-                      fontWeight: AppFontWeights.semibold,
-                    ),
-                  ),
-                  const Spacer(),
-                  PopupMenuButton<_AssetSortOption>(
-                    tooltip: '정렬',
-                    initialValue: sortOption,
-                    onSelected: onSortChanged,
-                    color: context.surfaces.surfaceBase,
-                    surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
-                    elevation: 0,
-                    offset: const Offset(0, 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        VisualSpec.surface.radiusCard,
-                      ),
-                      side: BorderSide(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.outlineVariant.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    menuPadding: EdgeInsets.symmetric(
-                      vertical: context.spacing.xs,
-                    ),
-                    constraints: const BoxConstraints(minWidth: 190),
-                    icon: AppIcon(AppIconName.sort),
-                    itemBuilder: (context) => [
-                      PopupMenuItem<_AssetSortOption>(
-                        enabled: false,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.spacing.xs,
-                          vertical: context.spacing.xs / 2,
-                        ),
-                        child: _AssetSortMenuCard(selected: sortOption),
-                      ),
-                    ],
-                  ),
-                  SizedBox(width: context.spacing.xs),
-                  SizedBox(
-                    height: 24,
-                    child: VerticalDivider(
-                      width: 1,
-                      thickness: 1,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.outlineVariant.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  SizedBox(width: context.spacing.xs),
-                  AppIconButton(
-                    tooltip: '자산 추가',
-                    onPressed: onAddPressed,
-                    icon: AppIconName.add,
-                  ),
-                ],
+          PopupMenuButton<_AssetSortOption>(
+            tooltip: '정렬',
+            initialValue: sortOption,
+            onSelected: onSortChanged,
+            color: context.surfaces.surfaceBase,
+            surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
+            elevation: 0,
+            offset: const Offset(0, 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                VisualSpec.surface.radiusCard,
+              ),
+              side: BorderSide(
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.7),
               ),
             ),
+            menuPadding: EdgeInsets.symmetric(vertical: context.spacing.xs),
+            constraints: const BoxConstraints(minWidth: 190),
+            icon: AppIcon(AppIconName.sort),
+            itemBuilder: (context) => [
+              PopupMenuItem<_AssetSortOption>(
+                enabled: false,
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.xs,
+                  vertical: context.spacing.xs / 2,
+                ),
+                child: _AssetSortMenuCard(selected: sortOption),
+              ),
+            ],
           ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              context.cardPadding(),
-              context.cardPadding(),
-              context.cardPadding(),
-              context.cardPadding(),
+          SizedBox(width: context.spacing.xs),
+          SizedBox(
+            height: 24,
+            child: VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.8),
             ),
-            child: child,
+          ),
+          SizedBox(width: context.spacing.xs),
+          AppIconButton(
+            tooltip: '자산 추가',
+            onPressed: onAddPressed,
+            icon: AppIconName.add,
           ),
         ],
       ),
+      child: child,
     );
   }
 }
@@ -551,59 +519,23 @@ class _AnalysisSectionBasePlate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const headerHeight = 56.0;
-    final horizontalPadding = context.cardPadding();
     return SectionCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(height: context.cardPadding()),
-          SizedBox(
-            height: headerHeight,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    '포트폴리오 진단',
-                    style: context.typography.cardTitle.copyWith(
-                      fontSize: context.fontSizes.s18,
-                      fontWeight: AppFontWeights.semibold,
-                    ),
-                  ),
-                  const Spacer(),
-                  FutureBuilder<PortfolioDiagnosisCacheEntry?>(
-                    key: ValueKey('analysis-risk-$refreshTick'),
-                    future: PortfolioDiagnosisService.instance
-                        .fetchCachedDiagnosis(),
-                    builder: (context, snapshot) {
-                      final cached = snapshot.data;
-                      if (cached == null) {
-                        return const SizedBox.shrink();
-                      }
-                      return _DashboardDiagnosisBadge(
-                        riskLevel: cached.diagnosis.riskLevel,
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              context.cardPadding(),
-              context.cardPadding(),
-              context.cardPadding(),
-              context.cardPadding(),
-            ),
-            child: child,
-          ),
-        ],
+      title: '포트폴리오 진단',
+      useSectionTitle: false,
+      headerTrailing: FutureBuilder<PortfolioDiagnosisCacheEntry?>(
+        key: ValueKey('analysis-risk-$refreshTick'),
+        future: PortfolioDiagnosisService.instance.fetchCachedDiagnosis(),
+        builder: (context, snapshot) {
+          final cached = snapshot.data;
+          if (cached == null) {
+            return const SizedBox.shrink();
+          }
+          return _DashboardDiagnosisBadge(
+            riskLevel: cached.diagnosis.riskLevel,
+          );
+        },
       ),
+      child: child,
     );
   }
 }
@@ -2288,16 +2220,23 @@ class _DashboardDiagnosisBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = switch (riskLevel) {
-      '낮음' => context.colors.positiveOn,
-      '높음' => context.colors.negativeOn,
-      _ => context.colors.warningOn,
+    final tone = switch (riskLevel) {
+      '낮음' => MoneyfyPillTone.success,
+      '높음' => MoneyfyPillTone.danger,
+      _ => MoneyfyPillTone.warning,
     };
-    return MoneyfyBadge(
-      label: '리스크 $riskLevel',
-      size: MoneyfyPillSize.md,
-      backgroundColor: color.withValues(alpha: 0.14),
-      textColor: color,
+    return SizedBox(
+      height: VisualSpec.pill.heightSm,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerRight,
+        child: MoneyfyBadge(
+          label: '리스크 $riskLevel',
+          size: MoneyfyPillSize.sm,
+          tone: tone,
+          variant: MoneyfyPillVariant.tonal,
+        ),
+      ),
     );
   }
 }

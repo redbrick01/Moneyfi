@@ -109,6 +109,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
         final bundle = snapshot.data ?? const _StatisticsSnapshotBundle.empty();
         final data = _buildStatisticsData(bundle.snapshots, bundle.items);
+        final recentWeekData = _buildRecentWeekStatisticsData(
+          bundle.allSnapshots,
+          bundle.annualItems,
+        );
         final closingAssets = buildMonthlyClosingAssets(
           bundle.recentSnapshots,
           bundle.recentItems,
@@ -137,6 +141,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 monthKeys: data.monthKeys,
                 series: data.series,
                 totalSeries: data.totalSeries,
+                recentWeekData: recentWeekData,
                 sectionError: bundle.trendError,
                 onRetry: _refreshPage,
               ),
@@ -355,9 +360,53 @@ _StatisticsData _buildStatisticsData(
   );
 }
 
+_StatisticsData _buildRecentWeekStatisticsData(
+  List<DailyPortfolioSnapshot> snapshots,
+  List<DailyPortfolioSnapshotItem> items,
+) {
+  if (snapshots.isEmpty) {
+    return const _StatisticsData.empty();
+  }
+  final sortedSnapshots = List<DailyPortfolioSnapshot>.from(snapshots)
+    ..sort((a, b) => a.snapshotDate.compareTo(b.snapshotDate));
+  final latestDate = DateTime.tryParse(sortedSnapshots.last.snapshotDate);
+  if (latestDate == null) {
+    return const _StatisticsData.empty();
+  }
+  final startDate = DateTime(
+    latestDate.year,
+    latestDate.month,
+    latestDate.day,
+  ).subtract(const Duration(days: 6));
+  final recentSnapshots = sortedSnapshots
+      .where((snapshot) {
+        final date = DateTime.tryParse(snapshot.snapshotDate);
+        if (date == null) return false;
+        final normalized = DateTime(date.year, date.month, date.day);
+        return !normalized.isBefore(startDate);
+      })
+      .toList(growable: false);
+  if (recentSnapshots.isEmpty) {
+    return const _StatisticsData.empty();
+  }
+  final data = _buildStatisticsData(recentSnapshots, items);
+  return _StatisticsData(
+    monthKeys: data.monthKeys,
+    months: data.monthKeys.map(_dayLabelFromKey).toList(growable: false),
+    series: const [],
+    totalSeries: data.totalSeries,
+  );
+}
+
 String _monthLabelFromKey(String key) {
   final date = DateTime.parse(key);
   return '${date.month}월';
+}
+
+String _dayLabelFromKey(String key) {
+  final date = DateTime.tryParse(key);
+  if (date == null) return key;
+  return '${date.month}/${date.day}';
 }
 
 String _statisticsAssetKey(DailyPortfolioSnapshotItem item) {
@@ -370,6 +419,7 @@ class _MonthlyTrendSection extends StatefulWidget {
     required this.monthKeys,
     required this.series,
     required this.totalSeries,
+    required this.recentWeekData,
     this.sectionError,
     required this.onRetry,
   });
@@ -378,6 +428,7 @@ class _MonthlyTrendSection extends StatefulWidget {
   final List<String> monthKeys;
   final List<_MonthlyAssetSeries> series;
   final _MonthlyAssetSeries totalSeries;
+  final _StatisticsData recentWeekData;
   final Object? sectionError;
   final Future<void> Function() onRetry;
 
@@ -385,9 +436,87 @@ class _MonthlyTrendSection extends StatefulWidget {
   State<_MonthlyTrendSection> createState() => _MonthlyTrendSectionState();
 }
 
+enum _TotalAssetTrendView {
+  monthly('월별', '월별 총자산 변화', '월별 스냅샷 기록으로 총자산 흐름을 비교해요.'),
+  weekly('최근 7일', '최근 7일 총자산 변화', '최근 일주일 스냅샷으로 총자산 흐름을 비교해요.');
+
+  const _TotalAssetTrendView(this.label, this.title, this.description);
+
+  final String label;
+  final String title;
+  final String description;
+
+  _TotalAssetTrendView get previous {
+    return switch (this) {
+      _TotalAssetTrendView.monthly => _TotalAssetTrendView.weekly,
+      _TotalAssetTrendView.weekly => _TotalAssetTrendView.monthly,
+    };
+  }
+
+  _TotalAssetTrendView get next => previous;
+}
+
+class _TrendViewSwitcher extends StatelessWidget {
+  const _TrendViewSwitcher({required this.value, required this.onChanged});
+
+  final _TotalAssetTrendView value;
+  final ValueChanged<_TotalAssetTrendView> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _TrendViewArrowButton(
+          tooltip: '이전 카드',
+          icon: AppIconName.chevronLeft,
+          onPressed: () => onChanged(value.previous),
+        ),
+        SizedBox(
+          width: 56,
+          child: Center(
+            child: Text(
+              value.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.typography.caption.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: AppFontWeights.semibold,
+              ),
+            ),
+          ),
+        ),
+        _TrendViewArrowButton(
+          tooltip: '다음 카드',
+          icon: AppIconName.chevronRight,
+          onPressed: () => onChanged(value.next),
+        ),
+      ],
+    );
+  }
+}
+
+class _TrendViewArrowButton extends StatelessWidget {
+  const _TrendViewArrowButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final AppIconName icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppIconButton(tooltip: tooltip, onPressed: onPressed, icon: icon);
+  }
+}
+
 class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
   int? _selectedIndex;
   bool _legendExpanded = false;
+  _TotalAssetTrendView _trendView = _TotalAssetTrendView.monthly;
 
   @override
   void initState() {
@@ -399,30 +528,46 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
   void didUpdateWidget(covariant _MonthlyTrendSection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.months != widget.months ||
-        oldWidget.totalSeries.values != widget.totalSeries.values) {
+        oldWidget.totalSeries.values != widget.totalSeries.values ||
+        oldWidget.recentWeekData.totalSeries.values !=
+            widget.recentWeekData.totalSeries.values) {
       _syncSelection();
     }
   }
 
+  _StatisticsData get _activeData {
+    return switch (_trendView) {
+      _TotalAssetTrendView.monthly => _StatisticsData(
+        monthKeys: widget.monthKeys,
+        months: widget.months,
+        series: widget.series,
+        totalSeries: widget.totalSeries,
+      ),
+      _TotalAssetTrendView.weekly => widget.recentWeekData,
+    };
+  }
+
   void _syncSelection() {
-    if (widget.months.isEmpty) {
+    final activeData = _activeData;
+    if (activeData.months.isEmpty) {
       _selectedIndex = null;
       return;
     }
-    _selectedIndex ??= widget.months.length - 1;
-    if (_selectedIndex! >= widget.months.length) {
-      _selectedIndex = widget.months.length - 1;
+    _selectedIndex ??= activeData.months.length - 1;
+    if (_selectedIndex! >= activeData.months.length) {
+      _selectedIndex = activeData.months.length - 1;
     }
   }
 
   void _handleSelection(Offset localPosition, double chartWidth) {
-    if (widget.months.isEmpty || chartWidth <= 0) return;
+    final activeData = _activeData;
+    if (activeData.months.isEmpty || chartWidth <= 0) return;
 
     final safeDx = localPosition.dx.clamp(0.0, chartWidth);
-    final denominator = math.max(widget.months.length - 1, 1);
+    final denominator = math.max(activeData.months.length - 1, 1);
     final index = ((safeDx / chartWidth) * denominator).round().clamp(
       0,
-      widget.months.length - 1,
+      activeData.months.length - 1,
     );
 
     setState(() {
@@ -430,14 +575,27 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
     });
   }
 
+  void _setTrendView(_TotalAssetTrendView value) {
+    setState(() {
+      _trendView = value;
+      _selectedIndex = null;
+      _syncSelection();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final activeData = _activeData;
 
     if (widget.sectionError != null) {
       return SectionCard(
-        title: '월별 총자산 변화',
+        title: _trendView.title,
+        headerTrailing: _TrendViewSwitcher(
+          value: _trendView,
+          onChanged: _setTrendView,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -452,13 +610,42 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
       );
     }
 
-    final chartSeries = [widget.totalSeries, ...widget.series];
+    final chartSeries = [
+      activeData.totalSeries,
+      if (_trendView == _TotalAssetTrendView.monthly) ...activeData.series,
+    ];
     final yAxisLabels = _buildYAxisLabels(chartSeries);
     final hasData =
-        widget.months.isNotEmpty &&
+        activeData.months.isNotEmpty &&
         chartSeries.any((item) => item.values.any((value) => value != 0));
 
     if (!hasData) {
+      if (_trendView == _TotalAssetTrendView.weekly &&
+          widget.months.isNotEmpty) {
+        return SectionCard(
+          title: _trendView.title,
+          headerTrailing: _TrendViewSwitcher(
+            value: _trendView,
+            onChanged: _setTrendView,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_trendView.description, style: context.typography.meta),
+              SizedBox(height: context.spacing.sm),
+              Text(
+                '스냅샷이 쌓이면 최근 일주일 총자산 변화를 확인할 수 있어요.',
+                style: context.typography.body,
+              ),
+              SizedBox(height: context.spacing.md),
+              AppGhostButton(
+                label: CopySpec.refresh,
+                onPressed: widget.onRetry,
+              ),
+            ],
+          ),
+        );
+      }
       final isLoggedIn = AuthService.currentUser != null;
       if (!isLoggedIn) {
         return _buildCenteredLevel1EmptyCard(
@@ -477,31 +664,38 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
       );
     }
 
-    final selected = _selectedIndex ?? (widget.months.length - 1);
+    final selected = _selectedIndex ?? (activeData.months.length - 1);
     final legendItems = [
       _LegendTextItem(
-        color: widget.totalSeries.color,
-        label: widget.totalSeries.label,
+        color: activeData.totalSeries.color,
+        label: activeData.totalSeries.label,
       ),
-      for (final item in widget.series)
-        _LegendTextItem(color: item.color, label: item.label),
+      if (_trendView == _TotalAssetTrendView.monthly)
+        for (final item in activeData.series)
+          _LegendTextItem(color: item.color, label: item.label),
     ];
+    final showXAxisLabels = _trendView == _TotalAssetTrendView.monthly;
     final visibleLegendCount = _legendExpanded
         ? legendItems.length
         : math.min(6, legendItems.length);
 
     return SectionCard(
-      title: '월별 총자산 변화',
+      title: _trendView.title,
+      headerTrailing: _TrendViewSwitcher(
+        value: _trendView,
+        onChanged: _setTrendView,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('월별 스냅샷 기록으로 총자산 흐름을 비교해요.', style: context.typography.meta),
+          Text(_trendView.description, style: context.typography.meta),
           SizedBox(height: context.spacing.sm),
           _SelectedMonthStrip(
-            monthKey: widget.monthKeys[selected],
-            totalValueInMillion: widget.totalSeries.values[selected],
+            monthKey: activeData.monthKeys[selected],
+            compactDate: _trendView == _TotalAssetTrendView.weekly,
+            totalValueInMillion: activeData.totalSeries.values[selected],
             previousValueInMillion: selected > 0
-                ? widget.totalSeries.values[selected - 1]
+                ? activeData.totalSeries.values[selected - 1]
                 : null,
           ),
           SizedBox(height: context.spacing.md),
@@ -574,24 +768,29 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                for (var i = 0; i < widget.months.length; i++)
-                                  Expanded(
-                                    child: Align(
-                                      alignment: Alignment.bottomCenter,
-                                      child: Text(
-                                        widget.months[i],
-                                        style: context.typography.caption
-                                            .copyWith(
-                                              fontSize: context.fontSizes.s12,
-                                              color:
-                                                  colorScheme.onSurfaceVariant,
-                                              fontWeight: _selectedIndex == i
-                                                  ? AppFontWeights.semibold
-                                                  : AppFontWeights.regular,
-                                            ),
+                                if (showXAxisLabels)
+                                  for (
+                                    var i = 0;
+                                    i < activeData.months.length;
+                                    i++
+                                  )
+                                    Expanded(
+                                      child: Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child: Text(
+                                          activeData.months[i],
+                                          style: context.typography.caption
+                                              .copyWith(
+                                                fontSize: context.fontSizes.s12,
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
+                                                fontWeight: _selectedIndex == i
+                                                    ? AppFontWeights.semibold
+                                                    : AppFontWeights.regular,
+                                              ),
+                                        ),
                                       ),
                                     ),
-                                  ),
                               ],
                             ),
                           ),
@@ -620,11 +819,13 @@ class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
 class _SelectedMonthStrip extends StatelessWidget {
   const _SelectedMonthStrip({
     required this.monthKey,
+    this.compactDate = false,
     required this.totalValueInMillion,
     this.previousValueInMillion,
   });
 
   final String monthKey;
+  final bool compactDate;
   final double totalValueInMillion;
   final double? previousValueInMillion;
 
@@ -674,7 +875,9 @@ class _SelectedMonthStrip extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                _formatYearMonth(monthKey),
+                compactDate
+                    ? _formatMonthDay(monthKey)
+                    : _formatYearMonth(monthKey),
                 style: context.typography.meta.copyWith(
                   fontSize: context.fontSizes.s14,
                   color: colorScheme.onSurfaceVariant,
@@ -1457,6 +1660,16 @@ class _StatisticsData {
     required this.totalSeries,
   });
 
+  const _StatisticsData.empty()
+    : monthKeys = const [],
+      months = const [],
+      series = const [],
+      totalSeries = const _MonthlyAssetSeries(
+        label: '총자산',
+        color: Colors.black,
+        values: [],
+      );
+
   final List<String> monthKeys;
   final List<String> months;
   final List<_MonthlyAssetSeries> series;
@@ -1565,6 +1778,12 @@ String _formatYearMonth(String key) {
   final date = DateTime.tryParse(key);
   if (date == null) return key;
   return '${date.year}년 ${date.month}월';
+}
+
+String _formatMonthDay(String key) {
+  final date = DateTime.tryParse(key);
+  if (date == null) return key;
+  return '${date.month}월 ${date.day}일';
 }
 
 Widget _buildCenteredLevel1EmptyCard(
