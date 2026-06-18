@@ -90,40 +90,113 @@ function toTimestamp(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
 }
 
-function selectLatestSummaryBySymbol(
+function toKstDateOnly(value: unknown): string | null {
+  const text = asString(value);
+  if (!text) return null;
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) {
+    return text.split("T")[0] || null;
+  }
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(parsed);
+}
+
+function toLegacyImportance(score: unknown): 1 | 2 | 3 {
+  const n = asNumber(score);
+  if (n >= 80) return 3;
+  if (n >= 50) return 2;
+  return 1;
+}
+
+function selectLatestReportByGroupKey(
   rows: unknown[],
 ): Map<string, Record<string, unknown>> {
-  const latestBySymbol = new Map<string, Record<string, unknown>>();
+  const latestByGroupKey = new Map<string, Record<string, unknown>>();
 
   for (const rawRow of rows) {
     const row = (rawRow ?? {}) as Record<string, unknown>;
-    const symbol = asString(row.symbol).toUpperCase();
-    if (!symbol) continue;
+    const groupKey = asString(row.group_key).toUpperCase();
+    if (!groupKey) continue;
 
-    const current = latestBySymbol.get(symbol);
+    const current = latestByGroupKey.get(groupKey);
     if (!current) {
-      latestBySymbol.set(symbol, row);
+      latestByGroupKey.set(groupKey, row);
       continue;
     }
 
-    const rowSummaryDateTs = toTimestamp(row.summary_date);
-    const currentSummaryDateTs = toTimestamp(current.summary_date);
-    if (rowSummaryDateTs > currentSummaryDateTs) {
-      latestBySymbol.set(symbol, row);
+    const rowGeneratedAtTs = toTimestamp(row.generated_at);
+    const currentGeneratedAtTs = toTimestamp(current.generated_at);
+    if (rowGeneratedAtTs > currentGeneratedAtTs) {
+      latestByGroupKey.set(groupKey, row);
       continue;
     }
-    if (rowSummaryDateTs < currentSummaryDateTs) {
+    if (rowGeneratedAtTs < currentGeneratedAtTs) {
       continue;
     }
 
-    const rowUpdatedAtTs = toTimestamp(row.updated_at);
-    const currentUpdatedAtTs = toTimestamp(current.updated_at);
-    if (rowUpdatedAtTs > currentUpdatedAtTs) {
-      latestBySymbol.set(symbol, row);
+    const rowSyncedAtTs = toTimestamp(row.synced_at);
+    const currentSyncedAtTs = toTimestamp(current.synced_at);
+    if (rowSyncedAtTs > currentSyncedAtTs) {
+      latestByGroupKey.set(groupKey, row);
     }
   }
 
-  return latestBySymbol;
+  return latestByGroupKey;
+}
+
+function toCompanySummaryItem({
+  symbol,
+  assetType,
+  row,
+}: {
+  symbol: string;
+  assetType: SupportedAssetType;
+  row?: Record<string, unknown>;
+}): Record<string, unknown> {
+  if (!row) {
+    return {
+      symbol,
+      asset_type: assetType,
+      found: false,
+    };
+  }
+
+  const report = `${row.report_ko ?? ""}`.trim();
+  const insight = `${row.final_insight_ko ?? ""}`.trim();
+  const timestamp = row.generated_at ?? row.synced_at;
+
+  return {
+    symbol,
+    asset_type: assetType,
+    found: true,
+    summary_date: toKstDateOnly(timestamp),
+    model: row.model,
+    news_count: row.article_count,
+    created_at: row.generated_at ?? row.synced_at,
+    updated_at: row.synced_at ?? row.generated_at,
+    summary: {
+      company_summary: insight,
+      issues: report.length === 0 ? [] : [
+        {
+          id: `${row.id ?? symbol}`,
+          title: `${row.group_label ?? symbol}`,
+          summary: report,
+          importance: toLegacyImportance(row.max_importance_score),
+          sentiment: "neutral",
+          uncertainty: false,
+        },
+      ],
+      outlook: {
+        business_impact: insight || report,
+        market_view: report,
+        watchpoint: `${symbol} 관련 후속 뉴스와 가격 반응`,
+      },
+    },
+  };
 }
 
 Deno.serve(async (req) => {
@@ -212,17 +285,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    const summariesResponse = await supabase
-      .from("company_news_summaries")
+    const reportsResponse = await supabase
+      .from("news_reports")
       .select(
-        "symbol, summary_date, model, news_count, summary_json, created_at, updated_at",
+        "id, group_key, group_label, report_ko, final_insight_ko, article_count, max_importance_score, model, generated_at, synced_at",
       )
-      .in("symbol", symbols)
-      .order("symbol", { ascending: true })
-      .order("summary_date", { ascending: false });
+      .in("group_key", symbols)
+      .order("group_key", { ascending: true })
+      .order("generated_at", { ascending: false });
 
     const summariesErrorMessage = extractSupabaseErrorMessage(
-      summariesResponse,
+      reportsResponse,
     );
     if (summariesErrorMessage) {
       throw new Error(
@@ -230,32 +303,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    const latestBySymbol = selectLatestSummaryBySymbol(
-      extractSupabaseData(summariesResponse),
+    const latestByGroupKey = selectLatestReportByGroupKey(
+      extractSupabaseData(reportsResponse),
     );
 
     const items = symbols.map((symbol) => {
       const assetType = symbolAssetTypeMap.get(symbol) ?? "주식";
-      const row = latestBySymbol.get(symbol);
-      if (!row) {
-        return {
-          symbol,
-          asset_type: assetType,
-          found: false,
-        };
-      }
-
-      return {
+      return toCompanySummaryItem({
         symbol,
-        asset_type: assetType,
-        found: true,
-        summary_date: row.summary_date,
-        model: row.model,
-        news_count: row.news_count,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        summary: row.summary_json,
-      };
+        assetType,
+        row: latestByGroupKey.get(symbol),
+      });
     });
 
     return jsonResponse({

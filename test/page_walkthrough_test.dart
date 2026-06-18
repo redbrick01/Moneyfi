@@ -189,7 +189,7 @@ void main() {
     await pumpInteractivePage(tester, const AnalysisPage());
 
     await tester.scrollUntilVisible(
-      find.text('오늘 · 주간 · 월간 판단 복기'),
+      find.text('투자 회고'),
       240,
       scrollable: find.byType(Scrollable).first,
     );

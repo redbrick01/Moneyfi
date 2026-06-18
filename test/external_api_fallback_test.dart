@@ -6,7 +6,7 @@ import 'package:moneyfy/widgets/market_news_summary_card.dart';
 
 void main() {
   group('external API fallback payloads', () {
-    test('market news fallback renders as a non-empty summary', () {
+    test('market news fallback renders report body without overall assessment', () {
       final response =
           MarketNewsSummaryService.buildFallbackSummaryForTesting();
 
@@ -19,9 +19,10 @@ void main() {
 
       expect(response.found, isTrue);
       expect(response.model, 'fallback-local');
-      expect(summary.marketSummary.trim(), isNotEmpty);
+      expect(summary.marketSummary.trim(), isEmpty);
       expect(summary.issues, isNotEmpty);
-      expect(summary.keyRisk.trim(), isNotEmpty);
+      expect(summary.issues.first.summary.trim(), isNotEmpty);
+      expect(response.summary, isNot(contains('overall_assessment')));
     });
 
     test(

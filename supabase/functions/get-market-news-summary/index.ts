@@ -43,6 +43,79 @@ function asSummaryDate(value: unknown): string | null {
   return normalized;
 }
 
+function asNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/,/g, "").trim());
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function toKstDateOnly(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(parsed);
+}
+
+function kstDateToUtcRange(
+  date: string,
+): { startIso: string; endIso: string } {
+  const [year, month, day] = date.split("-").map((part) => Number(part));
+  return {
+    startIso: new Date(
+      Date.UTC(year, month - 1, day, -9, 0, 0, 0),
+    ).toISOString(),
+    endIso: new Date(
+      Date.UTC(year, month - 1, day + 1, -9, 0, 0, 0),
+    ).toISOString(),
+  };
+}
+
+function toLegacyImportance(score: unknown): 1 | 2 | 3 {
+  const n = asNumber(score);
+  if (n >= 80) return 3;
+  if (n >= 50) return 2;
+  return 1;
+}
+
+function toMarketSummaryPayload(
+  row: Record<string, unknown>,
+): Record<string, unknown> {
+  const report = `${row.report_ko ?? ""}`.trim();
+  const insight = `${row.final_insight_ko ?? ""}`.trim();
+  const title = `${row.group_label ?? row.group_key ?? "종합 뉴스"}`.trim();
+
+  return {
+    market_summary: insight,
+    issues: report.length === 0 ? [] : [
+      {
+        id: `${row.id ?? row.group_key ?? "market-news"}`,
+        title,
+        summary: report,
+        importance: toLegacyImportance(row.max_importance_score),
+        market_impact: {
+          stocks: report,
+          bonds_rates: null,
+          fx: null,
+          crypto: null,
+        },
+        uncertainty: false,
+      },
+    ],
+  };
+}
+
 Deno.serve(async (req) => {
   try {
     requireEnv("SUPABASE_URL", SUPABASE_URL);
@@ -67,17 +140,22 @@ Deno.serve(async (req) => {
       },
     );
 
+    const groupKey = `market:${category}`;
     let query = supabase
-      .from("market_news_summaries")
+      .from("news_reports")
       .select(
-        "category, summary_date, model, news_count, summary_json, created_at, updated_at",
+        "id, group_key, group_label, report_ko, final_insight_ko, article_count, max_importance_score, model, generated_at, synced_at",
       )
-      .eq("category", category)
-      .order("summary_date", { ascending: false })
+      .eq("group_key", groupKey)
+      .order("generated_at", { ascending: false, nullsFirst: false })
+      .order("synced_at", { ascending: false })
       .limit(1);
 
     if (summaryDate != null) {
-      query = query.eq("summary_date", summaryDate);
+      const { startIso, endIso } = kstDateToUtcRange(summaryDate);
+      query = query
+        .gte("generated_at", startIso)
+        .lt("generated_at", endIso);
     }
 
     const { data, error } = await query.maybeSingle();
@@ -96,16 +174,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    const row = data as Record<string, unknown>;
+    const timestamp = row.generated_at ?? row.synced_at;
+
     return jsonResponse({
       ok: true,
       category,
-      summary_date: data.summary_date,
+      summary_date: toKstDateOnly(timestamp),
       found: true,
-      model: data.model,
-      news_count: data.news_count,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      summary: data.summary_json,
+      model: row.model,
+      news_count: row.article_count,
+      created_at: row.generated_at ?? row.synced_at,
+      updated_at: row.synced_at ?? row.generated_at,
+      summary: toMarketSummaryPayload(row),
     });
   } catch (error) {
     return jsonResponse(

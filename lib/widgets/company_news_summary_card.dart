@@ -4,7 +4,6 @@ import '../components/chips/moneyfy_pill.dart';
 import '../components/panels/app_inner_panel.dart';
 import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
-import '../design_system/spec.dart';
 import '../services/company_news_summary_service.dart';
 
 class CompanyNewsSummaryCard extends StatelessWidget {
@@ -207,16 +206,12 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
         final bValue = int.tryParse('${b['importance'] ?? ''}') ?? 0;
         return bValue.compareTo(aValue);
       });
-    final outlook = item.summary?['outlook'] is Map
-        ? Map<String, dynamic>.from(
-            (item.summary!['outlook'] as Map).map(
-              (key, value) => MapEntry('$key', value),
-            ),
-          )
-        : const <String, dynamic>{};
-    final collapsedTitle = sortedIssues.isNotEmpty
+    final reportParagraphs = _companyReportParagraphs(sortedIssues);
+    final collapsedTitle = summaryText.isNotEmpty
+        ? summaryText
+        : sortedIssues.isNotEmpty
         ? '${sortedIssues.first['title'] ?? ''}'.trim()
-        : summaryText;
+        : item.symbol;
 
     return InkWell(
       borderRadius: BorderRadius.circular(context.radius.rMd),
@@ -264,46 +259,30 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
             if (_isExpanded) ...[
               if (summaryText.isNotEmpty) ...[
                 SizedBox(height: context.spacing.sm),
-                Text(
-                  summaryText,
-                  style: context.typography.body.copyWith(
-                    color: context.colors.neutralTextMuted,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-              if (sortedIssues.isNotEmpty) ...[
-                SizedBox(height: context.spacing.sm),
-                for (var index = 0; index < sortedIssues.length; index++) ...[
-                  _CompanyIssueRow(
-                    issue: Map<String, dynamic>.from(
-                      sortedIssues[index].map(
-                        (key, value) => MapEntry('$key', value),
+                AppInnerPanel(
+                  dense: true,
+                  tone: AppInnerPanelTone.raised,
+                  showBorder: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _CompanyReportSectionLabel(label: '핵심 결론'),
+                      SizedBox(height: context.spacing.xs),
+                      Text(
+                        summaryText,
+                        style: context.typography.body.copyWith(
+                          color: context.colors.neutralText,
+                          fontWeight: AppFontWeights.semibold,
+                          height: 1.45,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                  if (index != sortedIssues.length - 1)
-                    SizedBox(
-                      height: context.spacing.xs + context.spacing.xs / 4,
-                    ),
-                ],
+                ),
               ],
-              if (outlook.isNotEmpty) ...[
+              if (reportParagraphs.isNotEmpty) ...[
                 SizedBox(height: context.spacing.sm),
-                _CompanyOutlookRow(
-                  label: '사업 영향',
-                  value: '${outlook['business_impact'] ?? ''}'.trim(),
-                ),
-                SizedBox(height: context.spacing.xs),
-                _CompanyOutlookRow(
-                  label: '시장 시각',
-                  value: '${outlook['market_view'] ?? ''}'.trim(),
-                ),
-                SizedBox(height: context.spacing.xs),
-                _CompanyOutlookRow(
-                  label: '체크 포인트',
-                  value: '${outlook['watchpoint'] ?? ''}'.trim(),
-                ),
+                _CompanyReportBodyPanel(paragraphs: reportParagraphs),
               ],
             ],
           ],
@@ -313,18 +292,13 @@ class _CompanyNewsSummaryTileState extends State<_CompanyNewsSummaryTile> {
   }
 }
 
-class _CompanyIssueRow extends StatelessWidget {
-  const _CompanyIssueRow({required this.issue});
+class _CompanyReportBodyPanel extends StatelessWidget {
+  const _CompanyReportBodyPanel({required this.paragraphs});
 
-  final Map<String, dynamic> issue;
+  final List<String> paragraphs;
 
   @override
   Widget build(BuildContext context) {
-    final title = '${issue['title'] ?? ''}'.trim();
-    final summary = '${issue['summary'] ?? ''}'.trim();
-    final importance = '${issue['importance'] ?? ''}'.trim();
-    final importanceStyle = _companyImportanceStyle(context, importance);
-
     return AppInnerPanel(
       dense: true,
       tone: AppInnerPanelTone.raised,
@@ -332,137 +306,54 @@ class _CompanyIssueRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (title.isNotEmpty)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.circle,
-                  size: VisualSpec.icon.chipIcon / 2,
-                  color: importanceStyle.color,
-                ),
-                SizedBox(width: context.spacing.xs),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: context.typography.body.copyWith(
-                      color: context.colors.neutralText,
-                      fontWeight: AppFontWeights.semibold,
-                    ),
-                  ),
-                ),
-                MoneyfyBadge(
-                  label: importanceStyle.label,
-                  size: MoneyfyPillSize.sm,
-                  backgroundColor: importanceStyle.background,
-                  textColor: importanceStyle.color,
-                ),
-              ],
-            ),
-          if (title.isNotEmpty && summary.isNotEmpty) ...[
-            SizedBox(height: context.spacing.xs - context.spacing.xs / 4),
+          _CompanyReportSectionLabel(label: '리포트 본문'),
+          SizedBox(height: context.spacing.xs),
+          for (var index = 0; index < paragraphs.length; index++) ...[
             Text(
-              summary,
-              style: context.typography.caption.copyWith(
+              paragraphs[index],
+              style: context.typography.body.copyWith(
                 color: context.colors.neutralTextMuted,
-                height: 1.45,
+                height: 1.55,
               ),
             ),
+            if (index != paragraphs.length - 1)
+              SizedBox(height: context.spacing.sm),
           ],
-          if (title.isEmpty && summary.isNotEmpty)
-            Text(
-              summary,
-              style: context.typography.caption.copyWith(
-                color: context.colors.neutralTextMuted,
-                height: 1.45,
-              ),
-            ),
         ],
       ),
     );
   }
 }
 
-_CompanyIssueImportanceStyle _companyImportanceStyle(
-  BuildContext context,
-  String value,
-) {
-  final numeric = int.tryParse(value);
-  if (numeric == 3) {
-    return _CompanyIssueImportanceStyle(
-      label: '높음',
-      color: context.colors.negativeOn,
-      background: context.colors.neutralSurfaceBase,
-    );
-  }
-  if (numeric == 2) {
-    return _CompanyIssueImportanceStyle(
-      label: '보통',
-      color: context.colors.warningOn,
-      background: context.colors.neutralSurfaceBase,
-    );
-  }
-  if (numeric == 1) {
-    return _CompanyIssueImportanceStyle(
-      label: '낮음',
-      color: context.colors.primary,
-      background: context.colors.neutralSurfaceBase,
-    );
-  }
-  return _CompanyIssueImportanceStyle(
-    label: '미정',
-    color: context.colors.neutralTextMuted,
-    background: context.colors.neutralSurfaceBase,
-  );
-}
-
-class _CompanyIssueImportanceStyle {
-  const _CompanyIssueImportanceStyle({
-    required this.label,
-    required this.color,
-    required this.background,
-  });
+class _CompanyReportSectionLabel extends StatelessWidget {
+  const _CompanyReportSectionLabel({required this.label});
 
   final String label;
-  final Color color;
-  final Color background;
-}
-
-class _CompanyOutlookRow extends StatelessWidget {
-  const _CompanyOutlookRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
 
   @override
   Widget build(BuildContext context) {
-    if (value.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: context.spacing.xxxl - context.spacing.xs + 2,
-          child: Text(
-            label,
-            style: context.typography.caption.copyWith(
-              color: context.colors.neutralTextMuted,
-              fontWeight: AppFontWeights.semibold,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: context.typography.caption.copyWith(
-              color: context.colors.neutralTextMuted,
-              height: 1.45,
-            ),
-          ),
-        ),
-      ],
+    return Text(
+      label,
+      style: context.typography.caption.copyWith(
+        color: context.colors.neutralTextMuted,
+        fontWeight: AppFontWeights.semibold,
+      ),
     );
   }
+}
+
+List<String> _companyReportParagraphs(List<Map> issues) {
+  final rawText = issues
+      .map((issue) => '${issue['summary'] ?? ''}'.trim())
+      .where((value) => value.isNotEmpty)
+      .join('\n\n');
+  return _splitCompanyReportParagraphs(rawText);
+}
+
+List<String> _splitCompanyReportParagraphs(String value) {
+  return value
+      .split(RegExp(r'\n\s*\n'))
+      .map((paragraph) => paragraph.replaceAll(RegExp(r'\s+'), ' ').trim())
+      .where((paragraph) => paragraph.isNotEmpty)
+      .toList(growable: false);
 }

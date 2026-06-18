@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../components/chips/moneyfy_pill.dart';
 import '../components/panels/app_inner_panel.dart';
 import '../components/section_card.dart';
 import '../design_system/context_extensions.dart';
-import '../design_system/spec.dart';
 import '../services/market_news_summary_service.dart';
 
 Future<MarketNewsSummary?> fetchMarketNewsSummary({
@@ -149,9 +147,10 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
   @override
   Widget build(BuildContext context) {
     final summary = widget.summary;
-    final hasDetails =
-        summary != null &&
-        (summary.issues.isNotEmpty || _hasOverallAssessment(summary));
+    final reportParagraphs = summary == null
+        ? const <String>[]
+        : _marketReportParagraphs(summary);
+    final canExpand = reportParagraphs.isNotEmpty;
 
     return SectionCard(
       variant: SectionCardVariant.base,
@@ -211,57 +210,47 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
               ),
             )
           else ...[
-            AppInnerPanel(
-              padding: EdgeInsets.symmetric(
-                horizontal: context.spacing.sm + context.spacing.xs / 4,
-                vertical: context.spacing.md + context.spacing.xs / 4,
-              ),
-              child: Text(
-                summary.marketSummary,
-                style: context.typography.cardTitle.copyWith(
-                  color: context.colors.neutralText,
-                  fontWeight: AppFontWeights.semibold,
-                  height: 1.4,
+            if (summary.marketSummary.trim().isNotEmpty) ...[
+              AppInnerPanel(
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacing.sm + context.spacing.xs / 4,
+                  vertical: context.spacing.md + context.spacing.xs / 4,
                 ),
-              ),
-            ),
-            if (hasDetails) ...[
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: context.spacing.xs / 2),
-                child: Center(
-                  child: SizedBox(
-                    width: context.spacing.lg + context.spacing.xs / 2,
-                    height: context.spacing.lg + context.spacing.xs / 2,
-                    child: IconButton(
-                      onPressed: () =>
-                          setState(() => _isExpanded = !_isExpanded),
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                      splashRadius: context.spacing.md,
-                      iconSize: VisualSpec.icon.sizeSmall,
-                      icon: AnimatedRotation(
-                        turns: _isExpanded ? 0.5 : 0,
-                        duration: context.motion.fast,
-                        child: const Icon(Icons.keyboard_arrow_down_rounded),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ReportSectionLabel(label: '핵심 결론'),
+                    SizedBox(height: context.spacing.xs),
+                    Text(
+                      summary.marketSummary,
+                      style: context.typography.cardTitle.copyWith(
+                        color: context.colors.neutralText,
+                        fontWeight: AppFontWeights.semibold,
+                        height: 1.45,
                       ),
-                      tooltip: _isExpanded ? '세부 기사 요약 접기' : '세부 기사 요약 펼치기',
-                      color: context.colors.neutralTextMuted,
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
-            if (_isExpanded && summary.issues.isNotEmpty) ...[
-              SizedBox(height: context.spacing.xs / 2),
-              for (var index = 0; index < summary.issues.length; index++) ...[
-                _MarketIssueTile(item: summary.issues[index]),
-                if (index != summary.issues.length - 1)
-                  SizedBox(height: context.spacing.sm),
-              ],
+            if (_isExpanded && reportParagraphs.isNotEmpty) ...[
+              SizedBox(height: context.spacing.sm),
+              _ReportBodyPanel(paragraphs: reportParagraphs),
             ],
-            if (_isExpanded && _hasOverallAssessment(summary)) ...[
-              SizedBox(height: context.spacing.md),
-              _OverallAssessmentCard(summary: summary),
+            if (canExpand) ...[
+              SizedBox(height: context.spacing.xs),
+              Align(
+                alignment: Alignment.center,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _isExpanded = !_isExpanded),
+                  icon: AnimatedRotation(
+                    turns: _isExpanded ? 0.5 : 0,
+                    duration: context.motion.fast,
+                    child: const Icon(Icons.keyboard_arrow_down_rounded),
+                  ),
+                  label: Text(_isExpanded ? '리포트 접기' : '전체 리포트 보기'),
+                ),
+              ),
             ],
           ],
         ],
@@ -270,79 +259,31 @@ class _MarketNewsSummaryCardState extends State<MarketNewsSummaryCard> {
   }
 }
 
-class _MarketIssueTile extends StatelessWidget {
-  const _MarketIssueTile({required this.item});
+class _ReportBodyPanel extends StatelessWidget {
+  const _ReportBodyPanel({required this.paragraphs});
 
-  final MarketIssue item;
+  final List<String> paragraphs;
 
   @override
   Widget build(BuildContext context) {
-    final importanceStyle = _importanceStyle(context, item.importance);
-    final impacts =
-        <_ImpactRowData>[
-              _ImpactRowData(label: '주식', value: item.stocks),
-              _ImpactRowData(label: '채권/금리', value: item.bondsRates),
-              _ImpactRowData(label: '환율', value: item.fx),
-              _ImpactRowData(label: '암호화폐', value: item.crypto),
-            ]
-            .where(
-              (entry) =>
-                  (entry.value ?? '').trim().isNotEmpty &&
-                  entry.value != 'null',
-            )
-            .toList(growable: false);
-
     return AppInnerPanel(
+      tone: AppInnerPanelTone.raised,
+      showBorder: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Padding(
-                padding: EdgeInsets.only(right: context.spacing.xs),
-                child: Icon(
-                  Icons.circle,
-                  size: context.spacing.xs + context.spacing.xs / 4,
-                  color: importanceStyle.color,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  _formatIssueTitle(item.title),
-                  style: context.typography.cardTitle.copyWith(
-                    color: context.colors.neutralText,
-                    fontWeight: AppFontWeights.semibold,
-                  ),
-                ),
-              ),
-              SizedBox(width: context.spacing.xs),
-              MoneyfyBadge(
-                label: importanceStyle.label,
-                size: MoneyfyPillSize.sm,
-                backgroundColor: importanceStyle.background,
-                textColor: importanceStyle.color,
-              ),
-            ],
-          ),
-          if (item.summary.trim().isNotEmpty) ...[
-            SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
+          _ReportSectionLabel(label: '리포트 본문'),
+          SizedBox(height: context.spacing.sm),
+          for (var index = 0; index < paragraphs.length; index++) ...[
             Text(
-              item.summary,
+              paragraphs[index],
               style: context.typography.body.copyWith(
                 color: context.colors.neutralTextMuted,
-                height: 1.45,
+                height: 1.55,
               ),
             ),
-          ],
-          if (impacts.isNotEmpty) ...[
-            SizedBox(height: context.spacing.sm),
-            const Divider(height: 1),
-            SizedBox(height: context.spacing.sm),
-            for (final impact in impacts) ...[
-              _ImpactRow(item: impact),
-              if (impact != impacts.last) SizedBox(height: context.spacing.xs),
-            ],
+            if (index != paragraphs.length - 1)
+              SizedBox(height: context.spacing.sm),
           ],
         ],
       ),
@@ -350,128 +291,38 @@ class _MarketIssueTile extends StatelessWidget {
   }
 }
 
-class _ImpactRowData {
-  const _ImpactRowData({required this.label, required this.value});
+class _ReportSectionLabel extends StatelessWidget {
+  const _ReportSectionLabel({required this.label});
 
   final String label;
-  final String? value;
-}
-
-class _ImpactRow extends StatelessWidget {
-  const _ImpactRow({required this.item});
-
-  final _ImpactRowData item;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: context.spacing.xxxl + context.spacing.xs - 2,
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: MoneyfyBadge(
-              label: item.label,
-              size: MoneyfyPillSize.sm,
-              backgroundColor: context.surfaces.surfaceRaised,
-              textColor: context.colors.neutralText,
-            ),
-          ),
-        ),
-        SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
-        Expanded(
-          child: Text(
-            item.value ?? '',
-            style: context.typography.meta.copyWith(
-              color: context.colors.neutralTextMuted,
-              height: 1.45,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _OverallAssessmentCard extends StatelessWidget {
-  const _OverallAssessmentCard({required this.summary});
-
-  final MarketNewsSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppInnerPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '종합 평가',
-            style: context.typography.cardTitle.copyWith(
-              color: context.colors.neutralText,
-              fontWeight: AppFontWeights.semibold,
-            ),
-          ),
-          if (summary.keyRisk.trim().isNotEmpty) ...[
-            SizedBox(height: context.spacing.sm),
-            _AssessmentBlock(label: '핵심 리스크', value: summary.keyRisk),
-          ],
-          if (summary.riskAssets.trim().isNotEmpty) ...[
-            SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
-            _AssessmentBlock(label: '위험자산', value: summary.riskAssets),
-          ],
-          if (summary.safeAssets.trim().isNotEmpty) ...[
-            SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
-            _AssessmentBlock(label: '안전자산', value: summary.safeAssets),
-          ],
-        ],
+    return Text(
+      label,
+      style: context.typography.caption.copyWith(
+        color: context.colors.neutralTextMuted,
+        fontWeight: AppFontWeights.semibold,
       ),
     );
   }
 }
 
-class _AssessmentBlock extends StatelessWidget {
-  const _AssessmentBlock({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: context.spacing.xxxl + context.spacing.xs - 2,
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: MoneyfyBadge(
-              label: label,
-              size: MoneyfyPillSize.sm,
-              backgroundColor: context.surfaces.surfaceRaised,
-              textColor: context.colors.neutralText,
-            ),
-          ),
-        ),
-        SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
-        Expanded(
-          child: Text(
-            value,
-            style: context.typography.meta.copyWith(
-              color: context.colors.neutralTextMuted,
-              height: 1.45,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+List<String> _marketReportParagraphs(MarketNewsSummary summary) {
+  final rawText = summary.issues
+      .map((issue) => issue.summary.trim())
+      .where((value) => value.isNotEmpty)
+      .join('\n\n');
+  final fallback = summary.marketSummary.trim();
+  return _splitReportParagraphs(rawText.isEmpty ? fallback : rawText);
 }
 
-bool _hasOverallAssessment(MarketNewsSummary summary) {
-  return summary.keyRisk.trim().isNotEmpty ||
-      summary.riskAssets.trim().isNotEmpty ||
-      summary.safeAssets.trim().isNotEmpty;
+List<String> _splitReportParagraphs(String value) {
+  return value
+      .split(RegExp(r'\n\s*\n'))
+      .map((paragraph) => paragraph.replaceAll(RegExp(r'\s+'), ' ').trim())
+      .where((paragraph) => paragraph.isNotEmpty)
+      .toList(growable: false);
 }
 
 String _formatSummaryDate(String value) {
@@ -482,66 +333,4 @@ String _formatSummaryDate(String value) {
   final month = parsed.month.toString().padLeft(2, '0');
   final day = parsed.day.toString().padLeft(2, '0');
   return '${parsed.year}-$month-$day';
-}
-
-String _formatIssueTitle(String value) {
-  final index = value.indexOf('(');
-  if (index <= 0) {
-    return value;
-  }
-  final head = value.substring(0, index).trimRight();
-  final tail = value.substring(index).trimLeft();
-  return '$head\n$tail';
-}
-
-Color _importanceColor(BuildContext context, String value) {
-  final normalized = value.trim();
-  final numeric = int.tryParse(normalized);
-  if (numeric == 3) return context.colors.negativeOn;
-  if (numeric == 2) return context.colors.warningOn;
-  if (numeric == 1) return context.colors.primary;
-  return context.colors.neutralTextMuted;
-}
-
-_ImportanceStyle _importanceStyle(BuildContext context, String value) {
-  final color = _importanceColor(context, value);
-  final numeric = int.tryParse(value.trim());
-  if (numeric == 3) {
-    return _ImportanceStyle(
-      label: '높음',
-      color: color,
-      background: context.colors.neutralSurfaceBase,
-    );
-  }
-  if (numeric == 2) {
-    return _ImportanceStyle(
-      label: '보통',
-      color: color,
-      background: context.colors.neutralSurfaceBase,
-    );
-  }
-  if (numeric == 1) {
-    return _ImportanceStyle(
-      label: '낮음',
-      color: color,
-      background: context.colors.neutralSurfaceBase,
-    );
-  }
-  return _ImportanceStyle(
-    label: '미정',
-    color: context.colors.neutralTextMuted,
-    background: context.colors.neutralSurfaceBase,
-  );
-}
-
-class _ImportanceStyle {
-  const _ImportanceStyle({
-    required this.label,
-    required this.color,
-    required this.background,
-  });
-
-  final String label;
-  final Color color;
-  final Color background;
 }
