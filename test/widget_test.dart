@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -195,6 +196,60 @@ void main() {
 
     expect(latestSummaryTop.dy, lessThan(olderSummaryTop.dy));
     expect(find.text('06.04 12:00'), findsOneWidget);
+  });
+
+  test('reddit post summary parses remote reddit_post_cards rows', () {
+    final item = RedditPostSummaryItem.fromJson({
+      'reddit_id': 't3_remote',
+      'subreddit': 'ValueInvesting',
+      'title_ko': '새 원격 카드 제목',
+      'url': 'https://old.reddit.com/r/ValueInvesting/comments/t3_remote',
+      'score': 30,
+      'comment_count': 48,
+      'scraped_at': '2026-06-10T12:40:43Z',
+      'tickers_json': ['META', 'bsx'],
+      'post_summary_ko': '게시글 요약',
+      'comments_summary_ko': '댓글 요약',
+      'insight_ko': '투자 인사이트',
+      'importance_label': 'high',
+      'importance_score': 85,
+      'category_label': '개별종목',
+      'importance_reasons_ko': '중요 근거',
+      'analysis_model': 'gemma4:latest',
+      'importance_model': 'gemma4:latest',
+      'insight_model': 'gemma4:latest',
+      'source_payload': {
+        'analysis_at': '2026-06-10T12:43:23Z',
+        'judged_at': '2026-06-10T12:44:07Z',
+        'insight_generated_at': '2026-06-10T12:45:20Z',
+      },
+      'synced_at': '2026-06-10T12:56:27Z',
+    });
+
+    expect(item.postRedditId, 't3_remote');
+    expect(item.displayTitle, '새 원격 카드 제목');
+    expect(item.model, 'gemma4:latest');
+    expect(item.isValuable, isTrue);
+    expect(item.tickers, ['META', 'BSX']);
+    expect(item.analyzedAt, DateTime.parse('2026-06-10T12:43:23Z').toLocal());
+    expect(item.judgedAt, DateTime.parse('2026-06-10T12:44:07Z').toLocal());
+    expect(
+      item.insightGeneratedAt,
+      DateTime.parse('2026-06-10T12:45:20Z').toLocal(),
+    );
+    expect(
+      item.summaryDateTime,
+      DateTime.parse('2026-06-10T12:56:27Z').toLocal(),
+    );
+  });
+
+  test('reddit post summary service reads reddit_post_cards table', () {
+    final source = File(
+      'lib/services/reddit_post_summary_service.dart',
+    ).readAsStringSync();
+
+    expect(source, contains(".from('reddit_post_cards')"));
+    expect(source, isNot(contains(".from('reddit_post_summaries')")));
   });
 
   HoldingItem holding({

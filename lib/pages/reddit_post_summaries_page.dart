@@ -182,7 +182,7 @@ class _RedditPostSummariesPageState extends State<RedditPostSummariesPage> {
               _RedditPostEmptyState(
                 title: allItems.isEmpty ? '표시할 요약이 없어요' : '검색 결과가 없어요',
                 message: allItems.isEmpty
-                    ? 'reddit_post_summaries 테이블에 데이터가 쌓이면 여기에 표시됩니다.'
+                    ? 'reddit_post_cards 테이블에 데이터가 쌓이면 여기에 표시됩니다.'
                     : '필터나 검색어를 조금 넓혀 보세요.',
               )
             else

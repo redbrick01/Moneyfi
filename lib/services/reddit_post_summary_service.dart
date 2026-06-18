@@ -18,7 +18,7 @@ class RedditPostSummaryService {
 
     try {
       var query = AuthService.client
-          .from('reddit_post_summaries')
+          .from('reddit_post_cards')
           .select(_selectColumns);
 
       if (postedDate != null) {
@@ -61,7 +61,7 @@ class RedditPostSummaryService {
 
     try {
       final response = await AuthService.client
-          .from('reddit_post_summaries')
+          .from('reddit_post_cards')
           .select('synced_at')
           .order('synced_at', ascending: false)
           .limit(limit);
@@ -86,32 +86,26 @@ class RedditPostSummaryService {
   }
 
   static final _selectColumns = [
-    'post_reddit_id',
+    'reddit_id',
     'subreddit',
-    'title',
     'url',
     'score',
     'comment_count',
     'posted_at',
-    'model',
-    'is_valuable',
-    'quality_label',
-    'confidence',
+    'scraped_at',
     'tickers_json',
     'title_ko',
     'post_summary_ko',
     'comments_summary_ko',
-    'analysis_reasons_ko',
-    'analyzed_at',
+    'analysis_model',
     'importance_model',
     'importance_label',
     'importance_score',
     'category_label',
     'importance_reasons_ko',
-    'judged_at',
     'insight_model',
     'insight_ko',
-    'insight_generated_at',
+    'source_payload',
     'synced_at',
   ].join(',');
 }
@@ -148,16 +142,26 @@ class RedditPostSummaryItem {
   });
 
   factory RedditPostSummaryItem.fromJson(Map<String, dynamic> json) {
+    final importanceLabel = _readString(json['importance_label']);
+    final importanceScore = _readInt(json['importance_score']);
     return RedditPostSummaryItem(
-      postRedditId: _readString(json['post_reddit_id']),
+      postRedditId: _readString(json['post_reddit_id']).isNotEmpty
+          ? _readString(json['post_reddit_id'])
+          : _readString(json['reddit_id']),
       subreddit: _readString(json['subreddit']),
       title: _readString(json['title']),
       url: _readString(json['url']),
       score: _readInt(json['score']),
       commentCount: _readInt(json['comment_count']),
       postedAt: _readDateTime(json['posted_at']),
-      model: _readString(json['model']),
-      isValuable: _readInt(json['is_valuable']) > 0,
+      model: _readString(json['model']).isNotEmpty
+          ? _readString(json['model'])
+          : _readString(json['analysis_model']),
+      isValuable: _readIsValuable(
+        json['is_valuable'],
+        importanceLabel: importanceLabel,
+        importanceScore: importanceScore,
+      ),
       qualityLabel: _readString(json['quality_label']),
       confidence: _readDouble(json['confidence']),
       tickers: _readTickers(json['tickers_json']),
@@ -165,16 +169,22 @@ class RedditPostSummaryItem {
       postSummaryKo: _readString(json['post_summary_ko']),
       commentsSummaryKo: _readString(json['comments_summary_ko']),
       analysisReasonsKo: _readString(json['analysis_reasons_ko']),
-      analyzedAt: _readDateTime(json['analyzed_at']),
+      analyzedAt:
+          _readDateTime(json['analyzed_at']) ??
+          _readPayloadDateTime(json['source_payload'], 'analysis_at'),
       importanceModel: _readString(json['importance_model']),
-      importanceLabel: _readString(json['importance_label']),
-      importanceScore: _readInt(json['importance_score']),
+      importanceLabel: importanceLabel,
+      importanceScore: importanceScore,
       categoryLabel: _readString(json['category_label']),
       importanceReasonsKo: _readString(json['importance_reasons_ko']),
-      judgedAt: _readDateTime(json['judged_at']),
+      judgedAt:
+          _readDateTime(json['judged_at']) ??
+          _readPayloadDateTime(json['source_payload'], 'judged_at'),
       insightModel: _readString(json['insight_model']),
       insightKo: _readString(json['insight_ko']),
-      insightGeneratedAt: _readDateTime(json['insight_generated_at']),
+      insightGeneratedAt:
+          _readDateTime(json['insight_generated_at']) ??
+          _readPayloadDateTime(json['source_payload'], 'insight_generated_at'),
       syncedAt: _readDateTime(json['synced_at']),
     );
   }
@@ -250,10 +260,30 @@ double? _readDouble(Object? value) {
   return double.tryParse(_readString(value));
 }
 
+bool _readIsValuable(
+  Object? value, {
+  required String importanceLabel,
+  required int importanceScore,
+}) {
+  final raw = _readString(value).toLowerCase();
+  if (raw == 'true') return true;
+  if (raw == 'false') return false;
+  final numeric = int.tryParse(raw);
+  if (numeric != null) return numeric > 0;
+
+  final normalizedLabel = importanceLabel.trim().toLowerCase();
+  return normalizedLabel == 'high' || importanceScore >= 70;
+}
+
 DateTime? _readDateTime(Object? value) {
   final raw = _readString(value);
   if (raw.isEmpty) return null;
   return DateTime.tryParse(raw)?.toLocal();
+}
+
+DateTime? _readPayloadDateTime(Object? value, String key) {
+  if (value is! Map) return null;
+  return _readDateTime(value[key]);
 }
 
 List<String> _readTickers(Object? value) {
