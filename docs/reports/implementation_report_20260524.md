@@ -41,7 +41,7 @@ Updated:
 - `supabase/migrations/20260524093000_fix_cash_snapshot_profit.sql`
 - `supabase/migrations/20260524094000_recalculate_snapshot_totals_after_cash_fix.sql`
 - `docs/data_and_sync.md`
-- `docs/features/bug_fixes/cash_snapshot_profit_fix/test_report_20260524.md`
+- `docs/reports/implementation_history.md`
 
 Rules now documented in `docs/data_and_sync.md#snapshot-calculation-rules`:
 

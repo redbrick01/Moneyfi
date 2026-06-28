@@ -246,7 +246,7 @@ snapshot.profit_amount == snapshot.total_valuation_amount - snapshot.total_purch
 - 숨김 자산/숨김 종목/숨김 현금 계좌는 프론트엔드 로컬 표시 기준 합계에서 제외합니다.
 - 기간 비교 수익은 평가손익이 아니라 snapshot 간 총자산 변화입니다.
 
-관련 보정 내역은 Cash Snapshot Profit Fix summary in features/bug_fixes/README.md에 기록합니다.
+관련 보정 내역은 현재 구현, 테스트, Supabase migration, 그리고 필요한 경우 `docs/reports/implementation_history.md`에 짧게 기록합니다.
 
 ### Snapshot Client Reference Rules
 

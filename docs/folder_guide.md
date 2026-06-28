@@ -10,11 +10,11 @@
 | `pubspec.yaml` | Flutter 의존성, SDK 버전, asset 선언 |
 | `analysis_options.yaml` | Dart/Flutter lint 설정 |
 | `assets/` | 앱 아이콘, 예시 설정, 런타임 config asset |
-| `docs/` | 제품, 설계, 운영 문서 |
+| `docs/` | 제품, 설계, 운영 문서와 압축 히스토리 |
 | `lib/` | Flutter 앱의 실제 Dart 소스 |
 | `supabase/` | 원격 DB 마이그레이션과 Edge Functions |
 | `test/` | 위젯, 서비스, 데이터 흐름 테스트 |
-| `tools/` | 유지보수 스크립트 |
+| `tools/` | 유지보수 스크립트. 주식 임베딩 연구 워크스페이스는 별도 프로젝트로 분리 |
 | `android/`, `ios/`, `macos/`, `linux/`, `windows/`, `web/` | Flutter 플랫폼별 프로젝트 |
 
 ## `lib/`
@@ -25,10 +25,7 @@
 | --- | --- |
 | `lib/main.dart` | 앱 초기화와 최상위 MaterialApp |
 | `lib/db/` | Drift 로컬 DB, 테이블, 마이그레이션, 쿼리 |
-| `lib/pages/` | 화면 단위 UI와 화면별 상태 |
-| `lib/pages/forms/` | 자산, 보유, 거래, 현금 계좌 입력 폼 |
-| `lib/services/` | 인증, 동기화, 시세, 뉴스, AI 진단 연동 |
-| `lib/models/` | 화면과 서비스가 공유하는 모델 |
+| `lib/features/` | 기능별 화면, 서비스, 모델 소유 경계 |
 | `lib/components/` | 재사용 UI 컴포넌트 |
 | `lib/widgets/` | 기존 공용 위젯과 뉴스 카드 |
 | `lib/design_system/` | theme extension, 토큰, 브랜드 팔레트 |
@@ -66,10 +63,12 @@
 | 경로 | 역할 |
 | --- | --- |
 | `docs/brand/` | 브랜드 팔레트, 컬러 감사표, 팔레트 이미지 산출물 |
-| `docs/design/` | 기능별 화면 리디자인 계획. 일반 UI/UX 규칙은 `docs/design_system.md`로 통합 |
-| `docs/features/` | 기능 개발, 단순 패치, 버그 픽스, 수동 테스트 작업 기록 |
 | `docs/guides/` | 작업 유형별 개발 프로세스 가이드 |
-| `docs/reports/` | 여러 작업을 묶은 통합 구현 보고서 |
+| `docs/reports/` | 통합 구현 보고서와 완료 작업 압축 히스토리 |
+
+Completed task plans are not kept as individual docs. Historical implementation records are consolidated in `docs/reports/implementation_history.md`.
+
+주식 임베딩 연구는 이 앱 저장소 밖의 `/Users/maegmini/Project/moneyfy-stock-embeddings`에서 관리합니다. 경계 기준은 [Embedding Project Boundary](embedding_project_boundary.md)를 참고하세요.
 
 ## Platform Folders
 
@@ -98,9 +97,9 @@ Flutter가 생성한 플랫폼 프로젝트입니다. 일반 기능 개발은 �
 
 | 작업 | 먼저 볼 곳 |
 | --- | --- |
-| 새 화면 추가 | `lib/pages/`, `lib/components/`, `lib/design_system/` |
-| DB 필드 추가 | `lib/db/app_database.dart`, `supabase/migrations/`, `sync_service.dart` |
-| Supabase 함수 수정 | `supabase/functions/`, `lib/services/` |
+| 새 화면 추가 | `lib/features/<feature>/screens/`, `lib/components/`, `lib/design_system/` |
+| DB 필드 추가 | `lib/db/app_database.dart`, `supabase/migrations/`, `lib/features/sync/services/sync_service.dart` |
+| Supabase 함수 수정 | `supabase/functions/`, 관련 `lib/features/<feature>/services/` |
 | 디자인 조정 | `docs/design_system.md`, `lib/design_system/`, `lib/components/` |
 | 테스트 추가 | `test/README.md`, 기존 `test/*_test.dart` |
-| 앱 아이콘/플랫폼 에셋 갱신 | `docs/features/simple_patches/design_md_full_compliance/platform_asset_audit_report.md`, 각 platform asset catalog |
+| 앱 아이콘/플랫폼 에셋 갱신 | `assets/`, 각 platform asset catalog, `docs/design_system.md` |

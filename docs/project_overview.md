@@ -49,15 +49,15 @@ flowchart LR
 
 ## Main Navigation
 
-`lib/pages/app_shell_page.dart`는 앱의 하단 탭과 공통 새로고침 흐름을 관리합니다.
+`lib/features/shell/screens/app_shell_page.dart`는 앱의 하단 탭과 공통 새로고침 흐름을 관리합니다.
 
 | 탭 | 주요 파일 | 역할 |
 | --- | --- | --- |
-| 홈 | `portfolio_dashboard_page.dart` | 총자산, 주요 지표, 포트폴리오 진단 진입 |
-| 포트폴리오 | `portfolio_page.dart` | 자산군, 보유 종목, 현금 계좌 관리 |
-| 분석 | `analysis_page.dart` | 배분, 성과, 진단, 뉴스 요약 |
-| 통계 | `statistics_page.dart` | 월별 추이, 캘린더, 스냅샷 |
-| My | `my_page.dart` | 로그인, 동기화, 설정성 작업 |
+| 홈 | `lib/features/portfolio/screens/portfolio_dashboard_page.dart` | 총자산, 주요 지표, 포트폴리오 진단 진입 |
+| 포트폴리오 | `lib/features/portfolio/screens/portfolio_page.dart` | 자산군, 보유 종목, 현금 계좌 관리 |
+| 분석 | `lib/features/analysis/screens/analysis_page.dart` | 배분, 성과, 진단, 뉴스 요약 |
+| 통계 | `lib/features/account/screens/statistics_page.dart` | 월별 추이, 캘린더, 스냅샷 |
+| My | `lib/features/account/screens/my_page.dart` | 로그인, 동기화, 설정성 작업 |
 
 앱은 1분 간격으로 시장 데이터와 환율 갱신을 시도하고, 앱이 foreground로 돌아오거나 인증 상태가 바뀌면 Supabase에서 원격 데이터를 다시 당겨옵니다.
 
@@ -72,11 +72,11 @@ MONEYFY의 대부분 화면은 로컬 Drift DB를 직접 읽습니다. 입력과
 | 파일 | 역할 |
 | --- | --- |
 | `lib/main.dart` | 앱 초기화와 MaterialApp 구성 |
-| `lib/pages/app_shell_page.dart` | 하단 탭, 앱 생명주기, 주기적 갱신 |
+| `lib/features/shell/screens/app_shell_page.dart` | 하단 탭, 앱 생명주기, 주기적 갱신 |
 | `lib/db/app_database.dart` | Drift 테이블, 쿼리, 마이그레이션, 원장 재계산 |
-| `lib/services/auth_service.dart` | Supabase 초기화와 로그인/회원가입/로그아웃 |
-| `lib/services/sync_service.dart` | 로컬 dirty payload push와 원격 pull |
-| `lib/services/market_data_service.dart` | KIS, 코인, 환율 기반 시장 데이터 갱신 |
+| `lib/features/auth/services/auth_service.dart` | Supabase 초기화와 로그인/회원가입/로그아웃 |
+| `lib/features/sync/services/sync_service.dart` | 로컬 dirty payload push와 원격 pull |
+| `lib/features/portfolio/services/market_data_service.dart` | KIS, 코인, 환율 기반 시장 데이터 갱신 |
 | `supabase/functions/*/index.ts` | Edge Function API |
 | `supabase/migrations/*.sql` | 원격 Postgres schema 변경 이력 |
 

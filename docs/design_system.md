@@ -171,7 +171,7 @@ Surface rules:
 
 - Obsolete generated launcher assets were removed from the repo.
 - The app currently avoids keeping duplicate launcher icon sets in multiple platform folders.
-- Platform asset changes are tracked in `docs/features/simple_patches/design_md_full_compliance/platform_asset_audit_report.md`.
+- Platform asset changes should be reflected in `assets/`, the relevant platform asset catalog, and this design system when they become durable UI policy.
 - Web manifest theme color follows the current primary `#3A6DFF`.
 
 ## Guardrails

@@ -48,6 +48,21 @@ supabase/.temp/
 # Separate local workspace/repository
 Moneyfy_Reddit/
 
+# Externalized stock embedding research workspace
+tools/stock_embeddings_repro/
+
+# Large local ML/data artifacts
+*.npy
+*.npz
+*.parquet
+*.feather
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
+.conda-env/
+
 # Symbolication related
 app.*.symbols
 

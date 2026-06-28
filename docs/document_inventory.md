@@ -1,6 +1,6 @@
 # Document Inventory
 
-이 문서는 MONEYFY 저장소의 Markdown 문서를 한곳에서 찾기 위한 전체 색인입니다. 현재 폴더 구조를 기준으로 읽는 순서와 보관 위치를 정리합니다.
+이 문서는 MONEYFY 저장소의 Markdown 문서를 한곳에서 찾기 위한 색인입니다. 현재 폴더 구조를 기준으로 읽는 순서와 보관 위치를 정리합니다.
 
 ## Reading Order
 
@@ -11,7 +11,7 @@
 | 3 | [Data & Sync Flow](data_and_sync.md) | 로컬 DB, 원장, Supabase sync 흐름 파악 |
 | 4 | [Supabase Overview](supabase_overview.md) | 원격 schema, Edge Functions, 운영 포인트 파악 |
 | 5 | [Design System](design_system.md) | MONEYFY UI/UX 단일 기준 파악 |
-| 6 | [Feature Work Docs](features/README.md) | 기능/패치/버그 수정 작업 기록 탐색 |
+| 6 | [Implementation History](reports/implementation_history.md) | 제거된 과거 구현 계획의 압축 히스토리 확인 |
 
 ## Repository-Level Docs
 
@@ -19,15 +19,10 @@
 | --- | --- |
 | [../README.md](../README.md) | 프로젝트 소개, 실행 방법, 주요 문서 진입점 |
 | [../assets/README.md](../assets/README.md) | 앱 asset과 로컬 config 예시 안내 |
+| [../assets/fonts/README.md](../assets/fonts/README.md) | 앱 폰트 asset 안내 |
 | [../lib/README.md](../lib/README.md) | Flutter 앱 소스 구조, 화면/서비스 map |
 | [../supabase/README.md](../supabase/README.md) | Supabase 폴더 구조, 함수 그룹, 운영 명령 |
 | [../test/README.md](../test/README.md) | 테스트 폴더와 테스트 작성 기준 |
-| [../ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md](../ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md) | Flutter 기본 launch image asset 안내 |
-| [../Moneyfy_Reddit/README.md](../Moneyfy_Reddit/README.md) | Reddit mirror/analysis 보조 프로젝트 안내 |
-| [../Moneyfy_Reddit/DESIGN.md](../Moneyfy_Reddit/DESIGN.md) | Reddit 보조 프로젝트 UI/UX 설계 |
-| [../Moneyfy_Reddit/IMPROVEMENT_PLAN.md](../Moneyfy_Reddit/IMPROVEMENT_PLAN.md) | Reddit 보조 프로젝트 개선 계획 |
-| [../Moneyfy_Reddit/REDESIGN_PLAN.md](../Moneyfy_Reddit/REDESIGN_PLAN.md) | Reddit 보조 프로젝트 재설계 계획 |
-| [../Moneyfy_Reddit/WORKERIZATION_PLAN.md](../Moneyfy_Reddit/WORKERIZATION_PLAN.md) | Reddit 보조 프로젝트 worker 분리 계획 |
 
 ## Core Product Docs
 
@@ -39,17 +34,14 @@
 | [Data & Sync Flow](data_and_sync.md) | Drift DB, 원장 모델, Supabase 동기화 |
 | [Supabase Overview](supabase_overview.md) | Supabase migration, Edge Function, 운영 포인트 |
 | [Supabase CLI Runbook](supabase_cli_runbook.md) | 원격 Supabase 운영 절차 |
-| [Implementation Report 2026-05-24](reports/implementation_report_20260524.md) | 2026-05-24 기준 통합 구현 보고서 |
+| [Embedding Project Boundary](embedding_project_boundary.md) | 앱 repo와 별도 임베딩 연구 repo의 책임 경계 |
 
 ## Design And UI Docs
 
 | 문서 | 역할 |
 | --- | --- |
-| [Design System](design_system.md) | UI/UX 단일 기준: 방향, 토큰, typography, component, 상태, 화면 패턴, 메인 자산 카드, QA |
+| [Design System](design_system.md) | UI/UX 단일 기준: 방향, 토큰, typography, component, 상태, 화면 패턴, QA |
 | [Brand Palette](brand/README.md) | 브랜드/시맨틱 컬러 결정, 구현 팔레트, 팔레트 이미지 산출물 |
-| [Pill, Chip, Badge Token Plan](design/pill_chip_badge_token_plan.md) | 스크린샷 기준 pill/chip/badge 현재 상태와 토큰 정리 계획 |
-| [Transaction Ledger Redesign](design/transaction_ledger_redesign.md) | 거래 내역 화면 개편 방향 |
-| [Transaction History UI/UX Improvement Plan](design/transaction_history_ui_ux_improvement_plan.md) | 거래 내역 필터/목록 UX 개선 계획 |
 
 ## Process Guides
 
@@ -59,36 +51,16 @@
 | [Simple Patch Process Guidelines](guides/simple_patch_process_guidelines.md) | 구조 개선, 보안/품질 강화, 테스트/CI 보강 |
 | [Bug Fix Process Guidelines](guides/bug_fix_process_guidelines.md) | 재현 가능한 문제 수정과 회귀 검증 |
 
-## Feature Work Collections
+## Reports
 
-작업 단위 문서는 `plan.md`를 canonical record로 둡니다. 과거 `verification_test_plan.md`, `test_report_YYYYMMDD.md`, `implementation_report*.md`, `operational_runbook.md`, `release_gate*.md`, `plan_parts/`는 핵심만 `plan.md` 또는 분류별 README에 병합하고 제거했습니다.
-
-| 분류 | 인덱스 | 작업 폴더 |
-| --- | --- | --- |
-| 새로운 기능 개발 | [new_feature_development/README](features/new_feature_development/README.md) | `investment_performance`, `page_flow_redesign`, `portfolio_diagnosis`, `profile_management_minimum`, `risk_adjusted_benchmark_performance`, `sell_quantity_percentage_shortcuts`, `transaction_event_flow_classification`, `transaction_event_rows`, `transaction_form_ledger_layout`, `transaction_management_page`, `transaction_percentage_shortcuts_expansion` |
-| 단순 패치 | [simple_patches/README](features/simple_patches/README.md) | `app_database_modularization`, `ci_cd_minimum`, `design_md_full_compliance`, `design_token_unification`, `edge_function_auth`, `font_family_tokenization`, `font_weight_tokenization`, `input_validation_hardening`, `ledger_numeric_regression`, `supabase_frontend_only_hidden`, `supabase_rls_hardening`, `sync_conflict_policy`, `transaction_tab_ui_density` |
-| 버그 픽스 | [bug_fixes/README](features/bug_fixes/README.md) | `analysis_detail_back_navigation`, `cash_snapshot_profit_fix`, `crypto_sell_quantity_precision`, `external_api_fallbacks`, `ledger_realized_pnl_moving_average_recompute`, `login_initial_stale_tab_data`, `login_sync_failure_ux`, `login_sync_overlay_layout`, `logout_stale_tab_data`, `news_cache_staleness`, `optional_local_config`, `record_only_remote_state_reconcile`, `snapshot_detail_holdings_fix`, `transaction_pull_refresh_remote_sync`, `transaction_record_only_calculation_sync`, `transaction_tab_null_row_crash`, `usd_realized_pnl_currency_basis` |
-| 통합 보고서 | `reports/` | [Implementation Report 2026-05-24](reports/implementation_report_20260524.md) |
-
-## Feature Folder Rules
-
-| 파일명 | 의미 |
+| 문서 | 역할 |
 | --- | --- |
-| `plan.md` | 범위, 설계, 구현 단계, 핵심 검증 결과를 담는 canonical record |
-| category `README.md` | 작업 목록, 삭제된 과거 리포트의 짧은 상태 요약, canonical link |
-
-삭제/병합 대상:
-
-- `*.original.md`: 임시 압축 백업. 원문 복구 검토 후 제거.
-- `verification_test_plan.md`, `test_report_YYYYMMDD.md`, `implementation_report*.md`: 핵심만 `plan.md` 또는 category README에 병합.
-- `plan_parts/`, `manual_notes/`, `tmp_*.md`, `operational_runbook.md`, `release_gate*.md`: 큰 작업 완료 후 `plan.md`에 요약 병합.
+| [Implementation History](reports/implementation_history.md) | Markdown Cleanup Phase 2에서 제거된 완료 구현 계획의 압축 색인 |
+| [Implementation Report 2026-05-24](reports/implementation_report_20260524.md) | 2026-05-24 기준 통합 구현 보고서 |
 
 ## Maintenance Checklist
 
-- 새 작업 폴더를 만들면 해당 분류의 README와 이 문서를 함께 갱신합니다.
-- 새 기능은 `docs/features/new_feature_development/<work>/`에 둡니다.
-- 구조 개선, 보안/품질 강화, 테스트/CI 보강은 `docs/features/simple_patches/<work>/`에 둡니다.
-- 사용자에게 보이는 실패나 잘못된 계산 수정은 `docs/features/bug_fixes/<work>/`에 둡니다.
-- 작업 완료 후 개별 실행 리포트를 장기 보관하지 말고 `plan.md`에 핵심 결과만 남깁니다.
-- 루트 성격의 장기 문서는 `docs/` 바로 아래에 두고, 일회성 작업 기록은 기능 폴더 안에 둡니다.
-- 비밀값, 개인 계정 정보, service role key는 문서에 적지 않습니다.
+- 현재 동작은 source code, tests, Supabase migrations, canonical docs를 기준으로 확인합니다.
+- 완료된 feature plan, Superpowers plan/spec, generated audit은 개별 Markdown으로 장기 보관하지 않습니다.
+- 과거 구현 계획의 흔적이 필요하면 `docs/reports/implementation_history.md`에 짧게 남깁니다.
+- 루트 성격의 장기 문서는 `docs/` 바로 아래에 두고, 비밀값, 개인 계정 정보, service role key는 문서에 적지 않습니다.
