@@ -5,18 +5,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/components/cards/investment_review_home_card.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
-import 'package:moneyfy/models/asset_item.dart';
+import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 import 'package:moneyfy/navigation/moneyfy_router.dart';
-import 'package:moneyfy/pages/forms/cash_transaction_form_page.dart';
-import 'package:moneyfy/pages/forms/transaction_form_page.dart';
-import 'package:moneyfy/pages/investment_performance_page.dart';
-import 'package:moneyfy/pages/investment_review_page.dart';
-import 'package:moneyfy/pages/portfolio_dashboard_page.dart';
-import 'package:moneyfy/pages/reddit_post_summaries_page.dart';
-import 'package:moneyfy/services/reddit_post_summary_service.dart';
-import 'package:moneyfy/services/investment_review/daily_investment_review_models.dart';
-import 'package:moneyfy/services/investment_review/investment_review_models.dart';
-import 'package:moneyfy/services/investment_review/investment_review_periods.dart';
+import 'package:moneyfy/features/transactions/screens/forms/cash_transaction_form_page.dart';
+import 'package:moneyfy/features/transactions/screens/forms/transaction_form_page.dart';
+import 'package:moneyfy/features/analysis/screens/investment_performance_page.dart';
+import 'package:moneyfy/features/analysis/screens/investment_review_page.dart';
+import 'package:moneyfy/features/portfolio/screens/portfolio_dashboard_page.dart';
+import 'package:moneyfy/features/analysis/screens/reddit_post_summaries_page.dart';
+import 'package:moneyfy/features/analysis/services/reddit_post_summary_service.dart';
+import 'package:moneyfy/features/analysis/services/investment_review/daily_investment_review_models.dart';
+import 'package:moneyfy/features/analysis/services/investment_review/investment_review_models.dart';
+import 'package:moneyfy/features/analysis/services/investment_review/investment_review_periods.dart';
 import 'package:moneyfy/utils/input_validators.dart';
 
 void main() {
@@ -245,7 +245,7 @@ void main() {
 
   test('reddit post summary service reads reddit_post_cards table', () {
     final source = File(
-      'lib/services/reddit_post_summary_service.dart',
+      'lib/features/analysis/services/reddit_post_summary_service.dart',
     ).readAsStringSync();
 
     expect(source, contains(".from('reddit_post_cards')"));

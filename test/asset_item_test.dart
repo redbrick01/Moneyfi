@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moneyfy/models/asset_item.dart';
+import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 
 void main() {
   HoldingItem holding({

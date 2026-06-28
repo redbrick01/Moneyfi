@@ -5,9 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:drift/native.dart';
 import 'package:moneyfy/db/app_database.dart';
-import 'package:moneyfy/models/asset_item.dart';
-import 'package:moneyfy/services/benchmark_price_service.dart';
-import 'package:moneyfy/services/market_data_service.dart';
+import 'package:moneyfy/features/portfolio/models/asset_item.dart';
+import 'package:moneyfy/features/analysis/services/benchmark_price_service.dart';
+import 'package:moneyfy/features/portfolio/services/market_data_service.dart';
 
 void main() {
   HoldingItem holding({

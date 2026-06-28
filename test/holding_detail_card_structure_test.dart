@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('holding detail inner components do not add a third card surface', () {
     final source = File(
-      'lib/pages/holding_detail_page.dart',
+      'lib/features/portfolio/screens/holding_detail_page.dart',
     ).readAsStringSync();
     final innerComponentSource = [
       _classSource(source, '_WeekRangeBar'),
@@ -22,7 +22,7 @@ void main() {
 
   test('holding detail metric grid separates values with inner lines', () {
     final source = File(
-      'lib/pages/holding_detail_page.dart',
+      'lib/features/portfolio/screens/holding_detail_page.dart',
     ).readAsStringSync();
     final gridSource = [
       _classSource(source, '_MetricGrid'),

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moneyfy/services/company_news_summary_service.dart';
-import 'package:moneyfy/services/market_news_summary_service.dart';
-import 'package:moneyfy/services/portfolio_diagnosis_service.dart';
+import 'package:moneyfy/features/analysis/services/company_news_summary_service.dart';
+import 'package:moneyfy/features/analysis/services/market_news_summary_service.dart';
+import 'package:moneyfy/features/portfolio/services/portfolio_diagnosis_service.dart';
 import 'package:moneyfy/widgets/market_news_summary_card.dart';
 
 void main() {

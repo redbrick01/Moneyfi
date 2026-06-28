@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../models/asset_item.dart';
+import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 
 const assetItems = [
   AssetItem(

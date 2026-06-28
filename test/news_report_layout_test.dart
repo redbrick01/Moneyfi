@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:moneyfy/design_system/app_theme.dart';
-import 'package:moneyfy/services/company_news_summary_service.dart';
+import 'package:moneyfy/features/analysis/services/company_news_summary_service.dart';
 import 'package:moneyfy/widgets/company_news_summary_card.dart';
 import 'package:moneyfy/widgets/market_news_summary_card.dart';
 

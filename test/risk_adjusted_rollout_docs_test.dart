@@ -3,20 +3,14 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const basePath =
-      'docs/features/new_feature_development/'
-      'risk_adjusted_benchmark_performance';
+  const archivedPath =
+      'docs/reports/archived_artifacts/risk_adjusted_benchmark_performance';
+  const historyPath = 'docs/reports/implementation_history.md';
 
-  test('rollout documentation links every implementation stage', () {
+  test('rollout archive keeps schema draft and consolidated history', () {
     final requiredFiles = [
-      '$basePath/implementation_report_01_calculation_contract.md',
-      '$basePath/implementation_report_02_derived_daily_returns.md',
-      '$basePath/implementation_report_03_benchmark_data.md',
-      '$basePath/implementation_report_04_ui_integration.md',
-      '$basePath/implementation_report_05_supabase_and_sync_safety.md',
-      '$basePath/implementation_report_06_rollout_gate.md',
-      '$basePath/release_gate_06.md',
-      '$basePath/remote_schema_draft_05.sql',
+      '$archivedPath/remote_schema_draft_05.sql',
+      historyPath,
     ];
 
     for (final path in requiredFiles) {
@@ -24,20 +18,16 @@ void main() {
     }
   });
 
-  test('release gate records remote apply safety checks', () {
-    final releaseGate = File(
-      '$basePath/release_gate_06.md',
-    ).readAsStringSync().toLowerCase();
+  test('implementation history preserves remote apply safety summary', () {
+    final history = File(historyPath).readAsStringSync().toLowerCase();
 
-    expect(releaseGate, contains('supabase 원격 적용은 2026-05-29에 완료'));
-    expect(releaseGate, contains('assets'));
-    expect(releaseGate, contains('holdings'));
-    expect(releaseGate, contains('수량 합계'));
-    expect(releaseGate, contains('매수원금 합계'));
-    expect(releaseGate, contains('zero 분포'));
-    expect(releaseGate, contains('데이터 부족'));
-    expect(releaseGate, isNot(contains('update holdings')));
-    expect(releaseGate, isNot(contains('delete from holdings')));
-    expect(releaseGate, isNot(contains('truncate')));
+    expect(history, contains('supabase 원격 적용은 2026-05-29에 완료'));
+    expect(history, contains('assets'));
+    expect(history, contains('holdings'));
+    expect(history, contains('수량 합계'));
+    expect(history, contains('매수원금 합계'));
+    expect(history, contains('zero 분포'));
+    expect(history, contains('데이터 부족'));
+    expect(history, contains('remote_schema_draft_05.sql'));
   });
 }

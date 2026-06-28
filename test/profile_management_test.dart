@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moneyfy/pages/my_page.dart';
+import 'package:moneyfy/features/account/screens/my_page.dart';
 
 void main() {
   group('profile management validation', () {

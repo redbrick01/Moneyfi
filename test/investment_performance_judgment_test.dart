@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moneyfy/services/investment_performance/performance_judgment.dart';
+import 'package:moneyfy/features/analysis/services/investment_performance/performance_judgment.dart';
 
 void main() {
   group('resolvePerformanceJudgment', () {

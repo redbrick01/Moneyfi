@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../pages/asset_detail_page.dart';
-import '../pages/cash_account_detail_page.dart';
-import '../pages/dividend_interest_analysis_page.dart';
-import '../pages/equity_research_page.dart';
-import '../pages/forms/asset_form_page.dart';
-import '../pages/forms/cash_account_form_page.dart';
-import '../pages/forms/cash_transaction_form_page.dart';
-import '../pages/forms/holding_form_page.dart';
-import '../pages/forms/transaction_form_page.dart';
-import '../pages/holding_detail_page.dart';
-import '../pages/investment_performance_page.dart';
-import '../pages/login_page.dart';
-import '../pages/portfolio_analysis_mvp_page.dart';
-import '../pages/reddit_post_summaries_page.dart';
-import '../pages/statistics_page.dart';
-import '../pages/signup_page.dart';
+import 'package:moneyfy/features/portfolio/screens/asset_detail_page.dart';
+import 'package:moneyfy/features/portfolio/screens/cash_account_detail_page.dart';
+import 'package:moneyfy/features/analysis/screens/dividend_interest_analysis_page.dart';
+import 'package:moneyfy/features/analysis/screens/equity_research_page.dart';
+import 'package:moneyfy/features/portfolio/screens/forms/asset_form_page.dart';
+import 'package:moneyfy/features/portfolio/screens/forms/cash_account_form_page.dart';
+import 'package:moneyfy/features/transactions/screens/forms/cash_transaction_form_page.dart';
+import 'package:moneyfy/features/portfolio/screens/forms/holding_form_page.dart';
+import 'package:moneyfy/features/transactions/screens/forms/transaction_form_page.dart';
+import 'package:moneyfy/features/portfolio/screens/holding_detail_page.dart';
+import 'package:moneyfy/features/analysis/screens/investment_performance_page.dart';
+import 'package:moneyfy/features/auth/screens/login_page.dart';
+import 'package:moneyfy/features/analysis/screens/portfolio_analysis_mvp_page.dart';
+import 'package:moneyfy/features/analysis/screens/reddit_post_summaries_page.dart';
+import 'package:moneyfy/features/account/screens/statistics_page.dart';
+import 'package:moneyfy/features/auth/screens/signup_page.dart';
 import 'moneyfy_routes.dart';
 
 extension MoneyfyNavigation on BuildContext {

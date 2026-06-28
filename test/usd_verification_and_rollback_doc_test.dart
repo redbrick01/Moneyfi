@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final verificationSql = File(
-    'docs/features/bug_fixes/usd_realized_pnl_currency_basis/remote_verification_and_rollback_06.sql',
+    'docs/reports/archived_artifacts/'
+    'usd_realized_pnl_currency_basis/remote_verification_and_rollback_06.sql',
   );
 
   test('verification SQL includes core before and after checks', () {

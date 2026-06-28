@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moneyfy/services/investment_review/investment_review_models.dart';
-import 'package:moneyfy/services/investment_review/investment_review_periods.dart';
+import 'package:moneyfy/features/analysis/services/investment_review/investment_review_models.dart';
+import 'package:moneyfy/features/analysis/services/investment_review/investment_review_periods.dart';
 
 void main() {
   group('InvestmentReviewPeriodResolver', () {

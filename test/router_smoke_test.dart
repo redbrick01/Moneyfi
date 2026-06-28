@@ -3,11 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
 import 'package:moneyfy/navigation/moneyfy_router.dart';
 import 'package:moneyfy/navigation/moneyfy_routes.dart';
-import 'package:moneyfy/pages/forms/asset_form_page.dart';
-import 'package:moneyfy/pages/forms/cash_account_form_page.dart';
-import 'package:moneyfy/pages/forms/cash_transaction_form_page.dart';
-import 'package:moneyfy/pages/forms/holding_form_page.dart';
-import 'package:moneyfy/pages/forms/transaction_form_page.dart';
+import 'package:moneyfy/features/portfolio/screens/forms/asset_form_page.dart';
+import 'package:moneyfy/features/portfolio/screens/forms/cash_account_form_page.dart';
+import 'package:moneyfy/features/transactions/screens/forms/cash_transaction_form_page.dart';
+import 'package:moneyfy/features/portfolio/screens/forms/holding_form_page.dart';
+import 'package:moneyfy/features/transactions/screens/forms/transaction_form_page.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

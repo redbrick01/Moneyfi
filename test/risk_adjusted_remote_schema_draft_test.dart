@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final sqlFile = File(
-    'docs/features/new_feature_development/'
+    'docs/reports/archived_artifacts/'
     'risk_adjusted_benchmark_performance/remote_schema_draft_05.sql',
   );
 

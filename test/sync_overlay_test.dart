@@ -1,8 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
-import 'package:moneyfy/pages/login_page.dart';
-import 'package:moneyfy/pages/sync_overlay.dart';
+import 'package:moneyfy/features/auth/screens/login_page.dart';
+import 'package:moneyfy/features/sync/screens/sync_overlay.dart';
 
 void main() {
   Future<void> pumpOverlay(
@@ -123,6 +125,38 @@ void main() {
     expect(find.text('뉴스 요약이 꼭 필요하면 재시도하세요.'), findsOneWidget);
     expect(find.text('재시도'), findsWidgets);
     expect(find.text('앱으로 이동'), findsOneWidget);
+  });
+
+  test('LoginPage places sync overlay outside Scaffold body', () {
+    final source = File(
+      'lib/features/auth/screens/login_page.dart',
+    ).readAsStringSync();
+    final returnStackIndex = source.indexOf('return Stack(');
+    final scaffoldIndex = source.indexOf('Scaffold(', returnStackIndex);
+    final overlayIndex = source.indexOf('if (_showSyncOverlay)');
+
+    expect(returnStackIndex, isNonNegative);
+    expect(scaffoldIndex, isNonNegative);
+    expect(overlayIndex, isNonNegative);
+    expect(returnStackIndex, lessThan(scaffoldIndex));
+    expect(overlayIndex, greaterThan(scaffoldIndex));
+    expect(source, isNot(contains('body: Stack(')));
+  });
+
+  test('LoginPage requests app-wide refresh after login sync completion', () {
+    final source = File(
+      'lib/features/auth/screens/login_page.dart',
+    ).readAsStringSync();
+
+    expect(source, contains("refreshReason: 'login_sync_complete'"));
+    expect(source, contains("refreshReason: 'login_sync_partial'"));
+    expect(
+      source,
+      contains(
+        '} on AuthException catch (error) {\n'
+        '      AppDataLifecycleService.completeReplacement();',
+      ),
+    );
   });
 
   test('login sync failure copy gives stage-specific actions', () {

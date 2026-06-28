@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moneyfy/models/asset_item.dart';
-import 'package:moneyfy/services/gpt_db_summary_builder.dart';
+import 'package:moneyfy/features/portfolio/models/asset_item.dart';
+import 'package:moneyfy/features/analysis/services/gpt_db_summary_builder.dart';
 
 void main() {
   TransactionItem transaction({

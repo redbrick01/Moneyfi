@@ -2,8 +2,8 @@ import 'package:drift/drift.dart' show Variable;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/db/app_database.dart';
-import 'package:moneyfy/services/investment_review/daily_investment_review_models.dart';
-import 'package:moneyfy/services/investment_review/daily_investment_review_repository.dart';
+import 'package:moneyfy/features/analysis/services/investment_review/daily_investment_review_models.dart';
+import 'package:moneyfy/features/analysis/services/investment_review/daily_investment_review_repository.dart';
 
 void main() {
   late AppDatabase db;

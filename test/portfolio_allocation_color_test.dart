@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('portfolio allocation colors are fixed by allocation rank', () {
-    final source = File('lib/pages/portfolio_page.dart').readAsStringSync();
+    final source = File('lib/features/portfolio/screens/portfolio_page.dart').readAsStringSync();
     final buildAllocations = _functionSource(
       source,
       'List<_AllocationItem> _buildAllocations',
@@ -45,7 +45,7 @@ void main() {
   });
 
   test('portfolio allocation drills into holdings for selected asset', () {
-    final source = File('lib/pages/portfolio_page.dart').readAsStringSync();
+    final source = File('lib/features/portfolio/screens/portfolio_page.dart').readAsStringSync();
     final stateSource = _classSource(source, 'class _PortfolioPageState');
     final allocationCardSource = _classSource(
       source,
@@ -60,7 +60,7 @@ void main() {
   });
 
   test('portfolio allocation card grows with expanded detail', () {
-    final source = File('lib/pages/portfolio_page.dart').readAsStringSync();
+    final source = File('lib/features/portfolio/screens/portfolio_page.dart').readAsStringSync();
     final allocationCardSource = _classSource(
       source,
       'class _AllocationSectionCard',
@@ -72,7 +72,7 @@ void main() {
 
   test('dashboard asset rows reserve room for asset names', () {
     final source = File(
-      'lib/pages/portfolio_dashboard_page.dart',
+      'lib/features/portfolio/screens/portfolio_dashboard_page.dart',
     ).readAsStringSync();
     final assetRowSource = _classSource(source, 'class _AssetRow');
 
@@ -82,10 +82,10 @@ void main() {
 
   test('asset and holding row profit rates are text, not pills', () {
     final dashboardSource = File(
-      'lib/pages/portfolio_dashboard_page.dart',
+      'lib/features/portfolio/screens/portfolio_dashboard_page.dart',
     ).readAsStringSync();
     final assetDetailSource = File(
-      'lib/pages/asset_detail_page.dart',
+      'lib/features/portfolio/screens/asset_detail_page.dart',
     ).readAsStringSync();
     final assetProfitLine = _classSource(
       dashboardSource,
@@ -103,7 +103,7 @@ void main() {
   });
 
   test('asset detail holding rows show quantity without symbol subtitle', () {
-    final source = File('lib/pages/asset_detail_page.dart').readAsStringSync();
+    final source = File('lib/features/portfolio/screens/asset_detail_page.dart').readAsStringSync();
     final holdingRow = _classSource(source, 'class _HoldingRow');
 
     expect(holdingRow, contains('holding.quantityText'));
@@ -114,7 +114,7 @@ void main() {
   });
 
   test('asset detail holding rows can toggle from profit to market quote', () {
-    final source = File('lib/pages/asset_detail_page.dart').readAsStringSync();
+    final source = File('lib/features/portfolio/screens/asset_detail_page.dart').readAsStringSync();
     final stateSource = _classSource(source, 'class _AssetDetailPageState');
     final holdingRow = _classSource(source, 'class _HoldingRow');
     final quoteLine = _classSource(source, 'class _HoldingMarketQuoteLine');
@@ -131,7 +131,7 @@ void main() {
 
   test('dashboard diagnosis risk badge uses pill tokens', () {
     final source = File(
-      'lib/pages/portfolio_dashboard_page.dart',
+      'lib/features/portfolio/screens/portfolio_dashboard_page.dart',
     ).readAsStringSync();
     final badgeSource = _classSource(source, 'class _DashboardDiagnosisBadge');
 
@@ -146,7 +146,7 @@ void main() {
 
   test('dashboard cards use shared section header spacing', () {
     final source = File(
-      'lib/pages/portfolio_dashboard_page.dart',
+      'lib/features/portfolio/screens/portfolio_dashboard_page.dart',
     ).readAsStringSync();
     final assetBasePlate = _classSource(source, 'class _AssetSectionBasePlate');
     final analysisBasePlate = _classSource(
@@ -167,7 +167,7 @@ void main() {
   });
 
   test('statistics total asset trend can switch monthly and weekly cards', () {
-    final source = File('lib/pages/statistics_page.dart').readAsStringSync();
+    final source = File('lib/features/account/screens/statistics_page.dart').readAsStringSync();
     final pageState = _classSource(source, 'class _StatisticsPageState');
     final monthlyTrend = _classSource(source, 'class _MonthlyTrendSection');
     final monthlyTrendState = _classSource(
@@ -186,7 +186,7 @@ void main() {
   });
 
   test('statistics weekly trend hides asset groups and x axis dates', () {
-    final source = File('lib/pages/statistics_page.dart').readAsStringSync();
+    final source = File('lib/features/account/screens/statistics_page.dart').readAsStringSync();
     final weeklyBuilder = _functionSource(
       source,
       '_StatisticsData _buildRecentWeekStatisticsData',

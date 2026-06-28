@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
-import 'package:moneyfy/pages/target_allocation_sheet.dart';
+import 'package:moneyfy/features/shell/screens/target_allocation_sheet.dart';
 
 void main() {
   testWidgets('target allocation sheet uses compact footer with keyboard', (

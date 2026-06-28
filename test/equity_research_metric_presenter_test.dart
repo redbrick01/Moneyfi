@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moneyfy/services/equity_research_metric_presenter.dart';
-import 'package:moneyfy/services/equity_research_service.dart';
+import 'package:moneyfy/features/analysis/services/equity_research_metric_presenter.dart';
+import 'package:moneyfy/features/analysis/services/equity_research_service.dart';
 
 void main() {
   group('presentEquityResearchMetric', () {

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('automatic draft feedback uses left-aligned stacked rows', () {
     final source = File(
-      'lib/pages/investment_review_page.dart',
+      'lib/features/analysis/screens/investment_review_page.dart',
     ).readAsStringSync();
     final signalLine = _classSource(source, '_DraftSignalLine');
 
