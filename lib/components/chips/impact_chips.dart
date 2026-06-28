@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/context_extensions.dart';
-import '../../design_system/spec.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/design_system/spec.dart';
 import '../icons/app_icon.dart';
 import 'moneyfy_pill.dart';
 

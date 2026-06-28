@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../chips/delta_chip.dart';
 import '../chips/moneyfy_pill.dart';
-import '../../design_system/context_extensions.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
 import '../icons/app_icon.dart';
 
 class SnapshotRow extends StatelessWidget {

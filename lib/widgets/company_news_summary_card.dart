@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../components/chips/moneyfy_pill.dart';
-import '../components/panels/app_inner_panel.dart';
-import '../components/section_card.dart';
-import '../design_system/context_extensions.dart';
-import '../services/company_news_summary_service.dart';
+import 'package:moneyfy/components/chips/moneyfy_pill.dart';
+import 'package:moneyfy/components/panels/app_inner_panel.dart';
+import 'package:moneyfy/components/section_card.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/features/analysis/services/company_news_summary_service.dart';
 
 class CompanyNewsSummaryCard extends StatelessWidget {
   const CompanyNewsSummaryCard({

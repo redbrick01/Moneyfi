@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/spec.dart';
-import '../../design_system/context_extensions.dart';
-import '../../services/auth_service.dart';
+import 'package:moneyfy/design_system/spec.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/features/auth/services/auth_service.dart';
 import '../icons/app_icon.dart';
 import '../buttons/app_buttons.dart';
 import '../section_card.dart';

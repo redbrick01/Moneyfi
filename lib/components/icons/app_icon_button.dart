@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/spec.dart';
+import 'package:moneyfy/design_system/spec.dart';
 import 'app_icon.dart';
 
 class AppIconButton extends StatelessWidget {

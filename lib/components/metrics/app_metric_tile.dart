@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/context_extensions.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
 
 class AppMetricTile extends StatelessWidget {
   const AppMetricTile({

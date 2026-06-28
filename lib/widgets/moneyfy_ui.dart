@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
-import '../components/section_card.dart';
-import '../design_system/context_extensions.dart';
-import '../design_system/spec.dart';
-import '../theme/moneyfy_theme.dart';
+import 'package:moneyfy/components/section_card.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/design_system/spec.dart';
+import 'package:moneyfy/theme/moneyfy_theme.dart';
 
 @Deprecated(
   'Use context.spacing, context.radius, and VisualSpec instead. '

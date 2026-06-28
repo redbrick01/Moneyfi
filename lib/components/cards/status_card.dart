@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/context_extensions.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
 import '../icons/app_icon.dart';
 import '../buttons/app_buttons.dart';
 import '../section_card.dart';

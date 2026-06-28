@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../components/chips/moneyfy_pill.dart';
-import '../components/panels/app_inner_panel.dart';
-import '../components/section_card.dart';
-import '../design_system/context_extensions.dart';
-import '../design_system/spec.dart';
-import '../navigation/moneyfy_navigation.dart';
-import '../services/equity_research_service.dart';
+import 'package:moneyfy/components/chips/moneyfy_pill.dart';
+import 'package:moneyfy/components/panels/app_inner_panel.dart';
+import 'package:moneyfy/components/section_card.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/design_system/spec.dart';
+import 'package:moneyfy/navigation/moneyfy_navigation.dart';
+import 'package:moneyfy/features/analysis/services/equity_research_service.dart';
 
 class EquityResearchReportCard extends StatelessWidget {
   const EquityResearchReportCard({

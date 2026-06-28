@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../components/panels/app_inner_panel.dart';
-import '../components/section_card.dart';
-import '../design_system/context_extensions.dart';
-import '../services/market_news_summary_service.dart';
+import 'package:moneyfy/components/panels/app_inner_panel.dart';
+import 'package:moneyfy/components/section_card.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/features/analysis/services/market_news_summary_service.dart';
 
 Future<MarketNewsSummary?> fetchMarketNewsSummary({
   String category = 'general',

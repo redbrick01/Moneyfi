@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../chips/moneyfy_pill.dart';
-import '../../design_system/context_extensions.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
 
 class TransactionRow extends StatelessWidget {
   const TransactionRow({

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../design_system/context_extensions.dart';
-import '../components/icons/app_icon.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/components/icons/app_icon.dart';
 import 'app_insets.dart';
 
 class AppPageScaffold extends StatelessWidget {

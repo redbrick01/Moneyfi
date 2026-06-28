@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../design_system/font_families.dart';
-import '../design_system/font_weights.dart';
+import 'package:moneyfy/design_system/font_families.dart';
+import 'package:moneyfy/design_system/font_weights.dart';
 import 'moneyfy_colors.dart';
 
 export 'moneyfy_colors.dart';

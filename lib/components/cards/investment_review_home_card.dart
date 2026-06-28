@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../design_system/context_extensions.dart';
-import '../../services/investment_review/daily_investment_review_models.dart';
-import '../../services/investment_review/investment_review_models.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/features/analysis/services/investment_review/daily_investment_review_models.dart';
+import 'package:moneyfy/features/analysis/services/investment_review/investment_review_models.dart';
 import '../chips/moneyfy_pill.dart';
 import '../panels/app_inner_panel.dart';
 import '../section_card.dart';
