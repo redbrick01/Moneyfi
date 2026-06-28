@@ -943,10 +943,14 @@ class AppDatabase extends _$AppDatabase {
     DateTime? to,
   }) async {
     final dateWhere = _ledgerDateWhereClause(from: from, to: to);
+    final visibleLineWhere = _visibleLedgerLineWhereClause(
+      includeCashAccounts: false,
+      includeUnlinkedLines: false,
+    );
     final rows = await customSelect(
       '''
         SELECT
-          holding_id,
+          tl.holding_id AS holding_id,
           COALESCE(SUM(quantity_delta), 0) AS quantity,
           COALESCE(SUM(cost_basis_delta), 0) AS remaining_cost,
           COALESCE(SUM(realized_pnl), 0) AS realized_pnl,
@@ -967,13 +971,18 @@ class AppDatabase extends _$AppDatabase {
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
           AND te.source NOT IN ('snapshot_restore', 'history_display')
+        LEFT JOIN holdings h
+          ON h.id = tl.holding_id
+        LEFT JOIN assets a
+          ON a.id = COALESCE(tl.asset_id, h.asset_id)
         WHERE tl.deleted_at IS NULL
-          AND holding_id IS NOT NULL
+          AND tl.holding_id IS NOT NULL
           $dateWhere
-        GROUP BY holding_id
+          $visibleLineWhere
+        GROUP BY tl.holding_id
       ''',
       variables: _ledgerDateVariables(from: from, to: to),
-      readsFrom: {transactionEvents, transactionLines},
+      readsFrom: {transactionEvents, transactionLines, holdings, assets},
     ).get();
 
     return {
@@ -995,6 +1004,7 @@ class AppDatabase extends _$AppDatabase {
     DateTime? to,
   }) async {
     final dateWhere = _ledgerDateWhereClause(from: from, to: to);
+    final visibleLineWhere = _visibleLedgerLineWhereClause();
     final row = await customSelect(
       '''
         SELECT
@@ -1045,11 +1055,24 @@ class AppDatabase extends _$AppDatabase {
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
           AND te.source NOT IN ('snapshot_restore', 'history_display')
+        LEFT JOIN holdings h
+          ON h.id = tl.holding_id
+        LEFT JOIN cash_accounts ca
+          ON ca.id = tl.cash_account_id
+        LEFT JOIN assets a
+          ON a.id = COALESCE(tl.asset_id, h.asset_id, ca.asset_id)
         WHERE tl.deleted_at IS NULL
           $dateWhere
+          $visibleLineWhere
       ''',
       variables: _ledgerDateVariables(from: from, to: to),
-      readsFrom: {transactionEvents, transactionLines},
+      readsFrom: {
+        transactionEvents,
+        transactionLines,
+        holdings,
+        cashAccounts,
+        assets,
+      },
     ).getSingle();
 
     return LedgerPortfolioPerformanceRecord(
@@ -1081,10 +1104,11 @@ class AppDatabase extends _$AppDatabase {
     DateTime? to,
   }) async {
     final dateWhere = _ledgerDateWhereClause(from: from, to: to);
+    final visibleLineWhere = _visibleLedgerLineWhereClause();
     final rows = await customSelect(
       '''
         SELECT
-          COALESCE(NULLIF(currency_code, ''), 'KRW') AS currency_code,
+          COALESCE(NULLIF(tl.currency_code, ''), 'KRW') AS currency_code,
           COALESCE(SUM(realized_pnl), 0) AS realized_pnl,
           COALESCE(SUM(
             CASE
@@ -1132,12 +1156,25 @@ class AppDatabase extends _$AppDatabase {
           ON te.id = tl.event_id
           AND te.deleted_at IS NULL
           AND te.source NOT IN ('snapshot_restore', 'history_display')
+        LEFT JOIN holdings h
+          ON h.id = tl.holding_id
+        LEFT JOIN cash_accounts ca
+          ON ca.id = tl.cash_account_id
+        LEFT JOIN assets a
+          ON a.id = COALESCE(tl.asset_id, h.asset_id, ca.asset_id)
         WHERE tl.deleted_at IS NULL
           $dateWhere
-        GROUP BY COALESCE(NULLIF(currency_code, ''), 'KRW')
+          $visibleLineWhere
+        GROUP BY COALESCE(NULLIF(tl.currency_code, ''), 'KRW')
       ''',
       variables: _ledgerDateVariables(from: from, to: to),
-      readsFrom: {transactionEvents, transactionLines},
+      readsFrom: {
+        transactionEvents,
+        transactionLines,
+        holdings,
+        cashAccounts,
+        assets,
+      },
     ).get();
 
     return {
@@ -1175,6 +1212,7 @@ class AppDatabase extends _$AppDatabase {
     DateTime? to,
   }) async {
     final dateWhere = _ledgerDateWhereClause(from: from, to: to);
+    final visibleLineWhere = _visibleLedgerLineWhereClause();
     final rows = await customSelect(
       '''
         SELECT
@@ -1215,10 +1253,17 @@ class AppDatabase extends _$AppDatabase {
           COALESCE(SUM(CASE WHEN tl.action = 'sell' THEN tl.gross_amount ELSE 0 END), 0) AS sell_amount
         FROM transaction_lines tl
         INNER JOIN transaction_events te ON te.id = tl.event_id
+        LEFT JOIN holdings h
+          ON h.id = tl.holding_id
+        LEFT JOIN cash_accounts ca
+          ON ca.id = tl.cash_account_id
+        LEFT JOIN assets a
+          ON a.id = COALESCE(tl.asset_id, h.asset_id, ca.asset_id)
         WHERE tl.deleted_at IS NULL
           AND te.deleted_at IS NULL
           AND te.source NOT IN ('snapshot_restore', 'history_display')
           $dateWhere
+          $visibleLineWhere
           AND tl.action IN (
             'sell',
             'dividend',
@@ -1232,7 +1277,13 @@ class AppDatabase extends _$AppDatabase {
         ORDER BY month DESC, currency_code ASC
       ''',
       variables: _ledgerDateVariables(from: from, to: to),
-      readsFrom: {transactionEvents, transactionLines},
+      readsFrom: {
+        transactionEvents,
+        transactionLines,
+        holdings,
+        cashAccounts,
+        assets,
+      },
     ).get();
 
     return rows

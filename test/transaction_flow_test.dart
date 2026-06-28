@@ -5,7 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/db/app_database.dart';
-import 'package:moneyfy/models/asset_item.dart';
+import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 
 void main() {
   late AppDatabase db;
@@ -3311,6 +3311,122 @@ void main() {
       expect(monthly.where((row) => row.month == '2026-06'), isEmpty);
     },
   );
+
+  test('ledger performance excludes hidden assets and holdings', () async {
+    final visibleAssetId = await createAsset('주식');
+    final visibleHoldingId = await db.createHolding(
+      assetId: visibleAssetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '표시 종목',
+      symbol: 'SHOW',
+      quantity: 1,
+      averagePrice: 100,
+      currentPrice: 150,
+      note: '',
+    );
+    final hiddenAssetId = await createAsset('주식');
+    await db.updateAssetHidden(hiddenAssetId, true);
+    final hiddenAssetHoldingId = await db.createHolding(
+      assetId: hiddenAssetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '숨김 자산 종목',
+      symbol: 'HIDEA',
+      quantity: 1,
+      averagePrice: 100,
+      currentPrice: 150,
+      note: '',
+    );
+    final hiddenHoldingId = await db.createHolding(
+      assetId: visibleAssetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '숨김 종목',
+      symbol: 'HIDEH',
+      quantity: 1,
+      averagePrice: 100,
+      currentPrice: 150,
+      note: '',
+    );
+    await db.updateHoldingHidden(hiddenHoldingId, true);
+
+    await db.customStatement('''
+      INSERT INTO transaction_events (occurred_at, kind, title, source)
+      VALUES ('2026-05-21', 'trade', '성과', 'test')
+    ''');
+    final eventId =
+        (await db
+                .customSelect('SELECT id FROM transaction_events LIMIT 1')
+                .getSingle())
+            .read<int>('id');
+
+    await db.customStatement(
+      '''
+      INSERT INTO transaction_lines
+        (event_id, asset_id, holding_id, action, currency_code, realized_pnl, cash_delta, gross_amount)
+      VALUES
+        (?, ?, ?, 'sell', 'KRW', 40, 0, 100),
+        (?, ?, ?, 'dividend', 'KRW', 0, 10, 10),
+        (?, ?, ?, 'fee', 'KRW', 0, -2, 2),
+        (?, ?, ?, 'tax', 'KRW', 0, -1, 1),
+        (?, ?, ?, 'buy', 'KRW', 0, -100, 100),
+        (?, ?, ?, 'sell', 'KRW', 400, 0, 400),
+        (?, ?, ?, 'dividend', 'KRW', 0, 100, 100),
+        (?, ?, ?, 'sell', 'KRW', 300, 0, 300),
+        (?, ?, ?, 'dividend', 'KRW', 0, 70, 70)
+    ''',
+      [
+        eventId,
+        visibleAssetId,
+        visibleHoldingId,
+        eventId,
+        visibleAssetId,
+        visibleHoldingId,
+        eventId,
+        visibleAssetId,
+        visibleHoldingId,
+        eventId,
+        visibleAssetId,
+        visibleHoldingId,
+        eventId,
+        visibleAssetId,
+        visibleHoldingId,
+        eventId,
+        hiddenAssetId,
+        hiddenAssetHoldingId,
+        eventId,
+        hiddenAssetId,
+        hiddenAssetHoldingId,
+        eventId,
+        visibleAssetId,
+        hiddenHoldingId,
+        eventId,
+        visibleAssetId,
+        hiddenHoldingId,
+      ],
+    );
+
+    final portfolioPerformance = await db.fetchLedgerPortfolioPerformance();
+    expect(portfolioPerformance.realizedPnl, 40);
+    expect(portfolioPerformance.incomeAmount, 10);
+    expect(portfolioPerformance.feeAmount, 2);
+    expect(portfolioPerformance.taxAmount, 1);
+    expect(portfolioPerformance.pureRealizedPerformance, 47);
+    expect(portfolioPerformance.buyAmount, 100);
+
+    final byCurrency = await db.fetchLedgerPortfolioPerformanceByCurrency();
+    expect(byCurrency['KRW']?.pureRealizedPerformance, 47);
+
+    final byHolding = await db.fetchLedgerHoldingPerformanceByHoldingId();
+    expect(byHolding.keys, [visibleHoldingId]);
+    expect(byHolding[visibleHoldingId]?.realizedPnl, 40);
+    expect(byHolding[visibleHoldingId]?.incomeAmount, 10);
+
+    final monthly = await db.fetchLedgerMonthlyPerformanceByCurrency();
+    expect(monthly, hasLength(1));
+    expect(monthly.single.pureRealizedPerformance, 47);
+  });
 
   test(
     'buy blocks insufficient cash and edit respects restored old cash effect',

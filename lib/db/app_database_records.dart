@@ -403,3 +403,56 @@ List<Variable<String>> _ledgerDateVariables({DateTime? from, DateTime? to}) {
     if (_ledgerDateText(to) case final toText?) Variable.withString(toText),
   ];
 }
+
+String _visibleLedgerLineWhereClause({
+  String lineAlias = 'tl',
+  String holdingAlias = 'h',
+  String assetAlias = 'a',
+  String cashAccountAlias = 'ca',
+  bool includeCashAccounts = true,
+  bool includeUnlinkedLines = true,
+}) {
+  final cashAccountMatch = includeCashAccounts
+      ? '''
+          OR (
+            $lineAlias.cash_account_id IS NOT NULL
+            AND (
+              $cashAccountAlias.id IS NULL
+              OR $cashAccountAlias.hidden = 0
+            )
+            AND ($assetAlias.id IS NULL OR $assetAlias.hidden = 0)
+          )
+        '''
+      : '';
+  final unlinkedMatch = includeUnlinkedLines
+      ? '''
+          OR (
+            $lineAlias.holding_id IS NULL
+            AND $lineAlias.asset_id IS NULL
+            AND $lineAlias.cash_account_id IS NULL
+          )
+        '''
+      : '';
+
+  return '''
+        AND (
+          (
+            $lineAlias.holding_id IS NOT NULL
+            AND (
+              $holdingAlias.id IS NULL
+              OR (
+                $holdingAlias.hidden = 0
+                AND ($assetAlias.id IS NULL OR $assetAlias.hidden = 0)
+              )
+            )
+          )
+          OR (
+            $lineAlias.holding_id IS NULL
+            AND ${includeCashAccounts ? '$lineAlias.cash_account_id IS NULL AND ' : ''}$lineAlias.asset_id IS NOT NULL
+            AND ($assetAlias.id IS NULL OR $assetAlias.hidden = 0)
+          )
+          $cashAccountMatch
+          $unlinkedMatch
+        )
+      ''';
+}
