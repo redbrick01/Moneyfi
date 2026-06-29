@@ -29,20 +29,25 @@ class TransactionsPage extends StatefulWidget {
     this.scrollController,
     this.dataRefreshTick = 0,
     this.remoteRefresh,
+    this.assetsFutureForTesting,
   });
 
   final ScrollController? scrollController;
   final int dataRefreshTick;
   final Future<bool> Function()? remoteRefresh;
+  final Future<List<AssetItem>>? assetsFutureForTesting;
 
   @override
   State<TransactionsPage> createState() => _TransactionsPageState();
 }
 
 class _TransactionsPageState extends State<TransactionsPage> {
+  static const int _defaultVisiblePeriodCount = 1;
+  static const int _defaultLoadMorePeriodCount = 1;
   static const String _kSlidableGroupTag = 'transactions_page_slidable_group';
   late Future<_TransactionsPageData> _pageFuture;
   late final TextEditingController _searchController;
+  late int _visiblePeriodLimit;
   _TransactionPeriodFilter _selectedPeriod = _TransactionPeriodFilter.all;
   _TransactionCategoryFilter _selectedCategory = _TransactionCategoryFilter.all;
   _TransactionQuickFilter _selectedQuickFilter = _TransactionQuickFilter.all;
@@ -51,6 +56,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   @override
   void initState() {
     super.initState();
+    _visiblePeriodLimit = _defaultVisiblePeriodCount;
     _searchController = TextEditingController()
       ..addListener(_handleSearchChanged);
     _pageFuture = _loadPageData();
@@ -66,7 +72,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   void _handleSearchChanged() {
     if (!mounted) return;
-    setState(() {});
+    setState(_resetVisiblePeriodLimit);
   }
 
   @override
@@ -74,13 +80,16 @@ class _TransactionsPageState extends State<TransactionsPage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.dataRefreshTick != widget.dataRefreshTick) {
       setState(() {
+        _resetVisiblePeriodLimit();
         _pageFuture = _loadPageData();
       });
     }
   }
 
   Future<_TransactionsPageData> _loadPageData() async {
-    final assets = await AppDatabase.instance.fetchAssets();
+    final assets =
+        await (widget.assetsFutureForTesting ??
+            AppDatabase.instance.fetchAssets());
     final accounts = <_TransactionAccountOption>[];
     final rawRows = <_TransactionEntry>[];
 
@@ -128,6 +137,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     await _refreshRemoteData();
     final nextFuture = _loadPageData();
     setState(() {
+      _resetVisiblePeriodLimit();
       _pageFuture = nextFuture;
     });
     try {
@@ -182,9 +192,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final changed = await context.openAssetCreate();
     if (changed == true && mounted) {
       setState(() {
+        _resetVisiblePeriodLimit();
         _pageFuture = _loadPageData();
       });
     }
+  }
+
+  void _resetVisiblePeriodLimit() {
+    _visiblePeriodLimit = _defaultVisiblePeriodCount;
+  }
+
+  void _showMoreEntries() {
+    setState(() {
+      _visiblePeriodLimit += _defaultLoadMorePeriodCount;
+    });
   }
 
   void _resetQuery() {
@@ -192,6 +213,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       _searchController.clear();
     }
     setState(() {
+      _resetVisiblePeriodLimit();
       _selectedPeriod = _TransactionPeriodFilter.all;
       _selectedCategory = _TransactionCategoryFilter.all;
       _selectedQuickFilter = _TransactionQuickFilter.all;
@@ -218,6 +240,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     if (result == null || !mounted) return;
 
     setState(() {
+      _resetVisiblePeriodLimit();
       _selectedPeriod = result.period;
       _selectedCategory = result.category;
       _selectedQuickFilter = _TransactionQuickFilter.fromCategory(
@@ -229,6 +252,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   void _selectQuickFilter(_TransactionQuickFilter filter) {
     setState(() {
+      _resetVisiblePeriodLimit();
       _selectedQuickFilter = filter;
       _selectedCategory = filter.category;
     });
@@ -287,6 +311,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
     if (changed == true && mounted) {
       setState(() {
+        _resetVisiblePeriodLimit();
         _pageFuture = _loadPageData();
       });
     }
@@ -316,6 +341,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
     if (!mounted) return;
     setState(() {
+      _resetVisiblePeriodLimit();
       _pageFuture = _loadPageData();
     });
   }
@@ -456,29 +482,121 @@ class _TransactionsPageState extends State<TransactionsPage> {
             padding: EdgeInsets.zero,
             child: SlidableAutoCloseBehavior(
               child: Column(
-                children: [
-                  for (
-                    var index = 0;
-                    index < visibleEntries.length;
-                    index++
-                  ) ...[
-                    _TransactionEntryRow(
-                      entry: visibleEntries[index],
-                      onTap: () => _openTransactionForm(
-                        visibleEntries[index].account,
-                        item: visibleEntries[index].transaction,
-                      ),
-                      onDelete: () => _deleteTransaction(visibleEntries[index]),
-                    ),
-                    if (index != visibleEntries.length - 1)
-                      AppDivider(inset: context.spacing.md),
-                  ],
-                ],
+                children: _buildTransactionListChildren(
+                  context,
+                  visibleEntries,
+                ),
               ),
             ),
           ),
         SizedBox(height: context.spacing.xl),
       ],
+    );
+  }
+
+  List<Widget> _buildTransactionListChildren(
+    BuildContext context,
+    List<_TransactionEntry> visibleEntries,
+  ) {
+    final allPeriodKeys = <String>[];
+    for (final entry in visibleEntries) {
+      final periodKey = _transactionStatementPeriodKey(entry.transaction.date);
+      if (!allPeriodKeys.contains(periodKey)) {
+        allPeriodKeys.add(periodKey);
+      }
+    }
+    final shownPeriodKeys = allPeriodKeys.take(_visiblePeriodLimit).toSet();
+    final shownEntries = visibleEntries
+        .where(
+          (entry) => shownPeriodKeys.contains(
+            _transactionStatementPeriodKey(entry.transaction.date),
+          ),
+        )
+        .toList();
+    final children = <Widget>[];
+    String? previousPeriodKey;
+
+    for (var index = 0; index < shownEntries.length; index++) {
+      final entry = shownEntries[index];
+      final periodKey = _transactionStatementPeriodKey(entry.transaction.date);
+      if (periodKey != previousPeriodKey) {
+        if (children.isNotEmpty) {
+          children.add(AppDivider(inset: context.spacing.md));
+        }
+        children.add(
+          _TransactionMonthHeader(label: _statementPeriodLabel(periodKey)),
+        );
+        previousPeriodKey = periodKey;
+      } else if (children.isNotEmpty) {
+        children.add(AppDivider(inset: context.spacing.md));
+      }
+
+      children.add(
+        _TransactionEntryRow(
+          entry: entry,
+          onTap: () =>
+              _openTransactionForm(entry.account, item: entry.transaction),
+          onDelete: () => _deleteTransaction(entry),
+        ),
+      );
+    }
+
+    final remainingPeriodCount = allPeriodKeys.length - shownPeriodKeys.length;
+    if (remainingPeriodCount > 0) {
+      children
+        ..add(AppDivider(inset: context.spacing.md))
+        ..add(_TransactionLoadMoreButton(onPressed: _showMoreEntries));
+    }
+
+    return children;
+  }
+}
+
+class _TransactionMonthHeader extends StatelessWidget {
+  const _TransactionMonthHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        context.spacing.md,
+        context.spacing.sm,
+        context.spacing.md,
+        context.spacing.xs,
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          label,
+          style: context.typography.meta.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: AppFontWeights.semibold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TransactionLoadMoreButton extends StatelessWidget {
+  const _TransactionLoadMoreButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.all(context.spacing.sm),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: onPressed,
+          icon: const Icon(Icons.expand_more_rounded),
+          label: const Text('이전 기간 더 보기'),
+        ),
+      ),
     );
   }
 }
@@ -1705,6 +1823,33 @@ DateTime _parseDate(String value) {
   final day = int.tryParse(parts[2]) ?? 1;
   if (year <= 0) return DateTime.fromMillisecondsSinceEpoch(0);
   return DateTime(year, month, day);
+}
+
+String _transactionStatementPeriodKey(String date) {
+  final parsed = _parseDate(date);
+  if (parsed.year <= 1970 && !date.startsWith('1970')) return date;
+  final start = parsed.day >= 20
+      ? DateTime(parsed.year, parsed.month, 20)
+      : DateTime(parsed.year, parsed.month - 1, 20);
+  final month = start.month.toString().padLeft(2, '0');
+  final day = start.day.toString().padLeft(2, '0');
+  return '${start.year}-$month-$day';
+}
+
+String _statementPeriodLabel(String periodKey) {
+  final parts = periodKey.split('-');
+  if (parts.length != 3) return periodKey;
+  final year = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  final day = int.tryParse(parts[2]);
+  if (year == null || month == null || day == null) return periodKey;
+
+  final start = DateTime(year, month, day);
+  final end = DateTime(start.year, start.month + 1, 19);
+  final endLabel = start.year == end.year
+      ? '${end.month}월 ${end.day}일'
+      : '${end.year}년 ${end.month}월 ${end.day}일';
+  return '${start.year}년 ${start.month}월 ${start.day}일 ~ $endLabel';
 }
 
 String _signedAmountText(TransactionItem transaction, String amountText) {

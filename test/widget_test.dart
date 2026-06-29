@@ -9,6 +9,7 @@ import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 import 'package:moneyfy/navigation/moneyfy_router.dart';
 import 'package:moneyfy/features/transactions/screens/forms/cash_transaction_form_page.dart';
 import 'package:moneyfy/features/transactions/screens/forms/transaction_form_page.dart';
+import 'package:moneyfy/features/transactions/screens/transactions_page.dart';
 import 'package:moneyfy/features/analysis/screens/investment_performance_page.dart';
 import 'package:moneyfy/features/analysis/screens/investment_review_page.dart';
 import 'package:moneyfy/features/portfolio/screens/portfolio_dashboard_page.dart';
@@ -122,6 +123,115 @@ void main() {
     expect(titleText.textAlign, TextAlign.start);
     expect(titleText.maxLines, isNull);
     expect(titleText.overflow, isNull);
+  });
+
+  testWidgets('transactions page reveals older 20-day periods with load more', (
+    tester,
+  ) async {
+    final asset = AssetItem(
+      id: 1,
+      assetType: '주식',
+      title: '주식',
+      alias: '',
+      value: '0',
+      change: '+0.0%',
+      icon: Icons.trending_up_rounded,
+      quantityLabel: '종목',
+      quantityValue: '1개',
+      averageLabel: '수익률',
+      averageValue: '+0.0%',
+      note: '',
+      holdings: [
+        HoldingItem(
+          id: 10,
+          assetId: 1,
+          assetTitle: '주식',
+          assetType: '주식',
+          name: '테스트 보유',
+          symbol: 'TST',
+          quantity: 1,
+          averagePrice: 1000,
+          currentPrice: 1000,
+          note: '',
+          transactions: const [
+            TransactionItem(
+              id: 1,
+              assetId: 1,
+              holdingId: 10,
+              date: '2026-07-19',
+              type: '매수',
+              name: '현재 기간 첫 거래',
+              amount: '1000',
+              quantity: '1',
+            ),
+            TransactionItem(
+              id: 2,
+              assetId: 1,
+              holdingId: 10,
+              date: '2026-06-20',
+              type: '매수',
+              name: '현재 기간 마지막 거래',
+              amount: '1000',
+              quantity: '1',
+            ),
+            TransactionItem(
+              id: 3,
+              assetId: 1,
+              holdingId: 10,
+              date: '2026-06-19',
+              type: '매수',
+              name: '이전 기간 첫 거래',
+              amount: '1000',
+              quantity: '1',
+            ),
+            TransactionItem(
+              id: 4,
+              assetId: 1,
+              holdingId: 10,
+              date: '2026-05-20',
+              type: '매수',
+              name: '이전 기간 마지막 거래',
+              amount: '1000',
+              quantity: '1',
+            ),
+            TransactionItem(
+              id: 5,
+              assetId: 1,
+              holdingId: 10,
+              date: '2026-05-19',
+              type: '매수',
+              name: '더 이전 기간 거래',
+              amount: '1000',
+              quantity: '1',
+            ),
+          ],
+        ),
+      ],
+      transactions: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: TransactionsPage(assetsFutureForTesting: Future.value([asset])),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('2026년 6월 20일 ~ 7월 19일'), findsOneWidget);
+    expect(find.text('현재 기간 첫 거래'), findsOneWidget);
+    expect(find.text('현재 기간 마지막 거래'), findsOneWidget);
+    expect(find.text('이전 기간 첫 거래'), findsNothing);
+    expect(find.text('이전 기간 더 보기'), findsOneWidget);
+
+    await tester.tap(find.text('이전 기간 더 보기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2026년 5월 20일 ~ 6월 19일'), findsOneWidget);
+    expect(find.text('이전 기간 첫 거래'), findsOneWidget);
+    expect(find.text('이전 기간 마지막 거래'), findsOneWidget);
+    expect(find.text('더 이전 기간 거래'), findsNothing);
+    expect(find.text('이전 기간 더 보기'), findsOneWidget);
   });
 
   testWidgets('reddit summaries sort by latest summary sync time', (
