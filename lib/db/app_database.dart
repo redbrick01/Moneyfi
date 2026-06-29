@@ -6552,6 +6552,14 @@ class AppDatabase extends _$AppDatabase {
     if (snapshotDates.isEmpty) return const [];
 
     final assets = await fetchAssets();
+    final assetById = {
+      for (final asset in assets)
+        if (asset.id != null) asset.id!: asset,
+    };
+    final assetByTitle = {
+      for (final asset in assets)
+        _normalizeSnapshotLookupText(asset.displayName): asset,
+    };
     final visibleAssets = assets
         .where((asset) => !asset.isHidden)
         .toList(growable: false);
@@ -6591,6 +6599,15 @@ class AppDatabase extends _$AppDatabase {
         .where((row) {
           final assetId = row.assetId;
           final assetTitle = _normalizeSnapshotLookupText(row.assetTitle);
+          final matchedAsset = assetId == null
+              ? assetByTitle[assetTitle]
+              : assetById[assetId] ?? assetByTitle[assetTitle];
+          if (matchedAsset == null) {
+            return true;
+          }
+          if (matchedAsset.isHidden) {
+            return false;
+          }
           final assetMatches =
               assetId != null && visibleAssetIds.contains(assetId) ||
               assetTitle.isNotEmpty && visibleAssetTitles.contains(assetTitle);
@@ -6619,10 +6636,6 @@ class AppDatabase extends _$AppDatabase {
     final visibleAssets = assets
         .where((asset) => !asset.isHidden)
         .toList(growable: false);
-    final visibleAssetIds = visibleAssets
-        .map((asset) => asset.id)
-        .whereType<int>()
-        .toSet();
     final visibleManualAssetIds = visibleAssets
         .where((asset) => asset.id != null && asset.holdings.isEmpty)
         .map((asset) => asset.id!)
@@ -6630,28 +6643,6 @@ class AppDatabase extends _$AppDatabase {
     final visibleAssetTitles = visibleAssets
         .map((asset) => _normalizeSnapshotLookupText(asset.displayName))
         .where((title) => title.isNotEmpty)
-        .toSet();
-    final visibleHoldingIds = visibleAssets
-        .expand((asset) => asset.visibleHoldings)
-        .map((holding) => holding.id)
-        .whereType<int>()
-        .toSet();
-    final visibleHoldingKeys = visibleAssets
-        .expand(
-          (asset) => asset.visibleHoldings.map(
-            (holding) =>
-                '${_normalizeSnapshotLookupText(holding.name)}|${_normalizeSnapshotLookupText(holding.symbol)}',
-          ),
-        )
-        .where((key) => key != '|')
-        .toSet();
-    final visibleHoldingNames = visibleAssets
-        .expand(
-          (asset) => asset.visibleHoldings.map(
-            (holding) => _normalizeSnapshotLookupText(holding.name),
-          ),
-        )
-        .where((name) => name.isNotEmpty)
         .toSet();
     final assetById = {
       for (final asset in assets)
@@ -6678,29 +6669,18 @@ class AppDatabase extends _$AppDatabase {
     var syntheticId = -1;
 
     for (final holding in holdingRows) {
-      final holdingId = holding.holdingId;
       final assetId = holding.assetId;
-      final holdingKey =
-          '${_normalizeSnapshotLookupText(holding.holdingName)}|${_normalizeSnapshotLookupText(holding.holdingSymbol)}';
       final assetTitleKey = _normalizeSnapshotLookupText(holding.assetTitle);
-      final assetMatches =
-          assetId != null && visibleAssetIds.contains(assetId) ||
-          assetTitleKey.isNotEmpty &&
-              visibleAssetTitles.contains(assetTitleKey);
-      final holdingMatches =
-          holdingId != null && visibleHoldingIds.contains(holdingId) ||
-          holdingKey != '|' && visibleHoldingKeys.contains(holdingKey) ||
-          _normalizeSnapshotLookupText(holding.holdingName).isNotEmpty &&
-              visibleHoldingNames.contains(
-                _normalizeSnapshotLookupText(holding.holdingName),
-              );
-      if (!assetMatches || !holdingMatches) {
+      final matchedAsset = assetId == null
+          ? assetByTitle[assetTitleKey]
+          : assetById[assetId] ?? assetByTitle[assetTitleKey];
+      if (matchedAsset?.isHidden == true) {
         continue;
       }
       final asset = assetId == null ? null : assetById[assetId];
-      final matchedAsset = asset ?? assetByTitle[assetTitleKey];
+      final resolvedMatchedAsset = asset ?? assetByTitle[assetTitleKey];
       final assetTitle = matchedAsset?.displayName ?? holding.assetTitle;
-      final resolvedAssetId = matchedAsset?.id ?? assetId;
+      final resolvedAssetId = resolvedMatchedAsset?.id ?? assetId;
 
       final key = '${holding.snapshotId}:${resolvedAssetId ?? assetTitleKey}';
       final existing = groupedRows[key];
@@ -6715,7 +6695,7 @@ class AppDatabase extends _$AppDatabase {
         id: existing?.id ?? syntheticId--,
         snapshotId: holding.snapshotId,
         assetId: resolvedAssetId ?? -1,
-        assetClientId: matchedAsset?.clientId,
+        assetClientId: resolvedMatchedAsset?.clientId ?? holding.assetClientId,
         assetTitle: assetTitle,
         totalPurchaseAmount: nextPurchase,
         totalValuationAmount: nextValuation,
@@ -6734,23 +6714,28 @@ class AppDatabase extends _$AppDatabase {
       final assetTitleKey = _normalizeSnapshotLookupText(row.assetTitle);
       final asset = assetById[row.assetId];
       final matchedAsset = asset ?? assetByTitle[assetTitleKey];
-      if (matchedAsset == null || matchedAsset.isHidden) continue;
-      final resolvedAssetId = matchedAsset.id ?? row.assetId;
+      if (matchedAsset?.isHidden == true) continue;
+      final resolvedAssetId = matchedAsset?.id ?? row.assetId;
       final representedKey = '${row.snapshotId}:$resolvedAssetId';
       final isVisibleManualAsset =
           visibleManualAssetIds.contains(row.assetId) ||
           assetTitleKey.isNotEmpty &&
               visibleAssetTitles.contains(assetTitleKey) &&
-              matchedAsset.holdings.isEmpty;
+              (matchedAsset?.holdings.isEmpty ?? false);
       final isMissingFromDisplayedHoldings = !representedAssetKeys.contains(
         representedKey,
       );
       if (!isVisibleManualAsset && !isMissingFromDisplayedHoldings) continue;
       results.add(
-        row.copyWith(
-          assetId: resolvedAssetId,
-          assetTitle: matchedAsset.displayName,
-        ),
+        matchedAsset == null
+            ? row
+            : row.copyWith(
+                assetId: resolvedAssetId,
+                assetClientId: Value(
+                  matchedAsset.clientId ?? row.assetClientId,
+                ),
+                assetTitle: matchedAsset.displayName,
+              ),
       );
       representedAssetKeys.add(representedKey);
     }

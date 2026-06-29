@@ -75,85 +75,36 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
     required String snapshotDate,
   }) async {
     final note = await AppDatabase.instance.fetchSnapshotNote(snapshotDate);
-    final assets = await AppDatabase.instance.fetchAssets();
-    final visibleAssets = assets
-        .where((asset) => !asset.isHidden)
-        .toList(growable: false);
-    final visibleAssetIds = visibleAssets
-        .map((asset) => asset.id)
-        .whereType<int>()
-        .toSet();
-    final visibleAssetTitles = visibleAssets
-        .expand((asset) => [asset.title, asset.displayName])
-        .map(_normalizeSnapshotAssetTitle)
-        .where((value) => value.isNotEmpty)
-        .toSet();
-
-    bool isVisibleSnapshotAsset(int? assetId, String assetTitle) {
-      if (assetId != null && visibleAssetIds.contains(assetId)) {
-        return true;
-      }
-      return visibleAssetTitles.contains(
-        _normalizeSnapshotAssetTitle(assetTitle),
-      );
-    }
-
-    final currentItems =
-        (await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates([
-              snapshotDate,
-            ]))
-            .where((item) {
-              return isVisibleSnapshotAsset(item.assetId, item.assetTitle);
-            })
-            .toList(growable: false);
+    final currentItems = await AppDatabase.instance
+        .fetchPortfolioSnapshotItemsByDates([snapshotDate]);
     final currentHoldingItems =
         (await AppDatabase.instance.fetchPortfolioSnapshotHoldingItemsByDates([
-              snapshotDate,
-            ]))
-            .toList(growable: false);
+          snapshotDate,
+        ])).toList(growable: false);
     final currentCashAccounts =
         (await AppDatabase.instance.fetchPortfolioSnapshotCashAccountsByDates([
-              snapshotDate,
-            ]))
-            .toList(growable: true);
-    final currentTransactions =
-        (await AppDatabase.instance.fetchTransactionsForDate(snapshotDate))
-            .where((transaction) {
-              final assetId = transaction.assetId;
-              return assetId != null && visibleAssetIds.contains(assetId);
-            })
-            .toList(growable: false);
-    final currentCashTransactions =
-        (await AppDatabase.instance.fetchCashTransactionsForDate(snapshotDate))
-            .where((transaction) {
-              final assetId = transaction.assetId;
-              return assetId != null && visibleAssetIds.contains(assetId);
-            })
-            .toList(growable: false);
+          snapshotDate,
+        ])).toList(growable: true);
+    final currentTransactions = await AppDatabase.instance
+        .fetchTransactionsForDate(snapshotDate);
+    final currentCashTransactions = await AppDatabase.instance
+        .fetchCashTransactionsForDate(snapshotDate);
     final previousSnapshotDate = _comparisonSnapshotDate(snapshotDate);
     final previousSnapshot = await AppDatabase.instance
         .fetchPortfolioSnapshotByDate(previousSnapshotDate);
     final previousItems = previousSnapshot == null
         ? const <DailyPortfolioSnapshotItem>[]
-        : (await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates(
-                [previousSnapshotDate],
-              ))
-              .where((item) {
-                return isVisibleSnapshotAsset(item.assetId, item.assetTitle);
-              })
-              .toList(growable: false);
+        : await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates([
+            previousSnapshotDate,
+          ]);
     final previousDaySnapshotDate = _previousDaySnapshotDate(snapshotDate);
     final previousDaySnapshot = await AppDatabase.instance
         .fetchPortfolioSnapshotByDate(previousDaySnapshotDate);
     final previousDayItems = previousDaySnapshot == null
         ? const <DailyPortfolioSnapshotItem>[]
-        : (await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates(
-                [previousDaySnapshotDate],
-              ))
-              .where((item) {
-                return isVisibleSnapshotAsset(item.assetId, item.assetTitle);
-              })
-              .toList(growable: false);
+        : await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates([
+            previousDaySnapshotDate,
+          ]);
     final currentVisibleItems = _buildVisibleSnapshotItems(
       items: currentItems,
       holdingItemsByAssetKey: _groupSnapshotHoldingItemsByAssetKey(

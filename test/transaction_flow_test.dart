@@ -4385,6 +4385,53 @@ void main() {
     },
   );
 
+  test('display snapshots keep deleted historical asset groups', () async {
+    final stockAssetId = await createAsset('주식');
+    final coinAssetId = await createAsset('코인');
+
+    await db.importRemotePortfolioSnapshots([
+      {
+        'snapshot_date': '2026-05-21',
+        'total_purchase_amount': 700,
+        'total_valuation_amount': 840,
+        'profit_amount': 140,
+        'profit_rate': 20,
+        'items': [
+          {
+            'asset_id': stockAssetId,
+            'asset_title': '주식',
+            'total_purchase_amount': 300,
+            'total_valuation_amount': 360,
+            'profit_amount': 60,
+            'profit_rate': 20,
+            'holding_count': 2,
+          },
+          {
+            'asset_id': coinAssetId,
+            'asset_title': '코인',
+            'total_purchase_amount': 400,
+            'total_valuation_amount': 480,
+            'profit_amount': 80,
+            'profit_rate': 20,
+            'holding_count': 3,
+          },
+        ],
+        'holding_items': const [],
+      },
+    ]);
+    await db.deleteAssetItem(coinAssetId);
+
+    final items = await db.fetchDisplayPortfolioSnapshotItemsByDates([
+      '2026-05-21',
+    ]);
+
+    expect(items.map((item) => item.assetTitle).toSet(), {'주식', '코인'});
+    expect(
+      items.singleWhere((item) => item.assetTitle == '코인').totalValuationAmount,
+      480,
+    );
+  });
+
   test(
     'snapshot restore opening ledger rows are hidden from transaction views',
     () async {
