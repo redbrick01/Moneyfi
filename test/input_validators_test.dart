@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:moneyfy/features/portfolio/screens/forms/holding_form_page.dart';
 import 'package:moneyfy/utils/input_validators.dart';
 
 void main() {
@@ -62,6 +63,22 @@ void main() {
       expect(MoneyfyInputValidators.symbol('005930').value, '005930');
       expect(MoneyfyInputValidators.symbol('bad symbol').isValid, isFalse);
       expect(MoneyfyInputValidators.symbol('').isValid, isFalse);
+    });
+
+    test('holding quantity accepts zero for closed investment positions', () {
+      final investmentQuantity = validateHoldingQuantityInput(
+        '0',
+        isCashAsset: false,
+      );
+      final cashQuantity = validateHoldingQuantityInput(
+        '0',
+        isCashAsset: true,
+      );
+
+      expect(investmentQuantity.isValid, isTrue);
+      expect(investmentQuantity.value, 0);
+      expect(cashQuantity.isValid, isTrue);
+      expect(cashQuantity.value, 0);
     });
   });
 }

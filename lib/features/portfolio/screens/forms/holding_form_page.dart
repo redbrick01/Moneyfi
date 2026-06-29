@@ -21,6 +21,17 @@ class HoldingFormPage extends StatefulWidget {
   State<HoldingFormPage> createState() => _HoldingFormPageState();
 }
 
+InputValidationResult<double> validateHoldingQuantityInput(
+  String raw, {
+  required bool isCashAsset,
+}) {
+  return MoneyfyInputValidators.decimal(
+    raw,
+    fieldName: isCashAsset ? '잔액' : '수량',
+    allowZero: true,
+  );
+}
+
 class _HoldingFormPageState extends State<HoldingFormPage> {
   static const currencyOptions = <String>['KRW', 'USD'];
   static const exchangeOptions = <String, String>{
@@ -326,10 +337,9 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
       }
     }
 
-    final quantityValidation = MoneyfyInputValidators.decimal(
+    final quantityValidation = validateHoldingQuantityInput(
       quantityController.text,
-      fieldName: isCashAsset ? '잔액' : '수량',
-      allowZero: isCashAsset,
+      isCashAsset: isCashAsset,
     );
     if (!quantityValidation.isValid) {
       _showValidationMessage(quantityValidation.message!);
