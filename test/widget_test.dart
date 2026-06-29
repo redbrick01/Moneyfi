@@ -308,6 +308,66 @@ void main() {
     expect(find.text('06.04 12:00'), findsOneWidget);
   });
 
+  testWidgets('reddit summaries show all posts by default', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: RedditPostSummariesPage(
+          initialItemsForTesting: [
+            RedditPostSummaryItem(
+              postRedditId: 'medium-post',
+              subreddit: 'investing',
+              title: 'Medium importance post',
+              url: 'https://reddit.com/r/investing/comments/medium-post',
+              score: 0,
+              commentCount: 0,
+              postedAt: DateTime(2026, 6, 28, 7),
+              model: 'test',
+              isValuable: false,
+              qualityLabel: 'summary',
+              confidence: 0.9,
+              tickers: const [],
+              titleKo: '중간 중요도 글',
+              postSummaryKo: '요약',
+              commentsSummaryKo: '',
+              analysisReasonsKo: '',
+              analyzedAt: DateTime(2026, 6, 28, 7, 1),
+              importanceModel: 'test',
+              importanceLabel: 'medium',
+              importanceScore: 65,
+              categoryLabel: '기타',
+              importanceReasonsKo: '',
+              judgedAt: DateTime(2026, 6, 28, 7, 2),
+              insightModel: 'test',
+              insightKo: '',
+              insightGeneratedAt: DateTime(2026, 6, 28, 7, 3),
+              syncedAt: DateTime(2026, 6, 28, 7, 4),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('요약 1 / 1'), findsOneWidget);
+    expect(find.text('중간 중요도 글'), findsOneWidget);
+
+    await tester.tap(find.text('핵심'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('요약 0 / 1'), findsOneWidget);
+    expect(find.text('중간 중요도 글'), findsNothing);
+  });
+
+  test('reddit quick filter uses a segmented toggle', () {
+    final source = File(
+      'lib/features/analysis/screens/reddit_post_summaries_page.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('SegmentedButton<_RedditPostFilter>'));
+    expect(source, isNot(contains('_FilterStrip<_RedditPostFilter>')));
+  });
+
   test('reddit post summary parses remote reddit_post_cards rows', () {
     final item = RedditPostSummaryItem.fromJson({
       'reddit_id': 't3_remote',

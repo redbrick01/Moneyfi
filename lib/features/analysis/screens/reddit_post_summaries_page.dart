@@ -11,15 +11,15 @@ import 'package:moneyfy/design_system/spec.dart';
 import 'package:moneyfy/features/analysis/services/reddit_post_summary_service.dart';
 import 'package:moneyfy/widgets/moneyfy_ui.dart';
 
-enum _RedditPostFilter { valuable, all }
+enum _RedditPostFilter { all, valuable }
 
 enum _RedditPostSort { latest, importance }
 
 extension on _RedditPostFilter {
   String get label {
     return switch (this) {
-      _RedditPostFilter.valuable => '핵심',
       _RedditPostFilter.all => '전체',
+      _RedditPostFilter.valuable => '핵심',
     };
   }
 }
@@ -46,7 +46,7 @@ class RedditPostSummariesPage extends StatefulWidget {
 class _RedditPostSummariesPageState extends State<RedditPostSummariesPage> {
   late Future<_RedditPostPageData> _pageFuture;
   final TextEditingController _searchController = TextEditingController();
-  _RedditPostFilter _filter = _RedditPostFilter.valuable;
+  _RedditPostFilter _filter = _RedditPostFilter.all;
   _RedditPostSort _sort = _RedditPostSort.latest;
   String? _selectedSubreddit;
   DateTime? _selectedDate;
@@ -130,7 +130,7 @@ class _RedditPostSummariesPageState extends State<RedditPostSummariesPage> {
     final dateChanged = _selectedDate != null;
     setState(() {
       _searchController.clear();
-      _filter = _RedditPostFilter.valuable;
+      _filter = _RedditPostFilter.all;
       _sort = _RedditPostSort.latest;
       _selectedSubreddit = null;
       _selectedDate = null;
@@ -504,13 +504,59 @@ class _RedditPostQuickFilterStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _FilterStrip<_RedditPostFilter>(
-      values: _RedditPostFilter.values,
-      selected: selected,
-      labelBuilder: (filter) => filter.label,
-      leadingIconBuilder: (filter) =>
-          filter == selected ? Icons.check_rounded : null,
-      onChanged: onChanged,
+    return SegmentedButton<_RedditPostFilter>(
+      segments: [
+        for (final filter in _RedditPostFilter.values)
+          ButtonSegment<_RedditPostFilter>(
+            value: filter,
+            label: Text(filter.label),
+          ),
+      ],
+      selected: {selected},
+      emptySelectionAllowed: false,
+      showSelectedIcon: false,
+      onSelectionChanged: (values) {
+        if (values.isEmpty) return;
+        onChanged(values.first);
+      },
+      style: ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: WidgetStateProperty.resolveWith((states) {
+          final isSelected = states.contains(WidgetState.selected);
+          return context.typography.button.copyWith(
+            fontWeight: isSelected
+                ? AppFontWeights.semibold
+                : AppFontWeights.regular,
+          );
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.selected)
+              ? VisualSpec.brand.onPrimary
+              : context.colors.neutralTextMuted;
+        }),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.selected)
+              ? context.colors.primary
+              : context.colors.neutralSurfaceBase;
+        }),
+        side: WidgetStateProperty.resolveWith((states) {
+          final isSelected = states.contains(WidgetState.selected);
+          return BorderSide(
+            color: isSelected
+                ? context.colors.primary
+                : context.colors.neutralOutline,
+          );
+        }),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(context.radius.rPill),
+          ),
+        ),
+        padding: WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: context.spacing.md),
+        ),
+      ),
     );
   }
 }
@@ -550,79 +596,6 @@ class _RedditPostActiveFilterSummary extends StatelessWidget {
           child: const Text('초기화'),
         ),
       ],
-    );
-  }
-}
-
-class _FilterStrip<T> extends StatelessWidget {
-  const _FilterStrip({
-    required this.values,
-    required this.selected,
-    required this.labelBuilder,
-    this.leadingIconBuilder,
-    required this.onChanged,
-  });
-
-  final List<T> values;
-  final T selected;
-  final String Function(T value) labelBuilder;
-  final IconData? Function(T value)? leadingIconBuilder;
-  final ValueChanged<T> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final value in values) ...[
-            Builder(
-              builder: (context) {
-                final icon = leadingIconBuilder?.call(value);
-                final isSelected = selected == value;
-                final pillStyle = MoneyfyPillStyle.resolve(
-                  context,
-                  size: MoneyfyPillSize.lg,
-                  tone: isSelected
-                      ? MoneyfyPillTone.primary
-                      : MoneyfyPillTone.neutral,
-                  variant: isSelected
-                      ? MoneyfyPillVariant.selected
-                      : MoneyfyPillVariant.outline,
-                );
-                return RawChip(
-                  avatar: icon == null
-                      ? null
-                      : Icon(icon, size: 16, color: pillStyle.foreground),
-                  label: Text(labelBuilder(value)),
-                  selected: isSelected,
-                  onPressed: () => onChanged(value),
-                  showCheckmark: false,
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  backgroundColor: pillStyle.background,
-                  selectedColor: pillStyle.background,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(pillStyle.radius),
-                  ),
-                  padding: pillStyle.padding,
-                  labelPadding: EdgeInsets.zero,
-                  side: BorderSide(
-                    color: pillStyle.border,
-                    width: pillStyle.borderWidth,
-                  ),
-                  labelStyle: pillStyle.textStyle.copyWith(
-                    fontWeight: isSelected
-                        ? AppFontWeights.semibold
-                        : AppFontWeights.regular,
-                  ),
-                );
-              },
-            ),
-            if (value != values.last) SizedBox(width: context.spacing.xs),
-          ],
-        ],
-      ),
     );
   }
 }
