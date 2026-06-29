@@ -2113,12 +2113,18 @@ class AppDatabase extends _$AppDatabase {
     required int targetSortOrder,
   }) async {
     final sourceAccount =
-        await (select(cashAccounts)
-              ..where((table) => table.id.equals(sourceCashAccountId)))
+        await (select(cashAccounts)..where(
+              (table) =>
+                  table.id.equals(sourceCashAccountId) &
+                  table.deletedAt.isNull(),
+            ))
             .getSingleOrNull();
     final targetAccount =
-        await (select(cashAccounts)
-              ..where((table) => table.id.equals(targetCashAccountId)))
+        await (select(cashAccounts)..where(
+              (table) =>
+                  table.id.equals(targetCashAccountId) &
+                  table.deletedAt.isNull(),
+            ))
             .getSingleOrNull();
     if (sourceAccount == null || targetAccount == null) {
       throw StateError('현금 계좌를 찾을 수 없습니다.');
@@ -2188,12 +2194,18 @@ class AppDatabase extends _$AppDatabase {
     required int targetSortOrder,
   }) async {
     final sourceAccount =
-        await (select(cashAccounts)
-              ..where((table) => table.id.equals(sourceCashAccountId)))
+        await (select(cashAccounts)..where(
+              (table) =>
+                  table.id.equals(sourceCashAccountId) &
+                  table.deletedAt.isNull(),
+            ))
             .getSingleOrNull();
     final targetAccount =
-        await (select(cashAccounts)
-              ..where((table) => table.id.equals(targetCashAccountId)))
+        await (select(cashAccounts)..where(
+              (table) =>
+                  table.id.equals(targetCashAccountId) &
+                  table.deletedAt.isNull(),
+            ))
             .getSingleOrNull();
     if (sourceAccount == null || targetAccount == null) {
       throw StateError('현금 계좌를 찾을 수 없습니다.');
@@ -2947,6 +2959,28 @@ class AppDatabase extends _$AppDatabase {
         if ((holding.clientId ?? '').trim() == normalized) return holding;
       }
     }
+    return null;
+  }
+
+  Future<int?> resolveCashHoldingId({
+    required int holdingId,
+    String? clientId,
+  }) async {
+    final cashAccountId = holdingId.abs();
+    final cashAccount =
+        await (select(cashAccounts)..where(
+              (table) =>
+                  table.id.equals(cashAccountId) & table.deletedAt.isNull(),
+            ))
+            .getSingleOrNull();
+    if (cashAccount != null) return -cashAccount.id;
+
+    final normalizedClientId = clientId?.trim() ?? '';
+    if (normalizedClientId.isEmpty) return null;
+
+    final holdingByClientId = await fetchHoldingByClientId(normalizedClientId);
+    final resolvedId = holdingByClientId?.id;
+    if (resolvedId != null && resolvedId < 0) return resolvedId;
     return null;
   }
 
@@ -4018,6 +4052,16 @@ class AppDatabase extends _$AppDatabase {
     final formattedNegativeAmount = _formatPlainNumber(-parsedAmount);
     final normalizedDate = _normalizeStoredDateKey(date);
 
+    final sourceAccount =
+        await (select(cashAccounts)..where(
+              (table) =>
+                  table.id.equals(sourceCashAccountId) &
+                  table.deletedAt.isNull(),
+            ))
+            .getSingleOrNull();
+    if (sourceAccount == null) {
+      throw StateError('원천 현금 계좌를 찾을 수 없습니다.');
+    }
     await _ensureSufficientCashBalance(
       cashAccountId: sourceCashAccountId,
       type: '이체',
@@ -4071,8 +4115,11 @@ class AppDatabase extends _$AppDatabase {
   }) async {
     final sourceCashAccountId = sourceHoldingId.abs();
     final sourceAccount =
-        await (select(cashAccounts)
-              ..where((table) => table.id.equals(sourceCashAccountId)))
+        await (select(cashAccounts)..where(
+              (table) =>
+                  table.id.equals(sourceCashAccountId) &
+                  table.deletedAt.isNull(),
+            ))
             .getSingleOrNull();
     if (sourceAccount == null) {
       throw StateError('원본 현금 계좌를 찾을 수 없습니다.');
@@ -4103,13 +4150,19 @@ class AppDatabase extends _$AppDatabase {
       amount: _formatPlainNumber(-sourceAmount),
     );
 
-    var targetAccount =
-        await (select(cashAccounts)..where(
-              (table) =>
-                  table.assetId.equals(assetId) &
-                  table.currencyCode.equals(targetCurrency),
-            ))
-            .getSingleOrNull();
+    final targetAccountQuery = select(cashAccounts)
+      ..where(
+        (table) =>
+            table.assetId.equals(assetId) &
+            table.currencyCode.equals(targetCurrency) &
+            table.deletedAt.isNull(),
+      )
+      ..orderBy([
+        (table) => OrderingTerm.asc(table.sortOrder),
+        (table) => OrderingTerm.asc(table.id),
+      ])
+      ..limit(1);
+    var targetAccount = await targetAccountQuery.getSingleOrNull();
 
     late final int targetCashAccountId;
     if (targetAccount == null) {

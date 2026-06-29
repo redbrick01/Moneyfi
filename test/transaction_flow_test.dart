@@ -551,6 +551,106 @@ void main() {
     expect((await findHolding(targetHoldingId)).quantity, 0);
   });
 
+  test('cash transfer rejects deleted source and target accounts', () async {
+    final assetId = await createAsset('현금');
+    final sourceHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '출금 계좌',
+      note: '',
+      balance: 100,
+    );
+    final targetHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '입금 계좌',
+      note: '',
+      balance: 0,
+    );
+
+    await db.customStatement(
+      'UPDATE cash_accounts SET deleted_at = ? WHERE id = ?',
+      ['2026-06-28T00:00:00Z', sourceHoldingId.abs()],
+    );
+    expect(
+      () => db.createCashTransfer(
+        assetId: assetId,
+        sourceHoldingId: sourceHoldingId,
+        targetHoldingId: targetHoldingId,
+        date: '2026.05.21',
+        name: '삭제 원천 이체',
+        amount: '10',
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    await db.customStatement(
+      'UPDATE cash_accounts SET deleted_at = NULL WHERE id = ?',
+      [sourceHoldingId.abs()],
+    );
+    await db.customStatement(
+      'UPDATE cash_accounts SET deleted_at = ? WHERE id = ?',
+      ['2026-06-28T00:00:00Z', targetHoldingId.abs()],
+    );
+    expect(
+      () => db.createCashTransfer(
+        assetId: assetId,
+        sourceHoldingId: sourceHoldingId,
+        targetHoldingId: targetHoldingId,
+        date: '2026.05.21',
+        name: '삭제 대상 이체',
+        amount: '10',
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test(
+    'cash holding id can be resolved by client id after local id changes',
+    () async {
+      final assetId = await createAsset('현금');
+      final originalHoldingId = await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '원화 계좌',
+        note: '',
+        balance: 100,
+      );
+      final originalHolding = await findHolding(originalHoldingId);
+      final clientId = originalHolding.clientId!;
+
+      await db.customStatement(
+        'UPDATE cash_accounts SET deleted_at = ? WHERE id = ?',
+        ['2026-06-28T00:00:00Z', originalHoldingId.abs()],
+      );
+      final replacementId = await db.customInsert(
+        '''
+      INSERT INTO cash_accounts
+      (asset_id, client_id, currency_code, name, base_balance, balance, note, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ''',
+        variables: [
+          Variable.withInt(assetId),
+          Variable.withString(clientId),
+          Variable.withString('KRW'),
+          Variable.withString('원화 계좌'),
+          Variable.withReal(100),
+          Variable.withReal(100),
+          Variable.withString(''),
+          Variable.withInt(0),
+        ],
+      );
+
+      expect(
+        await db.resolveCashHoldingId(
+          holdingId: originalHoldingId,
+          clientId: clientId,
+        ),
+        -replacementId,
+      );
+    },
+  );
+
   test('cash transfer create writes one active paired ledger event', () async {
     final assetId = await createAsset('현금');
     final sourceHoldingId = await db.createCashAccount(
@@ -926,6 +1026,71 @@ void main() {
     expect(usdHolding.quantity, 2);
   });
 
+  test('cash exchange ignores deleted target currency accounts', () async {
+    final assetId = await createAsset('현금');
+    final krwHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '원화',
+      note: '',
+      balance: 3000,
+    );
+    final deletedUsdHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'USD',
+      name: '삭제된 달러',
+      note: '',
+      balance: 0,
+    );
+    await db.customStatement(
+      'UPDATE cash_accounts SET deleted_at = ? WHERE id = ?',
+      ['2026-06-28T00:00:00Z', deletedUsdHoldingId.abs()],
+    );
+
+    await db.createCashExchange(
+      assetId: assetId,
+      sourceHoldingId: krwHoldingId,
+      date: '2026.05.21',
+      name: '달러 환전',
+      amount: '1300',
+      exchangeRate: 1300,
+    );
+
+    final activeUsdHoldings = (await db.fetchAssetById(assetId))!.holdings
+        .where((holding) => holding.currencyCode == 'USD')
+        .toList(growable: false);
+    expect((await findHolding(krwHoldingId)).quantity, 1700);
+    expect(activeUsdHoldings, hasLength(1));
+    expect(activeUsdHoldings.single.quantity, 1);
+  });
+
+  test('cash exchange rejects deleted source accounts', () async {
+    final assetId = await createAsset('현금');
+    final krwHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '원화',
+      note: '',
+      balance: 3000,
+    );
+    await db.customStatement(
+      'UPDATE cash_accounts SET deleted_at = ? WHERE id = ?',
+      ['2026-06-28T00:00:00Z', krwHoldingId.abs()],
+    );
+
+    expect(
+      () => db.createCashExchange(
+        assetId: assetId,
+        sourceHoldingId: krwHoldingId,
+        date: '2026.05.21',
+        name: '삭제 원천 환전',
+        amount: '1300',
+        exchangeRate: 1300,
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
   test('cash exchange create writes one active paired ledger event', () async {
     final assetId = await createAsset('현금');
     final krwHoldingId = await db.createCashAccount(
@@ -971,6 +1136,73 @@ void main() {
     expect(lineSummary.read<double>('in_amount'), 1);
     expect(lineSummary.read<int>('deleted_count'), 0);
     expect(await db.fetchLedgerStateParityIssues(), isEmpty);
+  });
+
+  test('cash exchange survives sync restore with remapped local ids', () async {
+    final assetId = await createAsset('현금');
+    final krwHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '원화',
+      note: '',
+      balance: 3000,
+    );
+    await db.createCashExchange(
+      assetId: assetId,
+      sourceHoldingId: krwHoldingId,
+      date: '2026.05.21',
+      name: '달러 환전',
+      amount: '1300',
+      exchangeRate: 1300,
+    );
+    final payload = await db.buildDirtySyncPayload();
+    await db.close();
+
+    final restoredDb = AppDatabase.forTesting(NativeDatabase.memory());
+    db = restoredDb;
+    final dummyAssetId = await restoredDb.createAsset(
+      assetType: '현금',
+      title: '더미 현금',
+      alias: '더미 현금',
+      hidden: false,
+      currencyCode: 'KRW',
+      value: '0',
+      change: '+0.0%',
+      icon: Icons.account_balance_wallet_rounded,
+      quantityLabel: '항목',
+      quantityValue: '0개',
+      averageLabel: '수익률',
+      averageValue: '+0.0%',
+      note: '',
+    );
+    await restoredDb.createCashAccount(
+      assetId: dummyAssetId,
+      currencyCode: 'KRW',
+      name: '더미',
+      note: '',
+      balance: 0,
+    );
+    await restoredDb.replaceLocalSyncData(Map<String, dynamic>.from(payload));
+
+    final restoredCashAsset = (await restoredDb.fetchAssets()).singleWhere(
+      (asset) => asset.assetType == '현금' && asset.alias == '현금',
+    );
+    final restoredKrwHolding = restoredCashAsset.holdings.singleWhere(
+      (holding) => holding.currencyCode == 'KRW',
+    );
+    final restoredUsdHolding = restoredCashAsset.holdings.singleWhere(
+      (holding) => holding.currencyCode == 'USD',
+    );
+    final eventCount = await restoredDb
+        .customSelect(
+          "SELECT COUNT(*) AS count FROM transaction_events WHERE kind = 'fx_exchange' AND deleted_at IS NULL",
+        )
+        .getSingle();
+
+    expect(restoredKrwHolding.quantity, 1700);
+    expect(restoredUsdHolding.quantity, 1);
+    expect(eventCount.read<int>('count'), 1);
+    expect(await restoredDb.fetchLedgerStateParityIssues(), isEmpty);
   });
 
   test(

@@ -52,6 +52,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
   double sourceExchangeRate = 1;
   late bool includeInCalculations;
   bool isSaving = false;
+  String? selectedTransferTargetClientId;
 
   @override
   void initState() {
@@ -171,6 +172,10 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
       final currentSourceOption = _selectedSourceOption;
       final currentHoldingId = await _resolveCurrentHoldingId();
       final currentAssetId = currentSourceOption?.assetId ?? widget.assetId;
+      final transferTargetHoldingId =
+          includeInCalculations && transactionType == '이체'
+          ? await _resolveTransferTargetHoldingId()
+          : null;
       final item = widget.item;
       if (!includeInCalculations && item == null) {
         await AppDatabase.instance.createTransaction(
@@ -187,7 +192,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
         await AppDatabase.instance.createCashTransfer(
           assetId: currentAssetId,
           sourceHoldingId: currentHoldingId,
-          targetHoldingId: selectedTransferTargetHoldingId!,
+          targetHoldingId: transferTargetHoldingId!,
           date: dateValidation.value!,
           name: nameValidation.value!,
           amount: amountText,
@@ -225,7 +230,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
             amount: amountText,
             quantity: transactionType == '환전' ? exchangeRateText : '',
             counterpartyHoldingId: transactionType == '이체'
-                ? selectedTransferTargetHoldingId
+                ? transferTargetHoldingId
                 : null,
             ledgerEventId: item.ledgerEventId,
             ledgerLineId: item.ledgerLineId,
@@ -330,15 +335,17 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
   }
 
   Future<int> _resolveCurrentHoldingId() async {
-    final selectedById = await AppDatabase.instance.fetchHoldingById(
-      selectedSourceHoldingId,
+    final selectedById = await AppDatabase.instance.resolveCashHoldingId(
+      holdingId: selectedSourceHoldingId,
+      clientId: _selectedSourceOption?.clientId,
     );
-    if (selectedById?.id != null) return selectedById!.id!;
+    if (selectedById != null) return selectedById;
 
-    final holdingById = await AppDatabase.instance.fetchHoldingById(
-      widget.holdingId,
+    final holdingById = await AppDatabase.instance.resolveCashHoldingId(
+      holdingId: widget.holdingId,
+      clientId: widget.holdingClientId,
     );
-    if (holdingById?.id != null) return holdingById!.id!;
+    if (holdingById != null) return holdingById;
 
     final clientId = widget.holdingClientId;
     if (clientId != null && clientId.trim().isNotEmpty) {
@@ -348,6 +355,22 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     }
 
     throw StateError('현금 계좌를 찾을 수 없습니다.');
+  }
+
+  Future<int> _resolveTransferTargetHoldingId() async {
+    final selectedId = selectedTransferTargetHoldingId;
+    if (selectedId == null) {
+      throw StateError('이체 대상 현금 계좌를 선택해 주세요.');
+    }
+    final selectedOption = cashAccountOptions
+        .where((option) => option.holdingId == selectedId)
+        .firstOrNull;
+    final resolvedId = await AppDatabase.instance.resolveCashHoldingId(
+      holdingId: selectedId,
+      clientId: selectedOption?.clientId ?? selectedTransferTargetClientId,
+    );
+    if (resolvedId != null) return resolvedId;
+    throw StateError('이체 대상 현금 계좌를 찾을 수 없습니다.');
   }
 
   Future<void> _loadCashAccountOptions() async {
@@ -376,6 +399,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
                 (holding) => _CashAccountOption(
                   assetId: holding.assetId ?? asset.id ?? widget.assetId,
                   holdingId: holding.id!,
+                  clientId: holding.clientId,
                   title: '${asset.alias} · ${holding.name}',
                   subtitle: holding.currencyCode,
                   currencyCode: holding.currencyCode,
@@ -417,12 +441,19 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
     final sourceExchangeRateFromOption = sourceOption.isEmpty
         ? loadedSourceHolding?.exchangeRate ?? 1
         : sourceOption.first.exchangeRate;
+    final initialTargetClientId = initialSelection == null
+        ? null
+        : options
+              .where((option) => option.holdingId == initialSelection)
+              .firstOrNull
+              ?.clientId;
 
     if (!mounted) return;
     setState(() {
       cashAccountOptions = options;
       selectedSourceHoldingId = initialSourceSelection;
       selectedTransferTargetHoldingId = initialSelection;
+      selectedTransferTargetClientId = initialTargetClientId;
       sourceCurrencyCode = sourceCurrencyCodeFromOption;
       sourceExchangeRate = sourceExchangeRateFromOption;
       if (initialSelection != null) {
@@ -499,6 +530,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
       sourceExchangeRate = selectedOption.exchangeRate;
       if (!nextTargets.contains(selectedTransferTargetHoldingId)) {
         selectedTransferTargetHoldingId = null;
+        selectedTransferTargetClientId = null;
       }
     });
   }
@@ -572,6 +604,7 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
                     typeController.text = value;
                     if (value != '이체') {
                       selectedTransferTargetHoldingId = null;
+                      selectedTransferTargetClientId = null;
                     }
                   });
                 },
@@ -614,8 +647,12 @@ class _CashTransactionFormPageState extends State<CashTransactionFormPage> {
                   value: selectedTransferTargetHoldingId,
                   placeholder: '이체 대상 선택',
                   onChanged: (value) {
+                    final selectedOption = cashAccountOptions
+                        .where((option) => option.holdingId == value)
+                        .firstOrNull;
                     setState(() {
                       selectedTransferTargetHoldingId = value;
+                      selectedTransferTargetClientId = selectedOption?.clientId;
                     });
                   },
                 ),
@@ -708,6 +745,7 @@ class _CashAccountOption {
   const _CashAccountOption({
     required this.assetId,
     required this.holdingId,
+    required this.clientId,
     required this.title,
     required this.subtitle,
     required this.currencyCode,
@@ -719,6 +757,7 @@ class _CashAccountOption {
     return _CashAccountOption(
       assetId: 0,
       holdingId: holdingId,
+      clientId: null,
       title: '현금 계좌',
       subtitle: '',
       currencyCode: 'KRW',
@@ -729,6 +768,7 @@ class _CashAccountOption {
 
   final int assetId;
   final int holdingId;
+  final String? clientId;
   final String title;
   final String subtitle;
   final String currencyCode;
