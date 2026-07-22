@@ -59,6 +59,33 @@ void main() {
     expect(allocationCardSource, contains('onSelectHolding'));
   });
 
+  test('holding allocation ratios use the total portfolio value', () {
+    final source = File(
+      'lib/features/portfolio/screens/portfolio_page.dart',
+    ).readAsStringSync();
+    final allocationCardSource = _classSource(
+      source,
+      'class _AllocationSectionCard',
+    );
+    final holdingAllocations = _functionSource(
+      source,
+      'List<_AllocationItem> _buildHoldingAllocationItems',
+    );
+
+    expect(
+      allocationCardSource,
+      contains('final totalPortfolioValue = items.fold<double>'),
+    );
+    expect(allocationCardSource, contains('_buildHoldingAllocationItems('));
+    expect(allocationCardSource, contains('totalPortfolioValue'));
+    expect(holdingAllocations, contains('double totalPortfolioValue'));
+    expect(
+      holdingAllocations,
+      contains('entry.value.amount / totalPortfolioValue'),
+    );
+    expect(holdingAllocations, isNot(contains('entries.fold<double>')));
+  });
+
   test('portfolio allocation card grows with expanded detail', () {
     final source = File('lib/features/portfolio/screens/portfolio_page.dart').readAsStringSync();
     final allocationCardSource = _classSource(

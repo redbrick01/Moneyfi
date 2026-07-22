@@ -541,9 +541,13 @@ class _AllocationSectionCard extends StatelessWidget {
         ? null
         : items[selectedIndex];
     final selectedAssetItem = selectedItem;
+    final totalPortfolioValue = items.fold<double>(
+      0,
+      (sum, item) => sum + item.amount,
+    );
     final holdingItems = selectedAssetItem == null
         ? const <_AllocationItem>[]
-        : _buildHoldingAllocationItems(selectedAssetItem);
+        : _buildHoldingAllocationItems(selectedAssetItem, totalPortfolioValue);
     final showHoldingBreakdown = holdingItems.isNotEmpty;
     final selectedHoldingIndex = showHoldingBreakdown
         ? holdingItems.indexWhere((item) => item.label == selectedHoldingLabel)
@@ -679,15 +683,14 @@ class _AllocationSectionCard extends StatelessWidget {
   }
 }
 
-List<_AllocationItem> _buildHoldingAllocationItems(_AllocationItem assetItem) {
+List<_AllocationItem> _buildHoldingAllocationItems(
+  _AllocationItem assetItem,
+  double totalPortfolioValue,
+) {
   final entries = assetItem.holdings
       .map((holding) => (holding: holding, amount: holding.valuationAmount))
       .where((entry) => entry.amount > 0)
       .toList();
-  final totalValue = entries.fold<double>(
-    0,
-    (sum, entry) => sum + entry.amount,
-  );
   entries.sort((a, b) {
     final amountCompare = b.amount.compareTo(a.amount);
     if (amountCompare != 0) return amountCompare;
@@ -702,7 +705,9 @@ List<_AllocationItem> _buildHoldingAllocationItems(_AllocationItem assetItem) {
           assetId: assetItem.assetId,
           label: entry.value.holding.name,
           amount: entry.value.amount,
-          ratio: totalValue == 0 ? 0 : (entry.value.amount / totalValue) * 100,
+          ratio: totalPortfolioValue == 0
+              ? 0
+              : (entry.value.amount / totalPortfolioValue) * 100,
           color: _rankedAllocationColor(entry.key),
           icon: assetItem.icon,
           holdings: const [],
