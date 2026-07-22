@@ -34,7 +34,7 @@ class MarketDataService {
     String kisFundComponentsPath =
         '/uapi/etfetn/v1/quotations/inquire-component-stock-price',
     String kisFundComponentsTrId = 'FHKST121600C0',
-    String kisFundComponentsScrDivCode = '16616',
+    String kisFundComponentsScrDivCode = '11216',
     String coinTickerUrlTemplate = '',
     String usdKrwRateUrl = '',
   }) {
@@ -412,37 +412,45 @@ class MarketDataService {
     if (includeComponents &&
         _config.kisFundComponentsPath.isNotEmpty &&
         _config.kisFundComponentsTrId.isNotEmpty) {
-      final componentJson = await _kisGet(
-        path: _config.kisFundComponentsPath,
-        trId: _config.kisFundComponentsTrId,
-        query: {
-          'FID_COND_MRKT_DIV_CODE': 'J',
-          'FID_INPUT_ISCD': holding.symbol,
-          'FID_COND_SCR_DIV_CODE': _config.kisFundComponentsScrDivCode,
-        },
-      );
-      componentSummary =
-          (componentJson['output1'] as Map?)?.cast<String, dynamic>() ??
-          const {};
-      final output2 = (componentJson['output2'] as List?) ?? const [];
+      try {
+        final componentJson = await _kisGet(
+          path: _config.kisFundComponentsPath,
+          trId: _config.kisFundComponentsTrId,
+          query: {
+            'FID_COND_MRKT_DIV_CODE': 'J',
+            'FID_INPUT_ISCD': holding.symbol,
+            'FID_COND_SCR_DIV_CODE': _config.kisFundComponentsScrDivCode,
+          },
+        );
+        componentSummary =
+            (componentJson['output1'] as Map?)?.cast<String, dynamic>() ??
+            const {};
+        final output2 = (componentJson['output2'] as List?) ?? const [];
 
-      components = output2
-          .cast<Map>()
-          .take(10)
-          .map(
-            (row) => FundComponentItem(
-              code: _stringOrDash(row['stck_shrn_iscd']),
-              name: _stringOrDash(row['hts_kor_isnm']),
-              price: _formatKrw(row['stck_prpr']),
-              changeRate: _formatSignedPercent(
-                row['prdy_ctrt'],
-                sign: row['prdy_vrss_sign'],
+        components = output2
+            .cast<Map>()
+            .take(10)
+            .map(
+              (row) => FundComponentItem(
+                code: _stringOrDash(row['stck_shrn_iscd']),
+                name: _stringOrDash(row['hts_kor_isnm']),
+                price: _formatKrw(row['stck_prpr']),
+                changeRate: _formatSignedPercent(
+                  row['prdy_ctrt'],
+                  sign: row['prdy_vrss_sign'],
+                ),
+                weight: _formatPercent(row['etf_cnfg_issu_rlim']),
+                valuationAmount: _formatKrw(row['etf_vltn_amt']),
               ),
-              weight: _formatPercent(row['etf_cnfg_issu_rlim']),
-              valuationAmount: _formatKrw(row['etf_vltn_amt']),
-            ),
-          )
-          .toList();
+            )
+            .toList();
+      } catch (error, stackTrace) {
+        _log(
+          'fetchSnapshot fund components failed '
+          'symbol=${holding.symbol} error=$error',
+        );
+        _logStack(stackTrace);
+      }
     }
 
     final currentPrice = _parseNumber(summary['stck_prpr'])?.toDouble();
@@ -1013,7 +1021,7 @@ class _MarketApiConfig {
     ),
     this.kisFundComponentsScrDivCode = const String.fromEnvironment(
       'KIS_FUND_COMPONENTS_SCR_DIV_CODE',
-      defaultValue: '16616',
+      defaultValue: '11216',
     ),
     this.coinTickerUrlTemplate = const String.fromEnvironment(
       'COIN_TICKER_URL_TEMPLATE',
