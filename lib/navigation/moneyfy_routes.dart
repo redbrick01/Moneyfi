@@ -21,6 +21,7 @@ abstract final class MoneyfyRouteNames {
 
   static const assetCreate = 'assetCreate';
   static const assetEdit = 'assetEdit';
+  static const assetBuyCreate = 'assetBuyCreate';
   static const holdingCreate = 'holdingCreate';
   static const holdingEdit = 'holdingEdit';
   static const cashAccountCreate = 'cashAccountCreate';
@@ -76,6 +77,7 @@ abstract final class MoneyfyRoutePaths {
 
   static const assetCreate = '/assets/new';
   static const assetEditPattern = '/assets/:assetId/edit';
+  static const assetBuyCreatePattern = '/assets/:assetId/buys/new';
   static const holdingCreatePattern = '/assets/:assetId/holdings/new';
   static const holdingEditPattern = '/holdings/:holdingId/edit';
   static const cashAccountCreatePattern = '/assets/:assetId/cash-accounts/new';
@@ -122,6 +124,7 @@ abstract final class MoneyfyRoutePaths {
   }
 
   static String assetEdit(int assetId) => '/assets/$assetId/edit';
+  static String assetBuyCreate(int assetId) => '/assets/$assetId/buys/new';
   static String holdingCreate(int assetId) => '/assets/$assetId/holdings/new';
   static String holdingEdit(int holdingId) => '/holdings/$holdingId/edit';
   static String cashAccountCreate(int assetId) =>

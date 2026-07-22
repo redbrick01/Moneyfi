@@ -9,7 +9,6 @@ import 'package:moneyfy/features/analysis/screens/equity_research_page.dart';
 import 'package:moneyfy/features/portfolio/screens/forms/asset_form_page.dart';
 import 'package:moneyfy/features/portfolio/screens/forms/cash_account_form_page.dart';
 import 'package:moneyfy/features/transactions/screens/forms/cash_transaction_form_page.dart';
-import 'package:moneyfy/features/portfolio/screens/forms/holding_form_page.dart';
 import 'package:moneyfy/features/transactions/screens/forms/transaction_form_page.dart';
 import 'package:moneyfy/features/portfolio/screens/holding_detail_page.dart';
 import 'package:moneyfy/features/analysis/screens/investment_performance_page.dart';
@@ -49,6 +48,21 @@ GoRouter buildMoneyfyRouter({
         builder: (context, state) => const AssetFormPage(),
       ),
       GoRoute(
+        path: MoneyfyRoutePaths.assetBuyCreatePattern,
+        name: MoneyfyRouteNames.assetBuyCreate,
+        builder: (context, state) {
+          final assetId = _pathInt(state, 'assetId');
+          if (assetId == null) {
+            return const _InvalidRoutePage(message: '자산 경로가 올바르지 않아요.');
+          }
+          return TransactionFormPage(
+            assetId: assetId,
+            holdingId: null,
+            assetBuyMode: true,
+          );
+        },
+      ),
+      GoRoute(
         path: MoneyfyRoutePaths.holdingCreatePattern,
         name: MoneyfyRouteNames.holdingCreate,
         builder: (context, state) {
@@ -56,7 +70,11 @@ GoRouter buildMoneyfyRouter({
           if (assetId == null) {
             return const _InvalidRoutePage(message: '자산 경로가 올바르지 않아요.');
           }
-          return HoldingFormPage(assetId: assetId);
+          return TransactionFormPage(
+            assetId: assetId,
+            holdingId: null,
+            assetBuyMode: true,
+          );
         },
       ),
       GoRoute(

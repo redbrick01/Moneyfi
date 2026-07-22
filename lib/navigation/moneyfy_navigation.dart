@@ -8,7 +8,6 @@ import 'package:moneyfy/features/analysis/screens/equity_research_page.dart';
 import 'package:moneyfy/features/portfolio/screens/forms/asset_form_page.dart';
 import 'package:moneyfy/features/portfolio/screens/forms/cash_account_form_page.dart';
 import 'package:moneyfy/features/transactions/screens/forms/cash_transaction_form_page.dart';
-import 'package:moneyfy/features/portfolio/screens/forms/holding_form_page.dart';
 import 'package:moneyfy/features/transactions/screens/forms/transaction_form_page.dart';
 import 'package:moneyfy/features/portfolio/screens/holding_detail_page.dart';
 import 'package:moneyfy/features/analysis/screens/investment_performance_page.dart';
@@ -32,18 +31,26 @@ extension MoneyfyNavigation on BuildContext {
     return push<bool>(MoneyfyRoutePaths.assetCreate);
   }
 
-  Future<bool?> openHoldingCreate({required int assetId}) {
+  Future<bool?> openAssetBuyCreate({required int assetId}) {
     if (!_hasRouter) {
       return Navigator.of(this).push<bool>(
         MaterialPageRoute(
           settings: RouteSettings(
-            name: MoneyfyRoutePaths.holdingCreate(assetId),
+            name: MoneyfyRoutePaths.assetBuyCreate(assetId),
           ),
-          builder: (_) => HoldingFormPage(assetId: assetId),
+          builder: (_) => TransactionFormPage(
+            assetId: assetId,
+            holdingId: null,
+            assetBuyMode: true,
+          ),
         ),
       );
     }
-    return push<bool>(MoneyfyRoutePaths.holdingCreate(assetId));
+    return push<bool>(MoneyfyRoutePaths.assetBuyCreate(assetId));
+  }
+
+  Future<bool?> openHoldingCreate({required int assetId}) {
+    return openAssetBuyCreate(assetId: assetId);
   }
 
   Future<bool?> openCashAccountCreate({required int assetId}) {

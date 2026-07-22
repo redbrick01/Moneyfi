@@ -165,7 +165,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     if (item == null) {
       changed = isCashAccount
           ? await context.openCashAccountCreate(assetId: currentAssetId)
-          : await context.openHoldingCreate(assetId: currentAssetId);
+          : await context.openAssetBuyCreate(assetId: currentAssetId);
     } else {
       changed = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
@@ -927,8 +927,8 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                 context,
                                 title: '등록된 보유 종목이 없어요',
                                 description:
-                                    '주식, 펀드, 코인 같은 투자 보유를 추가하면 매수/매도/배당 거래를 기록할 수 있어요.',
-                                actionLabel: '보유 종목 추가',
+                                    '주식, 펀드, 코인 같은 투자 종목을 매수하면 보유 내역과 거래 원장이 함께 생성돼요.',
+                                actionLabel: '종목 매수',
                                 onAction: () =>
                                     _openHoldingForm(assetId: item.id),
                               )

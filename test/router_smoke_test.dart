@@ -6,7 +6,6 @@ import 'package:moneyfy/navigation/moneyfy_routes.dart';
 import 'package:moneyfy/features/portfolio/screens/forms/asset_form_page.dart';
 import 'package:moneyfy/features/portfolio/screens/forms/cash_account_form_page.dart';
 import 'package:moneyfy/features/transactions/screens/forms/cash_transaction_form_page.dart';
-import 'package:moneyfy/features/portfolio/screens/forms/holding_form_page.dart';
 import 'package:moneyfy/features/transactions/screens/forms/transaction_form_page.dart';
 
 void main() {
@@ -92,7 +91,8 @@ void main() {
 
   for (final routeCase in const [
     _FormRouteCase('/assets/new', AssetFormPage),
-    _FormRouteCase('/assets/-101/holdings/new', HoldingFormPage),
+    _FormRouteCase('/assets/-101/buys/new', TransactionFormPage),
+    _FormRouteCase('/assets/-101/holdings/new', TransactionFormPage),
     _FormRouteCase('/assets/-101/cash-accounts/new', CashAccountFormPage),
     _FormRouteCase(
       '/holdings/-102/transactions/new?assetId=-101&defaultName=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90',

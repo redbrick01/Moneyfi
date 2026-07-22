@@ -3216,6 +3216,48 @@ class AppDatabase extends _$AppDatabase {
     return insertedId;
   }
 
+  Future<int> createHoldingWithInitialBuy({
+    required int assetId,
+    required String currencyCode,
+    required String exchangeCode,
+    required String holdingName,
+    required String symbol,
+    required double currentPrice,
+    required String note,
+    required String date,
+    required String transactionName,
+    required String amount,
+    required String quantity,
+    bool includeInCalculations = true,
+    double? tradeFxRate,
+  }) {
+    return transaction(() async {
+      final holdingId = await createHolding(
+        assetId: assetId,
+        currencyCode: currencyCode,
+        exchangeCode: exchangeCode,
+        name: holdingName,
+        symbol: symbol,
+        quantity: 0,
+        averagePrice: 0,
+        currentPrice: currentPrice,
+        note: note,
+      );
+      await createTransaction(
+        assetId: assetId,
+        holdingId: holdingId,
+        date: date,
+        type: '매수',
+        name: transactionName,
+        amount: amount,
+        quantity: quantity,
+        includeInCalculations: includeInCalculations,
+        tradeFxRate: tradeFxRate,
+      );
+      return holdingId;
+    });
+  }
+
   Future<int> createCashAccount({
     required int assetId,
     required String currencyCode,

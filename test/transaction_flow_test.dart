@@ -1256,6 +1256,80 @@ void main() {
   );
 
   test(
+    'initial buy creates the holding and ledger atomically',
+    () async {
+      final assetId = await createAsset('주식');
+      final cashHoldingId = await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '결제 현금',
+        note: '',
+        balance: 1000,
+      );
+
+      final holdingId = await db.createHoldingWithInitialBuy(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        holdingName: '신규 주식',
+        symbol: 'NEW',
+        currentPrice: 110,
+        note: '',
+        date: '2026.07.22',
+        transactionName: '신규 주식 매수',
+        amount: '100',
+        quantity: '5',
+      );
+
+      final holding = await findHolding(holdingId);
+      expect(holding.quantity, 5);
+      expect(holding.averagePrice, 100);
+      expect(holding.transactions, hasLength(1));
+      expect(holding.transactions.single.type, '매수');
+      expect((await findHolding(cashHoldingId)).quantity, 500);
+      expect(await db.fetchLedgerStateParityIssues(), isEmpty);
+    },
+  );
+
+  test(
+    'initial buy failure rolls back the newly created holding',
+    () async {
+      final assetId = await createAsset('주식');
+      final cashHoldingId = await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '결제 현금',
+        note: '',
+        balance: 100,
+      );
+
+      await expectLater(
+        db.createHoldingWithInitialBuy(
+          assetId: assetId,
+          currencyCode: 'KRW',
+          exchangeCode: '',
+          holdingName: '실패 주식',
+          symbol: 'FAIL',
+          currentPrice: 100,
+          note: '',
+          date: '2026.07.22',
+          transactionName: '실패할 매수',
+          amount: '100',
+          quantity: '5',
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      final rows = await db.customSelect(
+        "SELECT id FROM holdings WHERE asset_id = ? AND symbol = 'FAIL' AND deleted_at IS NULL",
+        variables: [Variable.withInt(assetId)],
+      ).get();
+      expect(rows, isEmpty);
+      expect((await findHolding(cashHoldingId)).quantity, 100);
+    },
+  );
+
+  test(
     'buy and sell synchronize settlement cash and holding quantity',
     () async {
       final assetId = await createAsset('주식');

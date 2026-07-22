@@ -486,8 +486,9 @@ void main() {
   Future<void> pumpTransactionForm(
     WidgetTester tester, {
     required List<HoldingItem> holdings,
-    int holdingId = 1,
+    int? holdingId = 1,
     TransactionItem? item,
+    bool assetBuyMode = false,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -496,6 +497,7 @@ void main() {
           assetId: 1,
           holdingId: holdingId,
           item: item,
+          assetBuyMode: assetBuyMode,
           assetsFutureForTesting: Future.value([assetWithHoldings(holdings)]),
         ),
       ),
@@ -686,6 +688,25 @@ void main() {
           find.text('Moneyfy').evaluate().isNotEmpty,
       isTrue,
     );
+  });
+
+  testWidgets('asset buy mode opens without an existing holding', (
+    tester,
+  ) async {
+    await pumpTransactionForm(
+      tester,
+      holdings: const [],
+      holdingId: null,
+      assetBuyMode: true,
+    );
+
+    expect(find.text('종목 매수'), findsOneWidget);
+    expect(find.text('거래 추가'), findsNothing);
+    expect(find.text('매수할 기존 종목을 선택하거나 새 종목을 검색해 주세요.'), findsOneWidget);
+    expect(find.text('새 종목 검색'), findsOneWidget);
+    expect(find.text('매도'), findsNothing);
+    expect(find.text('배당'), findsNothing);
+    expect(find.text('이자'), findsNothing);
   });
 
   testWidgets('sell quantity shortcuts appear only for sell type', (
