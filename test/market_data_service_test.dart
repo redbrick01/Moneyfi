@@ -479,7 +479,7 @@ void main() {
             isTrue,
           );
           expect(request.headers['tr_id'], 'FHKST121600C0');
-          expect(request.url.queryParameters['FID_COND_SCR_DIV_CODE'], '16616');
+          expect(request.url.queryParameters['FID_COND_SCR_DIV_CODE'], '11216');
           return jsonResponse({
             'rt_cd': '0',
             'output1': {
@@ -525,10 +525,96 @@ void main() {
       expect(snapshot.trackingError, '0.04%');
       expect(snapshot.listingDate, '2020-01-02');
       expect(snapshot.etfComponentCount, '2');
+      expect(snapshot.hasCompleteEtfFundInfo, isTrue);
       expect(snapshot.etfTopComponents, hasLength(2));
       expect(snapshot.etfTopComponents.first.code, '005930');
       expect(snapshot.etfTopComponents.first.changeRate, '+1.20%');
       expect(snapshot.etfTopComponents.last.changeRate, '-0.80%');
+    });
+
+    test('keeps ETF summary when component quote request fails', () async {
+      var componentRequestCount = 0;
+      final service = MarketDataService.test(
+        kisBaseUrl: 'https://kis.test',
+        kisAppKey: 'app-key',
+        kisAppSecret: 'app-secret',
+        client: MockClient((request) async {
+          if (request.method == 'POST') {
+            return jsonResponse({
+              'access_token': 'token-1',
+              'expires_in': 3600,
+            });
+          }
+
+          if (request.url.path.endsWith('/inquire-price')) {
+            return jsonResponse({
+              'rt_cd': '0',
+              'output': {
+                'stck_prpr': '10250',
+                'nav': '10240',
+                'etf_ntas_ttam': '123000000000',
+              },
+            });
+          }
+
+          componentRequestCount += 1;
+          return jsonResponse({
+            'rt_cd': '1',
+            'msg_cd': 'MCA00000',
+            'msg1': 'invalid screen division code',
+          });
+        }),
+      );
+
+      final snapshot = await service.fetchSnapshot(
+        holding(assetType: '펀드', assetTitle: 'KODEX 테스트', symbol: '069500'),
+      );
+
+      expect(componentRequestCount, 1);
+      expect(snapshot.currentPriceValue, 10250);
+      expect(snapshot.currentPrice, '₩10,250');
+      expect(snapshot.nav, '₩10,240');
+      expect(snapshot.netAssets, '₩123,000,000,000');
+      expect(snapshot.etfComponentCount, '-');
+      expect(snapshot.etfNetAssetsTotal, '-');
+      expect(snapshot.hasCompleteEtfFundInfo, isFalse);
+      expect(snapshot.etfTopComponents, isEmpty);
+    });
+
+    test('falls back when ETF summary request fails', () async {
+      var quoteRequestCount = 0;
+      final service = MarketDataService.test(
+        kisBaseUrl: 'https://kis.test',
+        kisAppKey: 'app-key',
+        kisAppSecret: 'app-secret',
+        client: MockClient((request) async {
+          if (request.method == 'POST') {
+            return jsonResponse({
+              'access_token': 'token-1',
+              'expires_in': 3600,
+            });
+          }
+
+          quoteRequestCount += 1;
+          return jsonResponse({
+            'rt_cd': '1',
+            'msg_cd': 'MCA00000',
+            'msg1': 'ETF summary unavailable',
+          });
+        }),
+      );
+
+      final snapshot = await service.fetchSnapshot(
+        holding(assetType: '펀드', assetTitle: 'KODEX 테스트', symbol: '069500'),
+      );
+
+      expect(quoteRequestCount, 1);
+      expect(snapshot.currentPriceValue, 1000);
+      expect(snapshot.currentPrice, '₩1,000');
+      expect(snapshot.netAssets, '-');
+      expect(snapshot.etfComponentCount, '-');
+      expect(snapshot.hasCompleteEtfFundInfo, isFalse);
+      expect(snapshot.etfTopComponents, isEmpty);
     });
 
     test(

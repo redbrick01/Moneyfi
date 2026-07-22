@@ -156,4 +156,16 @@ class HoldingMarketSnapshot {
   final String etfNavHigh;
   final String etfNavLow;
   final List<FundComponentItem> etfTopComponents;
+
+  bool get hasCompleteEtfFundInfo =>
+      [
+        netAssets,
+        etfNetAssetsTotal,
+        etfComponentCount,
+        etfComponentMarketCap,
+        etfCuUnitCount,
+      ].every((value) {
+        final normalized = value.trim();
+        return normalized.isNotEmpty && normalized != '-';
+      });
 }

@@ -1320,22 +1320,29 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
             _MetricTileData(label: '상장일', value: market.listingDate),
           ],
         ),
-        _HoldingDetailSection(
-          title: 'ETF / 펀드 정보',
-          items: [
-            _MetricTileData(label: '순자산총액', value: market.netAssets),
-            _MetricTileData(
-              label: 'ETF 순자산총액',
-              value: market.etfNetAssetsTotal,
-            ),
-            _MetricTileData(label: '구성 종목 수', value: market.etfComponentCount),
-            _MetricTileData(
-              label: '구성종목 시가총액',
-              value: market.etfComponentMarketCap,
-            ),
-            _MetricTileData(label: 'CU 단위 증권 수', value: market.etfCuUnitCount),
-          ],
-        ),
+        if (market.hasCompleteEtfFundInfo)
+          _HoldingDetailSection(
+            title: 'ETF / 펀드 정보',
+            items: [
+              _MetricTileData(label: '순자산총액', value: market.netAssets),
+              _MetricTileData(
+                label: 'ETF 순자산총액',
+                value: market.etfNetAssetsTotal,
+              ),
+              _MetricTileData(
+                label: '구성 종목 수',
+                value: market.etfComponentCount,
+              ),
+              _MetricTileData(
+                label: '구성종목 시가총액',
+                value: market.etfComponentMarketCap,
+              ),
+              _MetricTileData(
+                label: 'CU 단위 증권 수',
+                value: market.etfCuUnitCount,
+              ),
+            ],
+          ),
         if (market.etfTopComponents.isNotEmpty)
           const _HoldingDetailSection(title: '구성 종목', items: []),
       ];
