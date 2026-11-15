@@ -26,6 +26,9 @@ void main() {
     () {
       final pushSource = syncLocalDb.readAsStringSync();
       final pullSource = getSyncLocalDb.readAsStringSync();
+      final atomicLedgerSource = File(
+        'supabase/migrations/20260721071155_sync_portfolio_state_atomic.sql',
+      ).readAsStringSync();
 
       for (final field in [
         'average_price_source',
@@ -34,7 +37,7 @@ void main() {
         'cost_basis_krw',
         'cost_basis_source_delta',
       ]) {
-        expect(pushSource, contains(field));
+        expect('$pushSource\n$atomicLedgerSource', contains(field));
         expect(pullSource, contains(field));
       }
     },
