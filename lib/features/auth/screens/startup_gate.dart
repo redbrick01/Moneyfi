@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/features/auth/services/auth_service.dart';
+import 'package:moneyfy/features/auth/services/app_data_lifecycle_service.dart';
 
 class StartupGate extends StatefulWidget {
   const StartupGate({super.key, required this.child});
@@ -23,9 +24,17 @@ class _StartupGateState extends State<StartupGate> {
         'KIS_APP_SECRET=${const String.fromEnvironment('KIS_APP_SECRET').isNotEmpty}',
       );
       await AuthService.initialize();
-      await AppDatabase.instance.removeLegacySeededCashHoldings();
-      if (AuthService.currentUser == null) {
-        await AppDatabase.instance.clearAllLocalUserData();
+      final owner = await AppDatabase.instance.localDataOwner();
+      final userId = AuthService.currentUser?.id;
+      final hasLocalData = await AppDatabase.instance.hasLocalCoreData();
+      final pending = await AppDatabase.instance.hasPendingSyncChanges();
+      if (userId != null && owner == null && !hasLocalData && !pending) {
+        await AppDatabase.instance.assignLocalDataOwner(userId);
+      } else if ((hasLocalData || pending) &&
+          (userId == null || owner != userId)) {
+        AppDataLifecycleService.beginReplacement(
+          message: '계정 확인 후 데이터를 불러올 수 있어요.',
+        );
       }
     } catch (error, stackTrace) {
       debugPrint('[main] startup failed: $error');

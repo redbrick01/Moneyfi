@@ -6,9 +6,8 @@ import 'package:moneyfy/components/feedback/app_snackbar.dart';
 import 'package:moneyfy/components/section_card.dart';
 import 'package:moneyfy/components/states/inline_error.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
-import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/features/auth/services/auth_service.dart';
-import 'package:moneyfy/features/portfolio/services/market_data_service.dart';
+import 'package:moneyfy/features/auth/services/app_data_lifecycle_service.dart';
 import 'package:moneyfy/features/sync/services/sync_service.dart';
 import 'package:moneyfy/utils/input_validators.dart';
 
@@ -80,6 +79,8 @@ class _SignupPageState extends State<SignupPage> {
       _isSubmitting = true;
       _errorMessage = null;
     });
+    final wasReplacing = AppDataLifecycleService.state.value.isReplacing;
+    AppDataLifecycleService.beginReplacement(message: '계정 정보를 불러오고 있어요.');
 
     try {
       final response = await AuthService.signUp(
@@ -90,26 +91,38 @@ class _SignupPageState extends State<SignupPage> {
       if (!mounted) return;
 
       if (response.session == null) {
+        if (!wasReplacing) AppDataLifecycleService.completeReplacement();
         AppSnackBar.showSuccess(context, '회원가입 완료. 이메일 인증 후 로그인해 주세요.');
         Navigator.of(context).pop();
         return;
       }
 
-      await AppDatabase.instance.clearAllLocalUserData();
-      await MarketDataService.instance.clearLocalCache();
+      final refreshed = await SyncService.instance.refreshFromServer(
+        reason: 'signup_refresh',
+      );
       if (!mounted) return;
-      await SyncService.instance.refreshFromServer(reason: 'signup_refresh');
-      if (!mounted) return;
+      if (!refreshed) {
+        setState(
+          () => _errorMessage =
+              '로컬 데이터가 동기화되지 않았거나 서버 데이터를 불러오지 못했습니다. 이 계정에서 다시 시도해 주세요.',
+        );
+        return;
+      }
+      AppDataLifecycleService.completeReplacement(
+        refreshReason: 'signup_refresh',
+      );
       AppSnackBar.showSuccess(context, '회원가입이 완료됐어요.');
       final navigator = Navigator.of(context);
       navigator.pop();
       navigator.pop();
     } on AuthException catch (error) {
+      if (!wasReplacing) AppDataLifecycleService.completeReplacement();
       if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
       });
     } catch (_) {
+      if (!wasReplacing) AppDataLifecycleService.completeReplacement();
       if (!mounted) return;
       setState(() {
         _errorMessage = '회원가입 중 오류가 발생했어요.';

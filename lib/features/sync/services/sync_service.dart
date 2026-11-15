@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'sync_acknowledgement.dart';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:moneyfy/db/app_database.dart';
@@ -23,13 +25,25 @@ class SyncService {
   bool get canSync =>
       AuthService.isInitialized && AuthService.currentUser != null;
 
-  Future<bool> syncNow({String reason = 'manual'}) async {
+  Future<bool> syncNow({
+    String reason = 'manual',
+    bool requireAcknowledgement = true,
+  }) async {
     if (!canSync || _isSyncing) {
       return false;
     }
 
     _isSyncing = true;
     try {
+      final startedUserId = AuthService.currentUser?.id;
+      final owner = await AppDatabase.instance.localDataOwner();
+      if (startedUserId == null || (owner != null && owner != startedUserId)) {
+        return false;
+      }
+      if (owner == null) {
+        if (await AppDatabase.instance.hasLocalCoreData()) return false;
+        await AppDatabase.instance.assignLocalDataOwner(startedUserId);
+      }
       final payload = await _buildPayload();
       final session = AuthService.client.auth.currentSession;
       debugPrint(
@@ -59,6 +73,7 @@ class SyncService {
       final responsePayload = response.data is Map
           ? Map<String, Object?>.from(response.data as Map)
           : const <String, Object?>{};
+      if (AuthService.currentUser?.id != startedUserId) return false;
       final acceptedClientIds = responsePayload['accepted_client_ids'] is Map
           ? Map<String, Object?>.from(
               responsePayload['accepted_client_ids'] as Map,
@@ -70,6 +85,10 @@ class SyncService {
           '[sync] conflict reason=$reason count=${conflictCount.toInt()} '
           'conflicts=${responsePayload['conflicts']}',
         );
+      }
+      if (requireAcknowledgement &&
+          !syncPayloadWasAccepted(payload, responsePayload)) {
+        return false;
       }
       await AppDatabase.instance.markDirtySyncPayloadAsSynced(
         payload,
@@ -98,7 +117,10 @@ class SyncService {
     unawaited(syncNow(reason: reason));
   }
 
-  Future<bool> pullRemoteCoreData({String reason = 'foreground'}) async {
+  Future<bool> pullRemoteCoreData({
+    String reason = 'foreground',
+    bool allowAccountSwitch = false,
+  }) async {
     final userId = AuthService.currentUser?.id;
     if (userId == null || !canSync) {
       return false;
@@ -110,7 +132,11 @@ class SyncService {
       return false;
     }
 
-    final future = _pullRemoteCoreDataInternal(reason: reason, userId: userId);
+    final future = _pullRemoteCoreDataInternal(
+      reason: reason,
+      userId: userId,
+      allowAccountSwitch: allowAccountSwitch,
+    );
     _inFlightCorePull = future;
     _inFlightCorePullUserId = userId;
     try {
@@ -173,9 +199,29 @@ class SyncService {
   Future<bool> _pullRemoteCoreDataInternal({
     required String reason,
     required String userId,
+    required bool allowAccountSwitch,
   }) async {
     _isPullingCoreData = true;
     try {
+      final owner = await AppDatabase.instance.localDataOwner();
+      if (await AppDatabase.instance.hasLocalCoreData() &&
+          owner != userId &&
+          !allowAccountSwitch) {
+        debugPrint(
+          '[core-pull] blocked: local data belongs to another or unknown account',
+        );
+        return false;
+      }
+      if (await AppDatabase.instance.hasPendingSyncChanges()) {
+        if (owner != userId ||
+            !await syncNow(
+              reason: '${reason}_before_pull',
+              requireAcknowledgement: true,
+            )) {
+          debugPrint('[core-pull] blocked: local changes need synchronization');
+          return false;
+        }
+      }
       debugPrint('[core-pull] start reason=$reason userId=$userId');
       final response = await AuthService.client.functions.invoke(
         'get-sync-local-db',
@@ -217,7 +263,14 @@ class SyncService {
         );
         return false;
       }
-      await AppDatabase.instance.replaceLocalSyncData(payload);
+      await AppDatabase.instance.replaceLocalSyncData(
+        payload,
+        requireCleanLocal: true,
+        ownerId: userId,
+        enforceOwnerMatch: true,
+        expectedOwnerId: owner,
+        canApply: () => AuthService.currentUser?.id == userId,
+      );
       debugPrint('[core-pull] success reason=$reason');
       return true;
     } catch (error, stackTrace) {

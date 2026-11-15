@@ -801,7 +801,7 @@ class _SummaryCardState extends State<_SummaryCard> {
                                                         opacity: animation,
                                                         child: SizeTransition(
                                                           sizeFactor: animation,
-                                                          axisAlignment: -1,
+                                                          alignment: AlignmentDirectional.topStart,
                                                           child: child,
                                                         ),
                                                       );
@@ -1354,9 +1354,6 @@ class _AssetListCardState extends State<_AssetListCard> {
     int oldIndex,
     int newIndex,
   ) async {
-    if (newIndex > oldIndex) {
-      newIndex -= 1;
-    }
     if (oldIndex == newIndex) return;
 
     final previousItems = _items == null
@@ -1647,7 +1644,7 @@ class _AssetListCardState extends State<_AssetListCard> {
                 buildDefaultDragHandles: false,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
-                onReorder: (oldIndex, newIndex) =>
+                onReorderItem: (oldIndex, newIndex) =>
                     _reorderAssets(items, oldIndex, newIndex),
                 itemBuilder: (context, index) {
                   final item = items[index];

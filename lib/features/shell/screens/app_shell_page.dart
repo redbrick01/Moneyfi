@@ -82,10 +82,8 @@ class _AppShellPageState extends State<AppShellPage>
   int _dataRefreshTick = 0;
   int _dataScopeVersion = 0;
   int _analysisReselectionTick = 0;
-  bool _isClearingSignedOutData = false;
   bool _isReplacingAccountData = false;
   String? _accountDataReplacementMessage;
-  Future<void>? _signOutClearOperation;
   late AppDataLifecycleState _appDataLifecycleState;
 
   @override
@@ -104,8 +102,11 @@ class _AppShellPageState extends State<AppShellPage>
     _syncDisplayCurrencySettings();
     _authSubscription = AuthService.authStateChanges.listen((authState) {
       if (authState.session == null) {
-        unawaited(_clearLocalDataAfterSignOut());
-      } else if (SyncService.instance.canSync) {
+        AppDataLifecycleService.beginReplacement(
+          message: '다시 로그인하면 저장된 데이터를 확인할 수 있어요.',
+        );
+      } else if (SyncService.instance.canSync &&
+          !AppDataLifecycleService.state.value.isReplacing) {
         _refreshRemoteData(reason: 'auth_state_change');
       } else if (mounted) {
         setState(() {
@@ -113,7 +114,9 @@ class _AppShellPageState extends State<AppShellPage>
         });
       }
     });
-    _refreshRemoteData(reason: 'startup');
+    if (!AppDataLifecycleService.state.value.isReplacing) {
+      _refreshRemoteData(reason: 'startup');
+    }
     _pollingTimer = Timer.periodic(_pollingInterval, (_) {
       _runPollingCycle();
     });
@@ -246,6 +249,7 @@ class _AppShellPageState extends State<AppShellPage>
   }
 
   Future<void> _refreshRemoteData({required String reason}) async {
+    if (AppDataLifecycleService.state.value.isReplacing) return;
     final refreshed = await SyncService.instance.refreshFromServer(
       reason: reason,
     );
@@ -258,38 +262,6 @@ class _AppShellPageState extends State<AppShellPage>
     setState(() {
       _dataRefreshTick++;
     });
-  }
-
-  Future<void> _clearLocalDataAfterSignOut() async {
-    final existingOperation = _signOutClearOperation;
-    if (existingOperation != null) {
-      await existingOperation;
-      return;
-    }
-
-    setState(() {
-      _isClearingSignedOutData = true;
-      _dataScopeVersion++;
-      _dataRefreshTick++;
-    });
-
-    final operation = () async {
-      try {
-        await AppDatabase.instance.clearAllLocalUserData();
-        await MarketDataService.instance.clearLocalCache();
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isClearingSignedOutData = false;
-            _dataScopeVersion++;
-            _dataRefreshTick++;
-          });
-        }
-        _signOutClearOperation = null;
-      }
-    }();
-    _signOutClearOperation = operation;
-    await operation;
   }
 
   Future<void> _syncDisplayCurrencySettings() async {
@@ -356,7 +328,7 @@ class _AppShellPageState extends State<AppShellPage>
                 ),
                 _DataScopedTabPage(
                   scopeVersion: _dataScopeVersion,
-                  replacementMessage: _dataReplacementMessage,
+                  replacementMessage: null,
                   title: 'My',
                   child: MyPage(scrollController: _pageScrollControllers[4]),
                 ),
@@ -379,9 +351,6 @@ class _AppShellPageState extends State<AppShellPage>
   }
 
   String? get _dataReplacementMessage {
-    if (_isClearingSignedOutData) {
-      return '로그아웃 정보를 정리하고 있어요.';
-    }
     if (_isReplacingAccountData) {
       return _accountDataReplacementMessage ?? '계정 정보를 불러오고 있어요.';
     }

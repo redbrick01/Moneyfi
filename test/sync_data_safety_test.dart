@@ -1,0 +1,134 @@
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:moneyfy/db/app_database.dart';
+
+void main() {
+  late AppDatabase db;
+  setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
+  tearDown(() async => db.close());
+
+  Future<int> asset(String title) => db.createAsset(
+    assetType: '주식',
+    title: title,
+    alias: '',
+    hidden: false,
+    currencyCode: 'KRW',
+    value: '0',
+    change: '',
+    icon: Icons.wallet,
+    quantityLabel: '',
+    quantityValue: '',
+    averageLabel: '',
+    averageValue: '',
+    note: '',
+  );
+
+  test(
+    'remote replacement refuses dirty local records without deleting them',
+    () async {
+      final id = await asset('보존할 자산');
+      await expectLater(
+        db.replaceLocalSyncData({
+          'assets': <Map<String, Object?>>[],
+        }, requireCleanLocal: true),
+        throwsStateError,
+      );
+      expect((await db.select(db.assets).get()).single.id, id);
+      expect(await db.hasPendingSyncChanges(), isTrue);
+    },
+  );
+
+  test(
+    'acknowledgement leaves edits made after payload creation dirty',
+    () async {
+      final id = await asset('처음');
+      final sent = await db.buildDirtySyncPayload();
+      final clientId = (sent['assets'] as List).single['client_id'] as String;
+      await db.customStatement(
+        'UPDATE assets SET title = ?, dirty = 1 WHERE id = ?',
+        ['나중 수정', id],
+      );
+      await db.markDirtySyncPayloadAsSynced(sent, {
+        'assets': [clientId],
+        'holdings': <String>[],
+        'cash_accounts': <String>[],
+        'transaction_events': <String>[],
+        'transaction_lines': <String>[],
+        'snapshot_notes': <String>[],
+      });
+      expect(await db.hasPendingSyncChanges(), isTrue);
+      expect((await db.select(db.assets).get()).single.title, '나중 수정');
+    },
+  );
+
+  test(
+    'legacy cleanup never deletes a user record by its display name',
+    () async {
+      final assetId = await asset('주식');
+      final id = await db.createHolding(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '생활비 통장',
+        symbol: 'CASH',
+        quantity: 1,
+        averagePrice: 1000,
+        currentPrice: 1000,
+        note: '',
+      );
+      await db.removeLegacySeededCashHoldings();
+      expect((await db.select(db.holdings).get()).single.id, id);
+    },
+  );
+
+  test('account change during a pull cannot replace existing data', () async {
+    await db.assignLocalDataOwner('first-user');
+    final id = await asset('기존 계정');
+    await db.assignLocalDataOwner('second-user');
+    await expectLater(
+      db.replaceLocalSyncData(
+        {'assets': <Map<String, Object?>>[]},
+        enforceOwnerMatch: true,
+        expectedOwnerId: 'first-user',
+      ),
+      throwsStateError,
+    );
+    expect((await db.select(db.assets).get()).single.id, id);
+  });
+
+  test('confirmed account switch removes previous local-only journal', () async {
+    await db.assignLocalDataOwner('first-user');
+    await db.customStatement(
+      "INSERT INTO daily_investment_reviews (review_date, status, mode, created_at, updated_at) VALUES ('2026-11-15', 'draft', 'manual', 'now', 'now')",
+    );
+    expect(await db.hasLocalCoreData(), isTrue);
+    await db.replaceLocalSyncData(
+      {'assets': <Map<String, Object?>>[]},
+      requireCleanLocal: true,
+      ownerId: 'second-user',
+      enforceOwnerMatch: true,
+      expectedOwnerId: 'first-user',
+    );
+    expect(await db.localDataOwner(), 'second-user');
+    expect(await db.select(db.dailyInvestmentReviews).get(), isEmpty);
+  });
+
+  test('account change during replacement rolls back all deletions', () async {
+    await db.assignLocalDataOwner('first-user');
+    final id = await asset('보존할 자산');
+    await db.customStatement('UPDATE assets SET dirty = 0');
+    var checks = 0;
+    await expectLater(
+      db.replaceLocalSyncData(
+        {'assets': <Map<String, Object?>>[]},
+        requireCleanLocal: true,
+        ownerId: 'first-user',
+        canApply: () => ++checks == 1,
+      ),
+      throwsStateError,
+    );
+    expect((await db.select(db.assets).get()).single.id, id);
+    expect(await db.localDataOwner(), 'first-user');
+  });
+}

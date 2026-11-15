@@ -68,8 +68,6 @@
 
 Completed task plans are not kept as individual docs. Historical implementation records are consolidated in `docs/reports/implementation_history.md`.
 
-주식 임베딩 연구는 이 앱 저장소 밖의 `/Users/maegmini/Project/moneyfy-stock-embeddings`에서 관리합니다. 경계 기준은 [Embedding Project Boundary](embedding_project_boundary.md)를 참고하세요.
-
 ## Platform Folders
 
 Flutter가 생성한 플랫폼 프로젝트입니다. 일반 기능 개발은 대부분 `lib/`에서 끝나지만, 아래 작업은 플랫폼 폴더를 봐야 합니다.

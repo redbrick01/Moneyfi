@@ -10,7 +10,6 @@ import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/features/auth/services/app_data_lifecycle_service.dart';
 import 'package:moneyfy/features/auth/services/auth_service.dart';
 import 'package:moneyfy/features/analysis/services/company_news_summary_service.dart';
-import 'package:moneyfy/features/portfolio/services/market_data_service.dart';
 import 'package:moneyfy/features/analysis/services/market_news_summary_service.dart';
 import 'package:moneyfy/features/sync/services/sync_service.dart';
 import 'package:moneyfy/utils/input_validators.dart';
@@ -83,9 +82,7 @@ class _LoginPageState extends State<LoginPage> {
         password: password,
       );
       if (!mounted) return;
-      await AppDatabase.instance.clearAllLocalUserData();
-      await MarketDataService.instance.clearLocalCache();
-      if (!mounted) return;
+      // Preserve the local ledger until the server pull has succeeded.
 
       setState(() {
         _showSyncOverlay = true;
@@ -161,6 +158,15 @@ class _LoginPageState extends State<LoginPage> {
         _coreState = SyncStepState.failed;
         _applySyncFailureCopy(_LoginSyncFailureStage.core);
       });
+      final owner = await AppDatabase.instance.localDataOwner();
+      final pending = await AppDatabase.instance.hasPendingSyncChanges();
+      if (!mounted) return false;
+      if (pending || (owner != null && owner != AuthService.currentUser?.id)) {
+        setState(() {
+          _syncErrorDetail =
+              '이 기기에 다른 계정 또는 소유 계정을 확인할 수 없는 로컬 데이터가 있습니다. 닫기를 누르고 My에서 서버 데이터 가져오기를 선택해 확인해 주세요.';
+        });
+      }
       return false;
     }
 
@@ -224,6 +230,12 @@ class _LoginPageState extends State<LoginPage> {
       _syncFailureStage == _LoginSyncFailureStage.snapshots;
 
   void _closeSyncOverlay() {
+    if (_syncFailureStage == _LoginSyncFailureStage.core &&
+        AuthService.currentUser != null) {
+      setState(() => _showSyncOverlay = false);
+      Navigator.of(context).pop();
+      return;
+    }
     if (_canContinueAfterSyncFailure) {
       AppDataLifecycleService.completeReplacement(
         refreshReason: 'login_sync_partial',

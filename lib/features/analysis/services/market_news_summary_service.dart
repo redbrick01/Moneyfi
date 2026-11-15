@@ -74,7 +74,7 @@ class MarketNewsSummaryService {
       );
 
       if (response.status != 200 || response.data is! Map) {
-        return _fetchCachedOrFallbackSummary(
+        return await _fetchCachedOrFallbackSummary(
           category: category,
           summaryDate: summaryDate,
         );
@@ -82,7 +82,7 @@ class MarketNewsSummaryService {
 
       final payload = Map<String, dynamic>.from(response.data as Map);
       if (payload['ok'] != true) {
-        return _fetchCachedOrFallbackSummary(
+        return await _fetchCachedOrFallbackSummary(
           category: category,
           summaryDate: summaryDate,
         );

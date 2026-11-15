@@ -4088,50 +4088,53 @@ class AppDatabase extends _$AppDatabase {
       throw StateError('같은 현금 계좌로는 이체할 수 없습니다.');
     }
     final parsedAmount = _parseTransactionNumber(amount).abs();
-    if (parsedAmount <= 0) {
+    if (!parsedAmount.isFinite || parsedAmount <= 0) {
       throw StateError('이체 금액은 0보다 커야 합니다.');
     }
     final formattedNegativeAmount = _formatPlainNumber(-parsedAmount);
     final normalizedDate = _normalizeStoredDateKey(date);
 
-    final sourceAccount =
-        await (select(cashAccounts)..where(
-              (table) =>
-                  table.id.equals(sourceCashAccountId) &
-                  table.deletedAt.isNull(),
-            ))
-            .getSingleOrNull();
-    if (sourceAccount == null) {
-      throw StateError('원천 현금 계좌를 찾을 수 없습니다.');
-    }
-    await _ensureSufficientCashBalance(
-      cashAccountId: sourceCashAccountId,
-      type: '이체',
-      amount: formattedNegativeAmount,
-    );
-    final targetAccount =
-        await (select(cashAccounts)..where(
-              (table) =>
-                  table.id.equals(targetCashAccountId) &
-                  table.deletedAt.isNull(),
-            ))
-            .getSingleOrNull();
-    if (targetAccount == null) {
-      throw StateError('이체 대상 현금 계좌를 찾을 수 없습니다.');
-    }
-
-    final sourceSortQuery = selectOnly(transactionEvents)
-      ..addColumns([transactionEvents.sortOrder.max()])
-      ..where(transactionEvents.deletedAt.isNull());
-    final sourceMax =
-        (await sourceSortQuery.getSingleOrNull())?.read(
-          transactionEvents.sortOrder.max(),
-        ) ??
-        -1;
-    final targetMax = sourceMax;
-
     late final int sourceTransactionId;
     await transaction(() async {
+      final sourceAccount =
+          await (select(cashAccounts)..where(
+                (table) =>
+                    table.id.equals(sourceCashAccountId) &
+                    table.deletedAt.isNull(),
+              ))
+              .getSingleOrNull();
+      if (sourceAccount == null) {
+        throw StateError('원천 현금 계좌를 찾을 수 없습니다.');
+      }
+      await _ensureSufficientCashBalance(
+        cashAccountId: sourceCashAccountId,
+        type: '이체',
+        amount: formattedNegativeAmount,
+      );
+      final targetAccount =
+          await (select(cashAccounts)..where(
+                (table) =>
+                    table.id.equals(targetCashAccountId) &
+                    table.deletedAt.isNull(),
+              ))
+              .getSingleOrNull();
+      if (targetAccount == null) {
+        throw StateError('이체 대상 현금 계좌를 찾을 수 없습니다.');
+      }
+      if (sourceAccount.currencyCode != targetAccount.currencyCode) {
+        throw StateError('다른 통화 계좌 간에는 이체할 수 없습니다. 환전을 사용해 주세요.');
+      }
+
+      final sourceSortQuery = selectOnly(transactionEvents)
+        ..addColumns([transactionEvents.sortOrder.max()])
+        ..where(transactionEvents.deletedAt.isNull());
+      final sourceMax =
+          (await sourceSortQuery.getSingleOrNull())?.read(
+            transactionEvents.sortOrder.max(),
+          ) ??
+          -1;
+      final targetMax = sourceMax;
+
       sourceTransactionId = await _createLedgerCashTransferWithLegacyMirror(
         sourceAssetId: assetId,
         sourceCashAccountId: sourceCashAccountId,
@@ -4156,87 +4159,88 @@ class AppDatabase extends _$AppDatabase {
     required double exchangeRate,
   }) async {
     final sourceCashAccountId = sourceHoldingId.abs();
-    final sourceAccount =
-        await (select(cashAccounts)..where(
-              (table) =>
-                  table.id.equals(sourceCashAccountId) &
-                  table.deletedAt.isNull(),
-            ))
-            .getSingleOrNull();
-    if (sourceAccount == null) {
-      throw StateError('원본 현금 계좌를 찾을 수 없습니다.');
+    if (!exchangeRate.isFinite || exchangeRate <= 0) {
+      throw StateError('환율은 유한한 양수여야 합니다.');
     }
-
-    final sourceCurrency = sourceAccount.currencyCode;
-    final targetCurrency = switch (sourceCurrency) {
-      'KRW' => 'USD',
-      'USD' => 'KRW',
-      _ => throw StateError('지원하지 않는 통화입니다: $sourceCurrency'),
-    };
-
-    if (exchangeRate <= 0) {
-      throw StateError('환율은 0보다 커야 합니다.');
-    }
-
     final sourceAmount = _parseTransactionNumber(amount).abs();
-    if (sourceAmount <= 0) {
+    if (!sourceAmount.isFinite || sourceAmount <= 0) {
       throw StateError('환전 금액은 0보다 커야 합니다.');
     }
-    final targetAmount = sourceCurrency == 'KRW'
-        ? sourceAmount / exchangeRate
-        : sourceAmount * exchangeRate;
-
-    await _ensureSufficientCashBalance(
-      cashAccountId: sourceCashAccountId,
-      type: '환전',
-      amount: _formatPlainNumber(-sourceAmount),
-    );
-
-    final targetAccountQuery = select(cashAccounts)
-      ..where(
-        (table) =>
-            table.assetId.equals(assetId) &
-            table.currencyCode.equals(targetCurrency) &
-            table.deletedAt.isNull(),
-      )
-      ..orderBy([
-        (table) => OrderingTerm.asc(table.sortOrder),
-        (table) => OrderingTerm.asc(table.id),
-      ])
-      ..limit(1);
-    var targetAccount = await targetAccountQuery.getSingleOrNull();
-
-    late final int targetCashAccountId;
-    if (targetAccount == null) {
-      targetCashAccountId = await _insertCashAccount(
-        assetId: assetId,
-        currencyCode: targetCurrency,
-        name: '$targetCurrency 현금 계좌',
-        note: '',
-        balance: 0,
-      );
-      targetAccount =
-          await (select(cashAccounts)
-                ..where((table) => table.id.equals(targetCashAccountId)))
-              .getSingleOrNull();
-    } else {
-      targetCashAccountId = targetAccount.id;
-    }
-
-    final sourceSortQuery = selectOnly(transactionEvents)
-      ..addColumns([transactionEvents.sortOrder.max()])
-      ..where(transactionEvents.deletedAt.isNull());
-    final sourceMax =
-        (await sourceSortQuery.getSingleOrNull())?.read(
-          transactionEvents.sortOrder.max(),
-        ) ??
-        -1;
-    final targetMax = sourceMax;
-
     final normalizedDate = _normalizeStoredDateKey(date);
-
     late final int sourceTransactionId;
     await transaction(() async {
+      final sourceAccount =
+          await (select(cashAccounts)..where(
+                (table) =>
+                    table.id.equals(sourceCashAccountId) &
+                    table.deletedAt.isNull(),
+              ))
+              .getSingleOrNull();
+      if (sourceAccount == null) {
+        throw StateError('원본 현금 계좌를 찾을 수 없습니다.');
+      }
+
+      final sourceCurrency = sourceAccount.currencyCode;
+      final targetCurrency = switch (sourceCurrency) {
+        'KRW' => 'USD',
+        'USD' => 'KRW',
+        _ => throw StateError('지원하지 않는 통화입니다: $sourceCurrency'),
+      };
+
+      final targetAmount = sourceCurrency == 'KRW'
+          ? sourceAmount / exchangeRate
+          : sourceAmount * exchangeRate;
+      if (!targetAmount.isFinite || targetAmount <= 0) {
+        throw StateError('환전 후 금액이 유효하지 않습니다.');
+      }
+
+      await _ensureSufficientCashBalance(
+        cashAccountId: sourceCashAccountId,
+        type: '환전',
+        amount: _formatPlainNumber(-sourceAmount),
+      );
+
+      final targetAccountQuery = select(cashAccounts)
+        ..where(
+          (table) =>
+              table.assetId.equals(assetId) &
+              table.currencyCode.equals(targetCurrency) &
+              table.deletedAt.isNull(),
+        )
+        ..orderBy([
+          (table) => OrderingTerm.asc(table.sortOrder),
+          (table) => OrderingTerm.asc(table.id),
+        ])
+        ..limit(1);
+      var targetAccount = await targetAccountQuery.getSingleOrNull();
+
+      late final int targetCashAccountId;
+      if (targetAccount == null) {
+        targetCashAccountId = await _insertCashAccount(
+          assetId: assetId,
+          currencyCode: targetCurrency,
+          name: '$targetCurrency 현금 계좌',
+          note: '',
+          balance: 0,
+        );
+        targetAccount =
+            await (select(cashAccounts)
+                  ..where((table) => table.id.equals(targetCashAccountId)))
+                .getSingleOrNull();
+      } else {
+        targetCashAccountId = targetAccount.id;
+      }
+
+      final sourceSortQuery = selectOnly(transactionEvents)
+        ..addColumns([transactionEvents.sortOrder.max()])
+        ..where(transactionEvents.deletedAt.isNull());
+      final sourceMax =
+          (await sourceSortQuery.getSingleOrNull())?.read(
+            transactionEvents.sortOrder.max(),
+          ) ??
+          -1;
+      final targetMax = sourceMax;
+
       sourceTransactionId = await _createLedgerFxExchangeWithLegacyMirror(
         sourceAssetId: assetId,
         sourceCashAccountId: sourceCashAccountId,
@@ -4710,24 +4714,29 @@ class AppDatabase extends _$AppDatabase {
     return null;
   }
 
-  Future<void> _replaceLedgerTransactionItem(TransactionItem item) async {
+  Future<void> _replaceLedgerTransactionItem(TransactionItem item) =>
+      transaction(() => _replaceLedgerTransactionItemInTransaction(item));
+
+  Future<void> _replaceLedgerTransactionItemInTransaction(
+    TransactionItem item,
+  ) async {
     final eventId = await _activeLedgerEventIdForItem(item);
     if (eventId == null) return;
 
     final lineRows = await customSelect(
       '''
-        SELECT
-          id,
-          asset_id,
-          holding_id,
-          cash_account_id,
-          action,
-          cash_delta
-        FROM transaction_lines
-        WHERE event_id = ?
-          AND deleted_at IS NULL
-        ORDER BY sort_order ASC, id ASC
-      ''',
+      SELECT
+        id,
+        asset_id,
+        holding_id,
+        cash_account_id,
+        action,
+        cash_delta
+      FROM transaction_lines
+      WHERE event_id = ?
+        AND deleted_at IS NULL
+      ORDER BY sort_order ASC, id ASC
+    ''',
       variables: [Variable.withInt(eventId)],
       readsFrom: {transactionLines},
     ).get();
@@ -7241,33 +7250,68 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> removeLegacySeededCashHoldings() async {
-    const legacyNames = ['생활비 통장', '예비자금'];
+    // Legacy cash conversion is already performed by the schema migration.
+    // A display name cannot distinguish a seed from a user's real account.
+  }
 
-    await transaction(() async {
-      final legacyHoldingRows = await (select(
-        holdings,
-      )..where((table) => table.name.isIn(legacyNames))).get();
-      final legacyHoldingIds = legacyHoldingRows.map((row) => row.id).toList();
+  Future<bool> hasPendingSyncChanges() async {
+    for (final table in const [
+      'assets',
+      'holdings',
+      'cash_accounts',
+      'transaction_events',
+      'transaction_lines',
+      'snapshot_notes',
+    ]) {
+      if (table == 'snapshot_notes' && !await _tableExists(table)) continue;
+      final rows = await customSelect(
+        'SELECT 1 FROM $table WHERE dirty = 1 LIMIT 1',
+      ).get();
+      if (rows.isNotEmpty) return true;
+    }
+    return false;
+  }
 
-      if (legacyHoldingIds.isNotEmpty) {
-        await (delete(
-          transactions,
-        )..where((table) => table.holdingId.isIn(legacyHoldingIds))).go();
-        await (delete(
-          holdings,
-        )..where((table) => table.id.isIn(legacyHoldingIds))).go();
-      }
+  Future<String?> localDataOwner() async {
+    await customStatement(
+      'CREATE TABLE IF NOT EXISTS local_data_scope (id INTEGER PRIMARY KEY CHECK (id = 1), user_id TEXT NOT NULL)',
+    );
+    final rows = await customSelect(
+      'SELECT user_id FROM local_data_scope WHERE id = 1',
+    ).get();
+    return rows.isEmpty ? null : rows.first.read<String>('user_id');
+  }
 
-      await (delete(
-        transactions,
-      )..where((table) => table.name.isIn(legacyNames))).go();
-    });
+  Future<bool> hasLocalCoreData() async {
+    for (final table in const [
+      'assets',
+      'daily_investment_reviews',
+      'daily_portfolio_snapshots',
+      'snapshot_notes',
+    ]) {
+      if (table == 'snapshot_notes' && !await _tableExists(table)) continue;
+      final rows = await customSelect('SELECT 1 FROM $table LIMIT 1').get();
+      if (rows.isNotEmpty) return true;
+    }
+    return false;
+  }
+
+  Future<void> assignLocalDataOwner(String userId) async {
+    await localDataOwner();
+    await customStatement(
+      'INSERT OR REPLACE INTO local_data_scope (id, user_id) VALUES (1, ?)',
+      [userId],
+    );
   }
 
   Future<void> clearAllLocalUserData() async {
     await transaction(() async {
+      if (await _tableExists('local_data_scope')) {
+        await customStatement('DELETE FROM local_data_scope');
+      }
       await delete(companyNewsCaches).go();
       await delete(marketNewsCaches).go();
+      await delete(dailyInvestmentReviews).go();
       if (await _tableExists('portfolio_diagnosis_caches')) {
         await customStatement('DELETE FROM portfolio_diagnosis_caches');
       }
@@ -7831,46 +7875,77 @@ class AppDatabase extends _$AppDatabase {
     Map<String, Object?>? acceptedClientIds,
   ) async {
     await transaction(() async {
+      // Only acknowledge the exact revision that was sent. Edits made while
+      // the network request was in flight must remain eligible for the next sync.
+      final current = await buildDirtySyncPayload();
       await _clearDirtyByClientIds(
         'assets',
-        _acceptedOrPayloadClientIds(acceptedClientIds, payload, 'assets'),
+        _unchangedAcceptedIds(payload, current, acceptedClientIds, 'assets'),
       );
       await _clearDirtyByClientIds(
         'holdings',
-        _acceptedOrPayloadClientIds(acceptedClientIds, payload, 'holdings'),
+        _unchangedAcceptedIds(payload, current, acceptedClientIds, 'holdings'),
       );
       await _clearDirtyByClientIds(
         'cash_accounts',
-        _acceptedOrPayloadClientIds(
-          acceptedClientIds,
+        _unchangedAcceptedIds(
           payload,
+          current,
+          acceptedClientIds,
           'cash_accounts',
         ),
       );
       await _clearDirtyByClientIds(
         'transaction_events',
-        _acceptedOrPayloadClientIds(
-          acceptedClientIds,
+        _unchangedAcceptedIds(
           payload,
+          current,
+          acceptedClientIds,
           'transaction_events',
         ),
       );
       await _clearDirtyByClientIds(
         'transaction_lines',
-        _acceptedOrPayloadClientIds(
-          acceptedClientIds,
+        _unchangedAcceptedIds(
           payload,
+          current,
+          acceptedClientIds,
           'transaction_lines',
         ),
       );
       await _clearSnapshotNoteDirtyByDates(
-        _acceptedOrPayloadSnapshotDates(
-          acceptedClientIds,
+        _unchangedAcceptedIds(
           payload,
+          current,
+          acceptedClientIds,
           'snapshot_notes',
+          idKey: 'snapshot_date',
         ),
       );
     });
+  }
+
+  List<String> _unchangedAcceptedIds(
+    Map<String, Object?> sent,
+    Map<String, Object?> current,
+    Map<String, Object?>? accepted,
+    String table, {
+    String idKey = 'client_id',
+  }) {
+    final acceptedIds = idKey == 'snapshot_date'
+        ? _acceptedOrPayloadSnapshotDates(accepted, sent, table)
+        : _acceptedOrPayloadClientIds(accepted, sent, table);
+    final sentRows = {
+      for (final row in (sent[table] as List? ?? const []).whereType<Map>())
+        if (row[idKey] != null) '${row[idKey]}': jsonEncode(row),
+    };
+    final currentRows = {
+      for (final row in (current[table] as List? ?? const []).whereType<Map>())
+        if (row[idKey] != null) '${row[idKey]}': jsonEncode(row),
+    };
+    return acceptedIds
+        .where((id) => sentRows[id] != null && sentRows[id] == currentRows[id])
+        .toList();
   }
 
   List<String> _acceptedOrPayloadClientIds(
@@ -7944,7 +8019,14 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  Future<void> replaceLocalSyncData(Map<String, dynamic> payload) async {
+  Future<void> replaceLocalSyncData(
+    Map<String, dynamic> payload, {
+    bool requireCleanLocal = false,
+    String? ownerId,
+    bool enforceOwnerMatch = false,
+    String? expectedOwnerId,
+    bool Function()? canApply,
+  }) async {
     final rawAssets = (payload['assets'] as List? ?? const [])
         .whereType<Map>()
         .map((row) => row.map((key, value) => MapEntry('$key', value)))
@@ -8005,6 +8087,35 @@ class AppDatabase extends _$AppDatabase {
     };
 
     await transaction(() async {
+      if (canApply != null && !canApply()) {
+        throw StateError('계정이 변경되어 서버 데이터를 적용하지 않았습니다.');
+      }
+      if (enforceOwnerMatch && await localDataOwner() != expectedOwnerId) {
+        throw StateError('로컬 데이터의 계정이 변경되어 서버 데이터를 적용하지 않았습니다.');
+      }
+      if (requireCleanLocal && await hasPendingSyncChanges()) {
+        throw StateError('미동기화 로컬 변경이 있어 서버 데이터로 교체할 수 없습니다.');
+      }
+      if (ownerId != null && expectedOwnerId != ownerId) {
+        await delete(dailyInvestmentReviews).go();
+        await delete(companyNewsCaches).go();
+        await delete(marketNewsCaches).go();
+        if (await _tableExists('portfolio_diagnosis_caches')) {
+          await customStatement('DELETE FROM portfolio_diagnosis_caches');
+        }
+        if (await _tableExists('snapshot_notes')) {
+          await customStatement('DELETE FROM snapshot_notes');
+        }
+        if (await _tableExists('daily_portfolio_snapshot_cash_accounts')) {
+          await customStatement(
+            'DELETE FROM daily_portfolio_snapshot_cash_accounts',
+          );
+        }
+        await delete(dailyPortfolioSnapshotHoldingItems).go();
+        await delete(dailyPortfolioSnapshotItems).go();
+        await delete(dailyPortfolioSnapshots).go();
+        await delete(exchangeRates).go();
+      }
       await delete(portfolioDailyReturns).go();
       await delete(assetAllocationTargets).go();
       await delete(transactionLines).go();
@@ -8312,6 +8423,10 @@ class AppDatabase extends _$AppDatabase {
           ),
         );
       }
+      if (canApply != null && !canApply()) {
+        throw StateError('계정이 변경되어 서버 데이터를 적용하지 않았습니다.');
+      }
+      if (ownerId != null) await assignLocalDataOwner(ownerId);
     });
 
     // Remote payloads already carry calculation-ready state tables and

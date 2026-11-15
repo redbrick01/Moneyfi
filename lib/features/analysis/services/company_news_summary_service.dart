@@ -77,12 +77,12 @@ class CompanyNewsSummaryService {
       );
 
       if (response.status != 200 || response.data is! Map) {
-        return _fetchCachedOrFallbackUserSummaries();
+        return await _fetchCachedOrFallbackUserSummaries();
       }
 
       final payload = Map<String, dynamic>.from(response.data as Map);
       if (payload['ok'] != true || payload['items'] is! List) {
-        return _fetchCachedOrFallbackUserSummaries();
+        return await _fetchCachedOrFallbackUserSummaries();
       }
 
       final items = (payload['items'] as List)

@@ -781,7 +781,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                           opacity: animation,
                                           child: SizeTransition(
                                             sizeFactor: animation,
-                                            axisAlignment: -1,
+                                            alignment: AlignmentDirectional.topStart,
                                             child: child,
                                           ),
                                         );
@@ -1015,9 +1015,6 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     int oldIndex,
     int newIndex,
   ) async {
-    if (newIndex > oldIndex) {
-      newIndex -= 1;
-    }
     if (oldIndex == newIndex) return;
 
     final reordered = List<HoldingItem>.from(visibleItems);
@@ -1054,9 +1051,6 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
     int oldIndex,
     int newIndex,
   ) async {
-    if (newIndex > oldIndex) {
-      newIndex -= 1;
-    }
     if (oldIndex == newIndex) return;
 
     final reordered = List<HoldingItem>.from(visibleItems);
@@ -1161,7 +1155,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                 buildDefaultDragHandles: false,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
-                onReorder: (oldIndex, newIndex) =>
+                onReorderItem: (oldIndex, newIndex) =>
                     _reorderHoldings(items, oldIndex, newIndex),
                 itemBuilder: (context, index) {
                   final holding = items[index];
@@ -1273,7 +1267,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                 buildDefaultDragHandles: false,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
-                onReorder: (oldIndex, newIndex) =>
+                onReorderItem: (oldIndex, newIndex) =>
                     _reorderCashAccounts(items, oldIndex, newIndex),
                 itemBuilder: (context, index) {
                   final holding = items[index];

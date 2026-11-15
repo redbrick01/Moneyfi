@@ -15,6 +15,7 @@ import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/navigation/moneyfy_navigation.dart';
 import 'package:moneyfy/features/auth/services/auth_service.dart';
+import 'package:moneyfy/features/auth/services/app_data_lifecycle_service.dart';
 import 'package:moneyfy/features/analysis/services/gpt_db_summary_builder.dart';
 import 'package:moneyfy/features/portfolio/services/market_data_service.dart';
 import 'package:moneyfy/features/sync/services/sync_service.dart';
@@ -236,13 +237,38 @@ class _LoggedInViewState extends State<_LoggedInView> {
   }
 
   Future<void> _confirmAndHandleCorePull() async {
+    final owner = await AppDatabase.instance.localDataOwner();
+    final pending = await AppDatabase.instance.hasPendingSyncChanges();
+    final hasLocalData = await AppDatabase.instance.hasLocalCoreData();
+    final userId = AuthService.currentUser?.id;
+    if (!mounted || userId == null) return;
+    if (pending && owner != null && owner != userId) {
+      AppSnackBar.showError(
+        context,
+        '이전 계정의 미동기화 데이터가 있습니다. 해당 계정으로 로그인해 먼저 동기화해 주세요.',
+      );
+      return;
+    }
+    if (pending && owner == null) {
+      final adopt = await _confirmSyncAction(
+        title: '로컬 데이터를 이 계정에 연결할까요?',
+        content: '소유 계정을 확인할 수 없는 로컬 거래가 있습니다. 현재 로그인된 계정에 연결해 서버로 동기화합니다.',
+        confirmLabel: '연결하고 동기화',
+      );
+      if (!adopt || !mounted) return;
+      await AppDatabase.instance.assignLocalDataOwner(userId);
+      await _handleCorePull();
+      return;
+    }
     final approved = await _confirmSyncAction(
       title: '코어 데이터를 가져올까요?',
-      content: '서버의 코어 데이터를 가져와 로컬 DB에 반영합니다.',
+      content: hasLocalData && owner != userId
+          ? '현재 로컬 데이터의 계정이 다르거나 확인되지 않습니다. 계속하면 이 기기의 기존 자산, 스냅샷, 투자 일지가 현재 계정의 데이터로 교체됩니다. 투자 일지처럼 서버에 저장되지 않는 항목도 삭제됩니다.'
+          : '서버의 코어 데이터를 가져와 로컬 DB에 반영합니다.',
       confirmLabel: '가져오기',
     );
     if (!approved || !mounted || _isPullingCoreData || _isSyncing) return;
-    await _handleCorePull();
+    await _handleCorePull(allowAccountSwitch: owner != userId);
   }
 
   Future<void> _showEditNameDialog(String currentName) async {
@@ -471,7 +497,7 @@ class _LoggedInViewState extends State<_LoggedInView> {
     }
   }
 
-  Future<void> _handleCorePull() async {
+  Future<void> _handleCorePull({bool allowAccountSwitch = false}) async {
     setState(() {
       _isPullingCoreData = true;
       _syncBannerState = _SyncBannerState.running;
@@ -480,7 +506,13 @@ class _LoggedInViewState extends State<_LoggedInView> {
 
     final success = await SyncService.instance.pullRemoteCoreData(
       reason: 'my_page_pull_remote_core',
+      allowAccountSwitch: allowAccountSwitch,
     );
+    final snapshotCount = success && allowAccountSwitch
+        ? await SyncService.instance.pullRemoteSnapshots(
+            reason: 'my_page_account_switch',
+          )
+        : 0;
     if (!mounted) return;
 
     setState(() {
@@ -497,11 +529,21 @@ class _LoggedInViewState extends State<_LoggedInView> {
     });
 
     if (success) {
-      AppSnackBar.showSuccess(
-        context,
-        '코어 데이터를 가져와 적용했어요.',
-        hasFloatingNavInset: true,
+      AppDataLifecycleService.completeReplacement(
+        refreshReason: 'manual_core_pull',
       );
+      if (snapshotCount < 0) {
+        AppSnackBar.showInfo(
+          context,
+          '자산은 적용됐지만 과거 스냅샷은 가져오지 못했습니다. 다시 시도해 주세요.',
+        );
+      } else {
+        AppSnackBar.showSuccess(
+          context,
+          '코어 데이터를 가져와 적용했어요.',
+          hasFloatingNavInset: true,
+        );
+      }
     } else {
       AppSnackBar.showError(
         context,
@@ -545,7 +587,6 @@ class _LoggedInViewState extends State<_LoggedInView> {
 
     try {
       await AuthService.signOut();
-      await AppDatabase.instance.clearAllLocalUserData();
       await MarketDataService.instance.clearLocalCache();
       if (!mounted) return;
       AppSnackBar.showSuccess(context, '로그아웃 됐어요.');

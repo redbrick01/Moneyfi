@@ -34,8 +34,6 @@
 | [Data & Sync Flow](data_and_sync.md) | Drift DB, 원장 모델, Supabase 동기화 |
 | [Supabase Overview](supabase_overview.md) | Supabase migration, Edge Function, 운영 포인트 |
 | [Supabase CLI Runbook](supabase_cli_runbook.md) | 원격 Supabase 운영 절차 |
-| [Embedding Project Boundary](embedding_project_boundary.md) | 앱 repo와 별도 임베딩 연구 repo의 책임 경계 |
-
 ## Design And UI Docs
 
 | 문서 | 역할 |
