@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { authenticateUser } from "../_shared/auth.ts";
+import { fetchAllRows } from "../_shared/paginated_rows.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -34,14 +35,11 @@ async function ensureClientIds(
   table: SyncTable,
   userId: string,
 ) {
-  const { data, error } = await supabase
+  const { data } = await fetchAllRows(() => supabase
     .from(table)
-    .select("id, client_id")
-    .eq("user_id", userId);
-
-  if (error) {
-    throw new Error(`${table} client_id preload failed: ${error.message}`);
-  }
+    .select("id, client_id", { count: "exact" })
+    .eq("user_id", userId)
+    .order("id", { ascending: true }));
 
   for (const row of data ?? []) {
     const currentClientId = typeof row.client_id === "string"
@@ -120,76 +118,59 @@ Deno.serve(async (req) => {
       transactionEventsResult,
       transactionLinesResult,
     ] = await Promise.all([
-      supabase
+      fetchAllRows(() => supabase
         .from("assets")
         .select(
           "id, client_id, last_modified_at, asset_type, title, alias, currency_code, value, change, icon_code_point, quantity_label, quantity_value, average_label, average_value, note, sort_order",
+          { count: "exact" },
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
         .order("sort_order", { ascending: true })
-        .order("id", { ascending: true }),
-      supabase
+        .order("id", { ascending: true })),
+      fetchAllRows(() => supabase
         .from("holdings")
         .select(
           "id, client_id, last_modified_at, asset_id, currency_code, market_updated_at, exchange_code, name, symbol, quantity, average_price, average_price_source, average_price_krw, average_purchase_fx_rate, cost_basis_krw, current_price, note, sort_order",
+          { count: "exact" },
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
         .order("sort_order", { ascending: true })
-        .order("id", { ascending: true }),
-      supabase
+        .order("id", { ascending: true })),
+      fetchAllRows(() => supabase
         .from("cash_accounts")
         .select(
           "id, client_id, last_modified_at, asset_id, currency_code, name, base_balance, balance, note, sort_order",
+          { count: "exact" },
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
         .order("sort_order", { ascending: true })
-        .order("id", { ascending: true }),
-      supabase
+        .order("id", { ascending: true })),
+      fetchAllRows(() => supabase
         .from("transaction_events")
         .select(
           "id, client_id, last_modified_at, occurred_at, kind, title, memo, source, flow_category, legacy_source_table, legacy_source_id, sort_order",
+          { count: "exact" },
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
         .order("occurred_at", { ascending: true })
         .order("sort_order", { ascending: true })
-        .order("id", { ascending: true }),
-      supabase
+        .order("id", { ascending: true })),
+      fetchAllRows(() => supabase
         .from("transaction_lines")
         .select(
           "id, client_id, last_modified_at, event_id, asset_id, holding_id, cash_account_id, legacy_source_table, legacy_source_id, action, currency_code, quantity_delta, cash_delta, unit_price, gross_amount, fee_amount, tax_amount, cost_basis_delta, cost_basis_source_delta, realized_pnl, realized_pnl_source, fx_rate, sort_order",
+          { count: "exact" },
         )
         .eq("user_id", userId)
         .is("deleted_at", null)
         .order("event_id", { ascending: true })
         .order("sort_order", { ascending: true })
-        .order("id", { ascending: true }),
+        .order("id", { ascending: true })),
     ]);
-
-    if (assetsResult.error) {
-      throw new Error(`assets load failed: ${assetsResult.error.message}`);
-    }
-    if (holdingsResult.error) {
-      throw new Error(`holdings load failed: ${holdingsResult.error.message}`);
-    }
-    if (cashAccountsResult.error) {
-      throw new Error(
-        `cash_accounts load failed: ${cashAccountsResult.error.message}`,
-      );
-    }
-    if (transactionEventsResult.error) {
-      throw new Error(
-        `transaction_events load failed: ${transactionEventsResult.error.message}`,
-      );
-    }
-    if (transactionLinesResult.error) {
-      throw new Error(
-        `transaction_lines load failed: ${transactionLinesResult.error.message}`,
-      );
-    }
 
     const assetRows = (assetsResult.data ?? []).map((row) => ({
       client_id: typeof row.client_id === "string" ? row.client_id : "",

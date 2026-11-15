@@ -1,0 +1,9 @@
+drop table if exists public.codex_news_sources cascade;
+drop table if exists public.company_news_summaries cascade;
+drop table if exists public.market_news_summaries cascade;
+drop table if exists public.company_news cascade;
+drop table if exists public.market_news cascade;
+drop table if exists public.document_analysis cascade;
+drop table if exists public.document_relations cascade;
+drop table if exists public.documents cascade;
+drop table if exists public.sources cascade;

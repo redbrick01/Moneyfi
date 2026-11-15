@@ -114,6 +114,54 @@ void main() {
     expect(await db.select(db.dailyInvestmentReviews).get(), isEmpty);
   });
 
+  test('matching ownerless core keeps local-only investment review', () async {
+    final id = await asset('기존 자산');
+    final clientId = (await db.select(db.assets).get()).single.clientId!;
+    await db.customStatement('UPDATE assets SET dirty = 0');
+    await db.customStatement(
+      "INSERT INTO daily_investment_reviews (review_date, status, mode, created_at, updated_at) VALUES ('2026-11-15', 'draft', 'manual', 'now', 'now')",
+    );
+
+    await db.replaceLocalSyncData(
+      {
+        'assets': [
+          {'client_id': clientId, 'title': '기존 자산'},
+        ],
+      },
+      requireCleanLocal: true,
+      ownerId: 'current-user',
+      enforceOwnerMatch: true,
+      expectedOwnerId: null,
+    );
+
+    expect(await db.localDataOwner(), 'current-user');
+    expect((await db.select(db.assets).get()).single.clientId, clientId);
+    expect(await db.select(db.dailyInvestmentReviews).get(), hasLength(1));
+    expect(id, greaterThan(0));
+  });
+
+  test('different ownerless core does not retain local-only review', () async {
+    await asset('다른 계정 자산');
+    await db.customStatement('UPDATE assets SET dirty = 0');
+    await db.customStatement(
+      "INSERT INTO daily_investment_reviews (review_date, status, mode, created_at, updated_at) VALUES ('2026-11-15', 'draft', 'manual', 'now', 'now')",
+    );
+
+    await db.replaceLocalSyncData(
+      {
+        'assets': [
+          {'client_id': 'different-client-id', 'title': '서버 자산'},
+        ],
+      },
+      requireCleanLocal: true,
+      ownerId: 'current-user',
+      enforceOwnerMatch: true,
+      expectedOwnerId: null,
+    );
+
+    expect(await db.select(db.dailyInvestmentReviews).get(), isEmpty);
+  });
+
   test('account change during replacement rolls back all deletions', () async {
     await db.assignLocalDataOwner('first-user');
     final id = await asset('보존할 자산');

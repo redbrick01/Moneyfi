@@ -8086,6 +8086,40 @@ class AppDatabase extends _$AppDatabase {
           row.clientId!: row.hidden,
     };
 
+    bool sameClientIds(Iterable<String?> local, List<Map<String, dynamic>> remote) {
+      final localIds = local.whereType<String>().where((id) => id.isNotEmpty).toSet();
+      final remoteIds = remote
+          .map((row) => _nullableString(row['client_id']))
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      return localIds.length == local.length &&
+          remoteIds.length == remote.length &&
+          localIds.length == remoteIds.length &&
+          localIds.containsAll(remoteIds);
+    }
+
+    final preserveOwnerlessReviews = expectedOwnerId == null &&
+        ownerId != null &&
+        localAssetRows.isNotEmpty &&
+        sameClientIds(localAssetRows.map((row) => row.clientId), rawAssets) &&
+        sameClientIds(
+          (await select(holdings).get()).map((row) => row.clientId),
+          rawHoldings,
+        ) &&
+        sameClientIds(
+          (await select(cashAccounts).get()).map((row) => row.clientId),
+          rawCashAccounts,
+        ) &&
+        sameClientIds(
+          (await select(transactionEvents).get()).map((row) => row.clientId),
+          rawTransactionEvents,
+        ) &&
+        sameClientIds(
+          (await select(transactionLines).get()).map((row) => row.clientId),
+          rawTransactionLines,
+        );
+
     await transaction(() async {
       if (canApply != null && !canApply()) {
         throw StateError('계정이 변경되어 서버 데이터를 적용하지 않았습니다.');
@@ -8097,7 +8131,9 @@ class AppDatabase extends _$AppDatabase {
         throw StateError('미동기화 로컬 변경이 있어 서버 데이터로 교체할 수 없습니다.');
       }
       if (ownerId != null && expectedOwnerId != ownerId) {
-        await delete(dailyInvestmentReviews).go();
+        if (!preserveOwnerlessReviews) {
+          await delete(dailyInvestmentReviews).go();
+        }
         await delete(companyNewsCaches).go();
         await delete(marketNewsCaches).go();
         if (await _tableExists('portfolio_diagnosis_caches')) {
