@@ -47,11 +47,10 @@ MONEYFY는 로컬 DB와 Supabase 동기화를 함께 사용하는 자산 관리 
 │   ├── components/       # Reusable UI building blocks
 │   ├── data/             # Static/sample data helpers
 │   ├── db/               # Drift database and generated queries
-│   ├── design_system/    # Brand/spec documentation assets
+│   ├── design_system/    # App theme and design tokens
 │   ├── models/           # App data models
 │   ├── pages/            # Screen-level pages and forms
 │   ├── services/         # Auth, sync, market data, summaries
-│   ├── theme/            # Colors and app theme
 │   ├── ui_scaffold/      # Shared app shell scaffolding
 │   ├── utils/            # Utility helpers
 │   └── widgets/          # Legacy/shared widgets
@@ -89,18 +88,13 @@ cp config.example.json config.json
 }
 ```
 
-`config.json` 또는 실행 시 `--dart-define`으로 KIS 값을 전달합니다.
-
-```bash
-flutter run \
-  --dart-define=KIS_APP_KEY=YOUR_KIS_APP_KEY \
-  --dart-define=KIS_APP_SECRET=YOUR_KIS_APP_SECRET
-```
+`config.example.json`을 프로젝트 루트의 `config.json`으로 복사한 뒤
+`KIS_APP_KEY`와 `KIS_APP_SECRET`을 채웁니다. KIS 설정은 빌드할 때 전달합니다.
 
 ### 3. Run the app
 
 ```bash
-flutter run
+flutter run --dart-define-from-file=config.json
 ```
 
 ## Development

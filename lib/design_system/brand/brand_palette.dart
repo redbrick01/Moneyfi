@@ -60,9 +60,7 @@ class BrandColors extends ThemeExtension<BrandColors> {
       negativeContainer: isDark
           ? VisualSpec.brand.darkNegativeContainer
           : VisualSpec.brand.lightNegativeContainer,
-      negativeOn: isDark
-          ? VisualSpec.brand.darkOnNegativeContainer
-          : VisualSpec.brand.lightOnNegativeContainer,
+      negativeOn: scheme.onErrorContainer,
       warningContainer: isDark
           ? VisualSpec.brand.darkWarningContainer
           : VisualSpec.brand.lightWarningContainer,

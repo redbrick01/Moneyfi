@@ -1,7 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:moneyfy/components/buttons/app_buttons.dart';
 import 'package:moneyfy/components/expandable/expandable_tile.dart';
+import 'package:moneyfy/components/forms/form_design.dart';
 import 'package:moneyfy/components/headers/detail_header_card.dart';
 import 'package:moneyfy/components/metrics/app_metric_tile.dart';
 import 'package:moneyfy/components/panels/app_detail_section.dart';
@@ -15,6 +21,11 @@ import 'package:moneyfy/components/states/empty_state.dart';
 import 'package:moneyfy/components/states/inline_error.dart';
 import 'package:moneyfy/components/states/retry_row.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
+import 'package:moneyfy/design_system/app_typography.dart';
+import 'package:moneyfy/design_system/brand/brand_palette.dart';
+import 'package:moneyfy/design_system/tokens.dart';
+import 'package:moneyfy/design_system/spec.dart';
+import 'package:moneyfy/features/analysis/screens/investment_performance_page.dart';
 import 'package:moneyfy/ui_scaffold/app_page_scaffold.dart';
 import 'package:moneyfy/widgets/moneyfy_ui.dart';
 
@@ -187,6 +198,164 @@ void main() {
     await tester.tap(find.text('이슈 제목'));
     await tester.pumpAndSettle();
     expect(find.text('확장 내용'), findsOneWidget);
+  });
+
+  test('default typography is achromatic and readable on app surfaces', () {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      final type = theme.extension<AppTypography>()!;
+      final surfaces = theme.extension<AppSurfaceRoles>()!;
+      expect(type.pageTitle.color, type.sectionTitle.color);
+      expect(type.heroNumber.color, type.pageTitle.color);
+      expect(type.pageTitle.color, type.body.color);
+      expect(type.body.color, theme.colorScheme.onSurface);
+      expect(type.caption.color, theme.colorScheme.onSurfaceVariant);
+      for (final color in [type.body.color!, type.caption.color!]) {
+        expect(color.r, color.g);
+        expect(color.g, color.b);
+      }
+      for (final surface in [
+        surfaces.appBackground,
+        surfaces.surfaceBase,
+        surfaces.surfaceRaised,
+      ]) {
+        for (final text in [type.pageTitle, type.body, type.caption]) {
+          final a = text.color!.computeLuminance() + 0.05;
+          final b = surface.computeLuminance() + 0.05;
+          expect(a > b ? a / b : b / a, greaterThanOrEqualTo(4.5));
+        }
+      }
+    }
+  });
+
+  test('warning text has contrast on common theme surfaces', () {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      final colors = theme.extension<BrandColors>()!;
+      final surfaces = theme.extension<AppSurfaceRoles>()!;
+      for (final background in [
+        surfaces.appBackground,
+        surfaces.surfaceBase,
+        surfaces.surfaceRaised,
+      ]) {
+        final warning = colors.warningOn.computeLuminance() + 0.05;
+        final surface = background.computeLuminance() + 0.05;
+        final contrast = warning > surface
+            ? warning / surface
+            : surface / warning;
+        expect(contrast, greaterThanOrEqualTo(4.5));
+      }
+    }
+  });
+
+  test('theme actions and status text use the brand colors', () {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      final scheme = theme.colorScheme;
+      expect(scheme.primary, VisualSpec.brand.seedColor);
+      expect(scheme.onPrimary, VisualSpec.brand.lightSurface);
+      final brand = theme.extension<BrandColors>()!;
+      expect(brand.positiveOn, scheme.primary);
+      expect(brand.negativeOn, VisualSpec.brand.brandRed);
+      expect(scheme.error, VisualSpec.brand.brandRed);
+      expect(scheme.onErrorContainer, VisualSpec.brand.brandRed);
+      expect(
+        scheme.onPrimaryContainer,
+        scheme.brightness == Brightness.light ? scheme.primary : scheme.onPrimary,
+      );
+    }
+  });
+
+  testWidgets('transaction labels fit at narrow widths with larger type', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpUi(
+      tester,
+      Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(1.3),
+          ),
+          child: const TransactionRow(
+            typeLabel: '배당·분배금',
+            title: '테스트 자산',
+            subtitle: '2026-11-21',
+            amountText: '+₩100,000',
+          ),
+        ),
+      ),
+    );
+    for (final width in [360.0, 390.0, 430.0]) {
+      tester.view.physicalSize = Size(width, 800);
+      await tester.pumpAndSettle();
+      final label = tester.renderObject<RenderParagraph>(find.text('배당·분배금'));
+      expect(label.didExceedMaxLines, isFalse, reason: 'width: $width');
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('positive and negative attribution use semantic foregrounds', (
+    tester,
+  ) async {
+    await pumpUi(
+      tester,
+      buildPerformanceAttributionForTesting({
+        '실현 손익': 2000,
+        '평가 손익': -1000,
+      }),
+    );
+
+    final colors = AppTheme.light.extension<BrandColors>()!;
+    for (final (label, color) in [
+      ('+₩2,000', colors.positiveOn),
+      ('-₩1,000', colors.negativeOn),
+    ]) {
+      final text = tester.widget<Text>(find.text(label));
+      expect(text.style?.color, color);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  test('web app manifest uses the light theme brand and canvas', () {
+    final manifest =
+        jsonDecode(File('web/manifest.json').readAsStringSync())
+            as Map<String, dynamic>;
+    final theme = AppTheme.light;
+    String hex(Color color) =>
+        '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+
+    expect(
+      manifest['theme_color'].toString().toLowerCase(),
+      hex(VisualSpec.brand.seedColor),
+    );
+    expect(
+      manifest['background_color'].toString().toLowerCase(),
+      hex(theme.scaffoldBackgroundColor),
+    );
+  });
+
+  testWidgets('edit forms use the shared primary button', (tester) async {
+    var saves = 0;
+    await pumpUi(
+      tester,
+      MoneyfyFormScaffold(
+        title: '편집',
+        actionLabel: '저장',
+        isSaving: false,
+        onSave: () => saves++,
+        children: const [Text('입력 필드')],
+      ),
+    );
+
+    expect(find.byType(AppPrimaryButton), findsOneWidget);
+    final button = find.widgetWithText(FilledButton, '저장');
+    expect(
+      tester.getSize(button).height,
+      greaterThanOrEqualTo(VisualSpec.icon.minTapTarget),
+    );
+    await tester.tap(button);
+    expect(saves, 1);
   });
 
   testWidgets('AppPageScaffold form renders fixed CTA', (tester) async {

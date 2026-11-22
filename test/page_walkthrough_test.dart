@@ -1,3 +1,4 @@
+import 'package:moneyfy/design_system/spec.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -177,6 +178,13 @@ void main() {
     ]) {
       await tester.tap(find.byKey(ValueKey('bottom-tab-$label')));
       await settlePage(tester);
+      final selectedIcon = tester.widget<Icon>(
+        find.descendant(
+          of: find.byKey(ValueKey('bottom-tab-$label')),
+          matching: find.byType(Icon),
+        ),
+      );
+      expect(selectedIcon.color, VisualSpec.brand.lightSurface);
       if (pageText != null) {
         expect(find.text(pageText), findsWidgets);
       }

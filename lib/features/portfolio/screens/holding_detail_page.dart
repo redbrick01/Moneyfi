@@ -6,6 +6,7 @@ import 'package:moneyfy/components/chips/delta_chip.dart';
 import 'package:moneyfy/components/chips/moneyfy_pill.dart';
 import 'package:moneyfy/components/panels/app_detail_section.dart';
 import 'package:moneyfy/components/panels/app_inner_panel.dart';
+import 'package:moneyfy/components/rows/transaction_history_row.dart';
 import 'package:moneyfy/components/transaction_history_list.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/design_system/spec.dart';
@@ -16,6 +17,7 @@ import 'package:moneyfy/navigation/moneyfy_navigation.dart';
 import 'package:moneyfy/features/analysis/services/company_news_summary_service.dart';
 import 'package:moneyfy/features/analysis/services/equity_research_service.dart';
 import 'package:moneyfy/features/portfolio/services/market_data_service.dart';
+import 'package:moneyfy/features/portfolio/widgets/holding_price_history_card.dart';
 import 'package:moneyfy/features/sync/services/sync_service.dart';
 import 'package:moneyfy/utils/display_currency.dart';
 import 'package:moneyfy/widgets/company_news_summary_card.dart';
@@ -50,7 +52,11 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   bool _isHeroDetailExpanded = false;
   late Future<HoldingItem?> _holdingFuture;
   Future<HoldingMarketSnapshot>? _marketSnapshotFuture;
+  Future<FundMarketDetails?>? _fundDetailsFuture;
   String? _marketSnapshotCacheKey;
+  bool _marketSnapshotPending = false;
+  bool _fundDetailsPending = false;
+  int _priceHistoryRefreshVersion = 0;
   Future<_HoldingComparisonMetrics>? _comparisonMetricsFuture;
   String? _comparisonMetricsCacheKey;
   int _missingHoldingRetryCount = 0;
@@ -60,6 +66,17 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   void initState() {
     super.initState();
     _holdingFuture = _loadHoldingWithRetry();
+  }
+
+  @override
+  void didUpdateWidget(covariant HoldingDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.holdingId != widget.holdingId ||
+        oldWidget.holdingClientId != widget.holdingClientId) {
+      _missingHoldingRetryCount = 0;
+      _resetMarketRequests();
+      _holdingFuture = _loadHoldingWithRetry();
+    }
   }
 
   Future<HoldingItem?> _loadHoldingWithRetry() async {
@@ -93,8 +110,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
         _missingHoldingRetryCount = 0;
       }
       _holdingFuture = _loadHoldingWithRetry();
-      _marketSnapshotFuture = null;
-      _marketSnapshotCacheKey = null;
+      _resetMarketRequests();
       _comparisonMetricsFuture = null;
       _comparisonMetricsCacheKey = null;
     });
@@ -108,11 +124,6 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
       if (!mounted) return;
       _reloadHolding(resetMissingRetry: false);
     });
-  }
-
-  Future<void> _refreshPage() async {
-    await MarketDataService.instance.refreshAllMarketData();
-    _reloadHolding();
   }
 
   Future<CompanyNewsSummaryItem?> _companyNewsForSymbol(String symbol) {
@@ -135,17 +146,59 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
     return _equityResearchFuture!;
   }
 
-  Future<HoldingMarketSnapshot> _marketSnapshotFor(HoldingItem holding) {
+  void _resetMarketRequests() {
+    _marketSnapshotCacheKey = null;
+    _marketSnapshotFuture = null;
+    _fundDetailsFuture = null;
+    _marketSnapshotPending = false;
+    _fundDetailsPending = false;
+  }
+
+  void _ensureMarketRequests(HoldingItem holding) {
+    final assetType = holding.assetType ?? holding.assetTitle;
     final cacheKey =
-        '${holding.id}|${holding.symbol}|${holding.exchangeCode}|${holding.currencyCode}|${holding.assetType ?? holding.assetTitle}';
-    if (_marketSnapshotFuture == null || _marketSnapshotCacheKey != cacheKey) {
-      _marketSnapshotCacheKey = cacheKey;
-      _marketSnapshotFuture = MarketDataService.instance.fetchSnapshot(
-        holding,
-        includeFundComponents: false,
-      );
-    }
-    return _marketSnapshotFuture!;
+        '${holding.id}|${holding.clientId}|${holding.symbol}|'
+        '${holding.exchangeCode}|${holding.currencyCode}|$assetType';
+    if (_marketSnapshotCacheKey == cacheKey) return;
+
+    _resetMarketRequests();
+    _marketSnapshotCacheKey = cacheKey;
+    _requestMarketSnapshot(holding);
+    if (assetType == '펀드') _requestFundDetails(holding);
+  }
+
+  void _requestMarketSnapshot(HoldingItem holding) {
+    if (_marketSnapshotPending) return;
+    _marketSnapshotPending = true;
+    final request = MarketDataService.instance.fetchSnapshot(
+      holding,
+      includeFundComponents: false,
+    );
+    _marketSnapshotFuture = request;
+    request.then((_) {
+      if (identical(_marketSnapshotFuture, request)) {
+        _marketSnapshotPending = false;
+      }
+    });
+  }
+
+  void _requestFundDetails(HoldingItem holding) {
+    if (_fundDetailsPending) return;
+    _fundDetailsPending = true;
+    final request = MarketDataService.instance.fetchFundMarketDetails(holding);
+    _fundDetailsFuture = request;
+    request.then((_) {
+      if (identical(_fundDetailsFuture, request)) _fundDetailsPending = false;
+    });
+  }
+
+  Future<void> _refreshMarket(HoldingItem holding) async {
+    setState(() {
+      _priceHistoryRefreshVersion++;
+      _requestMarketSnapshot(holding);
+      if (_fundDetailsFuture != null) _requestFundDetails(holding);
+    });
+    await Future.wait([_marketSnapshotFuture!, ?_fundDetailsFuture]);
   }
 
   Future<_HoldingComparisonMetrics> _comparisonMetricsFor(HoldingItem holding) {
@@ -345,24 +398,27 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
             );
           }
 
+          _ensureMarketRequests(holding);
+          final transactions = _holdingTransactionsNewestFirst(
+            holding.transactions,
+          );
           return FutureBuilder<HoldingMarketSnapshot>(
-            future: _marketSnapshotFor(holding),
+            key: ValueKey(_marketSnapshotCacheKey),
+            future: _marketSnapshotFuture,
             initialData: HoldingMarketSnapshot.fallback(holding),
             builder: (context, marketSnapshot) {
               final market =
                   marketSnapshot.data ??
                   HoldingMarketSnapshot.fallback(holding);
               final displayHolding = _holdingWithMarketPrice(holding, market);
-              final detailSections = _buildHoldingDetailSections(
-                assetType:
-                    displayHolding.assetType ?? displayHolding.assetTitle,
-                holding: displayHolding,
-                market: market,
-              );
+              final assetType =
+                  displayHolding.assetType ?? displayHolding.assetTitle;
+              final marketLoading =
+                  marketSnapshot.connectionState == ConnectionState.waiting;
 
               return SafeArea(
                 child: RefreshIndicator(
-                  onRefresh: _refreshPage,
+                  onRefresh: () => _refreshMarket(holding),
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.fromLTRB(
@@ -527,7 +583,9 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                                       opacity: animation,
                                                       child: SizeTransition(
                                                         sizeFactor: animation,
-                                                        alignment: AlignmentDirectional.topStart,
+                                                        alignment:
+                                                            AlignmentDirectional
+                                                                .topStart,
                                                         child: child,
                                                       ),
                                                     );
@@ -600,6 +658,16 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                             ],
                           ),
                         ),
+                        if (MarketDataService.instance.supportsPriceHistory(
+                          displayHolding,
+                        )) ...[
+                          SizedBox(height: context.spacing.md),
+                          HoldingPriceHistoryCard(
+                            holding: displayHolding,
+                            marketData: MarketDataService.instance,
+                            refreshVersion: _priceHistoryRefreshVersion,
+                          ),
+                        ],
                         if (displayHolding.symbol.trim().isNotEmpty &&
                             displayHolding.quantity > 0) ...[
                           SizedBox(
@@ -655,67 +723,133 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                         SizedBox(
                           height: context.spacing.md + context.spacing.xs / 2,
                         ),
-                        for (
-                          var index = 0;
-                          index < detailSections.length;
-                          index++
-                        ) ...[
-                          _CardSection(
-                            title: detailSections[index].title,
-                            child: detailSections[index].title == '구성 종목'
-                                ? _FundComponentsList(
-                                    items: market.etfTopComponents,
-                                  )
-                                : Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      if (detailSections[index].header !=
-                                          null) ...[
-                                        detailSections[index].header!,
-                                        if (detailSections[index]
-                                            .items
-                                            .isNotEmpty)
-                                          SizedBox(
-                                            height:
-                                                context.spacing.sm +
-                                                context.spacing.xs / 4,
+                        FutureBuilder<FundMarketDetails?>(
+                          future: _fundDetailsFuture,
+                          builder: (context, fundSnapshot) {
+                            final fundDetails = fundSnapshot.data;
+                            final detailSections = _buildHoldingDetailSections(
+                              assetType: assetType,
+                              holding: displayHolding,
+                              market: market,
+                              fundDetails: fundDetails,
+                            );
+                            return Column(
+                              children: [
+                                for (final section in detailSections) ...[
+                                  _CardSection(
+                                    title: section.title,
+                                    child: section.title == '구성 종목'
+                                        ? _FundComponentsList(
+                                            items: fundDetails!.topComponents,
+                                          )
+                                        : Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if (section.title == '시장 정보') ...[
+                                                _MarketRequestStatus(
+                                                  label: '시세',
+                                                  loading: marketLoading,
+                                                  failed: market.isFallback,
+                                                  onRetry: () => setState(
+                                                    () =>
+                                                        _requestMarketSnapshot(
+                                                          holding,
+                                                        ),
+                                                  ),
+                                                ),
+                                                if (assetType == '펀드')
+                                                  _MarketRequestStatus(
+                                                    label: 'NAV 상세 정보',
+                                                    loading:
+                                                        fundSnapshot
+                                                            .connectionState ==
+                                                        ConnectionState.waiting,
+                                                    failed: fundDetails == null,
+                                                    onRetry: () => setState(
+                                                      () => _requestFundDetails(
+                                                        holding,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                              if (section.header != null) ...[
+                                                section.header!,
+                                                if (section.items.isNotEmpty)
+                                                  SizedBox(
+                                                    height:
+                                                        context.spacing.sm +
+                                                        context.spacing.xs / 4,
+                                                  ),
+                                              ],
+                                              if (section.items.isNotEmpty)
+                                                _MetricGrid(
+                                                  items: section.items,
+                                                ),
+                                            ],
                                           ),
-                                      ],
-                                      if (detailSections[index]
-                                          .items
-                                          .isNotEmpty)
-                                        _MetricGrid(
-                                          items: detailSections[index].items,
-                                        ),
-                                    ],
                                   ),
-                          ),
-                          SizedBox(height: context.spacing.md),
-                        ],
+                                  SizedBox(height: context.spacing.md),
+                                ],
+                              ],
+                            );
+                          },
+                        ),
                         _CardSection(
                           title: '거래 내역',
-                          trailing: IconButton(
+                          trailing: TextButton.icon(
                             onPressed: () =>
                                 _openTransactionForm(displayHolding),
-                            icon: const Icon(Icons.add_rounded),
-                            color: context.colors.neutralTextMuted,
-                          ),
-                          child: SlidableAutoCloseBehavior(
-                            child: TransactionHistoryList(
-                              itemCount: displayHolding.transactions.length,
-                              itemBuilder: (context, index) => _TransactionRow(
-                                holding: displayHolding,
-                                transaction: displayHolding.transactions[index],
-                                onEdit: () => _openTransactionForm(
-                                  displayHolding,
-                                  item: displayHolding.transactions[index],
-                                ),
-                                onDelete: () => _deleteTransaction(
-                                  displayHolding.transactions[index],
-                                ),
+                            icon: Icon(VisualSpec.icon.add),
+                            label: const Text('추가'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: context.colors.neutralTextMuted,
+                              textStyle: context.typography.meta.copyWith(
+                                fontWeight: AppFontWeights.semibold,
                               ),
                             ),
+                          ),
+                          child: TransactionHistoryLayout(
+                            builder: (context, showColumns) {
+                              final divider = TransactionHistoryDivider(
+                                showColumns: showColumns,
+                              );
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (showColumns &&
+                                      transactions.isNotEmpty) ...[
+                                    const TransactionHistoryHeader(),
+                                    divider,
+                                  ],
+                                  SlidableAutoCloseBehavior(
+                                    child: TransactionHistoryList(
+                                      itemCount: transactions.length,
+                                      separator: divider,
+                                      itemBuilder: (context, index) {
+                                        final transaction = transactions[index];
+                                        return _TransactionRow(
+                                          key: ValueKey(
+                                            transaction.ledgerLineId != null
+                                                ? 'holding-line-${transaction.ledgerLineId}'
+                                                : 'holding-tx-${transaction.id ?? transaction.hashCode}',
+                                          ),
+                                          holding: displayHolding,
+                                          transaction: transaction,
+                                          showColumns: showColumns,
+                                          onEdit: () => _openTransactionForm(
+                                            displayHolding,
+                                            item: transaction,
+                                          ),
+                                          onDelete: () =>
+                                              _deleteTransaction(transaction),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ),
                         SizedBox(height: context.spacing.md),
@@ -772,6 +906,7 @@ HoldingItem _holdingWithMarketPrice(
     symbol: holding.symbol,
     quantity: holding.quantity,
     averagePrice: holding.averagePrice,
+    averagePriceSource: holding.averagePriceSource,
     currentPrice: currentPrice,
     note: holding.note,
     transactions: holding.transactions,
@@ -809,6 +944,37 @@ class _CardSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppDetailSection(title: title, trailing: trailing, child: child);
+  }
+}
+
+class _MarketRequestStatus extends StatelessWidget {
+  const _MarketRequestStatus({
+    required this.label,
+    required this.loading,
+    required this.failed,
+    required this.onRetry,
+  });
+
+  final String label;
+  final bool loading;
+  final bool failed;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!loading && !failed) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.spacing.sm),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: context.spacing.sm,
+        children: [
+          Text(loading ? '$label 불러오는 중…' : '$label 조회에 실패했습니다.'),
+          if (!loading)
+            TextButton(onPressed: onRetry, child: const Text('다시 시도')),
+        ],
+      ),
+    );
   }
 }
 
@@ -1156,6 +1322,7 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
   required String? assetType,
   required HoldingItem holding,
   required HoldingMarketSnapshot market,
+  required FundMarketDetails? fundDetails,
 }) {
   final portfolioSection = _HoldingDetailSection(
     title: '보유 정보',
@@ -1304,9 +1471,15 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
             _MetricTileData(label: '거래량', value: market.volume),
             _MetricTileData(label: 'NAV', value: market.nav),
             _MetricTileData(label: 'NAV 등락률', value: market.navChangeRate),
-            _MetricTileData(label: 'NAV 시가', value: market.etfNavOpen),
-            _MetricTileData(label: 'NAV 고가', value: market.etfNavHigh),
-            _MetricTileData(label: 'NAV 저가', value: market.etfNavLow),
+            _MetricTileData(
+              label: 'NAV 시가',
+              value: fundDetails?.navOpen ?? '-',
+            ),
+            _MetricTileData(
+              label: 'NAV 고가',
+              value: fundDetails?.navHigh ?? '-',
+            ),
+            _MetricTileData(label: 'NAV 저가', value: fundDetails?.navLow ?? '-'),
           ],
         ),
         _HoldingDetailSection(
@@ -1320,30 +1493,31 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
             _MetricTileData(label: '상장일', value: market.listingDate),
           ],
         ),
-        if (market.hasCompleteEtfFundInfo)
+        if ((fundDetails?.hasCompleteFundInfo ?? false) &&
+            market.netAssets != '-')
           _HoldingDetailSection(
             title: 'ETF / 펀드 정보',
             items: [
               _MetricTileData(label: '순자산총액', value: market.netAssets),
               _MetricTileData(
                 label: 'ETF 순자산총액',
-                value: market.etfNetAssetsTotal,
+                value: fundDetails?.netAssetsTotal ?? '-',
               ),
               _MetricTileData(
                 label: '구성 종목 수',
-                value: market.etfComponentCount,
+                value: fundDetails?.componentCount ?? '-',
               ),
               _MetricTileData(
                 label: '구성종목 시가총액',
-                value: market.etfComponentMarketCap,
+                value: fundDetails?.componentMarketCap ?? '-',
               ),
               _MetricTileData(
                 label: 'CU 단위 증권 수',
-                value: market.etfCuUnitCount,
+                value: fundDetails?.cuUnitCount ?? '-',
               ),
             ],
           ),
-        if (market.etfTopComponents.isNotEmpty)
+        if (fundDetails?.topComponents.isNotEmpty ?? false)
           const _HoldingDetailSection(title: '구성 종목', items: []),
       ];
     case '현금':
@@ -1706,118 +1880,90 @@ class _MetricTile extends StatelessWidget {
   }
 }
 
+List<TransactionItem> _holdingTransactionsNewestFirst(
+  List<TransactionItem> transactions,
+) {
+  final unknownDate = DateTime.utc(0);
+  final legacySeparator = RegExp(r'[./]');
+  final datedTransactions = [
+    for (final (index, transaction) in transactions.indexed)
+      (
+        index: index,
+        date:
+            DateTime.tryParse(transaction.date.trim()) ??
+            DateTime.tryParse(
+              transaction.date.trim().replaceAll(legacySeparator, '-'),
+            ) ??
+            unknownDate,
+        transaction: transaction,
+      ),
+  ];
+  datedTransactions.sort((a, b) {
+    final byDate = b.date.compareTo(a.date);
+    return byDate == 0 ? a.index.compareTo(b.index) : byDate;
+  });
+  return [for (final entry in datedTransactions) entry.transaction];
+}
+
 class _TransactionRow extends StatelessWidget {
   const _TransactionRow({
+    super.key,
     required this.holding,
     required this.transaction,
+    required this.showColumns,
     required this.onEdit,
     required this.onDelete,
   });
 
   final HoldingItem holding;
   final TransactionItem transaction;
+  final bool showColumns;
   final VoidCallback onEdit;
   final Future<void> Function() onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final typeStyle = _holdingTransactionTypeStyle(context, transaction.type);
-    final amountValue = _holdingTransactionDisplayAmountValue(transaction);
-    final formattedAmount =
+    final type = transaction.type.trim();
+    final canEdit =
+        !transaction.isLedgerBacked ||
+        transaction.canOpenInvestmentFormFromLedger;
+    final name = transaction.name.trim();
+    final holdingName = holding.name.trim();
+    final defaultNames = {
+      '',
+      holdingName,
+      type,
+      '$holdingName $type',
+      if (type == '배당') '$holdingName 분배금',
+    };
+    final showName = !defaultNames.contains(name);
+    String formatAmount(double amount) =>
         MoneyfyDisplayCurrencySettings.formatAmountFromSource(
-          amountValue,
+          amount,
           sourceCurrency: holding.currencyCode,
           exchangeRate: holding.exchangeRate,
         );
 
-    return Slidable(
-      key: ValueKey('holding-tx-${transaction.id ?? transaction.hashCode}'),
+    return TransactionHistoryRow(
+      date: transaction.date,
+      typeLabel: type,
+      description: [
+        if (showName) name,
+        if (transaction.memo.trim().isNotEmpty) transaction.memo.trim(),
+        if (!transaction.includeInCalculations) '기록전용',
+      ].join(' · '),
+      amountText: formatAmount(transaction.displayTotalAmount),
+      amountColor: _holdingTransactionAmountColor(context, transaction),
+      priceDetail: transactionHistoryPriceDetail(
+        transaction,
+        assetType: holding.assetType ?? holding.assetTitle,
+        formatAmount: formatAmount,
+      ),
+      isTrade: isTransactionHistoryTrade(transaction),
+      showColumns: showColumns,
       groupTag: _HoldingDetailPageState._kSlidableGroupTag,
-      endActionPane: moneyfySingleSlideActionPane(
-        onPressed: () => onDelete(),
-        icon: Icons.delete_outline_rounded,
-        iconColor: context.colors.negativeOn,
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-        onTap: onEdit,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            vertical: context.spacing.xs - context.spacing.xs / 4,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(transaction.name, style: theme.textTheme.titleMedium),
-                    SizedBox(height: context.spacing.xs / 2),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          transaction.date,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: context.colors.neutralTextMuted,
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal:
-                                context.spacing.xs + context.spacing.xs / 4,
-                            vertical: context.spacing.xs / 2 + 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: typeStyle.backgroundColor,
-                            borderRadius: BorderRadius.circular(
-                              context.radius.rPill,
-                            ),
-                            border: Border.all(color: typeStyle.borderColor),
-                          ),
-                          child: Text(
-                            transaction.type,
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: typeStyle.textColor,
-                              fontWeight: AppFontWeights.semibold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: context.spacing.sm),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    formattedAmount,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: _holdingTransactionAmountColor(
-                        context,
-                        transaction,
-                      ),
-                      fontWeight: AppFontWeights.semibold,
-                    ),
-                  ),
-                  SizedBox(height: context.spacing.xs / 2),
-                  Text(
-                    _holdingLedgerLineMeta(transaction),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: context.colors.neutralTextMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      onEdit: canEdit ? onEdit : null,
+      onDelete: onDelete,
     );
   }
 }
@@ -1831,92 +1977,6 @@ Color _holdingTransactionAmountColor(
     TransactionFlowCategory.externalWithdrawal => context.colors.negativeOn,
     _ => context.colors.neutralText,
   };
-}
-
-double _holdingTransactionDisplayAmountValue(TransactionItem transaction) {
-  final grossAmount = transaction.grossAmount ?? 0;
-  if (grossAmount.abs() > 0.0000001) {
-    return grossAmount;
-  }
-  final amount =
-      double.tryParse(transaction.amount.replaceAll(',', '').trim()) ?? 0;
-  final quantity =
-      double.tryParse(transaction.quantity.replaceAll(',', '').trim()) ?? 0;
-  final action = transaction.ledgerAction ?? transaction.type.trim();
-  if ((action == 'buy' ||
-          action == 'sell' ||
-          action == 'opening_quantity' ||
-          action == '매수' ||
-          action == '매도' ||
-          action == '초기') &&
-      quantity.abs() > 0.0000001) {
-    return amount * quantity;
-  }
-  return amount;
-}
-
-String _holdingLedgerLineMeta(TransactionItem transaction) {
-  final quantity = transaction.quantity.trim();
-  final action = transaction.ledgerAction;
-  final actionText = switch (action) {
-    'buy' => '매수 라인',
-    'sell' => '매도 라인',
-    'dividend' => '배당 수입 라인',
-    'interest' => '이자 수입 라인',
-    'fee' => '비용 라인',
-    'tax' => '세금 라인',
-    'opening_quantity' => '초기 수량 라인',
-    'adjustment' => '조정 라인',
-    _ => '',
-  };
-  if (quantity.isEmpty) return actionText;
-  if (actionText.isEmpty) return quantity;
-  return '$quantity · $actionText';
-}
-
-class _HoldingTransactionTypeStyle {
-  const _HoldingTransactionTypeStyle({
-    required this.backgroundColor,
-    required this.borderColor,
-    required this.textColor,
-  });
-
-  final Color backgroundColor;
-  final Color borderColor;
-  final Color textColor;
-}
-
-_HoldingTransactionTypeStyle _holdingTransactionTypeStyle(
-  BuildContext context,
-  String type,
-) {
-  switch (type.trim()) {
-    case '매수':
-      return _HoldingTransactionTypeStyle(
-        backgroundColor: context.colors.negativeContainer,
-        borderColor: context.colors.negativeOn.withValues(alpha: 0.28),
-        textColor: context.colors.negativeOn,
-      );
-    case '매도':
-      return _HoldingTransactionTypeStyle(
-        backgroundColor: context.colors.positiveContainer,
-        borderColor: context.colors.positiveOn.withValues(alpha: 0.28),
-        textColor: context.colors.positiveOn,
-      );
-    case '배당':
-    case '이자':
-      return _HoldingTransactionTypeStyle(
-        backgroundColor: context.colors.warningContainer,
-        borderColor: context.colors.warningOn.withValues(alpha: 0.28),
-        textColor: context.colors.warningOn,
-      );
-    default:
-      return _HoldingTransactionTypeStyle(
-        backgroundColor: context.colors.neutralSurfaceRaised,
-        borderColor: context.colors.neutralOutline,
-        textColor: context.colors.neutralText,
-      );
-  }
 }
 
 Color _holdingValueStringColor(BuildContext context, String value) {

@@ -586,7 +586,10 @@ class _SnapshotEmbeddedCashAccountRow extends StatelessWidget {
     final theme = Theme.of(context);
     return AppInnerPanel(
       tone: AppInnerPanelTone.raised,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.sm,
+        vertical: 10,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -668,7 +671,7 @@ class _SnapshotTransactionsCard extends StatelessWidget {
           else ...[
             if (assetTransactions.isNotEmpty) ...[
               Text('자산 거래', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.sm),
               TransactionHistoryList(
                 itemCount: assetTransactions.length,
                 separator: AppDivider(),
@@ -685,7 +688,7 @@ class _SnapshotTransactionsCard extends StatelessWidget {
             ],
             if (cashTransactions.isNotEmpty) ...[
               Text('현금 거래', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 12),
+              SizedBox(height: context.spacing.sm),
               TransactionHistoryList(
                 itemCount: cashTransactions.length,
                 separator: AppDivider(),
@@ -921,7 +924,7 @@ class _ProfitValueWidget extends StatelessWidget {
             ),
           ),
           if (rate != null) ...[
-            const SizedBox(width: 8),
+            SizedBox(width: context.spacing.xs),
             DeltaChip(
               value: amount!,
               percent: rate,
@@ -975,7 +978,7 @@ class _SnapshotItemRow extends StatelessWidget {
                   style: theme.textTheme.titleMedium,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: context.spacing.xs),
               Text(
                 '${weight.toStringAsFixed(1)}%',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -1013,7 +1016,7 @@ class _SnapshotItemRow extends StatelessWidget {
                   ),
                 ),
                 if (previousProfitRate != null) ...[
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.spacing.xs),
                   DeltaChip(
                     value: previousProfitAmount ?? previousProfitRate,
                     percent: previousProfitRate,
@@ -1076,7 +1079,7 @@ class _ExpandableSnapshotItemRow extends StatelessWidget {
               alignment: Alignment.topCenter,
               child: isExpanded
                   ? Padding(
-                      padding: const EdgeInsets.only(top: 12),
+                      padding: EdgeInsets.only(top: context.spacing.sm),
                       child: Column(
                         children: [
                           if (holdings.isNotEmpty) ...[
@@ -1122,7 +1125,10 @@ class _SnapshotHoldingRow extends StatelessWidget {
 
     return AppInnerPanel(
       tone: AppInnerPanelTone.raised,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.spacing.sm,
+        vertical: 10,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -1137,14 +1143,14 @@ class _SnapshotHoldingRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Wrap(
-                  spacing: 8,
+                  spacing: context.spacing.xs,
                   runSpacing: 6,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     if (holding.holdingSymbol.isNotEmpty)
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.spacing.xs,
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
@@ -1196,7 +1202,7 @@ class _SnapshotHoldingRow extends StatelessWidget {
                       fontWeight: AppFontWeights.semibold,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.spacing.xs),
                   DeltaChip(
                     value: holding.profitAmount,
                     percent: holding.profitRate,

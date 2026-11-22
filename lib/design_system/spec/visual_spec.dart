@@ -16,9 +16,8 @@ class _BrandSpec {
 
   // Brand
   final Color seedColor = const Color(0xFF3A6DFF);
-  Color get seed => seedColor;
+  final Color brandRed = const Color(0xFFE93A51);
   Color get primary => seedColor;
-  final Color primaryActive = const Color(0xFF2DA4FF);
   final Color onPrimary = const Color(0xFFFFFFFF);
   Color get link => primary;
   Color get info => primary;
@@ -30,10 +29,9 @@ class _BrandSpec {
   final Color lightSurfaceContainer = const Color(0xFFF7F7F7);
   final Color lightSurfaceHigh = const Color(0xFFEEF0F3);
   final Color lightSurfaceHighest = const Color(0xFFEEF0F3);
-  final Color lightTextPrimary = const Color(0xFF0A0B0D);
-  final Color lightTextSecondary = const Color(0xFF5B616E);
+  final Color lightTextPrimary = const Color(0xFF111111);
+  final Color lightTextSecondary = const Color(0xFF595959);
   final Color lightOutlineVariant = const Color(0xFFDEE1E6);
-  final Color lightOutlineSubtle = const Color(0xFFEEF0F3);
 
   // Dark neutrals
   final Color darkBg = const Color(0xFF0A0B0D);
@@ -43,89 +41,66 @@ class _BrandSpec {
   final Color darkSurfaceHigh = const Color(0xFF16181C);
   final Color darkSurfaceHighest = const Color(0xFF16181C);
   final Color darkTextPrimary = const Color(0xFFFFFFFF);
-  final Color darkTextSecondary = const Color(0xFFA8ACB3);
+  final Color darkTextSecondary = const Color(0xFFADADAD);
   final Color darkOutlineVariant = const Color(0xFF16181C);
 
   // Brand containers
-  Color get lightPrimaryContainer => lightOutlineSubtle;
+  final Color lightPrimaryContainer = const Color(0xFFEBF0FF);
   Color get lightOnPrimaryContainer => primary;
-  Color get darkPrimaryContainer => primaryActive;
+  final Color darkPrimaryContainer = const Color(0xFF263861);
   Color get darkOnPrimaryContainer => onPrimary;
-  Color get lightInfoContainer => lightOutlineSubtle;
-  Color get lightOnInfoContainer => info;
+  Color get lightInfoContainer => lightPrimaryContainer;
+  Color get lightOnInfoContainer => lightOnPrimaryContainer;
   Color get darkInfoContainer => darkSurfaceContainer;
-  Color get darkOnInfoContainer => onPrimary;
+  Color get darkOnInfoContainer => darkTextPrimary;
 
   // Status - Positive
-  final Color lightPositive = const Color(0xFF00D47E);
   final Color lightPositiveContainer = const Color(0xFFEEF0F3);
-  final Color lightOnPositiveContainer = const Color(0xFF00D47E);
-  final Color darkPositive = const Color(0xFF00D47E);
+  Color get lightOnPositiveContainer => primary;
   final Color darkPositiveContainer = const Color(0xFF16181C);
-  final Color darkOnPositiveContainer = const Color(0xFF00D47E);
+  Color get darkOnPositiveContainer => primary;
 
   // Status - Negative
-  final Color lightNegative = const Color(0xFFFF4554);
   final Color lightNegativeContainer = const Color(0xFFEEF0F3);
-  final Color lightOnNegativeContainer = const Color(0xFFFF4554);
-  final Color darkNegative = const Color(0xFFFF4554);
   final Color darkNegativeContainer = const Color(0xFF16181C);
-  final Color darkOnNegativeContainer = const Color(0xFFFF4554);
 
   // Status - Warning
   final Color lightWarning = const Color(0xFFFFB800);
   final Color lightWarningContainer = const Color(0xFFEEF0F3);
-  final Color lightOnWarningContainer = const Color(0xFFFFB800);
+  final Color lightOnWarningContainer = const Color(0xFF9A4C06);
   final Color darkWarning = const Color(0xFFFFB800);
   final Color darkWarningContainer = const Color(0xFF16181C);
-  final Color darkOnWarningContainer = const Color(0xFFFFB800);
+  final Color darkOnWarningContainer = const Color(0xFFFFAA65);
 
   // Interaction overlay alpha
   final double lightOverlayPressedAlpha = 0.08;
   final double darkOverlayPressedAlpha = 0.16;
 
-  // Chart palette (8)
-  final Color chart01 = const Color(0xFF3A6DFF);
-  final Color chart02 = const Color(0xFF00D47E);
-  final Color chart03 = const Color(0xFFFF4554);
-  final Color chart04 = const Color(0xFF0A0B0D);
-  final Color chart05 = const Color(0xFF5B616E);
-  final Color chart06 = const Color(0xFFA8ACB3);
-  final Color chart07 = const Color(0xFFDEE1E6);
-  final Color chart08 = const Color(0xFFEEF0F3);
+  // Categorical colors share the visual intensity of the brand seed.
+  final Color chartNeutral = const Color(0xFF0A0B0D);
+  final Color chartViolet = const Color(0xFF9251EA);
+  final Color chartMagenta = const Color(0xFFC542AF);
+  final Color chartOrange = const Color(0xFFDB6502);
+  final Color chartGreen = const Color(0xFF03A14A);
+  final Color chartTeal = const Color(0xFF04A19B);
+  final Color allocationOther = const Color(0xFF6A7A99);
 
-  // Allocation rank palette (10)
-  final Color allocationRank01 = const Color(0xFF3A6DFF);
-  final Color allocationRank02 = const Color(0xFF00A6D6);
-  final Color allocationRank03 = const Color(0xFF00B879);
-  final Color allocationRank04 = const Color(0xFF7C5CFF);
-  final Color allocationRank05 = const Color(0xFFE3A300);
-  final Color allocationRank06 = const Color(0xFFFF6B6B);
-  final Color allocationRank07 = const Color(0xFF3357C8);
-  final Color allocationRank08 = const Color(0xFF00A99D);
-  final Color allocationRank09 = const Color(0xFFD85BBE);
-  final Color allocationRank10 = const Color(0xFF6A7A99);
-
-  List<Color> get allocationRankPalette => <Color>[
-    allocationRank01,
-    allocationRank02,
-    allocationRank03,
-    allocationRank04,
-    allocationRank05,
-    allocationRank06,
-    allocationRank07,
-    allocationRank08,
-    allocationRank09,
-    allocationRank10,
+  List<Color> get allocationRankPalette => [
+    seedColor,
+    chartOrange,
+    chartViolet,
+    chartGreen,
+    chartMagenta,
+    chartTeal,
   ];
 
   List<Color> get chartPalette => allocationRankPalette;
 
-  Map<String, Color> get assetTypeChartColors => <String, Color>{
-    '주식': chart01,
-    '현금': chart04,
-    '펀드': chart02,
-    '코인': chart05,
+  Map<String, Color> get assetTypeChartColors => {
+    '주식': seedColor,
+    '현금': chartNeutral,
+    '펀드': chartGreen,
+    '코인': chartTeal,
   };
 
   Color background(Brightness brightness) {
@@ -184,12 +159,6 @@ class _BrandSpec {
         : lightNegativeContainer;
   }
 
-  Color onNegativeContainer(Brightness brightness) {
-    return brightness == Brightness.dark
-        ? darkOnNegativeContainer
-        : lightOnNegativeContainer;
-  }
-
   Color warningContainer(Brightness brightness) {
     return brightness == Brightness.dark
         ? darkWarningContainer
@@ -223,6 +192,10 @@ class _SurfaceSpec {
   final double sectionGap = 32;
   final double rowHeight = 56;
   final double rowHeightDense = 64;
+  final EdgeInsets swipeActionPadding = const EdgeInsets.symmetric(
+    horizontal: 8,
+    vertical: 6,
+  );
   final double dividerThickness = 1;
   final double dividerInset = 16;
   final double modalBarrierAlpha = 0.62;
@@ -290,6 +263,11 @@ class _ChartSpec {
   final double selectionHeaderPadding = 12;
 
   List<Color> get palette => VisualSpec.brand.chartPalette;
+
+  List<Color> get assetIdentityPalette => [
+    ...palette,
+    VisualSpec.brand.brandRed,
+  ];
   Map<String, Color> get assetTypeColors =>
       VisualSpec.brand.assetTypeChartColors;
 }

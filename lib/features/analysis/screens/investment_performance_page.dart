@@ -454,7 +454,6 @@ class _AttributionComposition extends StatelessWidget {
           _AttributionCompositionRow(
             item: visibleEntries[index],
             total: total,
-            toneIndex: index,
           ),
           if (index != visibleEntries.length - 1)
             SizedBox(height: context.spacing.xs),
@@ -472,18 +471,18 @@ class _AttributionCompositionRow extends StatelessWidget {
   const _AttributionCompositionRow({
     required this.item,
     required this.total,
-    required this.toneIndex,
   });
 
   final _AttributionData item;
   final double total;
-  final int toneIndex;
 
   @override
   Widget build(BuildContext context) {
     final contribution = _formatContribution(item.amount, total);
     final valueColor = item.amount < 0
         ? context.colors.negativeOn
+        : item.amount > 0
+        ? context.colors.positiveOn
         : context.colors.neutralText;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -492,11 +491,7 @@ class _AttributionCompositionRow extends StatelessWidget {
           width: context.spacing.xs,
           height: context.spacing.xs,
           decoration: BoxDecoration(
-            color: _attributionSegmentColor(
-              context,
-              item,
-              toneIndex: toneIndex,
-            ),
+            color: valueColor,
             borderRadius: BorderRadius.circular(context.radius.rPill),
           ),
         ),
@@ -624,7 +619,6 @@ class _ExpenseImpactLine extends StatelessWidget {
             _AttributionCompositionRow(
               item: visibleEntries[index],
               total: total,
-              toneIndex: index,
             ),
             if (index != visibleEntries.length - 1)
               SizedBox(height: context.spacing.xs),
@@ -677,22 +671,15 @@ _AttributionData? _leadingAttribution(List<_AttributionData> entries) {
   return leading;
 }
 
-Color _attributionSegmentColor(
-  BuildContext context,
-  _AttributionData entry, {
-  int toneIndex = 0,
-}) {
-  if (entry.amount > 0) {
-    final alpha = switch (toneIndex) {
-      0 => 0.92,
-      1 => 0.58,
-      _ => 0.34,
-    };
-    return context.colors.positiveOn.withValues(alpha: alpha);
-  }
-  if (entry.amount < 0) return context.colors.negativeContainer;
-  return context.colors.neutralSurfaceOverlay;
-}
+@visibleForTesting
+Widget buildPerformanceAttributionForTesting(Map<String, double> amounts) =>
+    _AttributionComposition(
+      entries: [
+        for (final entry in amounts.entries)
+          _AttributionData(label: entry.key, amount: entry.value),
+      ],
+      total: amounts.values.fold(0.0, (sum, amount) => sum + amount),
+    );
 
 class _PerformanceReconciliationCard extends StatelessWidget {
   const _PerformanceReconciliationCard({required this.viewModel});

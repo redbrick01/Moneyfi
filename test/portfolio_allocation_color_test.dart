@@ -1,6 +1,11 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:moneyfy/design_system/app_theme.dart';
+import 'package:moneyfy/design_system/spec.dart';
+import 'package:moneyfy/features/portfolio/models/asset_item.dart';
+import 'package:moneyfy/features/portfolio/screens/portfolio_page.dart';
 
 void main() {
   test('portfolio allocation colors are fixed by allocation rank', () {
@@ -19,17 +24,70 @@ void main() {
     expect(rankedColor, contains('VisualSpec.brand.allocationRankPalette'));
   });
 
-  test('portfolio allocation rank palette has ten tokens', () {
-    final source = File(
-      'lib/design_system/spec/visual_spec.dart',
-    ).readAsStringSync();
-    final palette = _functionSource(
-      source,
-      'List<Color> get allocationRankPalette',
-    );
+  testWidgets('allocation groups the tail and keeps individual rows', (
+    tester,
+  ) async {
+    expect(VisualSpec.brand.allocationRankPalette.toSet(), hasLength(6));
+    String? selected;
+    final assets = [
+      for (var value = 1; value <= 8; value++)
+        AssetItem(
+          id: value,
+          assetType: '주식',
+          title: '자산 $value',
+          alias: '',
+          value: '',
+          change: '',
+          icon: Icons.show_chart,
+          quantityLabel: '',
+          quantityValue: '',
+          averageLabel: '',
+          averageValue: '',
+          note: '',
+          holdings: [
+            HoldingItem(
+              name: '종목 $value',
+              symbol: '',
+              quantity: 1,
+              averagePrice: 1,
+              currentPrice: value.toDouble(),
+              note: '',
+              transactions: const [],
+            ),
+          ],
+          transactions: const [],
+        ),
+    ];
 
-    expect(palette, contains('allocationRank01'));
-    expect(palette, contains('allocationRank10'));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: buildAllocationSectionForTesting(
+              assets,
+              onSelectAsset: (label) => selected = label,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('기타 8.3%'), findsOneWidget);
+    final donut = find.ancestor(
+      of: find.text('₩36').first,
+      matching: find.byType(Stack),
+    ).first;
+    final painter = find.descendant(
+      of: donut,
+      matching: find.byType(CustomPaint),
+    ).first;
+    expect(painter, paintsExactlyCountTimes(#drawArc, 7));
+    final last = find.text('자산 1');
+    await tester.ensureVisible(last);
+    await tester.tap(last);
+    expect(selected, '자산 1');
   });
 
   test('shared chart palette uses allocation rank tokens', () {
@@ -191,48 +249,6 @@ void main() {
         isNot(contains('SizedBox(height: context.cardPadding())')),
       );
     }
-  });
-
-  test('statistics total asset trend can switch monthly and weekly cards', () {
-    final source = File('lib/features/account/screens/statistics_page.dart').readAsStringSync();
-    final pageState = _classSource(source, 'class _StatisticsPageState');
-    final monthlyTrend = _classSource(source, 'class _MonthlyTrendSection');
-    final monthlyTrendState = _classSource(
-      source,
-      'class _MonthlyTrendSectionState',
-    );
-    final trendSwitcher = _classSource(source, 'class _TrendViewSwitcher');
-
-    expect(pageState, contains('_buildRecentWeekStatisticsData'));
-    expect(monthlyTrend, contains('_TotalAssetTrendView'));
-    expect(monthlyTrendState, contains('_TrendViewSwitcher'));
-    expect(monthlyTrendState, contains('headerTrailing'));
-    expect(source, contains('최근 7일 총자산 변화'));
-    expect(trendSwitcher, contains('AppIconName.chevronLeft'));
-    expect(trendSwitcher, contains('AppIconName.chevronRight'));
-  });
-
-  test('statistics weekly trend hides asset groups and x axis dates', () {
-    final source = File('lib/features/account/screens/statistics_page.dart').readAsStringSync();
-    final weeklyBuilder = _functionSource(
-      source,
-      '_StatisticsData _buildRecentWeekStatisticsData',
-    );
-    final monthlyTrendState = _classSource(
-      source,
-      'class _MonthlyTrendSectionState',
-    );
-
-    expect(weeklyBuilder, contains('subtract(const Duration(days: 6))'));
-    expect(weeklyBuilder, contains('series: const []'));
-    expect(
-      monthlyTrendState,
-      contains(
-        'if (_trendView == _TotalAssetTrendView.monthly) ...activeData.series',
-      ),
-    );
-    expect(monthlyTrendState, contains('showXAxisLabels'));
-    expect(monthlyTrendState, contains('_TotalAssetTrendView.monthly'));
   });
 }
 

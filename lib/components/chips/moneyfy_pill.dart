@@ -55,11 +55,14 @@ class MoneyfyPillStyle {
     final toneContainer = surfaces.surfaceRaised;
     final foreground = disabled
         ? colors.neutralTextMuted.withValues(alpha: 0.62)
+        : variant == MoneyfyPillVariant.selected &&
+              tone == MoneyfyPillTone.primary
+        ? colors.primaryOnContainer
         : toneForeground;
     final background = switch (variant) {
       MoneyfyPillVariant.soft => surfaces.surfaceRaised,
       MoneyfyPillVariant.outline => colors.neutralBackground,
-      MoneyfyPillVariant.selected => colors.neutralBackground,
+      MoneyfyPillVariant.selected => colors.primaryContainer,
       MoneyfyPillVariant.tonal => toneContainer,
     };
     final border = switch (variant) {
@@ -104,6 +107,7 @@ class MoneyfyBadge extends StatelessWidget {
     this.backgroundColor,
     this.borderColor,
     this.maxLines = 1,
+    this.leading,
   });
 
   final String label;
@@ -113,7 +117,8 @@ class MoneyfyBadge extends StatelessWidget {
   final Color? textColor;
   final Color? backgroundColor;
   final Color? borderColor;
-  final int maxLines;
+  final int? maxLines;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
@@ -125,6 +130,12 @@ class MoneyfyBadge extends StatelessWidget {
     );
     final effectiveTextColor = textColor ?? style.foreground;
 
+    final text = Text(
+      label,
+      maxLines: maxLines,
+      overflow: maxLines == null ? TextOverflow.visible : TextOverflow.ellipsis,
+      style: style.textStyle.copyWith(color: effectiveTextColor),
+    );
     return Container(
       constraints: BoxConstraints(minHeight: style.height),
       padding: style.padding,
@@ -138,12 +149,16 @@ class MoneyfyBadge extends StatelessWidget {
       ),
       child: Center(
         widthFactor: 1,
-        child: Text(
-          label,
-          maxLines: maxLines,
-          overflow: TextOverflow.ellipsis,
-          style: style.textStyle.copyWith(color: effectiveTextColor),
-        ),
+        child: leading == null
+            ? text
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  leading!,
+                  SizedBox(width: context.spacing.xs / 2),
+                  Flexible(child: text),
+                ],
+              ),
       ),
     );
   }

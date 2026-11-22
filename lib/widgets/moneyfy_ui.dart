@@ -4,23 +4,6 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:moneyfy/components/section_card.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/design_system/spec.dart';
-import 'package:moneyfy/theme/moneyfy_theme.dart';
-
-@Deprecated(
-  'Use context.spacing, context.radius, and VisualSpec instead. '
-  'This compatibility API will be removed after legacy screens are migrated.',
-)
-class MoneyfySpacing {
-  static const double pageHorizontal = 20;
-  static const double pageTop = 24;
-  static const double pageBottomInset = 132;
-  static const double headerGap = 32;
-  static const double sectionGap = 32;
-  static const double cardPadding = 24;
-  static const double compactCardPadding = 24;
-  static const double cardRadius = 18;
-  static const double controlRadius = 9999;
-}
 
 class MoneyfyPage extends StatelessWidget {
   const MoneyfyPage({
@@ -294,7 +277,7 @@ ActionPane moneyfySingleSlideActionPane({
       CustomSlidableAction(
         onPressed: (_) => onPressed(),
         backgroundColor: backgroundColor ?? VisualSpec.surface.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: VisualSpec.surface.swipeActionPadding,
         borderRadius: BorderRadius.zero,
         child: Align(
           alignment: Alignment.center,
@@ -307,38 +290,4 @@ ActionPane moneyfySingleSlideActionPane({
       ),
     ],
   );
-}
-
-@Deprecated(
-  'Use context.colors.positiveOn/negativeOn or a local signed-value helper. '
-  'This compatibility API will be removed after legacy screens are migrated.',
-)
-Color moneyfyValueColor(
-  String value, {
-  Color defaultColor = MoneyfyPalette.ink,
-}) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return defaultColor;
-
-  // Explicit leading sign.
-  if (trimmed.startsWith('-') || trimmed.startsWith('−')) {
-    return MoneyfyPalette.negative;
-  }
-  if (trimmed.startsWith('+')) {
-    return MoneyfyPalette.positive;
-  }
-
-  // Accounting-style negative numbers, e.g. "(1,234)".
-  if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
-    return MoneyfyPalette.negative;
-  }
-
-  // Currency symbols can appear before the sign, e.g. "₩-1,000".
-  if (trimmed.contains('-') || trimmed.contains('−')) {
-    return MoneyfyPalette.negative;
-  }
-  if (trimmed.contains('+')) {
-    return MoneyfyPalette.positive;
-  }
-  return defaultColor;
 }

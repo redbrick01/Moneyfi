@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:moneyfy/components/icons/app_icon.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/design_system/chart_palette.dart';
 import 'package:moneyfy/design_system/spec.dart';
 import 'package:moneyfy/features/portfolio/services/market_data_service.dart';
-import 'package:moneyfy/theme/moneyfy_colors.dart';
 import 'package:moneyfy/utils/display_currency.dart';
 import 'package:moneyfy/widgets/moneyfy_ui.dart';
 import 'package:moneyfy/features/portfolio/screens/snapshot_detail_page.dart';
@@ -590,7 +590,7 @@ _YearBundle _buildYearBundle({
       color: MoneyfyChartPalette.colorForAsset(
         label,
         assetId: assetIdByKey[assetKey],
-        fallback: VisualSpec.brand.chart04,
+        fallback: VisualSpec.brand.chartNeutral,
       ),
       values: values,
     );
@@ -598,7 +598,7 @@ _YearBundle _buildYearBundle({
 
   final totalSeries = _MonthlyAssetSeries(
     label: '총자산',
-    color: VisualSpec.brand.chart03,
+    color: VisualSpec.brand.chartNeutral,
     values: trendSnapshots.map((snapshot) {
       final total =
           (snapshotIdToItems[snapshot.id] ??

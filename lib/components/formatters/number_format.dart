@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 /// App-wide numeric formatting helpers.
 ///
 /// TODO: If intl is adopted later, replace internal grouping logic with
@@ -76,14 +74,4 @@ String _withGrouping(String raw) {
 
   if (parts.length == 1) return buffer.toString();
   return '${buffer.toString()}.${parts[1]}';
-}
-
-@visibleForTesting
-Map<String, String> numberFormatterExamples() {
-  return {
-    'currency': formatCurrency(1234567, currencyCode: 'KRW'),
-    'percent': formatPercent(12.345),
-    'signed': formatSigned(-1234),
-    'signedPercent': formatSignedPercent(3.21),
-  };
 }

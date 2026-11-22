@@ -13,7 +13,6 @@ class TransactionRow extends StatelessWidget {
     this.showSubtitle = true,
     this.metaText,
     this.onTap,
-    this.typeColor,
     this.amountColor,
   });
 
@@ -24,15 +23,15 @@ class TransactionRow extends StatelessWidget {
   final bool showSubtitle;
   final String? metaText;
   final VoidCallback? onTap;
-  final Color? typeColor;
   final Color? amountColor;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final badgeColor = typeColor ?? colorScheme.surfaceContainerHighest;
-    final badgeWidth = context.spacing.xxl;
-    final trailingWidth = context.spacing.xxxl + context.spacing.xl;
+    final badgeWidth = context.spacing.xxl + context.spacing.md;
+    final trailingWidth = MediaQuery.sizeOf(context).width <= 430
+        ? context.spacing.xxxl
+        : context.spacing.xxxl + context.spacing.xl;
 
     return InkWell(
       onTap: onTap,
@@ -57,15 +56,7 @@ class TransactionRow extends StatelessWidget {
             children: [
               SizedBox(
                 width: badgeWidth,
-                child: MoneyfyBadge(
-                  label: typeLabel,
-                  size: MoneyfyPillSize.sm,
-                  backgroundColor: badgeColor,
-                  textColor: colorScheme.onSurfaceVariant,
-                  borderColor: colorScheme.outlineVariant.withValues(
-                    alpha: 0.7,
-                  ),
-                ),
+                child: MoneyfyBadge(label: typeLabel, maxLines: null),
               ),
               SizedBox(width: context.spacing.xs),
               Expanded(

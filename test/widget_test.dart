@@ -4,7 +4,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/components/cards/investment_review_home_card.dart';
+import 'package:moneyfy/components/chips/moneyfy_pill.dart';
+import 'package:moneyfy/components/rows/transaction_history_row.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/design_system/spec.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 import 'package:moneyfy/navigation/moneyfy_router.dart';
 import 'package:moneyfy/features/transactions/screens/forms/cash_transaction_form_page.dart';
@@ -128,6 +132,8 @@ void main() {
   testWidgets('transactions page reveals older 20-day periods with load more', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     final asset = AssetItem(
       id: 1,
       assetType: '주식',
@@ -218,20 +224,267 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('표시 2건 · 전체 5건'), findsOneWidget);
     expect(find.text('2026년 6월 20일 ~ 7월 19일'), findsOneWidget);
-    expect(find.text('현재 기간 첫 거래'), findsOneWidget);
-    expect(find.text('현재 기간 마지막 거래'), findsOneWidget);
-    expect(find.text('이전 기간 첫 거래'), findsNothing);
+    expect(find.textContaining('현재 기간 첫 거래'), findsOneWidget);
+    expect(find.textContaining('현재 기간 마지막 거래'), findsOneWidget);
+    expect(find.textContaining('이전 기간 첫 거래'), findsNothing);
     expect(find.text('이전 기간 더 보기'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('이전 기간 더 보기'));
     await tester.tap(find.text('이전 기간 더 보기'));
     await tester.pumpAndSettle();
 
+    expect(find.text('표시 4건 · 전체 5건'), findsOneWidget);
     expect(find.text('2026년 5월 20일 ~ 6월 19일'), findsOneWidget);
-    expect(find.text('이전 기간 첫 거래'), findsOneWidget);
-    expect(find.text('이전 기간 마지막 거래'), findsOneWidget);
-    expect(find.text('더 이전 기간 거래'), findsNothing);
+    expect(find.textContaining('이전 기간 첫 거래'), findsOneWidget);
+    expect(find.textContaining('이전 기간 마지막 거래'), findsOneWidget);
+    expect(find.textContaining('더 이전 기간 거래'), findsNothing);
     expect(find.text('이전 기간 더 보기'), findsOneWidget);
+  });
+
+  testWidgets('transactions filter and search cash distributions by source', (
+    tester,
+  ) async {
+    const transactions = [
+      TransactionItem(
+        date: '2026-11-03',
+        type: '입금',
+        name: '입금 · 분배금',
+        memo: '나스닥100',
+        amount: '4118',
+        quantity: '',
+        ledgerAction: 'deposit',
+      ),
+      TransactionItem(
+        date: '2026-11-03',
+        type: '입금',
+        name: '정기 입금',
+        amount: '1000',
+        quantity: '',
+        ledgerAction: 'deposit',
+      ),
+      TransactionItem(
+        date: '2026-11-03',
+        type: '배당',
+        name: '배당',
+        amount: '100',
+        quantity: '',
+        ledgerAction: 'dividend',
+      ),
+    ];
+    final asset = AssetItem(
+      id: 1,
+      assetType: '주식',
+      title: 'ISA',
+      alias: '',
+      value: '0',
+      change: '',
+      icon: Icons.wallet,
+      quantityLabel: '',
+      quantityValue: '',
+      averageLabel: '',
+      averageValue: '',
+      note: '',
+      holdings: [
+        HoldingItem(
+          id: -10,
+          assetId: 1,
+          assetTitle: 'ISA',
+          assetType: '주식',
+          name: '예수금',
+          symbol: '',
+          quantity: 0,
+          averagePrice: 0,
+          currentPrice: 0,
+          note: '',
+          transactions: transactions,
+        ),
+      ],
+      transactions: const [],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: TransactionsPage(assetsFutureForTesting: Future.value([asset])),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('배당·분배금'));
+    await tester.pumpAndSettle();
+    expect(find.text('표시 2건 · 조건 일치 2건'), findsOneWidget);
+    expect(find.text('2026-11-03'), findsNWidgets(2));
+    expect(find.text('입금 · 분배금 · 나스닥100 · 예수금 · ISA'), findsOneWidget);
+    expect(find.textContaining('정기 입금'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), '나스닥100');
+    await tester.pumpAndSettle();
+    expect(find.text('표시 1건 · 조건 일치 1건'), findsOneWidget);
+    expect(find.text('입금 · 분배금 · 나스닥100 · 예수금 · ISA'), findsOneWidget);
+  });
+
+  testWidgets('transactions distinguish trades, transfers and deposits', (
+    tester,
+  ) async {
+    TransactionItem line(
+      int event,
+      String type,
+      String action,
+      String name,
+      String amount, {
+      String flow = TransactionFlowCategory.internal,
+      String quantity = '',
+    }) => TransactionItem(
+      date: '2026-11-10',
+      type: type,
+      name: name,
+      amount: amount,
+      quantity: quantity,
+      ledgerEventId: event,
+      ledgerAction: action,
+      flowCategory: flow,
+    );
+
+    AssetItem asset(
+      int id,
+      String title,
+      Map<String, List<TransactionItem>> rows,
+    ) {
+      return AssetItem(
+        id: id,
+        assetType: '주식',
+        title: title,
+        alias: '',
+        value: '0',
+        change: '',
+        icon: Icons.wallet,
+        quantityLabel: '',
+        quantityValue: '',
+        averageLabel: '',
+        averageValue: '',
+        note: '',
+        holdings: [
+          for (final row in rows.entries)
+            HoldingItem(
+              id: row.key == '테스트 ETF' ? 10 : -id,
+              assetId: id,
+              assetTitle: title,
+              assetType: '주식',
+              name: row.key,
+              symbol: '',
+              quantity: 0,
+              averagePrice: 0,
+              currentPrice: 0,
+              note: '',
+              transactions: row.value,
+            ),
+        ],
+        transactions: const [],
+      );
+    }
+
+    final assets = Future.value([
+      asset(1, 'ISA', {
+        '테스트 ETF': [
+          line(1, '매수', 'buy', '매수', '49350', quantity: '2'),
+          line(4, '매도', 'sell', '매도', '120000'),
+        ],
+        '예수금': [
+          line(1, '매수', 'settlement', '매수', '-98700'),
+          line(2, '이체', 'transfer_in', '현금 원화 → ISA 예수금 이체', '200000'),
+          line(
+            3,
+            '입금',
+            'deposit',
+            '정기 투자금',
+            '4118',
+            flow: TransactionFlowCategory.externalDeposit,
+          ),
+          line(
+            5,
+            '출금',
+            'withdrawal',
+            '생활비',
+            '2000',
+            flow: TransactionFlowCategory.externalWithdrawal,
+          ),
+          line(6, '환전', 'fx_out', '달러 환전', '5000'),
+          line(7, '배당', 'dividend', '배당 정산', '1000'),
+        ],
+      }),
+      asset(2, '현금', {
+        '원화': [line(2, '이체', 'transfer_out', '현금 원화 → ISA 예수금 이체', '-200000')],
+      }),
+    ]);
+
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    for (final (theme, compact) in [
+      (AppTheme.light, false),
+      (AppTheme.dark, true),
+    ]) {
+      tester.view.physicalSize = Size(compact ? 360 : 900, 800);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: TransactionsPage(assetsFutureForTesting: assets),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final rows = tester.widgetList<TransactionHistoryRow>(
+        find.byType(TransactionHistoryRow),
+      );
+      expect(rows, hasLength(7));
+      expect(find.text('거래 내역'), findsOneWidget);
+      expect(
+        find.byType(TransactionHistoryHeader),
+        compact ? findsNothing : findsOneWidget,
+      );
+      expect(find.byTooltip('거래 옵션'), findsNWidgets(7));
+      expect(tester.takeException(), isNull);
+      final buy = rows.singleWhere((row) => row.typeLabel == '매수');
+      expect(buy.description, '테스트 ETF · ISA');
+      expect(buy.date, '2026-11-10');
+      expect(buy.priceDetail, '2주 × ₩49,350');
+      expect(buy.amountText, '-₩98,700');
+      final transfer = rows.singleWhere((row) => row.typeLabel == '이체');
+      expect(transfer.description, '현금 원화 → ISA 예수금');
+      expect(transfer.date, '2026-11-10');
+      expect(transfer.amountText, '₩200,000');
+      expect(transfer.amountColor, theme.colorScheme.onSurface);
+      expect(find.textContaining('외 1개'), findsNothing);
+      final deposit = rows.singleWhere((row) => row.typeLabel == '입금');
+      expect(deposit.amountText, '+₩4,118');
+      expect(deposit.amountColor, VisualSpec.brand.seedColor);
+
+      final badges = find.descendant(
+        of: find.byType(TransactionHistoryRow),
+        matching: find.byType(MoneyfyBadge),
+      );
+      expect(badges, findsNWidgets(7));
+      final palette = tester.element(badges.first).colors;
+      final withdrawal = rows.singleWhere((row) => row.typeLabel == '출금');
+      expect(deposit.amountColor, palette.positiveOn);
+      expect(withdrawal.amountColor, palette.negativeOn);
+
+      for (var index = 0; index < 7; index++) {
+        final badge = badges.at(index);
+        final label = tester.widget<MoneyfyBadge>(badge).label;
+        final container = tester.widget<Container>(
+          find.descendant(of: badge, matching: find.byType(Container)).first,
+        );
+        final renderedText = tester.widget<Text>(
+          find.descendant(of: badge, matching: find.text(label)),
+        );
+        final decoration = container.decoration! as BoxDecoration;
+        expect(decoration.color, tester.element(badge).surfaces.surfaceRaised);
+        expect(renderedText.style!.color, palette.neutralText);
+      }
+    }
   });
 
   testWidgets('reddit summaries sort by latest summary sync time', (

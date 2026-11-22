@@ -1,8 +1,8 @@
 <svg width="1800" height="1280" viewBox="0 0 1800 1280" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="1800" height="1280" fill="#F7F9FA"/>
   <rect x="64" y="56" width="1672" height="1168" rx="32" fill="#FFFFFF"/>
-  <text x="112" y="122" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="700">Moneyfy Current App Palette</text>
-  <text x="112" y="164" fill="#5B616E" font-family="Inter, Arial, sans-serif" font-size="21">Actual colors currently used in lib/ and web/manifest.json after token cleanup.</text>
+  <text x="112" y="122" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="700">Moneyfy App Palette Audit · May 2026</text>
+  <text x="112" y="164" fill="#5B616E" font-family="Inter, Arial, sans-serif" font-size="21">Historical snapshot from the May 2026 token cleanup. See the design system for current runtime roles.</text>
 
   <text x="112" y="244" fill="#0A0B0D" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">Brand</text>
   <rect x="112" y="276" width="250" height="132" rx="16" fill="#3A6DFF"/>

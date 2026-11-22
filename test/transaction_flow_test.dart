@@ -57,6 +57,54 @@ void main() {
   });
 
   test(
+    'version 38 upgrades transaction titles and preserves their details',
+    () async {
+      await db.close();
+      final tempDir = Directory.systemTemp.createTempSync(
+        'moneyfy_title_migration_',
+      );
+      final file = File('${tempDir.path}/db.sqlite');
+      db = AppDatabase.forTesting(NativeDatabase(file));
+      try {
+        final assetId = await createAsset('현금');
+        final accountId = await db.createCashAccount(
+          assetId: assetId,
+          currencyCode: 'KRW',
+          name: '예수금',
+          note: '',
+          balance: 0,
+        );
+        final eventId = await db.createTransaction(
+          assetId: assetId,
+          holdingId: accountId,
+          date: '2026-11-12',
+          type: '입금',
+          name: '분배금',
+          amount: '1200',
+          quantity: '',
+        );
+        await db.customStatement(
+          'UPDATE transaction_events SET title = ?, memo = ? WHERE id = ?',
+          ['입금 · 분배금', '나스닥100', eventId.abs()],
+        );
+        await db.customStatement('PRAGMA user_version = 38');
+        await db.close();
+
+        db = AppDatabase.forTesting(NativeDatabase(file));
+        final item = (await findHolding(accountId)).transactions.single;
+        expect(item.name, '분배금');
+        expect(item.memo, '나스닥100');
+        expect(item.type, '입금');
+        expect(item.cashFlowAmount, 1200);
+      } finally {
+        await db.close();
+        db = AppDatabase.forTesting(NativeDatabase.memory());
+        tempDir.deleteSync(recursive: true);
+      }
+    },
+  );
+
+  test(
     'old transaction event tables gain flow category before index creation',
     () async {
       await db.close();
@@ -684,7 +732,7 @@ void main() {
         .getSingle();
     final eventRow = await db
         .customSelect(
-          "SELECT source, legacy_source_id FROM transaction_events WHERE kind = 'cash_transfer' AND deleted_at IS NULL LIMIT 1",
+          "SELECT source, legacy_source_id, title, memo FROM transaction_events WHERE kind = 'cash_transfer' AND deleted_at IS NULL LIMIT 1",
         )
         .getSingle();
     final lineSummary = await db.customSelect('''
@@ -698,6 +746,8 @@ void main() {
     expect(eventCount.read<int>('count'), 1);
     expect(eventRow.read<String>('source'), 'ledger');
     expect(eventRow.read<int?>('legacy_source_id'), isNull);
+    expect(eventRow.read<String>('title'), '현금 출금 계좌 → 현금 입금 계좌');
+    expect(eventRow.read<String>('memo'), '계좌 이동');
     expect(lineSummary.read<double>('out_amount'), -250);
     expect(lineSummary.read<double>('in_amount'), 250);
     expect(lineSummary.read<int>('deleted_count'), 0);
@@ -1117,7 +1167,7 @@ void main() {
         .getSingle();
     final eventRow = await db
         .customSelect(
-          "SELECT source, flow_category, legacy_source_id FROM transaction_events WHERE kind = 'fx_exchange' AND deleted_at IS NULL LIMIT 1",
+          "SELECT source, flow_category, legacy_source_id, title, memo FROM transaction_events WHERE kind = 'fx_exchange' AND deleted_at IS NULL LIMIT 1",
         )
         .getSingle();
     final lineSummary = await db.customSelect('''
@@ -1132,6 +1182,8 @@ void main() {
     expect(eventRow.read<String>('source'), 'ledger');
     expect(eventRow.read<String>('flow_category'), 'internal');
     expect(eventRow.read<int?>('legacy_source_id'), isNull);
+    expect(eventRow.read<String>('title'), 'KRW → USD');
+    expect(eventRow.read<String>('memo'), '달러');
     expect(lineSummary.read<double>('out_amount'), -1300);
     expect(lineSummary.read<double>('in_amount'), 1);
     expect(lineSummary.read<int>('deleted_count'), 0);
@@ -1756,7 +1808,8 @@ void main() {
 
       final holding = await findHolding(holdingId);
       expect(holding.quantity, 0);
-      expect(holding.transactions.single.name, '기록용 매수');
+      expect(holding.transactions.single.name, '테스트 주식');
+      expect(holding.transactions.single.memo, '기록용');
       expect(holding.transactions.single.quantity, '5');
       expect(holding.transactions.single.includeInCalculations, isFalse);
       expect((await findHolding(cashHoldingId)).quantity, 1000);
@@ -2326,12 +2379,17 @@ void main() {
       )..where((row) => row.id.equals(assetId))).getSingle()).clientId!;
 
       await db.saveAssetAllocationTargets({assetId: 42.5});
+      final concurrentRead = db.fetchPortfolioAllocations();
       await db.replaceLocalSyncData(Map<String, dynamic>.from(payload));
 
-      final restoredAsset = await db.fetchAssetByClientId(assetClientId);
-      expect(restoredAsset, isNotNull);
-      final restoredTargets = await db.fetchAssetAllocationTargets();
-      expect(restoredTargets, {restoredAsset!.id: 42.5});
+      final duringSync = await concurrentRead;
+      expect(duringSync.assets.single.clientId, assetClientId);
+      expect(duringSync.targetRatios, {duringSync.assets.single.id: 42.5});
+
+      final restored = await db.fetchPortfolioAllocations();
+      expect(restored.assets.single.clientId, assetClientId);
+      expect(restored.assets.single.id, isNot(assetId));
+      expect(restored.targetRatios, {restored.assets.single.id: 42.5});
     },
   );
 
@@ -2518,6 +2576,14 @@ void main() {
       expect(usdRow.read<double>('average_price_krw'), 1400);
       expect(usdRow.read<double>('average_purchase_fx_rate'), 0);
       expect(usdRow.read<double>('cost_basis_krw'), 2800);
+      expect(
+        (await findHolding(krwHoldingId)).averagePriceInTradingCurrency,
+        1000,
+      );
+      expect(
+        (await findHolding(usdHoldingId)).averagePriceInTradingCurrency,
+        isNull,
+      );
 
       final payload = await db.buildDirtySyncPayload();
       final holdingPayload = (payload['holdings'] as List).whereType<Map>();
@@ -2623,6 +2689,7 @@ void main() {
         .getSingle();
 
     expect(holdingRow.read<double>('quantity'), 20);
+    expect((await findHolding(holdingId)).averagePriceInTradingCurrency, 15);
     expect(holdingRow.read<double>('average_price'), 22000);
     expect(holdingRow.read<double>('average_price_source'), 15);
     expect(holdingRow.read<double>('average_price_krw'), 22000);
@@ -2888,7 +2955,8 @@ void main() {
       final updatedTransaction = restoredHolding.transactions.singleWhere(
         (item) => item.type == '배당',
       );
-      expect(updatedTransaction.name, '배당 수정');
+      expect(updatedTransaction.name, '테스트');
+      expect(updatedTransaction.memo, contains('수정'));
       expect(updatedTransaction.amount, '200');
     },
   );
@@ -2981,7 +3049,7 @@ void main() {
     final updatedTransaction = restoredHolding.transactions.singleWhere(
       (item) => item.type == '입금',
     );
-    expect(updatedTransaction.name, '입금 수정');
+    expect(updatedTransaction.name, '수정');
     expect(updatedTransaction.amount, '200');
     expect(restoredHolding.quantity, 1200);
   });
@@ -4077,7 +4145,7 @@ void main() {
 
     expect(assetTransactions, hasLength(1));
     expect(assetTransactions.single.type, '매수');
-    expect(assetTransactions.single.name, '스냅샷 매수');
+    expect(assetTransactions.single.name, '테스트 주식');
     expect(assetTransactions.single.amount, '100');
     expect(assetTransactions.single.quantity, '5');
     expect(cashTransactions, hasLength(1));
@@ -4664,7 +4732,8 @@ void main() {
     expect(holding!.transactions, hasLength(1));
     expect(holding.transactions.single.date, '2026-05-21');
     expect(holding.transactions.single.type, '매수');
-    expect(holding.transactions.single.name, '상세 매수');
+    expect(holding.transactions.single.name, '테스트 주식');
+    expect(holding.transactions.single.memo, '상세');
     expect(holding.transactions.single.amount, '100');
     expect(holding.transactions.single.quantity, '5');
   });
@@ -4699,7 +4768,7 @@ void main() {
     expect(holding.transactions.single.id, isNegative);
     expect(holding.transactions.single.date, '2026-05-21');
     expect(holding.transactions.single.type, '출금');
-    expect(holding.transactions.single.name, '상세 출금');
+    expect(holding.transactions.single.name, '상세');
     expect(holding.transactions.single.amount, '-100');
     expect(holding.transactions.single.cashFlowAmount, -100);
     expect(holding.transactions.single.ledgerEventId, isNotNull);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -532,6 +533,66 @@ void main() {
       expect(snapshot.etfTopComponents.last.changeRate, '-0.80%');
     });
 
+    test(
+      'can read ETF summary while the independent NAV request is pending',
+      () async {
+        final componentResponse = Completer<http.Response>();
+        final componentRequested = Completer<void>();
+        var tokenRequestCount = 0;
+        final service = MarketDataService.test(
+          kisBaseUrl: 'https://kis.test',
+          kisAppKey: 'app-key',
+          kisAppSecret: 'app-secret',
+          client: MockClient((request) async {
+            if (request.method == 'POST') {
+              tokenRequestCount += 1;
+              return jsonResponse({
+                'access_token': 'token-1',
+                'expires_in': 3600,
+              });
+            }
+            if (request.url.path.endsWith('/inquire-component-stock-price')) {
+              componentRequested.complete();
+              return componentResponse.future;
+            }
+            return jsonResponse({
+              'rt_cd': '0',
+              'output': {'stck_prpr': '10250', 'stck_prdy_clpr': '10200'},
+            });
+          }),
+        );
+        final fund = holding(assetType: '펀드', symbol: '069500');
+
+        final summaryRequest = service.fetchSnapshot(
+          fund,
+          includeFundComponents: false,
+        );
+        final detailsRequest = service.fetchFundMarketDetails(fund);
+        await componentRequested.future;
+
+        final summary = await summaryRequest;
+        expect(summary.previousClose, '₩10,200');
+        expect(summary.isFallback, isFalse);
+        expect(componentResponse.isCompleted, isFalse);
+        expect(tokenRequestCount, 1);
+
+        componentResponse.complete(
+          jsonResponse({
+            'rt_cd': '0',
+            'output1': {
+              'oprc_nav': '10100',
+              'hprc_nav': '10300',
+              'lprc_nav': '10000',
+            },
+          }),
+        );
+        final details = await detailsRequest;
+        expect(details?.navOpen, '₩10,100');
+        expect(details?.navHigh, '₩10,300');
+        expect(details?.navLow, '₩10,000');
+      },
+    );
+
     test('keeps ETF summary when component quote request fails', () async {
       var componentRequestCount = 0;
       final service = MarketDataService.test(
@@ -609,6 +670,7 @@ void main() {
       );
 
       expect(quoteRequestCount, 1);
+      expect(snapshot.isFallback, isTrue);
       expect(snapshot.currentPriceValue, 1000);
       expect(snapshot.currentPrice, '₩1,000');
       expect(snapshot.netAssets, '-');

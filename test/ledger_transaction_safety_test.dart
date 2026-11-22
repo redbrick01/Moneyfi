@@ -41,6 +41,49 @@ void main() {
   Future<double> balance(int id) async =>
       (await db.fetchHoldingById(id))!.quantity;
 
+  test('cash distribution source is read and survives editing', () async {
+    final account = await cash('예수금', 0);
+    final transactionId = await db.createTransaction(
+      assetId: assetId,
+      holdingId: account,
+      date: '2026-11-03',
+      type: '입금',
+      name: '입금 · 분배금',
+      amount: '4118',
+      quantity: '',
+    );
+    await db.customStatement(
+      'UPDATE transaction_events SET memo = ? WHERE id = ?',
+      ['나스닥100', transactionId.abs()],
+    );
+
+    Future<TransactionItem> distribution() async => (await db.fetchAssets())
+        .expand((asset) => asset.holdings)
+        .firstWhere((holding) => holding.id == account)
+        .transactions
+        .singleWhere((item) => item.name == '분배금' && item.type == '입금');
+
+    final original = await distribution();
+    expect(original.memo, '나스닥100');
+    await db.updateTransactionItem(
+      TransactionItem(
+        id: original.id,
+        assetId: assetId,
+        holdingId: account,
+        date: original.date,
+        type: original.type,
+        name: original.name,
+        amount: '4119',
+        quantity: '',
+        ledgerEventId: original.ledgerEventId,
+      ),
+    );
+
+    final updated = await distribution();
+    expect(updated.memo, '나스닥100');
+    expect(updated.cashFlowAmount, 4119);
+  });
+
   test('failed buy edit keeps the original trade and settlement cash', () async {
     final holding = await db.createHolding(
       assetId: assetId,
@@ -89,11 +132,12 @@ void main() {
     expect(await balance(settlement), 500);
     final events = await db
         .customSelect(
-          'SELECT title FROM transaction_events WHERE deleted_at IS NULL AND kind = ?',
+          'SELECT title, memo FROM transaction_events WHERE deleted_at IS NULL AND kind = ?',
           variables: [Variable.withString('trade')],
         )
         .get();
-    expect(events.single.read<String>('title'), '원래 매수');
+    expect(events.single.read<String>('title'), '테스트 주식');
+    expect(events.single.read<String>('memo'), '원래');
   });
 
   test(

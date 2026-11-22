@@ -441,8 +441,8 @@ class _PortfolioEmptyContent extends StatelessWidget {
 }
 
 Future<_PortfolioPageData> _loadPortfolioPageData() async {
-  final assets = await AppDatabase.instance.fetchAssets();
-  final targetRatios = await AppDatabase.instance.fetchAssetAllocationTargets();
+  final (:assets, :targetRatios) = await AppDatabase.instance
+      .fetchPortfolioAllocations();
   final diagnosisPayload = _buildPortfolioDiagnosisPayload(assets: assets);
   final cachedDiagnosisEntry = diagnosisPayload == null
       ? null
@@ -512,8 +512,40 @@ List<_AllocationItem> _buildAllocations(List<AssetItem> assets) {
 
 Color _rankedAllocationColor(int rank) {
   final colors = VisualSpec.brand.allocationRankPalette;
-  return colors[rank % colors.length];
+  return rank < colors.length ? colors[rank] : VisualSpec.brand.allocationOther;
 }
+
+List<_AllocationItem> _groupChartAllocations(List<_AllocationItem> items) {
+  final limit = VisualSpec.brand.allocationRankPalette.length;
+  if (items.length <= limit) return items;
+
+  final remainder = items.skip(limit);
+  return [
+    ...items.take(limit),
+    _AllocationItem(
+      assetId: 0,
+      label: '기타',
+      amount: remainder.fold(0.0, (sum, item) => sum + item.amount),
+      ratio: remainder.fold(0.0, (sum, item) => sum + item.ratio),
+      color: VisualSpec.brand.allocationOther,
+      icon: VisualSpec.icon.pieChart,
+      holdings: const [],
+    ),
+  ];
+}
+
+@visibleForTesting
+Widget buildAllocationSectionForTesting(
+  List<AssetItem> assets, {
+  ValueChanged<String>? onSelectAsset,
+}) => _AllocationSectionCard(
+  items: _buildAllocations(assets),
+  selectedAssetLabel: null,
+  selectedHoldingLabel: null,
+  onSelectAsset: onSelectAsset ?? (_) {},
+  onSelectHolding: (_) {},
+  onOpenAssetDetail: (_) {},
+);
 
 class _AllocationSectionCard extends StatelessWidget {
   const _AllocationSectionCard({
@@ -555,10 +587,18 @@ class _AllocationSectionCard extends StatelessWidget {
     final selectedHoldingItem = selectedHoldingIndex < 0
         ? null
         : holdingItems[selectedHoldingIndex];
-    final chartItems = showHoldingBreakdown ? holdingItems : items;
-    final chartSelectedIndex = showHoldingBreakdown
-        ? (selectedHoldingIndex < 0 ? null : selectedHoldingIndex)
-        : selectedIndex;
+    final detailedChartItems = showHoldingBreakdown ? holdingItems : items;
+    final chartItems = _groupChartAllocations(detailedChartItems);
+    final otherIndex = chartItems.length < detailedChartItems.length
+        ? chartItems.length - 1
+        : null;
+    final otherAnchor = GlobalKey();
+    final selectedDetailIndex = showHoldingBreakdown
+        ? selectedHoldingIndex
+        : selectedIndex ?? -1;
+    final chartSelectedIndex = selectedDetailIndex < 0
+        ? null
+        : math.min(selectedDetailIndex, chartItems.length - 1);
     final sorted = [...items]..sort((a, b) => b.ratio.compareTo(a.ratio));
     final topOne = sorted.isEmpty ? null : sorted.first;
     final topThreeRatio = sorted
@@ -593,6 +633,9 @@ class _AllocationSectionCard extends StatelessWidget {
                           label: items[i].label,
                           onOpen: () => onOpenAssetDetail(items[i].assetId),
                           child: Column(
+                            key: !showHoldingBreakdown && i == otherIndex
+                                ? otherAnchor
+                                : null,
                             children: [
                               AllocationLegendRow(
                                 color: items[i].color,
@@ -611,6 +654,8 @@ class _AllocationSectionCard extends StatelessWidget {
                                   items: holdingItems,
                                   selectedLabel: selectedHoldingLabel,
                                   onSelectHolding: onSelectHolding,
+                                  otherIndex: otherIndex,
+                                  otherAnchor: otherAnchor,
                                 ),
                               ],
                             ],
@@ -621,7 +666,7 @@ class _AllocationSectionCard extends StatelessWidget {
                 ),
               );
 
-              final chart = _InteractiveDonutChart(
+              final donut = _InteractiveDonutChart(
                 size: chartSize,
                 items: chartItems,
                 selectedIndex: chartSelectedIndex,
@@ -638,12 +683,38 @@ class _AllocationSectionCard extends StatelessWidget {
                       )
                     : '${selectedItem.ratio.toStringAsFixed(1)}%',
                 onTapSlice: (index) {
-                  if (showHoldingBreakdown) {
+                  if (index == otherIndex) {
+                    if (otherAnchor.currentContext case final target?) {
+                      Scrollable.ensureVisible(
+                        target,
+                        duration: context.motion.fast,
+                      );
+                    }
+                  } else if (showHoldingBreakdown) {
                     onSelectHolding(holdingItems[index].label);
                   } else {
                     onSelectAsset(items[index].label);
                   }
                 },
+              );
+
+              final chart = Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  donut,
+                  if (otherIndex case final index?) ...[
+                    SizedBox(height: context.spacing.xs),
+                    MoneyfyBadge(
+                      label:
+                          '기타 ${chartItems[index].ratio.toStringAsFixed(1)}%',
+                      leading: Icon(
+                        Icons.circle,
+                        size: VisualSpec.chart.legendDot,
+                        color: chartItems[index].color,
+                      ),
+                    ),
+                  ],
+                ],
               );
 
               if (constraints.maxWidth < 380) {
@@ -721,11 +792,15 @@ class _HoldingBreakdownList extends StatelessWidget {
     required this.items,
     required this.selectedLabel,
     required this.onSelectHolding,
+    required this.otherIndex,
+    required this.otherAnchor,
   });
 
   final List<_AllocationItem> items;
   final String? selectedLabel;
   final ValueChanged<String> onSelectHolding;
+  final int? otherIndex;
+  final GlobalKey otherAnchor;
 
   @override
   Widget build(BuildContext context) {
@@ -739,6 +814,7 @@ class _HoldingBreakdownList extends StatelessWidget {
                 bottom: i == items.length - 1 ? 0 : context.spacing.xs,
               ),
               child: _HoldingLegendRow(
+                key: i == otherIndex ? otherAnchor : null,
                 item: items[i],
                 isSelected: selectedLabel == items[i].label,
                 onTap: () => onSelectHolding(items[i].label),
@@ -752,6 +828,7 @@ class _HoldingBreakdownList extends StatelessWidget {
 
 class _HoldingLegendRow extends StatelessWidget {
   const _HoldingLegendRow({
+    super.key,
     required this.item,
     required this.isSelected,
     required this.onTap,
@@ -865,7 +942,7 @@ class _SwipeToOpenAssetDetail extends StatelessWidget {
             CustomSlidableAction(
               onPressed: (_) => onOpen(),
               backgroundColor: VisualSpec.surface.transparent,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: VisualSpec.surface.swipeActionPadding,
               borderRadius: BorderRadius.zero,
               child: Align(
                 alignment: Alignment.center,

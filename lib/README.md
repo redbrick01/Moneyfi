@@ -19,7 +19,6 @@
 | `db/` | Drift table, migration, query, ledger 계산 |
 | `design_system/` | theme extension, spacing, typography, brand color, spec |
 | `features/` | 기능별 화면, 서비스, 모델 소유 경계 |
-| `theme/` | 보조 theme/color 정의 |
 | `ui_scaffold/` | 공통 페이지 scaffold와 inset |
 | `utils/` | 표시 통화 등 범용 helper |
 | `widgets/` | 기존 공용 widget과 복합 카드 |

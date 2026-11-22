@@ -1649,7 +1649,9 @@ class _HoldingDisplayModeSegment extends StatelessWidget {
         width: 42,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? context.surfaces.surfaceBase : Colors.transparent,
+          color: selected
+              ? context.surfaces.surfaceBase
+              : VisualSpec.surface.transparent,
           borderRadius: BorderRadius.circular(context.radius.rSm),
         ),
         child: Text(

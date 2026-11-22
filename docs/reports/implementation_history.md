@@ -36,7 +36,6 @@ Use current canonical docs for implementation details:
 | --- | --- | --- |
 | Risk-adjusted benchmark performance | Remote schema draft | `docs/reports/archived_artifacts/risk_adjusted_benchmark_performance/remote_schema_draft_05.sql` |
 | USD realized PnL currency basis | Remote verification and rollback SQL | `docs/reports/archived_artifacts/usd_realized_pnl_currency_basis/remote_verification_and_rollback_06.sql` |
-| Design token unification | Card panel SVG sample | `docs/reports/archived_artifacts/design_token_unification/card_panel_token_sample_20260530.svg` |
 
 ## Risk-Adjusted Benchmark Rollout Notes
 

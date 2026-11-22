@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:moneyfy/components/buttons/app_buttons.dart';
 import 'package:moneyfy/components/panels/app_sheet_surface.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 
@@ -57,25 +58,14 @@ class MoneyfyFormScaffold extends StatelessWidget {
             context.contentHorizontalPadding,
             context.spacing.md + context.spacing.xs / 2 + bottomInset,
           ),
-          child: FilledButton(
+          child: AppPrimaryButton(
+            label: isSaving ? '저장 중...' : actionLabel,
             onPressed: actionEnabled && !isSaving
                 ? () {
                     FocusScope.of(context).unfocus();
                     onSave();
                   }
                 : null,
-            style: FilledButton.styleFrom(
-              backgroundColor: context.colors.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              minimumSize: const Size.fromHeight(44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(context.radius.rPill),
-              ),
-              textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: AppFontWeights.regular,
-              ),
-            ),
-            child: Text(isSaving ? '저장 중...' : actionLabel),
           ),
         ),
       ),
@@ -635,7 +625,7 @@ class MoneyfyChoiceWrap<T> extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: option == value
-                    ? context.colors.primary
+                    ? context.colors.primaryContainer
                     : context.colors.neutralSurfaceBase,
                 borderRadius: BorderRadius.circular(context.radius.rPill),
                 border: Border.all(
@@ -655,7 +645,7 @@ class MoneyfyChoiceWrap<T> extends StatelessWidget {
                     labelBuilder(option),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: option == value
-                          ? Theme.of(context).colorScheme.onPrimary
+                          ? context.colors.primaryOnContainer
                           : context.colors.neutralText,
                       fontWeight: AppFontWeights.regular,
                     ),

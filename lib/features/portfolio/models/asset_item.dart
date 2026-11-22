@@ -28,6 +28,7 @@ class TransactionItem {
     required this.date,
     required this.type,
     required this.name,
+    this.memo = '',
     required this.amount,
     required this.quantity,
     this.unitPrice,
@@ -55,6 +56,7 @@ class TransactionItem {
   final String date;
   final String type;
   final String name;
+  final String memo;
   final String amount;
   final String quantity;
   final double? unitPrice;
@@ -73,6 +75,24 @@ class TransactionItem {
   final int? counterpartyHoldingId;
   final bool includeInCalculations;
   final String flowCategory;
+
+  double get displayTotalAmount {
+    final gross = grossAmount ?? 0;
+    if (gross.abs() > 0.0000001) return gross;
+
+    final unitAmount = double.tryParse(amount.replaceAll(',', '').trim()) ?? 0;
+    final units = double.tryParse(quantity.replaceAll(',', '').trim()) ?? 0;
+    final action = ledgerAction ?? type.trim();
+    return switch (action) {
+      'buy' ||
+      'sell' ||
+      'opening_quantity' ||
+      '매수' ||
+      '매도' ||
+      '초기' when units.abs() > 0.0000001 => unitAmount * units,
+      _ => unitAmount,
+    };
+  }
 
   bool get isLedgerBacked => ledgerEventId != null || ledgerLineId != null;
 
@@ -132,6 +152,7 @@ class HoldingItem {
     required this.symbol,
     required this.quantity,
     required this.averagePrice,
+    this.averagePriceSource,
     required this.currentPrice,
     required this.note,
     required this.transactions,
@@ -151,11 +172,20 @@ class HoldingItem {
   final String symbol;
   final double quantity;
   final double averagePrice;
+  final double? averagePriceSource;
   final double currentPrice;
   final String note;
   final List<TransactionItem> transactions;
 
   double get currencyMultiplier => currencyCode == 'USD' ? exchangeRate : 1;
+
+  double? get averagePriceInTradingCurrency {
+    if (!quantity.isFinite || quantity <= 0) return null;
+    final price = currencyCode.toUpperCase() == 'USD'
+        ? averagePriceSource
+        : averagePrice;
+    return price != null && price.isFinite && price > 0 ? price : null;
+  }
 
   // USD holdings store averagePrice in KRW, while currentPrice is fetched in USD.
   double get purchaseAmount => quantity * averagePrice;

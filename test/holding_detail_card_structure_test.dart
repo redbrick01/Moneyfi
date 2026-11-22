@@ -44,7 +44,8 @@ void main() {
     final cashCaseStart = source.indexOf("case '현금':", fundCaseStart);
     final fundCaseSource = source.substring(fundCaseStart, cashCaseStart);
 
-    expect(fundCaseSource, contains('if (market.hasCompleteEtfFundInfo)'));
+    expect(fundCaseSource, contains('fundDetails?.hasCompleteFundInfo'));
+    expect(fundCaseSource, contains("market.netAssets != '-'"));
     expect(fundCaseSource, contains("title: 'ETF / 펀드 정보'"));
   });
 }

@@ -39,7 +39,7 @@
 | 문서 | 역할 |
 | --- | --- |
 | [Design System](design_system.md) | UI/UX 단일 기준: 방향, 토큰, typography, component, 상태, 화면 패턴, QA |
-| [Brand Palette](brand/README.md) | 브랜드/시맨틱 컬러 결정, 구현 팔레트, 팔레트 이미지 산출물 |
+| [Brand Palette](brand/README.md) | 브랜드 팔레트, 컬러 감사, 워드마크 자료 |
 
 ## Process Guides
 
@@ -54,7 +54,6 @@
 | 문서 | 역할 |
 | --- | --- |
 | [Implementation History](reports/implementation_history.md) | Markdown Cleanup Phase 2에서 제거된 완료 구현 계획의 압축 색인 |
-| [Implementation Report 2026-05-24](reports/implementation_report_20260524.md) | 2026-05-24 기준 통합 구현 보고서 |
 
 ## Maintenance Checklist
 

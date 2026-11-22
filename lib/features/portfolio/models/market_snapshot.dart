@@ -18,6 +18,35 @@ class FundComponentItem {
   final String valuationAmount;
 }
 
+class FundMarketDetails {
+  const FundMarketDetails({
+    required this.componentCount,
+    required this.componentMarketCap,
+    required this.netAssetsTotal,
+    required this.cuUnitCount,
+    required this.navOpen,
+    required this.navHigh,
+    required this.navLow,
+    required this.topComponents,
+  });
+
+  final String componentCount;
+  final String componentMarketCap;
+  final String netAssetsTotal;
+  final String cuUnitCount;
+  final String navOpen;
+  final String navHigh;
+  final String navLow;
+  final List<FundComponentItem> topComponents;
+
+  bool get hasCompleteFundInfo => [
+    netAssetsTotal,
+    componentCount,
+    componentMarketCap,
+    cuUnitCount,
+  ].every((value) => value.trim().isNotEmpty && value.trim() != '-');
+}
+
 class HoldingMarketSnapshot {
   const HoldingMarketSnapshot({
     required this.marketName,
@@ -55,18 +84,13 @@ class HoldingMarketSnapshot {
     required this.bestBidPrice,
     required this.bestAskQty,
     required this.bestBidQty,
-    required this.etfComponentCount,
-    required this.etfComponentMarketCap,
-    required this.etfNetAssetsTotal,
-    required this.etfCuUnitCount,
-    required this.etfNavOpen,
-    required this.etfNavHigh,
-    required this.etfNavLow,
-    required this.etfTopComponents,
+    this.fundDetails,
+    this.isFallback = false,
   });
 
   factory HoldingMarketSnapshot.fallback(HoldingItem holding) {
     return HoldingMarketSnapshot(
+      isFallback: true,
       marketName: holding.assetTitle ?? '-',
       sectorName: '-',
       currentPrice: holding.primaryMetricValue,
@@ -102,14 +126,6 @@ class HoldingMarketSnapshot {
       bestBidPrice: '-',
       bestAskQty: '-',
       bestBidQty: '-',
-      etfComponentCount: '-',
-      etfComponentMarketCap: '-',
-      etfNetAssetsTotal: '-',
-      etfCuUnitCount: '-',
-      etfNavOpen: '-',
-      etfNavHigh: '-',
-      etfNavLow: '-',
-      etfTopComponents: const [],
     );
   }
 
@@ -148,24 +164,21 @@ class HoldingMarketSnapshot {
   final String bestBidPrice;
   final String bestAskQty;
   final String bestBidQty;
-  final String etfComponentCount;
-  final String etfComponentMarketCap;
-  final String etfNetAssetsTotal;
-  final String etfCuUnitCount;
-  final String etfNavOpen;
-  final String etfNavHigh;
-  final String etfNavLow;
-  final List<FundComponentItem> etfTopComponents;
+  final FundMarketDetails? fundDetails;
+  final bool isFallback;
+
+  String get etfComponentCount => fundDetails?.componentCount ?? '-';
+  String get etfComponentMarketCap => fundDetails?.componentMarketCap ?? '-';
+  String get etfNetAssetsTotal => fundDetails?.netAssetsTotal ?? '-';
+  String get etfCuUnitCount => fundDetails?.cuUnitCount ?? '-';
+  String get etfNavOpen => fundDetails?.navOpen ?? '-';
+  String get etfNavHigh => fundDetails?.navHigh ?? '-';
+  String get etfNavLow => fundDetails?.navLow ?? '-';
+  List<FundComponentItem> get etfTopComponents =>
+      fundDetails?.topComponents ?? const [];
 
   bool get hasCompleteEtfFundInfo =>
-      [
-        netAssets,
-        etfNetAssetsTotal,
-        etfComponentCount,
-        etfComponentMarketCap,
-        etfCuUnitCount,
-      ].every((value) {
-        final normalized = value.trim();
-        return normalized.isNotEmpty && normalized != '-';
-      });
+      netAssets.trim().isNotEmpty &&
+      netAssets.trim() != '-' &&
+      (fundDetails?.hasCompleteFundInfo ?? false);
 }

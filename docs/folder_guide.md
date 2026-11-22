@@ -29,7 +29,6 @@
 | `lib/components/` | 재사용 UI 컴포넌트 |
 | `lib/widgets/` | 기존 공용 위젯과 뉴스 카드 |
 | `lib/design_system/` | theme extension, 토큰, 브랜드 팔레트 |
-| `lib/theme/` | 레거시/보조 테마 값 |
 | `lib/ui_scaffold/` | 공통 페이지 scaffold |
 | `lib/utils/` | 표시 통화 등 유틸리티 |
 

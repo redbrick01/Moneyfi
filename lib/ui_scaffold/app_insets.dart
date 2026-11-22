@@ -5,7 +5,6 @@ import 'package:moneyfy/design_system/context_extensions.dart';
 class AppInsets {
   const AppInsets._();
 
-  // TODO: keep this aligned with the floating tab bar rendered in app_shell_page.dart.
   static const double floatingNavHeight = 72;
 
   static double bottomContentInset(

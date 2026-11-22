@@ -1,9 +1,6 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import 'package:moneyfy/components/buttons/app_buttons.dart';
-import 'package:moneyfy/components/chips/delta_chip.dart';
 import 'package:moneyfy/components/feedback/app_snackbar.dart';
 import 'package:moneyfy/components/icons/app_icon.dart';
 import 'package:moneyfy/components/icons/app_icon_button.dart';
@@ -15,11 +12,10 @@ import 'package:moneyfy/components/states/skeletons.dart';
 import 'package:moneyfy/design_system/spec.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/db/app_database.dart';
+import 'package:moneyfy/features/account/widgets/total_asset_history_card.dart';
 import 'package:moneyfy/features/auth/services/auth_service.dart';
 import 'package:moneyfy/features/portfolio/services/market_data_service.dart';
-import 'package:moneyfy/theme/moneyfy_theme.dart';
 import 'package:moneyfy/ui_scaffold/app_page_scaffold.dart';
-import 'package:moneyfy/utils/display_currency.dart';
 import 'package:moneyfy/features/analysis/screens/analysis_page.dart';
 import 'package:moneyfy/features/analysis/screens/annual_asset_analysis_page.dart';
 import 'package:moneyfy/features/portfolio/screens/snapshot_detail_page.dart';
@@ -72,7 +68,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return FutureBuilder<_StatisticsSnapshotBundle>(
       future: _pageFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return AppPageScaffold(
             title: '통계',
             enablePullToRefresh: true,
@@ -108,11 +105,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
         }
 
         final bundle = snapshot.data ?? const _StatisticsSnapshotBundle.empty();
-        final data = _buildStatisticsData(bundle.snapshots, bundle.items);
-        final recentWeekData = _buildRecentWeekStatisticsData(
-          bundle.allSnapshots,
-          bundle.annualItems,
-        );
         final closingAssets = buildMonthlyClosingAssets(
           bundle.recentSnapshots,
           bundle.recentItems,
@@ -136,14 +128,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _MonthlyTrendSection(
-                months: data.months,
-                monthKeys: data.monthKeys,
-                series: data.series,
-                totalSeries: data.totalSeries,
-                recentWeekData: recentWeekData,
-                sectionError: bundle.trendError,
-                onRetry: _refreshPage,
+              TotalAssetHistoryCard(
+                snapshots: bundle.historySnapshots,
+                loadItems: fetchVisibleSnapshotSummaryItemsByDates,
               ),
               SizedBox(height: context.spacing.sectionGap),
               _MonthEndSnapshotsSection(
@@ -213,44 +200,21 @@ class _StatisticsLoadingBody extends StatelessWidget {
 }
 
 Future<_StatisticsSnapshotBundle> _loadStatisticsSnapshotBundle() async {
-  List<DailyPortfolioSnapshot> allSnapshots = const [];
-  Object? baseError;
-
-  try {
-    allSnapshots = await AppDatabase.instance.fetchRecentPortfolioSnapshots(
-      maxDates: 240,
-    );
-  } catch (error) {
-    baseError = error;
-  }
-
-  if (baseError != null) {
-    return _StatisticsSnapshotBundle(
-      snapshots: const [],
-      items: const [],
-      recentSnapshots: const [],
-      recentItems: const [],
-      annualItems: const [],
-      allSnapshots: const [],
-      allItems: const [],
-      transactionDates: const {},
-      trendError: baseError,
-      monthEndError: baseError,
-      yearAnalysisError: baseError,
-      calendarError: baseError,
-    );
-  }
-
+  final historySnapshots = await AppDatabase.instance
+      .fetchAllPortfolioSnapshots();
+  final allSnapshots = historySnapshots.length > 240
+      ? historySnapshots.sublist(historySnapshots.length - 240)
+      : historySnapshots;
   final recentSnapshots = selectMonthlyClosingSnapshots(allSnapshots);
 
   List<DailyPortfolioSnapshotItem> recentItems = const [];
-  Object? trendError;
+  Object? monthEndError;
   try {
     recentItems = await fetchVisibleSnapshotSummaryItemsByDates(
       recentSnapshots.map((snapshot) => snapshot.snapshotDate).toList(),
     );
   } catch (error) {
-    trendError = error;
+    monthEndError = error;
   }
 
   List<DailyPortfolioSnapshotItem> allItems = const [];
@@ -283,656 +247,17 @@ Future<_StatisticsSnapshotBundle> _loadStatisticsSnapshotBundle() async {
   }
 
   return _StatisticsSnapshotBundle(
-    snapshots: recentSnapshots,
-    items: recentItems,
+    historySnapshots: historySnapshots,
     recentSnapshots: recentSnapshots,
     recentItems: recentItems,
     annualItems: annualItems,
     allSnapshots: allSnapshots,
     allItems: allItems,
     transactionDates: transactionDates,
-    trendError: trendError,
-    monthEndError: trendError,
+    monthEndError: monthEndError,
     yearAnalysisError: annualItemsError,
     calendarError: allItemsError ?? transactionError,
   );
-}
-
-_StatisticsData _buildStatisticsData(
-  List<DailyPortfolioSnapshot> snapshots,
-  List<DailyPortfolioSnapshotItem> items,
-) {
-  final dateKeys = snapshots.map((item) => item.snapshotDate).toList()..sort();
-  final months = dateKeys.map(_monthLabelFromKey).toList();
-  final snapshotIdByDate = {
-    for (final snapshot in snapshots) snapshot.snapshotDate: snapshot.id,
-  };
-  final assetKeys = items.map(_statisticsAssetKey).toSet().toList()
-    ..sort((a, b) => a.compareTo(b));
-  final assetLabelByKey = {
-    for (final item in items) _statisticsAssetKey(item): item.assetTitle,
-  };
-  final assetIdByKey = {
-    for (final item in items) _statisticsAssetKey(item): item.assetId,
-  };
-
-  final series = assetKeys.map((assetKey) {
-    final values = dateKeys.map((dateKey) {
-      final snapshotId = snapshotIdByDate[dateKey];
-      final row = items.cast<DailyPortfolioSnapshotItem?>().firstWhere(
-        (item) =>
-            item?.snapshotId == snapshotId &&
-            _statisticsAssetKey(item!) == assetKey,
-        orElse: () => null,
-      );
-      return (row?.totalValuationAmount ?? 0) / 1000000;
-    }).toList();
-    final label = assetLabelByKey[assetKey] ?? '-';
-
-    return _MonthlyAssetSeries(
-      label: label,
-      color: MoneyfyChartPalette.colorForAsset(
-        label,
-        assetId: assetIdByKey[assetKey],
-        fallback: ThemeData.light().colorScheme.outline,
-      ),
-      values: values,
-    );
-  }).toList();
-
-  final totalSeries = _MonthlyAssetSeries(
-    label: '총자산',
-    color: ThemeData.light().colorScheme.onSurface,
-    values: dateKeys.map((dateKey) {
-      final snapshotId = snapshotIdByDate[dateKey];
-      final total = items
-          .where((item) => item.snapshotId == snapshotId)
-          .fold<double>(0, (sum, item) => sum + item.totalValuationAmount);
-      return total / 1000000;
-    }).toList(),
-  );
-
-  return _StatisticsData(
-    monthKeys: dateKeys,
-    months: months,
-    series: series,
-    totalSeries: totalSeries,
-  );
-}
-
-_StatisticsData _buildRecentWeekStatisticsData(
-  List<DailyPortfolioSnapshot> snapshots,
-  List<DailyPortfolioSnapshotItem> items,
-) {
-  if (snapshots.isEmpty) {
-    return const _StatisticsData.empty();
-  }
-  final sortedSnapshots = List<DailyPortfolioSnapshot>.from(snapshots)
-    ..sort((a, b) => a.snapshotDate.compareTo(b.snapshotDate));
-  final latestDate = DateTime.tryParse(sortedSnapshots.last.snapshotDate);
-  if (latestDate == null) {
-    return const _StatisticsData.empty();
-  }
-  final startDate = DateTime(
-    latestDate.year,
-    latestDate.month,
-    latestDate.day,
-  ).subtract(const Duration(days: 6));
-  final recentSnapshots = sortedSnapshots
-      .where((snapshot) {
-        final date = DateTime.tryParse(snapshot.snapshotDate);
-        if (date == null) return false;
-        final normalized = DateTime(date.year, date.month, date.day);
-        return !normalized.isBefore(startDate);
-      })
-      .toList(growable: false);
-  if (recentSnapshots.isEmpty) {
-    return const _StatisticsData.empty();
-  }
-  final data = _buildStatisticsData(recentSnapshots, items);
-  return _StatisticsData(
-    monthKeys: data.monthKeys,
-    months: data.monthKeys.map(_dayLabelFromKey).toList(growable: false),
-    series: const [],
-    totalSeries: data.totalSeries,
-  );
-}
-
-String _monthLabelFromKey(String key) {
-  final date = DateTime.parse(key);
-  return '${date.month}월';
-}
-
-String _dayLabelFromKey(String key) {
-  final date = DateTime.tryParse(key);
-  if (date == null) return key;
-  return '${date.month}/${date.day}';
-}
-
-String _statisticsAssetKey(DailyPortfolioSnapshotItem item) {
-  return 'id:${item.assetId}';
-}
-
-class _MonthlyTrendSection extends StatefulWidget {
-  const _MonthlyTrendSection({
-    required this.months,
-    required this.monthKeys,
-    required this.series,
-    required this.totalSeries,
-    required this.recentWeekData,
-    this.sectionError,
-    required this.onRetry,
-  });
-
-  final List<String> months;
-  final List<String> monthKeys;
-  final List<_MonthlyAssetSeries> series;
-  final _MonthlyAssetSeries totalSeries;
-  final _StatisticsData recentWeekData;
-  final Object? sectionError;
-  final Future<void> Function() onRetry;
-
-  @override
-  State<_MonthlyTrendSection> createState() => _MonthlyTrendSectionState();
-}
-
-enum _TotalAssetTrendView {
-  monthly('월별', '월별 총자산 변화', '월별 스냅샷 기록으로 총자산 흐름을 비교해요.'),
-  weekly('최근 7일', '최근 7일 총자산 변화', '최근 일주일 스냅샷으로 총자산 흐름을 비교해요.');
-
-  const _TotalAssetTrendView(this.label, this.title, this.description);
-
-  final String label;
-  final String title;
-  final String description;
-
-  _TotalAssetTrendView get previous {
-    return switch (this) {
-      _TotalAssetTrendView.monthly => _TotalAssetTrendView.weekly,
-      _TotalAssetTrendView.weekly => _TotalAssetTrendView.monthly,
-    };
-  }
-
-  _TotalAssetTrendView get next => previous;
-}
-
-class _TrendViewSwitcher extends StatelessWidget {
-  const _TrendViewSwitcher({required this.value, required this.onChanged});
-
-  final _TotalAssetTrendView value;
-  final ValueChanged<_TotalAssetTrendView> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _TrendViewArrowButton(
-          tooltip: '이전 카드',
-          icon: AppIconName.chevronLeft,
-          onPressed: () => onChanged(value.previous),
-        ),
-        SizedBox(
-          width: 56,
-          child: Center(
-            child: Text(
-              value.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.typography.caption.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: AppFontWeights.semibold,
-              ),
-            ),
-          ),
-        ),
-        _TrendViewArrowButton(
-          tooltip: '다음 카드',
-          icon: AppIconName.chevronRight,
-          onPressed: () => onChanged(value.next),
-        ),
-      ],
-    );
-  }
-}
-
-class _TrendViewArrowButton extends StatelessWidget {
-  const _TrendViewArrowButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tooltip;
-  final AppIconName icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppIconButton(tooltip: tooltip, onPressed: onPressed, icon: icon);
-  }
-}
-
-class _MonthlyTrendSectionState extends State<_MonthlyTrendSection> {
-  int? _selectedIndex;
-  bool _legendExpanded = false;
-  _TotalAssetTrendView _trendView = _TotalAssetTrendView.monthly;
-
-  @override
-  void initState() {
-    super.initState();
-    _syncSelection();
-  }
-
-  @override
-  void didUpdateWidget(covariant _MonthlyTrendSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.months != widget.months ||
-        oldWidget.totalSeries.values != widget.totalSeries.values ||
-        oldWidget.recentWeekData.totalSeries.values !=
-            widget.recentWeekData.totalSeries.values) {
-      _syncSelection();
-    }
-  }
-
-  _StatisticsData get _activeData {
-    return switch (_trendView) {
-      _TotalAssetTrendView.monthly => _StatisticsData(
-        monthKeys: widget.monthKeys,
-        months: widget.months,
-        series: widget.series,
-        totalSeries: widget.totalSeries,
-      ),
-      _TotalAssetTrendView.weekly => widget.recentWeekData,
-    };
-  }
-
-  void _syncSelection() {
-    final activeData = _activeData;
-    if (activeData.months.isEmpty) {
-      _selectedIndex = null;
-      return;
-    }
-    _selectedIndex ??= activeData.months.length - 1;
-    if (_selectedIndex! >= activeData.months.length) {
-      _selectedIndex = activeData.months.length - 1;
-    }
-  }
-
-  void _handleSelection(Offset localPosition, double chartWidth) {
-    final activeData = _activeData;
-    if (activeData.months.isEmpty || chartWidth <= 0) return;
-
-    final safeDx = localPosition.dx.clamp(0.0, chartWidth);
-    final denominator = math.max(activeData.months.length - 1, 1);
-    final index = ((safeDx / chartWidth) * denominator).round().clamp(
-      0,
-      activeData.months.length - 1,
-    );
-
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  void _setTrendView(_TotalAssetTrendView value) {
-    setState(() {
-      _trendView = value;
-      _selectedIndex = null;
-      _syncSelection();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final activeData = _activeData;
-
-    if (widget.sectionError != null) {
-      return SectionCard(
-        title: _trendView.title,
-        headerTrailing: _TrendViewSwitcher(
-          value: _trendView,
-          onChanged: _setTrendView,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const InlineError(
-              message: '차트 데이터를 불러오지 못했어요.',
-              detail: '다시 시도해 주세요.',
-            ),
-            SizedBox(height: context.spacing.sm),
-            RetryRow(message: '다시 시도해 주세요.', onRetry: widget.onRetry),
-          ],
-        ),
-      );
-    }
-
-    final chartSeries = [
-      activeData.totalSeries,
-      if (_trendView == _TotalAssetTrendView.monthly) ...activeData.series,
-    ];
-    final yAxisLabels = _buildYAxisLabels(chartSeries);
-    final hasData =
-        activeData.months.isNotEmpty &&
-        chartSeries.any((item) => item.values.any((value) => value != 0));
-
-    if (!hasData) {
-      if (_trendView == _TotalAssetTrendView.weekly &&
-          widget.months.isNotEmpty) {
-        return SectionCard(
-          title: _trendView.title,
-          headerTrailing: _TrendViewSwitcher(
-            value: _trendView,
-            onChanged: _setTrendView,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_trendView.description, style: context.typography.meta),
-              SizedBox(height: context.spacing.sm),
-              Text(
-                '스냅샷이 쌓이면 최근 일주일 총자산 변화를 확인할 수 있어요.',
-                style: context.typography.body,
-              ),
-              SizedBox(height: context.spacing.md),
-              AppGhostButton(
-                label: CopySpec.refresh,
-                onPressed: widget.onRetry,
-              ),
-            ],
-          ),
-        );
-      }
-      final isLoggedIn = AuthService.currentUser != null;
-      if (!isLoggedIn) {
-        return _buildCenteredLevel1EmptyCard(
-          context,
-          title: '차트 데이터가 없어요',
-          description: '스냅샷이 쌓이면 월별 총자산 변화를 확인할 수 있어요.',
-          actionLabel: CopySpec.refresh,
-          onAction: widget.onRetry,
-        );
-      }
-      return EmptyStateCard(
-        title: '차트 데이터가 없어요',
-        description: '스냅샷이 쌓이면 월별 총자산 변화를 확인할 수 있어요.',
-        actionLabel: CopySpec.refresh,
-        onAction: widget.onRetry,
-      );
-    }
-
-    final selected = _selectedIndex ?? (activeData.months.length - 1);
-    final legendItems = [
-      _LegendTextItem(
-        color: activeData.totalSeries.color,
-        label: activeData.totalSeries.label,
-      ),
-      if (_trendView == _TotalAssetTrendView.monthly)
-        for (final item in activeData.series)
-          _LegendTextItem(color: item.color, label: item.label),
-    ];
-    final showXAxisLabels = _trendView == _TotalAssetTrendView.monthly;
-    final visibleLegendCount = _legendExpanded
-        ? legendItems.length
-        : math.min(6, legendItems.length);
-
-    return SectionCard(
-      title: _trendView.title,
-      headerTrailing: _TrendViewSwitcher(
-        value: _trendView,
-        onChanged: _setTrendView,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(_trendView.description, style: context.typography.meta),
-          SizedBox(height: context.spacing.sm),
-          _SelectedMonthStrip(
-            monthKey: activeData.monthKeys[selected],
-            compactDate: _trendView == _TotalAssetTrendView.weekly,
-            totalValueInMillion: activeData.totalSeries.values[selected],
-            previousValueInMillion: selected > 0
-                ? activeData.totalSeries.values[selected - 1]
-                : null,
-          ),
-          SizedBox(height: context.spacing.md),
-          SizedBox(
-            height: 220,
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 44,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      0,
-                      VisualSpec.chart.chartPadding,
-                      0,
-                      VisualSpec.icon.progressIndicatorSizeLarge,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final label in yAxisLabels)
-                          Text(
-                            label,
-                            style: context.typography.caption.copyWith(
-                              fontSize: context.fontSizes.s12,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTapDown: (details) => _handleSelection(
-                          details.localPosition,
-                          constraints.maxWidth,
-                        ),
-                        onHorizontalDragUpdate: (details) => _handleSelection(
-                          details.localPosition,
-                          constraints.maxWidth,
-                        ),
-                        child: CustomPaint(
-                          painter: _MonthlyTrendPainter(
-                            series: chartSeries,
-                            selectedIndex: _selectedIndex,
-                            gridColor: colorScheme.outlineVariant.withValues(
-                              alpha: theme.brightness == Brightness.dark
-                                  ? VisualSpec.chart.gridAlphaDark
-                                  : VisualSpec.chart.gridAlphaLight,
-                            ),
-                            pointStrokeColor: colorScheme.surface,
-                            indicatorColor: colorScheme.onSurfaceVariant
-                                .withValues(
-                                  alpha: theme.brightness == Brightness.dark
-                                      ? VisualSpec.chart.crosshairAlphaDark
-                                      : VisualSpec.chart.crosshairAlphaLight,
-                                ),
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              context.spacing.xs,
-                              VisualSpec.chart.chartPadding,
-                              context.spacing.xs,
-                              context.spacing.xs,
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (showXAxisLabels)
-                                  for (
-                                    var i = 0;
-                                    i < activeData.months.length;
-                                    i++
-                                  )
-                                    Expanded(
-                                      child: Align(
-                                        alignment: Alignment.bottomCenter,
-                                        child: Text(
-                                          activeData.months[i],
-                                          style: context.typography.caption
-                                              .copyWith(
-                                                fontSize: context.fontSizes.s12,
-                                                color: colorScheme
-                                                    .onSurfaceVariant,
-                                                fontWeight: _selectedIndex == i
-                                                    ? AppFontWeights.semibold
-                                                    : AppFontWeights.regular,
-                                              ),
-                                        ),
-                                      ),
-                                    ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: context.spacing.md),
-          _LegendTextRow(items: legendItems.take(visibleLegendCount).toList()),
-          if (legendItems.length > 6)
-            AppGhostButton(
-              label: _legendExpanded ? '범례 접기' : '범례 더보기',
-              onPressed: () =>
-                  setState(() => _legendExpanded = !_legendExpanded),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SelectedMonthStrip extends StatelessWidget {
-  const _SelectedMonthStrip({
-    required this.monthKey,
-    this.compactDate = false,
-    required this.totalValueInMillion,
-    this.previousValueInMillion,
-  });
-
-  final String monthKey;
-  final bool compactDate;
-  final double totalValueInMillion;
-  final double? previousValueInMillion;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final currentValueKrw = totalValueInMillion * 1000000;
-    final deltaKrw = previousValueInMillion == null
-        ? null
-        : (totalValueInMillion - previousValueInMillion!) * 1000000;
-    final deltaRate =
-        previousValueInMillion == null || previousValueInMillion == 0
-        ? null
-        : ((totalValueInMillion - previousValueInMillion!) /
-                  previousValueInMillion!) *
-              100;
-
-    final deltaText = deltaKrw == null
-        ? null
-        : MoneyfyDisplayCurrencySettings.formatSignedAmountFromKrw(deltaKrw);
-    final deltaColor = deltaText == null
-        ? context.colors.neutralTextMuted
-        : deltaText.startsWith('+')
-        ? context.colors.positiveOn
-        : deltaText.startsWith('-')
-        ? context.colors.negativeOn
-        : context.colors.neutralTextMuted;
-
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(
-        minHeight: VisualSpec.chart.selectionHeaderHeight,
-      ),
-      padding: EdgeInsets.all(VisualSpec.chart.selectionHeaderPadding),
-      decoration: BoxDecoration(
-        color: context.surfaces.surfaceRaised,
-        borderRadius: BorderRadius.circular(VisualSpec.chart.tooltipRadius),
-        border: Border.all(
-          color: colorScheme.outlineVariant,
-          width: VisualSpec.chart.tooltipBorder,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                compactDate
-                    ? _formatMonthDay(monthKey)
-                    : _formatYearMonth(monthKey),
-                style: context.typography.meta.copyWith(
-                  fontSize: context.fontSizes.s14,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: context.spacing.sm),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                MoneyfyDisplayCurrencySettings.formatAmountFromKrw(
-                  currentValueKrw,
-                ),
-                textAlign: TextAlign.right,
-                style: context.typography.cardTitle.copyWith(
-                  fontSize: context.fontSizes.s16,
-                  color: colorScheme.onSurface,
-                  fontWeight: AppFontWeights.semibold,
-                ),
-              ),
-              if (deltaText != null) ...[
-                SizedBox(height: context.spacing.xs / 2),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      deltaText,
-                      textAlign: TextAlign.right,
-                      style: context.typography.caption.copyWith(
-                        fontSize: context.fontSizes.s14,
-                        color: deltaColor,
-                        fontWeight: AppFontWeights.semibold,
-                      ),
-                    ),
-                    if (deltaRate != null) ...[
-                      SizedBox(width: context.spacing.xs),
-                      DeltaChip(
-                        value: deltaKrw!,
-                        percent: deltaRate,
-                        mode: DeltaChipMode.percent,
-                        vivid: true,
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _MonthEndSnapshotsSection extends StatefulWidget {
@@ -1316,11 +641,6 @@ class _CalendarLegendRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final pivotColor = Color.lerp(
-      colorScheme.primary,
-      colorScheme.error,
-      0.58,
-    )!;
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: context.spacing.md,
@@ -1365,7 +685,7 @@ class _CalendarLegendRow extends StatelessWidget {
             Text(
               '20',
               style: context.typography.caption.copyWith(
-                color: pivotColor,
+                color: colorScheme.primary,
                 fontWeight: AppFontWeights.semibold,
               ),
             ),
@@ -1404,18 +724,11 @@ class _CalendarDayCell extends StatelessWidget {
     final background = isSelected
         ? context.surfaces.surfaceRaised
         : context.surfaces.surfaceBase;
-    final pivotColor = Color.lerp(
-      colorScheme.primary,
-      colorScheme.error,
-      0.58,
-    )!;
-    final dayColor = isPivotDay
-        ? pivotColor
-        : hasSnapshot
+    final dayColor = isPivotDay || hasSnapshot
         ? colorScheme.primary
         : colorScheme.onSurfaceVariant;
     final borderColor = isPivotDay
-        ? pivotColor.withValues(alpha: 0.34)
+        ? colorScheme.primary.withValues(alpha: 0.34)
         : hasSnapshot
         ? colorScheme.primary.withValues(alpha: 0.28)
         : colorScheme.outlineVariant.withValues(alpha: 0.85);
@@ -1438,8 +751,8 @@ class _CalendarDayCell extends StatelessWidget {
               '$day',
               style: context.typography.meta.copyWith(
                 color: dayColor,
-                fontWeight: hasSnapshot || isSelected || isPivotDay
-                    ? AppFontWeights.semibold
+                fontWeight: isPivotDay
+                    ? AppFontWeights.bold
                     : AppFontWeights.semibold,
               ),
             ),
@@ -1462,291 +775,42 @@ class _CalendarDayCell extends StatelessWidget {
   }
 }
 
-class _LegendTextRow extends StatelessWidget {
-  const _LegendTextRow({required this.items});
-
-  final List<_LegendTextItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: context.spacing.sm,
-        runSpacing: context.spacing.xs,
-        children: [
-          for (final item in items)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '●',
-                  style: context.typography.meta.copyWith(
-                    color: item.color,
-                    fontWeight: AppFontWeights.semibold,
-                  ),
-                ),
-                SizedBox(width: context.spacing.xs / 2),
-                Text(item.label, style: context.typography.meta),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LegendTextItem {
-  const _LegendTextItem({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-}
-
-class _MonthlyTrendPainter extends CustomPainter {
-  _MonthlyTrendPainter({
-    required this.series,
-    required this.selectedIndex,
-    required this.gridColor,
-    required this.pointStrokeColor,
-    required this.indicatorColor,
-  });
-
-  final List<_MonthlyAssetSeries> series;
-  final int? selectedIndex;
-  final Color gridColor;
-  final Color pointStrokeColor;
-  final Color indicatorColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (series.isEmpty || series.first.values.isEmpty) {
-      return;
-    }
-
-    const leftPadding = 12.0;
-    const rightPadding = 12.0;
-    const topPadding = 12.0;
-    const bottomPadding = 28.0;
-
-    final chartRect = Rect.fromLTWH(
-      leftPadding,
-      topPadding,
-      size.width - leftPadding - rightPadding,
-      size.height - topPadding - bottomPadding,
-    );
-
-    final allValues = series.expand((item) => item.values).toList();
-    final minValue = allValues.reduce(math.min);
-    final maxValue = allValues.reduce(math.max);
-    final range = math.max(maxValue - minValue, 1.0);
-
-    final gridPaint = Paint()
-      ..color = gridColor
-      ..strokeWidth = VisualSpec.chart.gridThickness;
-
-    for (var i = 0; i < 4; i++) {
-      final y = chartRect.top + (chartRect.height / 3) * i;
-      canvas.drawLine(
-        Offset(chartRect.left, y),
-        Offset(chartRect.right, y),
-        gridPaint,
-      );
-    }
-
-    if (selectedIndex != null && series.first.values.length > 1) {
-      final selectedDx =
-          chartRect.left +
-          (chartRect.width / (series.first.values.length - 1)) * selectedIndex!;
-      final indicatorPaint = Paint()
-        ..color = indicatorColor
-        ..strokeWidth = VisualSpec.chart.crosshairThickness;
-      canvas.drawLine(
-        Offset(selectedDx, chartRect.top),
-        Offset(selectedDx, chartRect.bottom),
-        indicatorPaint,
-      );
-    }
-
-    for (final item in series) {
-      final path = Path();
-      final linePaint = Paint()
-        ..color = item.color
-        ..strokeWidth = VisualSpec.chart.lineStroke
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round;
-      final pointPaint = Paint()
-        ..color = item.color
-        ..style = PaintingStyle.fill;
-      final pointStrokePaint = Paint()
-        ..color = pointStrokeColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2;
-
-      for (var i = 0; i < item.values.length; i++) {
-        final dx =
-            chartRect.left + (chartRect.width / (item.values.length - 1)) * i;
-        final normalized = (item.values[i] - minValue) / range;
-        final dy = chartRect.bottom - (chartRect.height * normalized);
-        final point = Offset(dx, dy);
-
-        if (i == 0) {
-          path.moveTo(point.dx, point.dy);
-        } else {
-          path.lineTo(point.dx, point.dy);
-        }
-
-        if (VisualSpec.chart.pointRadius > 0) {
-          canvas.drawCircle(point, VisualSpec.chart.pointRadius, pointPaint);
-          canvas.drawCircle(
-            point,
-            VisualSpec.chart.pointRadius,
-            pointStrokePaint,
-          );
-        }
-
-        if (selectedIndex == i) {
-          final fillPaint = Paint()..color = item.color;
-          canvas.drawCircle(
-            point,
-            VisualSpec.chart.pointRadiusSelected,
-            fillPaint,
-          );
-          final strokePaint = Paint()
-            ..color = pointStrokeColor
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = VisualSpec.chart.pointStrokeSelected;
-          canvas.drawCircle(
-            point,
-            VisualSpec.chart.pointRadiusSelected,
-            strokePaint,
-          );
-        }
-      }
-
-      canvas.drawPath(path, linePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _MonthlyTrendPainter oldDelegate) {
-    return oldDelegate.series != series ||
-        oldDelegate.selectedIndex != selectedIndex ||
-        oldDelegate.gridColor != gridColor ||
-        oldDelegate.pointStrokeColor != pointStrokeColor ||
-        oldDelegate.indicatorColor != indicatorColor;
-  }
-}
-
-class _MonthlyAssetSeries {
-  const _MonthlyAssetSeries({
-    required this.label,
-    required this.color,
-    required this.values,
-  });
-
-  final String label;
-  final Color color;
-  final List<double> values;
-}
-
-class _StatisticsData {
-  const _StatisticsData({
-    required this.monthKeys,
-    required this.months,
-    required this.series,
-    required this.totalSeries,
-  });
-
-  const _StatisticsData.empty()
-    : monthKeys = const [],
-      months = const [],
-      series = const [],
-      totalSeries = const _MonthlyAssetSeries(
-        label: '총자산',
-        color: Colors.black,
-        values: [],
-      );
-
-  final List<String> monthKeys;
-  final List<String> months;
-  final List<_MonthlyAssetSeries> series;
-  final _MonthlyAssetSeries totalSeries;
-}
-
 class _StatisticsSnapshotBundle {
   const _StatisticsSnapshotBundle({
-    required this.snapshots,
-    required this.items,
+    required this.historySnapshots,
     required this.recentSnapshots,
     required this.recentItems,
     required this.annualItems,
     required this.allSnapshots,
     required this.allItems,
     required this.transactionDates,
-    required this.trendError,
     required this.monthEndError,
     required this.yearAnalysisError,
     required this.calendarError,
   });
 
   const _StatisticsSnapshotBundle.empty()
-    : snapshots = const [],
-      items = const [],
+    : historySnapshots = const [],
       recentSnapshots = const [],
       recentItems = const [],
       annualItems = const [],
       allSnapshots = const [],
       allItems = const [],
       transactionDates = const {},
-      trendError = null,
       monthEndError = null,
       yearAnalysisError = null,
       calendarError = null;
 
-  final List<DailyPortfolioSnapshot> snapshots;
-  final List<DailyPortfolioSnapshotItem> items;
+  final List<DailyPortfolioSnapshot> historySnapshots;
   final List<DailyPortfolioSnapshot> recentSnapshots;
   final List<DailyPortfolioSnapshotItem> recentItems;
   final List<DailyPortfolioSnapshotItem> annualItems;
   final List<DailyPortfolioSnapshot> allSnapshots;
   final List<DailyPortfolioSnapshotItem> allItems;
   final Set<String> transactionDates;
-  final Object? trendError;
   final Object? monthEndError;
   final Object? yearAnalysisError;
   final Object? calendarError;
-}
-
-List<String> _buildYAxisLabels(List<_MonthlyAssetSeries> series) {
-  if (series.isEmpty || series.first.values.isEmpty) {
-    return const ['0', '0', '0', '0'];
-  }
-
-  final allValues = series.expand((item) => item.values).toList();
-  final minValue = allValues.reduce(math.min);
-  final maxValue = allValues.reduce(math.max);
-
-  if (maxValue == minValue) {
-    final label = _formatYAxisLabel(maxValue);
-    return [label, label, label, label];
-  }
-
-  return [
-    _formatYAxisLabel(maxValue),
-    _formatYAxisLabel(minValue + ((maxValue - minValue) * 2 / 3)),
-    _formatYAxisLabel(minValue + ((maxValue - minValue) * 1 / 3)),
-    _formatYAxisLabel(minValue),
-  ];
-}
-
-String _formatYAxisLabel(double value) {
-  if (value.abs() >= 1000) {
-    return '${(value / 1000).toStringAsFixed(1)}B';
-  }
-  return '${value.toStringAsFixed(0)}M';
 }
 
 String _dateKey(DateTime date) {
@@ -1772,18 +836,6 @@ String? _normalizeDateKey(String raw) {
     }
   }
   return null;
-}
-
-String _formatYearMonth(String key) {
-  final date = DateTime.tryParse(key);
-  if (date == null) return key;
-  return '${date.year}년 ${date.month}월';
-}
-
-String _formatMonthDay(String key) {
-  final date = DateTime.tryParse(key);
-  if (date == null) return key;
-  return '${date.month}월 ${date.day}일';
 }
 
 Widget _buildCenteredLevel1EmptyCard(

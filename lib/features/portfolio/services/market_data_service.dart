@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
+import 'package:moneyfy/features/portfolio/models/holding_price_history.dart';
 import 'package:moneyfy/features/portfolio/models/market_snapshot.dart';
 
 class MarketDataService {
@@ -64,6 +65,7 @@ class MarketDataService {
   static const _secureStorage = FlutterSecureStorage();
   static const _kisAccessTokenStorageKey = 'kis_access_token';
   static const _kisAccessTokenExpiryStorageKey = 'kis_access_token_expires_at';
+  static const _quoteTimeout = Duration(seconds: 15);
 
   final http.Client _client;
   final _MarketApiConfig _config;
@@ -161,6 +163,118 @@ class MarketDataService {
     );
     _log('FX persisted USD/KRW rate=$rate');
     return rate;
+  }
+
+  bool supportsPriceHistory(HoldingItem holding) {
+    if (holding.symbol.trim().isEmpty || _isCashLikeHolding(holding)) {
+      return false;
+    }
+    return switch ((
+      holding.assetType ?? holding.assetTitle,
+      holding.currencyCode.toUpperCase(),
+    )) {
+      ('주식' || '펀드', 'KRW') => true,
+      ('주식', 'USD') => holding.exchangeCode.trim().isNotEmpty,
+      _ => false,
+    };
+  }
+
+  DateTime latestDailyCloseDate(HoldingItem holding, {DateTime? now}) {
+    final utc = (now ?? DateTime.now()).toUtc();
+    final overseas = holding.currencyCode.toUpperCase() == 'USD';
+    // During the session, show the prior completed close.
+    final marketDay = overseas
+        ? utc.subtract(Duration(hours: _usSummerTime(utc) ? 20 : 21))
+        : utc.subtract(const Duration(hours: 6, minutes: 30));
+    return DateTime.utc(marketDay.year, marketDay.month, marketDay.day);
+  }
+
+  Future<List<HoldingDailyClose>> fetchDailyCloses(
+    HoldingItem holding, {
+    required DateTime from,
+    required DateTime through,
+    bool Function()? isCancelled,
+  }) async {
+    if (!supportsPriceHistory(holding) || through.isBefore(from)) {
+      return const [];
+    }
+    if (!_config.hasKisStockConfig) {
+      throw StateError('KIS market data is not configured');
+    }
+    final overseas = holding.currencyCode.toUpperCase() == 'USD';
+    final symbol = holding.symbol.trim().toUpperCase();
+    final exchange = holding.exchangeCode.trim().toUpperCase();
+    final byDate = <DateTime, HoldingDailyClose>{};
+    var cursor = through;
+    while (!cursor.isBefore(from) && isCancelled?.call() != true) {
+      final json = await _kisGet(
+        path: overseas
+            ? '/uapi/overseas-price/v1/quotations/dailyprice'
+            : '/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice',
+        trId: overseas ? 'HHDFS76240000' : 'FHKST03010100',
+        query: overseas
+            ? {
+                'AUTH': '',
+                'EXCD': exchange,
+                'SYMB': symbol,
+                'GUBN': '0',
+                'BYMD': _kisDateKey(cursor),
+                'MODP': '0',
+              }
+            : {
+                'FID_COND_MRKT_DIV_CODE': 'J',
+                'FID_INPUT_ISCD': symbol,
+                'FID_INPUT_DATE_1': _kisDateKey(from),
+                'FID_INPUT_DATE_2': _kisDateKey(cursor),
+                'FID_PERIOD_DIV_CODE': 'D',
+                'FID_ORG_ADJ_PRC': '1',
+              },
+        allowNoData: true,
+      );
+      if (isCancelled?.call() == true) return const [];
+      final rows = json['output2'];
+      if (rows is! List) {
+        throw const FormatException('Invalid KIS daily prices');
+      }
+
+      DateTime? oldest;
+      var hasTradingDates = false;
+      for (final row in rows.whereType<Map>()) {
+        final date = _parseKisDateKey(
+          row[overseas ? 'xymd' : 'stck_bsop_date'],
+        );
+        if (date == null) continue;
+        hasTradingDates = true;
+        if (date.isAfter(cursor)) continue;
+        if (oldest == null || date.isBefore(oldest)) oldest = date;
+        final price = _parseNumber(
+          row[overseas ? 'clos' : 'stck_clpr'],
+        )?.toDouble();
+        if (date.isBefore(from) ||
+            price == null ||
+            !price.isFinite ||
+            price <= 0) {
+          continue;
+        }
+        byDate[date] = HoldingDailyClose(date: date, price: price);
+      }
+      if (oldest == null) {
+        if (hasTradingDates) {
+          throw const FormatException('KIS daily prices did not advance');
+        }
+        break;
+      }
+      // The date-bounded domestic API returns at most 100 records.
+      if (!overseas && rows.length < 100) break;
+      // The overseas continuation header can repeat the same page. Move the
+      // reference date to the previous day to request an older batch directly.
+      cursor = oldest.subtract(const Duration(days: 1));
+      if (!cursor.isBefore(from)) {
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+      }
+    }
+    return byDate.values.toList()
+      ..sort((first, second) => first.date.compareTo(second.date));
   }
 
   Future<HoldingMarketSnapshot> fetchSnapshot(
@@ -288,14 +402,6 @@ class MarketDataService {
       bestBidPrice: '-',
       bestAskQty: '-',
       bestBidQty: '-',
-      etfComponentCount: '-',
-      etfComponentMarketCap: '-',
-      etfNetAssetsTotal: '-',
-      etfCuUnitCount: '-',
-      etfNavOpen: '-',
-      etfNavHigh: '-',
-      etfNavLow: '-',
-      etfTopComponents: const [],
     );
     await _persistCurrentPrice(holding, output['stck_prpr']);
     return snapshot;
@@ -372,14 +478,6 @@ class MarketDataService {
       bestBidPrice: '-',
       bestAskQty: '-',
       bestBidQty: '-',
-      etfComponentCount: '-',
-      etfComponentMarketCap: '-',
-      etfNetAssetsTotal: '-',
-      etfCuUnitCount: '-',
-      etfNavOpen: '-',
-      etfNavHigh: '-',
-      etfNavLow: '-',
-      etfTopComponents: const [],
     );
     await _persistCurrentPrice(holding, output['last']);
     return snapshot;
@@ -407,51 +505,14 @@ class MarketDataService {
     final summary =
         (summaryJson['output'] as Map?)?.cast<String, dynamic>() ?? const {};
 
-    List<FundComponentItem> components = const [];
-    Map<String, dynamic> componentSummary = const {};
-    if (includeComponents &&
-        _config.kisFundComponentsPath.isNotEmpty &&
-        _config.kisFundComponentsTrId.isNotEmpty) {
-      try {
-        final componentJson = await _kisGet(
-          path: _config.kisFundComponentsPath,
-          trId: _config.kisFundComponentsTrId,
-          query: {
-            'FID_COND_MRKT_DIV_CODE': 'J',
-            'FID_INPUT_ISCD': holding.symbol,
-            'FID_COND_SCR_DIV_CODE': _config.kisFundComponentsScrDivCode,
-          },
-        );
-        componentSummary =
-            (componentJson['output1'] as Map?)?.cast<String, dynamic>() ??
-            const {};
-        final output2 = (componentJson['output2'] as List?) ?? const [];
-
-        components = output2
-            .cast<Map>()
-            .take(10)
-            .map(
-              (row) => FundComponentItem(
-                code: _stringOrDash(row['stck_shrn_iscd']),
-                name: _stringOrDash(row['hts_kor_isnm']),
-                price: _formatKrw(row['stck_prpr']),
-                changeRate: _formatSignedPercent(
-                  row['prdy_ctrt'],
-                  sign: row['prdy_vrss_sign'],
-                ),
-                weight: _formatPercent(row['etf_cnfg_issu_rlim']),
-                valuationAmount: _formatKrw(row['etf_vltn_amt']),
-              ),
-            )
-            .toList();
-      } catch (error, stackTrace) {
-        _log(
-          'fetchSnapshot fund components failed '
-          'symbol=${holding.symbol} error=$error',
-        );
-        _logStack(stackTrace);
-      }
+    if (summary.isEmpty) {
+      _log('KIS fund quote returned no output symbol=${holding.symbol}');
+      return HoldingMarketSnapshot.fallback(holding);
     }
+
+    final fundDetails = includeComponents
+        ? await fetchFundMarketDetails(holding)
+        : null;
 
     final currentPrice = _parseNumber(summary['stck_prpr'])?.toDouble();
     final snapshot = HoldingMarketSnapshot(
@@ -499,17 +560,63 @@ class MarketDataService {
       bestBidPrice: '-',
       bestAskQty: '-',
       bestBidQty: '-',
-      etfComponentCount: _formatNumber(componentSummary['etf_cnfg_issu_cnt']),
-      etfComponentMarketCap: _formatKrw(componentSummary['etf_cnfg_issu_avls']),
-      etfNetAssetsTotal: _formatKrw(componentSummary['etf_ntas_ttam']),
-      etfCuUnitCount: _formatNumber(componentSummary['etf_cu_unit_scrt_cnt']),
-      etfNavOpen: _formatKrw(componentSummary['oprc_nav']),
-      etfNavHigh: _formatKrw(componentSummary['hprc_nav']),
-      etfNavLow: _formatKrw(componentSummary['lprc_nav']),
-      etfTopComponents: components,
+      fundDetails: fundDetails,
     );
     await _persistCurrentPrice(holding, summary['stck_prpr']);
     return snapshot;
+  }
+
+  Future<FundMarketDetails?> fetchFundMarketDetails(HoldingItem holding) async {
+    if (!_config.hasKisStockConfig ||
+        holding.symbol.isEmpty ||
+        _config.kisFundComponentsPath.isEmpty ||
+        _config.kisFundComponentsTrId.isEmpty) {
+      return null;
+    }
+
+    try {
+      final json = await _kisGet(
+        path: _config.kisFundComponentsPath,
+        trId: _config.kisFundComponentsTrId,
+        query: {
+          'FID_COND_MRKT_DIV_CODE': 'J',
+          'FID_INPUT_ISCD': holding.symbol,
+          'FID_COND_SCR_DIV_CODE': _config.kisFundComponentsScrDivCode,
+        },
+      );
+      final summary = (json['output1'] as Map?) ?? const {};
+      final rows = (json['output2'] as List?) ?? const [];
+      if (summary.isEmpty && rows.isEmpty) return null;
+
+      return FundMarketDetails(
+        componentCount: _formatNumber(summary['etf_cnfg_issu_cnt']),
+        componentMarketCap: _formatKrw(summary['etf_cnfg_issu_avls']),
+        netAssetsTotal: _formatKrw(summary['etf_ntas_ttam']),
+        cuUnitCount: _formatNumber(summary['etf_cu_unit_scrt_cnt']),
+        navOpen: _formatKrw(summary['oprc_nav']),
+        navHigh: _formatKrw(summary['hprc_nav']),
+        navLow: _formatKrw(summary['lprc_nav']),
+        topComponents: rows.whereType<Map>().take(10).map((row) {
+          return FundComponentItem(
+            code: _stringOrDash(row['stck_shrn_iscd']),
+            name: _stringOrDash(row['hts_kor_isnm']),
+            price: _formatKrw(row['stck_prpr']),
+            changeRate: _formatSignedPercent(
+              row['prdy_ctrt'],
+              sign: row['prdy_vrss_sign'],
+            ),
+            weight: _formatPercent(row['etf_cnfg_issu_rlim']),
+            valuationAmount: _formatKrw(row['etf_vltn_amt']),
+          );
+        }).toList(),
+      );
+    } catch (error, stackTrace) {
+      _log(
+        'fetchSnapshot fund components failed symbol=${holding.symbol} error=$error',
+      );
+      _logStack(stackTrace);
+      return null;
+    }
   }
 
   Future<HoldingMarketSnapshot> _fetchCoinSnapshot(HoldingItem holding) async {
@@ -526,7 +633,7 @@ class MarketDataService {
         : 'https://api.coinone.co.kr/public/v2/ticker_utc_new/'
               '$quoteCurrency/$symbol?additional_data=true';
     _log('Coin request GET $url');
-    final response = await _client.get(Uri.parse(url));
+    final response = await _client.get(Uri.parse(url)).timeout(_quoteTimeout);
     _log('Coin response status=${response.statusCode} symbol=$symbol');
     if (response.statusCode < 200 || response.statusCode >= 300) {
       _log('Coin request failed body=${_truncate(response.body)}');
@@ -585,14 +692,6 @@ class MarketDataService {
       bestBidPrice: _formatKrw(bestBid['price']),
       bestAskQty: _formatNumber(bestAsk['qty']),
       bestBidQty: _formatNumber(bestBid['qty']),
-      etfComponentCount: '-',
-      etfComponentMarketCap: '-',
-      etfNetAssetsTotal: '-',
-      etfCuUnitCount: '-',
-      etfNavOpen: '-',
-      etfNavHigh: '-',
-      etfNavLow: '-',
-      etfTopComponents: const [],
     );
     await _persistCurrentPrice(holding, ticker['last']);
     return snapshot;
@@ -602,22 +701,36 @@ class MarketDataService {
     required String path,
     required String trId,
     required Map<String, String> query,
+    bool allowNoData = false,
   }) async {
     final uri = Uri.parse(
       '${_config.kisBaseUrl}$path',
     ).replace(queryParameters: query);
-    Future<http.Response> requestWithToken(String accessToken) {
-      return _client.get(
-        uri,
-        headers: {
-          'content-type': 'application/json; charset=utf-8',
-          'authorization': 'Bearer $accessToken',
-          'appkey': _config.kisAppKey,
-          'appsecret': _config.kisAppSecret,
-          'tr_id': trId,
-          'custtype': 'P',
-        },
-      );
+    Future<http.Response> requestWithToken(String accessToken) async {
+      for (var attempt = 0; ; attempt++) {
+        final response = await _client
+            .get(
+              uri,
+              headers: {
+                'content-type': 'application/json; charset=utf-8',
+                'authorization': 'Bearer $accessToken',
+                'appkey': _config.kisAppKey,
+                'appsecret': _config.kisAppSecret,
+                'tr_id': trId,
+                'custtype': 'P',
+              },
+            )
+            .timeout(_quoteTimeout);
+        if (response.statusCode != 429 &&
+            !response.body.contains('"EGW00201"')) {
+          return response;
+        }
+        if (attempt == 2) {
+          throw StateError('KIS quote rate limit exceeded');
+        }
+        _log('KIS quote rate limited. Retrying with the same token.');
+        await Future<void>.delayed(Duration(seconds: 1 << attempt));
+      }
     }
 
     var token = await _issueKisAccessToken();
@@ -667,6 +780,10 @@ class MarketDataService {
         json = jsonDecode(response.body) as Map<String, dynamic>;
       }
       if (!_isKisSuccess(json)) {
+        final message = json['msg1']?.toString() ?? '';
+        if (allowNoData && _kisNoDailyPrices.hasMatch(message)) {
+          return const {'output2': []};
+        }
         throw Exception(
           'KIS business failed: rt_cd=${json['rt_cd']} msg_cd=${json['msg_cd']}',
         );
@@ -717,15 +834,17 @@ class MarketDataService {
   Future<String> _requestKisAccessToken() async {
     _log('KIS token request POST ${_config.kisBaseUrl}/oauth2/tokenP');
 
-    final response = await _client.post(
-      Uri.parse('${_config.kisBaseUrl}/oauth2/tokenP'),
-      headers: const {'content-type': 'application/json; charset=utf-8'},
-      body: jsonEncode({
-        'grant_type': 'client_credentials',
-        'appkey': _config.kisAppKey,
-        'appsecret': _config.kisAppSecret,
-      }),
-    );
+    final response = await _client
+        .post(
+          Uri.parse('${_config.kisBaseUrl}/oauth2/tokenP'),
+          headers: const {'content-type': 'application/json; charset=utf-8'},
+          body: jsonEncode({
+            'grant_type': 'client_credentials',
+            'appkey': _config.kisAppKey,
+            'appsecret': _config.kisAppSecret,
+          }),
+        )
+        .timeout(_quoteTimeout);
     _log('KIS token response status=${response.statusCode}');
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -867,10 +986,15 @@ class MarketDataService {
       'Persist current price holdingId=$holdingId '
       'symbol=${holding.symbol} price=${parsedPrice.toDouble()}',
     );
-    await AppDatabase.instance.updateHoldingCurrentPrice(
-      holdingId,
-      parsedPrice.toDouble(),
-    );
+    try {
+      await AppDatabase.instance.updateHoldingCurrentPrice(
+        holdingId,
+        parsedPrice.toDouble(),
+      );
+    } catch (error, stackTrace) {
+      _log('Current price save failed symbol=${holding.symbol}: $error');
+      _logStack(stackTrace);
+    }
   }
 
   void _log(String message) {
@@ -1076,6 +1200,31 @@ num? _parseNumber(Object? value) {
   final raw = value?.toString().trim() ?? '';
   if (raw.isEmpty) return null;
   return num.tryParse(raw.replaceAll(',', ''));
+}
+
+final _kisNoDailyPrices = RegExp(r'(조회|해당).*(자료|데이터|내역).*(없|존재하지)');
+
+String _kisDateKey(DateTime date) =>
+    '${date.year.toString().padLeft(4, '0')}'
+    '${date.month.toString().padLeft(2, '0')}'
+    '${date.day.toString().padLeft(2, '0')}';
+
+DateTime? _parseKisDateKey(Object? value) {
+  final raw = value?.toString().trim();
+  if (raw == null || raw.length != 8) return null;
+  final date = DateTime.tryParse('${raw}T00:00:00Z');
+  return date != null && _kisDateKey(date) == raw ? date : null;
+}
+
+bool _usSummerTime(DateTime utc) {
+  DateTime firstSunday(int month) {
+    final first = DateTime.utc(utc.year, month);
+    return first.add(Duration(days: (DateTime.sunday - first.weekday) % 7));
+  }
+
+  final start = firstSunday(3).add(const Duration(days: 7, hours: 7));
+  final end = firstSunday(11).add(const Duration(hours: 6));
+  return !utc.isBefore(start) && utc.isBefore(end);
 }
 
 String _marketNameForExchange(String exchangeCode) {

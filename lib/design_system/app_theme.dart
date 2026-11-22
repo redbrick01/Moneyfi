@@ -108,7 +108,7 @@ class AppTheme {
         ),
         errorStyle: typography.caption.copyWith(color: colorScheme.error),
         contentPadding: EdgeInsets.symmetric(
-          horizontal: 20,
+          horizontal: spacing.md,
           vertical: spacing.sm,
         ),
         border: outlineInputBorder,
@@ -125,9 +125,11 @@ class AppTheme {
         ),
       ),
       chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius.rPill),
+        ),
         side: BorderSide(color: colorScheme.outlineVariant),
-        selectedColor: colorScheme.surface,
+        selectedColor: colorScheme.primaryContainer,
         backgroundColor: colorScheme.surface,
         labelStyle: typography.meta,
         secondaryLabelStyle: typography.meta.copyWith(
@@ -216,11 +218,11 @@ class AppTheme {
     );
     if (brightness == Brightness.light) {
       return base.copyWith(
-        primary: VisualSpec.brand.seed,
+        primary: VisualSpec.brand.primary,
         onPrimary: VisualSpec.brand.onPrimary,
         primaryContainer: VisualSpec.brand.primaryContainer(brightness),
         onPrimaryContainer: VisualSpec.brand.onPrimaryContainer(brightness),
-        secondary: VisualSpec.brand.info,
+        secondary: VisualSpec.brand.primary,
         onSecondary: VisualSpec.brand.onPrimary,
         secondaryContainer: VisualSpec.brand.infoContainer(brightness),
         onSecondaryContainer: VisualSpec.brand.onInfoContainer(brightness),
@@ -238,10 +240,10 @@ class AppTheme {
         onSurfaceVariant: VisualSpec.brand.lightTextSecondary,
         outline: VisualSpec.brand.outline(brightness),
         outlineVariant: VisualSpec.brand.lightOutlineVariant,
-        error: VisualSpec.brand.lightNegative,
-        onError: VisualSpec.brand.onPrimary,
+        error: VisualSpec.brand.brandRed,
+        onError: VisualSpec.brand.darkBg,
         errorContainer: VisualSpec.brand.negativeContainer(brightness),
-        onErrorContainer: VisualSpec.brand.onNegativeContainer(brightness),
+        onErrorContainer: VisualSpec.brand.brandRed,
       );
     }
 
@@ -268,10 +270,10 @@ class AppTheme {
       onSurfaceVariant: VisualSpec.brand.darkTextSecondary,
       outline: VisualSpec.brand.outline(brightness),
       outlineVariant: VisualSpec.brand.darkOutlineVariant,
-      error: VisualSpec.brand.darkNegative,
-      onError: VisualSpec.brand.onPrimary,
+      error: VisualSpec.brand.brandRed,
+      onError: VisualSpec.brand.darkBg,
       errorContainer: VisualSpec.brand.negativeContainer(brightness),
-      onErrorContainer: VisualSpec.brand.onNegativeContainer(brightness),
+      onErrorContainer: VisualSpec.brand.brandRed,
     );
   }
 

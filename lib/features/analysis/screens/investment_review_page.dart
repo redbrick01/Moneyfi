@@ -777,7 +777,7 @@ class _DraftMetricLines extends StatelessWidget {
                     metrics[index].value,
                     textAlign: TextAlign.end,
                     style: context.typography.body.copyWith(
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppFontWeights.semibold,
                     ),
                   ),
                 ),
@@ -1283,7 +1283,7 @@ class _SignalTile extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final iconColor = switch (signal.severity) {
       InvestmentReviewSignalSeverity.positive => context.colors.positiveOn,
-      InvestmentReviewSignalSeverity.warning => colorScheme.error,
+      InvestmentReviewSignalSeverity.warning => context.colors.warningOn,
       InvestmentReviewSignalSeverity.info => colorScheme.primary,
     };
     final icon = switch (signal.severity) {

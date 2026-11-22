@@ -342,18 +342,11 @@ class SnapshotCalendarCard extends StatelessWidget {
                 final hasSnapshot = snapshot != null;
                 final hasTransaction = transactionDates.contains(dateKey);
                 final isPivotDay = day == 20;
-                final pivotColor = Color.lerp(
-                  context.colors.primary,
-                  context.colors.negativeOn,
-                  0.58,
-                )!;
-                final dayColor = isPivotDay
-                    ? pivotColor
-                    : hasSnapshot
+                final dayColor = isPivotDay || hasSnapshot
                     ? context.colors.primary
                     : context.colors.neutralTextMuted;
                 final borderColor = isPivotDay
-                    ? pivotColor.withValues(alpha: 0.34)
+                    ? context.colors.primary.withValues(alpha: 0.34)
                     : hasSnapshot
                     ? context.colors.primary
                     : context.colors.neutralOutline;
@@ -389,8 +382,8 @@ class SnapshotCalendarCard extends StatelessWidget {
                           '$day',
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: dayColor,
-                            fontWeight: hasSnapshot || isPivotDay
-                                ? AppFontWeights.semibold
+                            fontWeight: isPivotDay
+                                ? AppFontWeights.bold
                                 : AppFontWeights.semibold,
                           ),
                         ),

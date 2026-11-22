@@ -1,8 +1,8 @@
 # Moneyfy Design System
 
-Updated: 2026-05-30
+Updated: 2026-11-21
 
-This document is the source of truth for Moneyfy's product UI direction after the brand color, font, and token cleanup. Feature plans may describe local decisions, but reusable color, typography, spacing, surface, and guardrail rules should point back here.
+This is the entry point for Moneyfy UI policy and implementation. The Dart sources below own the runtime values. Update the relevant source, any public usage guidance in this document, and the platform metadata that consumes the changed value in the same change. Brand artwork and historical reports provide context.
 
 ## Direction
 
@@ -15,54 +15,52 @@ Key principles:
 - Financial up/down semantics are text or icon accents, not filled warning cards.
 - Most screens use white surfaces and quiet borders; heavy shadows and decorative gradients are avoided.
 - Typography uses SUIT through app tokens. Direct font families, font weights, and page-level font sizes should not be introduced.
-- Mobile screenshots at 360, 390, and 430dp are used to protect layout, density, and overflow behavior.
+- Review dense layouts at 360, 390, and 430 logical pixels. Include text scale 1.3 and long Korean labels.
 
 ## Token Sources
 
-| Role | Source |
-| --- | --- |
-| Brand and semantic colors | `lib/design_system/spec/visual_spec.dart`, `lib/theme/moneyfy_colors.dart` |
-| Theme wiring | `lib/design_system/app_theme.dart`, `lib/theme/moneyfy_theme.dart` |
-| Typography styles | `lib/design_system/app_typography.dart` |
-| Font family tokens | `lib/design_system/font_families.dart` |
-| Font weight tokens | `lib/design_system/font_weights.dart` |
-| Spacing and size extensions | `lib/design_system/tokens.dart`, `lib/design_system/context_extensions.dart` |
-| Guardrail script | `tools/check_design_token_guardrails.sh` |
+| Area | Definition | Use in app UI |
+| --- | --- | --- |
+| Color roles and theme | [VisualSpec](../lib/design_system/spec/visual_spec.dart), [AppTheme](../lib/design_system/app_theme.dart), [BrandColors](../lib/design_system/brand/brand_palette.dart) | `context.colors`, `context.surfaces`, `Theme.of(context).colorScheme` |
+| Typography and font registration | [AppTypography](../lib/design_system/app_typography.dart), [AppFontFamilies](../lib/design_system/font_families.dart), [AppFontWeights](../lib/design_system/font_weights.dart), [pubspec.yaml](../pubspec.yaml) | `context.typography`, Material text styles, `AppFontWeights` |
+| Spacing, radius, card widths, elevation and shadows | [Theme extensions](../lib/design_system/tokens.dart), [VisualSpec.surface](../lib/design_system/spec/visual_spec.dart) | `context.spacing`, `context.radius`, `context.cardPadding()`, `context.contentHorizontalPadding` |
+| Icons, interaction and motion | [VisualSpec.icon and motion](../lib/design_system/spec/visual_spec.dart) | [AppIcon and AppIconButton](../lib/components/icons), `context.motion` |
+| Charts | [VisualSpec.chart](../lib/design_system/spec/visual_spec.dart), [MoneyfyChartPalette](../lib/design_system/chart_palette.dart) | Asset identity colors, allocation rank colors, and chart markers |
+| Shared components and forms | [Components](../lib/components), [Form components](../lib/components/forms/form_design.dart), [Page scaffolds](../lib/ui_scaffold) | Reuse the matching component below |
+| Layout and shell navigation | [AppInsets](../lib/ui_scaffold/app_insets.dart), [AppShellPage](../lib/features/shell/screens/app_shell_page.dart) | Safe area, content padding, and floating navigation |
+| Reusable copy | [CopySpec](../lib/design_system/spec/copy_spec.dart) | Shared labels where defined |
+| Platform assets | [Assets](../assets/README.md), [Web manifest](../web/manifest.json) | Native icons, launch assets, and installed web app metadata |
+
+[Context extensions](../lib/design_system/context_extensions.dart) expose the registered theme tokens. [The app entry point](../lib/main.dart) currently selects the light theme. `AppTheme.dark` defines separate surface and text roles for dark-theme widget coverage.
 
 ## Brand Palette
 
 | Token | Hex | Role |
 | --- | --- | --- |
-| Primary | `#3A6DFF` | Main brand action, selected navigation, links, primary charts |
-| Primary Active | `#2DA4FF` | Pressed/active brand state and dark primary container |
-| On Primary | `#FFFFFF` | Text or icon on primary fills |
-| Success | `#00D47E` | Positive state, profit, completed status |
-| Warning | `#FFB800` | Attention state that is not destructive |
-| Error | `#FF4554` | Negative state, loss, destructive action |
-| Ink | `#0A0B0D` | Primary text and deep trust neutral |
-| Body | `#5B616E` | Secondary text |
-| Muted | `#7C828A` | Tertiary text, low-emphasis labels |
-| Disabled / Soft Text | `#A8ACB3` | Disabled text and dark muted text |
+| Brand blue | `#3A6DFF` | Actions, links, light selection labels, web manifest, price chart, and first allocation slice |
+| Brand red | `#E93A51` | Coral for losses, withdrawals, errors, destructive actions, and chart markers |
+| Selection surface (light) | `#EBF0FF` | Selected pills, filters, and form choices |
+| Selection surface and text (dark) | `#263861` / `#FFFFFF` | Selected pills and choices |
+| On Primary | `#FFFFFF` | Text or icon on brand-blue fills |
+| Warning fill | `#FFB800` | Bright warning surface paired with dark text |
+| Success foreground (light / dark) | `#3A6DFF` / `#3A6DFF` | Blue for positive amounts, returns, and success |
+| Warning foreground (light / dark) | `#9A4C06` / `#FFAA65` | Orange for warning text and icons |
+| Primary text (light / dark) | `#111111` / `#FFFFFF` | Headlines, body text, and ordinary amounts |
+| Secondary text (light / dark) | `#595959` / `#ADADAD` | Captions, labels, and metadata |
 | Border | `#DEE1E6` | Default divider and outline |
 | Soft Neutral | `#EEF0F3` | Subtle container, status container, icon plate |
 | Surface Muted | `#F7F7F7` | Low-emphasis background band |
 | Canvas | `#FFFFFF` | App background and card base |
 
-Palette artifacts:
-
-- `docs/brand/moneyfy_color_palette.svg`
-- `docs/brand/moneyfy_color_palette.png`
-- `docs/brand/moneyfy_current_app_color_audit.svg`
-- `docs/brand/moneyfy_current_app_color_audit.png`
+See [brand artwork and palette references](brand/README.md) and the [pill reference sheet](design/pill_token_samples.svg).
 
 ## Color Rules
 
 ### Brand
 
-- Use `MoneyfyPalette.primary`, `ColorScheme.primary`, or `context.colors.primary` for brand actions.
-- Do not reintroduce the old `#0052FF` primary in app UI. It was replaced by `#3A6DFF`.
-- Do not create a separate "icon blue" token for UI. Icon blue and primary are unified.
-- `#2DA4FF` is an active/pressed brand state, not a second primary.
+- Use `ColorScheme.primary` or `context.colors.primary` for actions and links.
+- Use the primary container and on-container pair for selection fills and labels.
+- The brand seed is the source for the Material scheme, web metadata, and the main price series.
 
 ### Semantic State
 
@@ -78,14 +76,19 @@ Palette artifacts:
 - Use `#F7F7F7` for low-emphasis bands or background sections.
 - Use `#EEF0F3` for subtle containers, icon plates, and soft status containers.
 - Use `#DEE1E6` for borders and dividers.
-- Primary text is `#0A0B0D`; secondary text is `#5B616E`; tertiary text is `#7C828A`.
+- Headings, headline figures and body text share the achromatic `onSurface` role. Captions and metadata use the gray `onSurfaceVariant` role.
+- Selection and state labels use blue, coral, or orange from the product palette. Orange text uses a darker shade than its chart swatch. Exact brand blue text has 4.36:1 contrast on white and a lower ratio on tinted surfaces. Preserve the selection mark and signed amount alongside the color. Disabled states resolve opacity in the shared component.
 
 ### Chart and Asset Identity
 
 - Reusable chart palettes are allowed because asset/category distinction needs more colors than the brand palette.
 - Asset type colors are role-locked in `MoneyfyChartPalette.assetColors`.
 - Individual asset colors may be derived from deterministic seeds through `MoneyfyChartPalette.colorForAsset`.
-- Chart colors should not become general UI colors.
+- Allocation shows up to six named slices in rank order. Remaining positions share the slate `#6A7A99` slice labeled 기타, and the full legend preserves individual access.
+- The ranked palette uses blue `#3A6DFF`, orange `#DB6502`, violet `#9251EA`, green `#03A14A`, magenta `#C542AF`, and teal `#04A19B`. Individual asset colors also use brand red `#E93A51`.
+- Transaction type badges use the neutral pill style. External deposits and withdrawals use the positive and negative foregrounds on the amount.
+- Calendar pivot-day labels use the primary color and bold type. Price chart markers pair buy triangles, sell squares, and dividend circles with matching shapes in the selected-date labels.
+- Positive and negative performance contributions use their semantic foreground for both the dot and the signed amount.
 
 ## Typography
 
@@ -135,7 +138,7 @@ Typography rules:
 | `xxl` | 48 | Large vertical separation |
 | `xxxl` | 96 | Rare major separation |
 | `pageTop` | 24 | Page top inset |
-| `pageBottomInset` | 132 | Bottom navigation safe space |
+| `pageBottomInset` | 132 | Base inset used by `MoneyfyPage` and floating snackbars |
 
 Responsive horizontal padding:
 
@@ -145,97 +148,61 @@ Responsive horizontal padding:
 | `<= 430dp` | 16 |
 | `> 430dp` | 24 |
 
+Page padding via `AppInsets` adds system safe area, a 12dp default gap, and 72dp on pages with floating navigation. The shell uses the same navigation height.
+
 Surface rules:
 
 - Cards use `VisualSpec.surface.radiusCard` (`16`) unless a component has a documented reason.
 - Sheets and dialogs use `VisualSpec.surface.radiusSheet` (`24`).
-- Default card padding is `20`, but mobile card padding can collapse to `16`.
+- Normal card padding is 16dp at widths up to 430dp and 20dp above 430dp. Dense card padding is 12dp.
+- `SectionCard` uses the base or raised theme surface. In light theme these are `#F7F7F7` and `#EEF0F3`. Overlay surfaces use white.
 - Rows should keep stable heights and avoid text overlap at 360dp and text scale 1.3.
 
 ## Component Rules
 
-| Component Area | Rule |
-| --- | --- |
-| Primary button | Brand primary fill, white label, 44dp or taller tap target |
-| Secondary button | Neutral tonal surface, not another blue fill |
-| Destructive button | Error token, used only for destructive actions |
-| Cards | White or muted neutral surface with restrained border |
-| Rows | Stable height, clear leading identity, trailing financial value aligned |
-| Chips and badges | Neutral background with semantic text or border where needed |
-| Empty states | Tokenized icon/text color, no hard-coded gray |
-| Forms | Theme input decoration, tokenized border/focus/error state |
-| News cards | Long Korean title/body must wrap without overlap |
-| Charts | Use chart palette and chart spec only inside chart/legend context |
+| Area | Standard implementation | Behavior |
+| --- | --- | --- |
+| Page layout | [AppPageScaffold](../lib/ui_scaffold/app_page_scaffold.dart), [MoneyfyPage](../lib/widgets/moneyfy_ui.dart) | Use `AppPageScaffold` for standard pages, with shared headers and insets. Existing analysis and detail pages also use `MoneyfyPage`. |
+| Actions | [App buttons](../lib/components/buttons/app_buttons.dart) | Primary uses brand fill, secondary uses a neutral surface with a primary outline, and destructive uses error text. The shared button minimum height is 48dp. Plain theme-filled and outlined controls have a 44dp minimum visual height. |
+| Edit forms | [MoneyfyFormScaffold, MoneyfyFormSection and selection controls](../lib/components/forms/form_design.dart) | Asset, holding, cash-account and transaction forms share input decoration, a keyboard-aware layout, and a fixed save action using `AppPrimaryButton`. |
+| Cards and panels | [SectionCard](../lib/components/section_card.dart), [AppInnerPanel and AppSheetSurface](../lib/components/panels) | Choose base, raised, or outline by visual hierarchy. Use the shared sheet wrapper for modal surfaces. |
+| Headers and financial rows | [SectionHeader](../lib/components/section_header.dart), [Rows](../lib/components/rows), [Metrics](../lib/components/metrics) | Keep leading identity and trailing numbers legible at narrow widths. Use tabular figures. |
+| Pills and badges | [MoneyfyBadge and MoneyfyPillStyle](../lib/components/chips/moneyfy_pill.dart) | Sizes are 28, 32, and 36dp. Semantic accents are resolved by variant. |
+| Feedback and empty states | [States](../lib/components/states), [AppSnackBar](../lib/components/feedback/app_snackbar.dart) | Use token colors for loading, empty, validation, and retry states. |
+| News and research | [Shared news and research cards](../lib/widgets) | Preserve wrapping for long Korean titles and body copy. |
+| Charts | [Chart spec](../lib/design_system/spec/visual_spec.dart) and [allocation legend](../lib/components/rows/allocation_legend_row.dart) | Tokenize recurring color and geometry. Per-chart axes, label placement, and data-dependent dimensions live with the feature. |
 
 ## Platform Assets
 
-- Obsolete generated launcher assets were removed from the repo.
-- The app currently avoids keeping duplicate launcher icon sets in multiple platform folders.
-- Platform asset changes should be reflected in `assets/`, the relevant platform asset catalog, and this design system when they become durable UI policy.
-- Web manifest theme color follows the current primary `#3A6DFF`.
+- Launcher and launch-screen assets belong to the platform that packages them. See the [iOS asset catalog](../ios/Runner/Assets.xcassets), [macOS asset catalog](../macos/Runner/Assets.xcassets), and [Android resources](../android/app/src/main/res).
+- Keep the [web manifest](../web/manifest.json) synchronized with the brand seed and light canvas. The component smoke test compares both values with the Dart sources.
 
-## Guardrails
+## Verification
 
-Run these checks when touching UI, theme, typography, or screenshots:
+Run the design checks and focused widget tests when changing shared UI.
 
 ```bash
-tools/check_design_token_guardrails.sh
 tools/check_design_token_guardrails.sh --self-test
-flutter analyze <changed dart files>
+tools/check_design_token_guardrails.sh
+flutter analyze
+flutter test test/ui_component_smoke_test.dart test/page_walkthrough_test.dart
+flutter test test/news_report_layout_test.dart test/holding_transaction_history_test.dart
 ```
 
-For broader design changes:
+[Flutter CI](../.github/workflows/flutter-ci.yml) fails on direct color definitions, unthemed palettes, direct font sizes, families and weights, removed token names, and common leading `EdgeInsets` spacing literals in app code. The check scans Dart source patterns. Review other literal dimensions by their role, especially component-local hit areas, icon geometry, and chart coordinates. Use shared tokens for recurring values that have the same purpose.
 
-```bash
-flutter test test/design_md_screenshot_harness_test.dart
-flutter test test/page_walkthrough_test.dart
-flutter test test/ui_component_smoke_test.dart
-```
+Use the widget tests for layout and behavior. The holding transaction history test exercises 360, 390, and 430dp at text scale 1.3. Native keyboard appearance, launch assets, and pixel-level comparison are manual checks.
 
-Screenshot regeneration:
+## Audit Findings
 
-```bash
-MONEYFY_CAPTURE_DESIGN_MD_SCREENSHOTS=1 flutter test test/design_md_screenshot_harness_test.dart
-```
-
-Current guardrail intent:
-
-- Report direct `Color(0x...)` and `Colors.*` outside token/theme sources.
-- Report direct `fontSize:` outside design system/theme sources.
-- Report direct or legacy font family references outside font tokens.
-- Report direct `FontWeight.w...` outside font weight tokens.
-- Report common direct spacing patterns that should use spacing tokens.
-
-Allowed exceptions:
-
-| Area | Reason |
+| Difference found | Resolution |
 | --- | --- |
-| `lib/design_system/**` | Token source |
-| `lib/theme/**` | Compatibility bridge and theme wiring |
-| Platform assets | Native resource review, not Flutter token usage |
-| Chart geometry | Numeric drawing geometry is allowed; color/type should still use tokens |
-| Flutter intrinsic values | API-required constants may be used when documented |
-
-## Do
-
-- Use token names in code and docs instead of raw hex values.
-- Keep primary blue scarce and purposeful.
-- Keep semantic green/red/yellow tied to state meaning.
-- Prefer quiet neutral surfaces over colored containers.
-- Verify 360dp and 430dp behavior when changing dense financial screens.
-- Update this document when a reusable token or design rule changes.
-
-## Don't
-
-- Do not add a new page-level hex color because it "looks close."
-- Do not use chart colors for buttons, cards, or badges outside chart context.
-- Do not use success/error as large background fills for ordinary profit/loss rows.
-- Do not add direct font families, font weights, or local typography scales.
-- Do not re-add deleted duplicate icon assets unless the platform icon pipeline is intentionally restored and documented.
-- Do not use decorative gradients, heavy shadows, or large rounded marketing cards in operational app screens.
-
-## Open Follow-Ups
-
-- Pixel-level golden diff is not yet enforced.
-- Real OS keyboard screenshots are still a manual QA gap.
-- Additional loaded-state coverage is still useful for snapshot detail, target allocation sheet, and cash transaction form.
+| Legacy theme and palette duplicated active color and type definitions | Removed the unused theme, palette, spacing and signed-value APIs. Moved the still-used asset identity palette into the design system. |
+| Transaction badge colors and one text weight bypassed the tokens | Standardized transaction badges on the neutral pill and switched the weight to `AppFontWeights.semibold`. |
+| Statistics used Flutter's default light palette and an empty-series black | The total and fallback colors now come from the Moneyfy palette. |
+| Card variants bypassed the registered surface roles. Documentation presented white as the base card color. | Cards now read `context.surfaces`. This document lists the active light-theme surfaces. |
+| Shared edit forms set save-button size, shape and type locally | Forms now share the primary button with other app UI. |
+| Common padding was repeated in snapshot rows and swipe actions | Snapshot rows reuse spacing tokens and swipe actions share one padding definition. |
+| Documentation merged the two page inset strategies and referenced a missing screenshot harness | Listed both active strategies and linked existing layout tests. |
+| The guardrail printed warnings while CI continued | CI now enforces the same checked patterns as the script self-test. |
+| The pill reference sheet depicted soft and tonal with the base surface | Updated the reference to the raised surface used by the resolver. |

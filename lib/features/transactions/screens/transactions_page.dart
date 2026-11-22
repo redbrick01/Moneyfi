@@ -3,10 +3,10 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 
 import 'package:moneyfy/components/chips/moneyfy_pill.dart';
 import 'package:moneyfy/components/icons/app_icon.dart';
+import 'package:moneyfy/components/panels/app_detail_section.dart';
 import 'package:moneyfy/components/panels/app_sheet_surface.dart';
-import 'package:moneyfy/components/rows/transaction_row.dart';
+import 'package:moneyfy/components/rows/transaction_history_row.dart';
 import 'package:moneyfy/components/section_card.dart';
-import 'package:moneyfy/components/separators/app_divider.dart';
 import 'package:moneyfy/components/states/empty_state.dart';
 import 'package:moneyfy/components/states/inline_error.dart';
 import 'package:moneyfy/components/states/retry_row.dart';
@@ -19,7 +19,6 @@ import 'package:moneyfy/navigation/moneyfy_navigation.dart';
 import 'package:moneyfy/features/sync/services/sync_service.dart';
 import 'package:moneyfy/ui_scaffold/app_page_scaffold.dart';
 import 'package:moneyfy/utils/display_currency.dart';
-import 'package:moneyfy/widgets/moneyfy_ui.dart';
 import 'package:moneyfy/features/transactions/screens/forms/cash_transaction_form_page.dart';
 import 'package:moneyfy/features/transactions/screens/forms/transaction_form_page.dart';
 
@@ -106,6 +105,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
           title: holding.name,
           subtitle: asset.alias.isEmpty ? asset.title : asset.alias,
           isCash: holding.isCashLike,
+          assetType: holding.assetType ?? holding.assetTitle,
           currencyCode: holding.currencyCode,
           exchangeRate: holding.exchangeRate,
         );
@@ -378,12 +378,26 @@ class _TransactionsPageState extends State<TransactionsPage> {
       future: _pageFuture,
       builder: (context, snapshot) {
         final data = snapshot.data ?? const _TransactionsPageData.empty();
-        final visibleEntries = _visibleEntries(data.entries);
+        final matchingEntries = _matchingEntries(data.entries);
+        final shownPeriodKeys = matchingEntries
+            .map((entry) => entry.statementPeriodKey)
+            .toSet()
+            .take(_visiblePeriodLimit)
+            .toSet();
+        final shownEntries = matchingEntries
+            .where(
+              (entry) => shownPeriodKeys.contains(entry.statementPeriodKey),
+            )
+            .toList(growable: false);
+        final resultLabel = matchingEntries.length == data.entries.length
+            ? '전체'
+            : '조건 일치';
         return AppPageScaffold(
           title: '거래',
           subtitle: data.entries.isEmpty
               ? null
-              : '${visibleEntries.length}/${data.entries.length}건',
+              : '표시 ${shownEntries.length}건 · '
+                    '$resultLabel ${matchingEntries.length}건',
           enablePullToRefresh: true,
           onRefresh: _refreshPage,
           hasFloatingNavInset: true,
@@ -397,13 +411,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
               icon: const Icon(Icons.add_rounded),
             ),
           ],
-          body: _buildBody(snapshot, data, visibleEntries),
+          body: _buildBody(
+            snapshot,
+            data,
+            shownEntries,
+            hasMorePeriods: shownEntries.length < matchingEntries.length,
+          ),
         );
       },
     );
   }
 
-  List<_TransactionEntry> _visibleEntries(List<_TransactionEntry> entries) {
+  List<_TransactionEntry> _matchingEntries(List<_TransactionEntry> entries) {
     final query = _searchController.text.trim().toLowerCase();
     final filtered = entries
         .where((entry) {
@@ -420,8 +439,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Widget _buildBody(
     AsyncSnapshot<_TransactionsPageData> snapshot,
     _TransactionsPageData data,
-    List<_TransactionEntry> visibleEntries,
-  ) {
+    List<_TransactionEntry> shownEntries, {
+    required bool hasMorePeriods,
+  }) {
     if (snapshot.connectionState == ConnectionState.waiting) {
       return const SkeletonList(rows: 8, rowHeight: 72, hasLeading: true);
     }
@@ -468,7 +488,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
           onReset: _resetQuery,
         ),
         SizedBox(height: context.spacing.md),
-        if (visibleEntries.isEmpty)
+        if (shownEntries.isEmpty)
           EmptyStateCard(
             title: '조건에 맞는 거래가 없어요',
             description: '검색어나 필터를 조정해 보세요.',
@@ -478,13 +498,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
             variant: EmptyStateVariant.embedded,
           )
         else
-          SectionCard(
-            padding: EdgeInsets.zero,
-            child: SlidableAutoCloseBehavior(
-              child: Column(
-                children: _buildTransactionListChildren(
-                  context,
-                  visibleEntries,
+          AppDetailSection(
+            title: '거래 내역',
+            child: TransactionHistoryLayout(
+              builder: (context, showColumns) => SlidableAutoCloseBehavior(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _buildTransactionListChildren(
+                    shownEntries,
+                    showColumns: showColumns,
+                    hasMorePeriods: hasMorePeriods,
+                  ),
                 ),
               ),
             ),
@@ -495,45 +519,34 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   List<Widget> _buildTransactionListChildren(
-    BuildContext context,
-    List<_TransactionEntry> visibleEntries,
-  ) {
-    final allPeriodKeys = <String>[];
-    for (final entry in visibleEntries) {
-      final periodKey = _transactionStatementPeriodKey(entry.transaction.date);
-      if (!allPeriodKeys.contains(periodKey)) {
-        allPeriodKeys.add(periodKey);
-      }
-    }
-    final shownPeriodKeys = allPeriodKeys.take(_visiblePeriodLimit).toSet();
-    final shownEntries = visibleEntries
-        .where(
-          (entry) => shownPeriodKeys.contains(
-            _transactionStatementPeriodKey(entry.transaction.date),
-          ),
-        )
-        .toList();
-    final children = <Widget>[];
+    List<_TransactionEntry> shownEntries, {
+    required bool showColumns,
+    required bool hasMorePeriods,
+  }) {
+    final divider = TransactionHistoryDivider(showColumns: showColumns);
+    final children = <Widget>[
+      if (showColumns) ...[const TransactionHistoryHeader(), divider],
+    ];
     String? previousPeriodKey;
 
-    for (var index = 0; index < shownEntries.length; index++) {
-      final entry = shownEntries[index];
-      final periodKey = _transactionStatementPeriodKey(entry.transaction.date);
+    for (final entry in shownEntries) {
+      if (previousPeriodKey != null) children.add(divider);
+
+      final periodKey = entry.statementPeriodKey;
       if (periodKey != previousPeriodKey) {
-        if (children.isNotEmpty) {
-          children.add(AppDivider(inset: context.spacing.md));
-        }
         children.add(
           _TransactionMonthHeader(label: _statementPeriodLabel(periodKey)),
         );
         previousPeriodKey = periodKey;
-      } else if (children.isNotEmpty) {
-        children.add(AppDivider(inset: context.spacing.md));
       }
 
       children.add(
         _TransactionEntryRow(
+          key: ValueKey(
+            'transactions-page-${entry.entryKey}-${entry.account.holdingId}-${entry.originalIndex}',
+          ),
           entry: entry,
+          showColumns: showColumns,
           onTap: () =>
               _openTransactionForm(entry.account, item: entry.transaction),
           onDelete: () => _deleteTransaction(entry),
@@ -541,11 +554,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
       );
     }
 
-    final remainingPeriodCount = allPeriodKeys.length - shownPeriodKeys.length;
-    if (remainingPeriodCount > 0) {
-      children
-        ..add(AppDivider(inset: context.spacing.md))
-        ..add(_TransactionLoadMoreButton(onPressed: _showMoreEntries));
+    if (hasMorePeriods) {
+      children.add(_TransactionLoadMoreButton(onPressed: _showMoreEntries));
     }
 
     return children;
@@ -560,11 +570,9 @@ class _TransactionMonthHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        context.spacing.md,
-        context.spacing.sm,
-        context.spacing.md,
-        context.spacing.xs,
+      padding: EdgeInsets.only(
+        top: context.spacing.xs,
+        bottom: context.spacing.xs / 2,
       ),
       child: Align(
         alignment: Alignment.centerLeft,
@@ -588,13 +596,19 @@ class _TransactionLoadMoreButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.all(context.spacing.sm),
-      child: SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
+      padding: EdgeInsets.only(top: context.spacing.xs),
+      child: Align(
+        alignment: Alignment.center,
+        child: TextButton.icon(
           onPressed: onPressed,
-          icon: const Icon(Icons.expand_more_rounded),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
           label: const Text('이전 기간 더 보기'),
+          style: TextButton.styleFrom(
+            foregroundColor: context.colors.neutralTextMuted,
+            textStyle: context.typography.meta.copyWith(
+              fontWeight: AppFontWeights.semibold,
+            ),
+          ),
         ),
       ),
     );
@@ -1236,12 +1250,15 @@ class _DisabledFilterNotice extends StatelessWidget {
 
 class _TransactionEntryRow extends StatelessWidget {
   const _TransactionEntryRow({
+    super.key,
     required this.entry,
+    required this.showColumns,
     required this.onTap,
     required this.onDelete,
   });
 
   final _TransactionEntry entry;
+  final bool showColumns;
   final VoidCallback onTap;
   final Future<void> Function() onDelete;
 
@@ -1249,39 +1266,59 @@ class _TransactionEntryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final transaction = entry.transaction;
     final amountValue = _transactionDisplayAmountValue(transaction);
-    final amountText = _formatTransactionAmountInKrw(
-      amountValue,
+    String formatAmount(double amount) => _formatTransactionAmountInKrw(
+      amount,
       sourceCurrency: entry.currencyCode,
       exchangeRate: entry.exchangeRate,
     );
-    final signedAmountText = _signedAmountText(transaction, amountText);
-    final amountColor = _externalCashAmountColor(context, transaction);
-    final subtitle = [
-      entry.accountSummary,
-      entry.account.subtitle,
-      transaction.date,
+    final type = transaction.type.trim();
+    final name = transaction.name.trim();
+    final holding = entry.account.title;
+    final typePrefix = '$type · ';
+    final usesHoldingTitle =
+        !entry.account.isCash &&
+        (name.isEmpty ||
+            name == type ||
+            name == holding ||
+            name == '$holding $type' ||
+            name.startsWith(typePrefix));
+    final transferRoute = entry.transferRoute;
+    final title = transferRoute ?? (usesHoldingTitle ? holding : name);
+    final description = [
+      title,
+      if (entry.showsMemo) transaction.memo.trim(),
+      if (transferRoute != null) ...[
+        if (name != type &&
+            name != transferRoute &&
+            name != '$transferRoute $type')
+          name,
+      ] else ...[
+        if (usesHoldingTitle && name.startsWith(typePrefix))
+          name.substring(typePrefix.length),
+        if (!usesHoldingTitle && name != holding) holding,
+        entry.account.subtitle,
+      ],
       if (!transaction.includeInCalculations) '기록전용',
     ].where((value) => value.trim().isNotEmpty).join(' · ');
 
-    return Slidable(
-      key: ValueKey(
-        'transactions-page-${entry.entryKey}-${entry.account.holdingId}-${entry.originalIndex}',
-      ),
+    return TransactionHistoryRow(
+      date: transaction.date,
+      typeLabel: type,
+      description: description,
+      amountText: _signedAmountText(transaction, formatAmount(amountValue)),
+      amountColor: _transactionAmountColor(context, entry),
+      priceDetail: entry.account.isCash
+          ? null
+          : transactionHistoryPriceDetail(
+              transaction,
+              assetType: entry.account.assetType,
+              formatAmount: formatAmount,
+            ),
+      isTrade: !entry.account.isCash && isTransactionHistoryTrade(transaction),
+      showColumns: showColumns,
       groupTag: _TransactionsPageState._kSlidableGroupTag,
-      endActionPane: moneyfySingleSlideActionPane(
-        onPressed: onDelete,
-        icon: Icons.delete_outline_rounded,
-        iconColor: Theme.of(context).colorScheme.error,
-      ),
-      child: TransactionRow(
-        typeLabel: transaction.type,
-        title: transaction.name,
-        subtitle: subtitle,
-        amountText: signedAmountText,
-        amountColor: amountColor,
-        onTap: onTap,
-        typeColor: _transactionTypeColor(context, transaction.type),
-      ),
+      onEdit: onTap,
+      onDelete: onDelete,
     );
   }
 }
@@ -1472,6 +1509,7 @@ class _TransactionEntry {
     required this.exchangeRate,
     required this.originalIndex,
     this.relatedAccounts = const <_TransactionAccountOption>[],
+    this.transferDestination,
   });
 
   final TransactionItem transaction;
@@ -1480,18 +1518,55 @@ class _TransactionEntry {
   final double exchangeRate;
   final int originalIndex;
   final List<_TransactionAccountOption> relatedAccounts;
+  final _TransactionAccountOption? transferDestination;
 
   Object get entryKey =>
       transaction.ledgerEventId ?? transaction.id ?? hashCode;
 
-  String get accountSummary {
-    if (relatedAccounts.length <= 1) return account.title;
-    return '${account.title} 외 ${relatedAccounts.length - 1}개';
+  String get statementPeriodKey =>
+      _transactionStatementPeriodKey(transaction.date);
+
+  static final _distributionTitle = RegExp(r'(?:배당(?:금)?|분배금)(?:\s*입금)?$');
+
+  bool get isDistributionDeposit {
+    final action = transaction.ledgerAction ?? transaction.type.trim();
+    return (action == 'deposit' || action == '입금') &&
+        _distributionTitle.hasMatch(transaction.name.trim());
+  }
+
+  bool get showsMemo =>
+      !account.isCash ||
+      isDistributionDeposit ||
+      isTransfer ||
+      transaction.ledgerKind == 'fx_exchange';
+
+  bool get isTransfer =>
+      switch (transaction.ledgerAction ?? transaction.type.trim()) {
+        'transfer_out' || 'transfer_in' || '이체' => true,
+        _ => false,
+      };
+
+  String? get transferRoute {
+    final destination = transferDestination;
+    if (transaction.ledgerAction != 'transfer_out' ||
+        destination == null ||
+        destination.holdingId == account.holdingId) {
+      return null;
+    }
+    return [account, destination]
+        .map(
+          (account) => [
+            account.subtitle,
+            account.title,
+          ].where((part) => part.isNotEmpty).join(' '),
+        )
+        .join(' → ');
   }
 
   String get searchText {
     return [
       transaction.name,
+      if (showsMemo) transaction.memo,
       transaction.type,
       transaction.date,
       transaction.amount,
@@ -1517,6 +1592,7 @@ class _TransactionAccountOption {
     required this.title,
     required this.subtitle,
     required this.isCash,
+    this.assetType,
     required this.currencyCode,
     required this.exchangeRate,
   });
@@ -1527,6 +1603,7 @@ class _TransactionAccountOption {
   final String title;
   final String subtitle;
   final bool isCash;
+  final String? assetType;
   final String currencyCode;
   final double exchangeRate;
 }
@@ -1563,6 +1640,10 @@ _TransactionEntry _representativeEventEntry(List<_TransactionEntry> group) {
     exchangeRate: representative.exchangeRate,
     originalIndex: representative.originalIndex,
     relatedAccounts: _uniqueEventAccounts(representative, group),
+    transferDestination: group
+        .where((entry) => entry.transaction.ledgerAction == 'transfer_in')
+        .map((entry) => entry.account)
+        .singleOrNull,
   );
 }
 
@@ -1706,7 +1787,7 @@ enum _TransactionQuickFilter {
   all('전체', _TransactionCategoryFilter.all),
   buy('매수', _TransactionCategoryFilter.buy),
   sell('매도', _TransactionCategoryFilter.sell),
-  dividend('배당', _TransactionCategoryFilter.dividend),
+  dividend('배당·분배금', _TransactionCategoryFilter.dividend),
   cashFlow('입출금', _TransactionCategoryFilter.all);
 
   const _TransactionQuickFilter(this.label, this.category);
@@ -1742,7 +1823,7 @@ enum _TransactionCategoryFilter {
   all('전체 유형', {}),
   buy('매수', {'buy', '매수'}),
   sell('매도', {'sell', '매도'}),
-  dividend('배당', {'dividend', '배당'}),
+  dividend('배당·분배금', {'dividend', '배당'}),
   interest('이자', {'interest', '이자'}),
   deposit('입금', {'deposit', 'opening_cash', '입금'}),
   withdrawal('출금', {'withdrawal', '출금'}),
@@ -1759,6 +1840,10 @@ enum _TransactionCategoryFilter {
 
   bool matches(_TransactionEntry entry) {
     if (this == _TransactionCategoryFilter.all) return true;
+    if (this == _TransactionCategoryFilter.dividend &&
+        entry.isDistributionDeposit) {
+      return true;
+    }
     final transaction = entry.transaction;
     final action = transaction.ledgerAction ?? transaction.type.trim();
     return actions.contains(action) ||
@@ -1858,7 +1943,6 @@ String _signedAmountText(TransactionItem transaction, String amountText) {
     'dividend' ||
     'interest' ||
     'deposit' ||
-    'transfer_in' ||
     'fx_in' ||
     '매도' ||
     '배당' ||
@@ -1866,24 +1950,22 @@ String _signedAmountText(TransactionItem transaction, String amountText) {
     '입금' => '+$amountText',
     'buy' ||
     'withdrawal' ||
-    'transfer_out' ||
     'fx_out' ||
     'fee' ||
     'tax' ||
     '매수' ||
     '출금' ||
-    '이체' ||
     '환전' => '-$amountText',
     _ => amountText,
   };
 }
 
-Color _externalCashAmountColor(
-  BuildContext context,
-  TransactionItem transaction,
-) {
+Color _transactionAmountColor(BuildContext context, _TransactionEntry entry) {
   final colors = context.colors;
-  return switch (TransactionFlowCategory.normalize(transaction.flowCategory)) {
+  if (entry.isTransfer) return colors.neutralText;
+  return switch (TransactionFlowCategory.normalize(
+    entry.transaction.flowCategory,
+  )) {
     TransactionFlowCategory.externalDeposit => colors.positiveOn,
     TransactionFlowCategory.externalWithdrawal => colors.negativeOn,
     _ => colors.neutralText,
@@ -1930,13 +2012,4 @@ String _formatTransactionAmountInKrw(
       ? amount.abs() * exchangeRate
       : amount.abs();
   return MoneyfyDisplayCurrencySettings.formatAmountFromKrw(amountKrw);
-}
-
-Color _transactionTypeColor(BuildContext context, String type) {
-  final colors = context.colors;
-  return switch (type.trim()) {
-    '매수' || '출금' || '이체' || '환전' => colors.neutralSurfaceOverlay,
-    '매도' || '배당' || '이자' || '입금' => colors.neutralSurfaceOverlay,
-    _ => colors.neutralSurfaceOverlay,
-  };
 }

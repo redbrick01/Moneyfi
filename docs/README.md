@@ -18,7 +18,7 @@
 | 문서 | 내용 |
 | --- | --- |
 | [Design System](design_system.md) | 원칙, 토큰, typography, component, 화면 패턴, QA |
-| [Brand Palette](brand/README.md) | 브랜드/시맨틱 컬러 결정과 팔레트 산출물 |
+| [Brand Palette](brand/README.md) | 브랜드 팔레트, 컬러 감사, 워드마크 자료 |
 
 ## Backend & Operations
 
@@ -33,7 +33,6 @@
 | 문서 | 내용 |
 | --- | --- |
 | [Implementation History](reports/implementation_history.md) | 정리된 과거 구현 계획/스펙/기능 기록 색인 |
-| [Implementation Report 2026-05-24](reports/implementation_report_20260524.md) | 초기 통합 구현 보고서 |
 
 Historical implementation plans were consolidated into `docs/reports/implementation_history.md`. Current behavior should be read from canonical docs, source code, tests, and Supabase migrations rather than old task plans.
 

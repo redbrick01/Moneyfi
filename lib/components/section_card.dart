@@ -42,9 +42,9 @@ class SectionCard extends StatelessWidget {
         : context.typography.cardTitle;
 
     final color = switch (variant) {
-      SectionCardVariant.base => VisualSpec.surface.cardBase(brightness),
-      SectionCardVariant.raised => VisualSpec.surface.cardRaised(brightness),
-      SectionCardVariant.outline => VisualSpec.surface.cardBase(brightness),
+      SectionCardVariant.base ||
+      SectionCardVariant.outline => context.surfaces.surfaceBase,
+      SectionCardVariant.raised => context.surfaces.surfaceRaised,
     };
     final borderRadius = BorderRadius.circular(VisualSpec.surface.radiusCard);
     final borderColor = switch (variant) {

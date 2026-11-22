@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:moneyfy/db/transaction_event_name.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 import 'package:moneyfy/utils/display_currency.dart';
 import 'package:moneyfy/utils/number_formatters.dart';
@@ -50,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._internal();
 
   @override
-  int get schemaVersion => 38;
+  int get schemaVersion => 39;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -284,12 +285,43 @@ class AppDatabase extends _$AppDatabase {
       if (from < 37) {
         await _ensureDailyInvestmentReviewsTable();
       }
+      if (from < 39 &&
+          await _tableExists('holdings') &&
+          await _tableExists('assets')) {
+        await transaction(_normalizeLedgerTransactionNames);
+      }
 
       await _ensureSeedExchangeRateIfEmpty();
     },
   );
 
   String _syncTimestamp() => DateTime.now().toIso8601String();
+
+  Future<void> _normalizeLedgerTransactionNames([int? eventId]) async {
+    final rows = await customSelect(
+      '''
+        $transactionEventNameContextSql
+        WHERE e.deleted_at IS NULL ${eventId == null ? '' : 'AND e.id = ?'}
+        GROUP BY e.id, e.client_id, e.kind, e.title, e.memo, e.last_modified_at
+      ''',
+      variables: [if (eventId != null) Variable.withInt(eventId)],
+    ).get();
+    for (final row in rows) {
+      final name = normalizeTransactionEventName(row.data);
+      if (name.title == row.read<String>('title') &&
+          name.memo == row.read<String>('memo')) {
+        continue;
+      }
+      await (update(
+        transactionEvents,
+      )..where((table) => table.id.equals(row.read<int>('id')))).write(
+        TransactionEventsCompanion(
+          title: Value(name.title),
+          memo: Value(name.memo),
+        ),
+      );
+    }
+  }
 
   double _initialAveragePriceSource({
     required String currencyCode,
@@ -746,6 +778,7 @@ class AppDatabase extends _$AppDatabase {
         cashAccountById: cashAccountById,
         markDirty: markDirty,
       );
+      await _normalizeLedgerTransactionNames();
     });
   }
 
@@ -809,6 +842,7 @@ class AppDatabase extends _$AppDatabase {
           markDirty: markDirty,
         );
       }
+      await _normalizeLedgerTransactionNames();
     });
 
     for (final holdingId in investmentHoldingIds) {
@@ -1907,6 +1941,7 @@ class AppDatabase extends _$AppDatabase {
       markDirty: markDirty,
       timestamp: timestamp,
     );
+    await _normalizeLedgerTransactionNames(eventId);
   }
 
   Future<void> _insertLedgerForLegacyCashPair({
@@ -1981,6 +2016,7 @@ class AppDatabase extends _$AppDatabase {
       markDirty: markDirty,
       timestamp: timestamp,
     );
+    await _normalizeLedgerTransactionNames(eventId);
   }
 
   Future<int> _createLedgerCashFlowWithLegacyMirror({
@@ -2534,6 +2570,7 @@ class AppDatabase extends _$AppDatabase {
           COALESCE(te.occurred_at, '') AS date,
           COALESCE(tl.action, 'adjustment') AS action,
           COALESCE(te.title, '') AS name,
+          te.memo AS memo,
           COALESCE(tl.unit_price, 0) AS unit_price,
           COALESCE(tl.gross_amount, 0) AS gross_amount,
           ABS(COALESCE(tl.quantity_delta, 0)) AS quantity_value,
@@ -2585,6 +2622,7 @@ class AppDatabase extends _$AppDatabase {
         date: row.read<String>('date'),
         type: _ledgerInvestmentActionLabel(action),
         name: row.read<String>('name'),
+        memo: row.read<String>('memo'),
         amount: _formatPlainNumber(
           _ledgerInvestmentDisplayAmount(
             action: action,
@@ -2646,6 +2684,7 @@ class AppDatabase extends _$AppDatabase {
           COALESCE(te.occurred_at, '') AS date,
           COALESCE(tl.action, 'adjustment') AS action,
           COALESCE(te.title, '') AS name,
+          te.memo AS memo,
           COALESCE(tl.cash_delta, 0) AS cash_delta,
           ABS(COALESCE(tl.cash_delta, 0)) AS amount_value,
           COALESCE(tl.gross_amount, 0) AS gross_amount,
@@ -2696,6 +2735,7 @@ class AppDatabase extends _$AppDatabase {
           cashDelta: cashDelta,
         ),
         name: row.read<String>('name'),
+        memo: row.read<String>('memo'),
         amount: _formatPlainNumber(
           ledgerSource == 'record_only'
               ? row.read<double>('gross_amount')
@@ -2774,6 +2814,7 @@ class AppDatabase extends _$AppDatabase {
               symbol: holdingRow.symbol,
               quantity: holdingRow.quantity,
               averagePrice: holdingRow.averagePrice,
+              averagePriceSource: holdingRow.averagePriceSource,
               currentPrice: holdingRow.currentPrice,
               note: holdingRow.note,
               transactions: holdingTransactions,
@@ -4145,6 +4186,7 @@ class AppDatabase extends _$AppDatabase {
         sourceSortOrder: sourceMax + 1,
         targetSortOrder: targetMax + 1,
       );
+      await _normalizeLedgerTransactionNames(sourceTransactionId);
     });
     await refreshTodaySnapshot();
     return -sourceTransactionId;
@@ -4253,6 +4295,7 @@ class AppDatabase extends _$AppDatabase {
         sourceSortOrder: sourceMax + 1,
         targetSortOrder: targetMax + 1,
       );
+      await _normalizeLedgerTransactionNames(sourceTransactionId);
     });
     await refreshTodaySnapshot();
     return -sourceTransactionId;
@@ -4320,6 +4363,7 @@ class AppDatabase extends _$AppDatabase {
             sortOrder: currentMax + 1,
           );
         }
+        await _normalizeLedgerTransactionNames(insertedId);
       });
       await refreshTodaySnapshot();
       return -insertedId;
@@ -4393,6 +4437,7 @@ class AppDatabase extends _$AppDatabase {
           tradeFxRate: tradeFxRate,
         );
       }
+      await _normalizeLedgerTransactionNames(insertedId);
     });
     if (includeInCalculations) {
       final parityIssues = await fetchLedgerStateParityIssues();
@@ -4723,6 +4768,9 @@ class AppDatabase extends _$AppDatabase {
     final eventId = await _activeLedgerEventIdForItem(item);
     if (eventId == null) return;
 
+    final originalEvent = await (select(
+      transactionEvents,
+    )..where((table) => table.id.equals(eventId))).getSingle();
     final lineRows = await customSelect(
       '''
       SELECT
@@ -4778,12 +4826,16 @@ class AppDatabase extends _$AppDatabase {
     final normalizedType = _normalizeTransactionType(item.type);
     Future<void> markReplacement(int newExternalId) async {
       final newEventId = newExternalId.abs();
+      final newEvent = await (select(
+        transactionEvents,
+      )..where((table) => table.id.equals(newEventId))).getSingle();
       await (update(
         transactionEvents,
       )..where((table) => table.id.equals(newEventId))).write(
         TransactionEventsCompanion(
           legacySourceTable: const Value('transaction_events'),
           legacySourceId: Value(eventId),
+          memo: Value(mergeTransactionMemos(originalEvent.memo, newEvent.memo)),
           dirty: const Value(true),
           lastModifiedAt: Value(_syncTimestamp()),
         ),
@@ -6928,6 +6980,16 @@ class AppDatabase extends _$AppDatabase {
         .toList(growable: false);
   }
 
+  Future<({List<AssetItem> assets, Map<int, double> targetRatios})>
+  fetchPortfolioAllocations() {
+    // Core sync can replace local asset IDs between reads.
+    return transaction(() async {
+      final assets = await fetchAssets();
+      final targetRatios = await fetchAssetAllocationTargets();
+      return (assets: assets, targetRatios: targetRatios);
+    });
+  }
+
   Future<Map<int, double>> fetchAssetAllocationTargets() async {
     final rows = await select(assetAllocationTargets).get();
     return {for (final row in rows) row.assetId: row.targetRatio};
@@ -8086,8 +8148,14 @@ class AppDatabase extends _$AppDatabase {
           row.clientId!: row.hidden,
     };
 
-    bool sameClientIds(Iterable<String?> local, List<Map<String, dynamic>> remote) {
-      final localIds = local.whereType<String>().where((id) => id.isNotEmpty).toSet();
+    bool sameClientIds(
+      Iterable<String?> local,
+      List<Map<String, dynamic>> remote,
+    ) {
+      final localIds = local
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toSet();
       final remoteIds = remote
           .map((row) => _nullableString(row['client_id']))
           .whereType<String>()
@@ -8099,7 +8167,8 @@ class AppDatabase extends _$AppDatabase {
           localIds.containsAll(remoteIds);
     }
 
-    final preserveOwnerlessReviews = expectedOwnerId == null &&
+    final preserveOwnerlessReviews =
+        expectedOwnerId == null &&
         ownerId != null &&
         localAssetRows.isNotEmpty &&
         sameClientIds(localAssetRows.map((row) => row.clientId), rawAssets) &&
@@ -8459,6 +8528,7 @@ class AppDatabase extends _$AppDatabase {
           ),
         );
       }
+      await _normalizeLedgerTransactionNames();
       if (canApply != null && !canApply()) {
         throw StateError('계정이 변경되어 서버 데이터를 적용하지 않았습니다.');
       }
