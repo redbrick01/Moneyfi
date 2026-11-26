@@ -14,7 +14,6 @@ jobs:
           - { target: linux, os: ubuntu-24.04 }
           - { target: macos, os: macos-15 }
           - { target: android, os: ubuntu-24.04 }
-          - { target: ios, os: macos-15 }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 50
     steps:
@@ -65,10 +64,7 @@ jobs:
           flutter build macos --release
           lipo -verify_arch arm64 build/macos/Build/Products/Release/Moneyfy.app/Contents/MacOS/Moneyfy
           ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/Moneyfy.app out/moneyfy-macos-arm64.zip
-      - if: matrix.target == 'ios'
-        run: flutter build ios --release --no-codesign
-      - if: matrix.target != 'ios'
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}
           path: out/*

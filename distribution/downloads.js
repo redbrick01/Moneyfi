@@ -3,7 +3,7 @@ const platforms = [
   ['macOS', 'Apple Silicon · ZIP 앱 번들 (Apple 공증 미적용)', 'moneyfy-macos-arm64.zip'],
   ['Linux', 'x86_64 · 압축을 풀고 moneyfy 실행', 'moneyfy-linux-x64.tar.gz'],
   ['Android', 'APK 설치 파일', 'moneyfy-android.apk'],
-  ['iPhone', 'iOS · TestFlight 배포 준비 중', null],
+  ['iPhone', 'iOS · 배포 보류', null],
 ];
 
 function render(assets) {
