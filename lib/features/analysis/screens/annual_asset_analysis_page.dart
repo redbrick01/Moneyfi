@@ -1,3 +1,4 @@
+import 'package:moneyfy/widgets/app_refresh_indicator.dart';
 import 'package:moneyfy/utils/monthly_pivot.dart';
 import 'package:moneyfy/components/charts/value_history_card.dart';
 import 'package:moneyfy/features/account/widgets/total_asset_history_card.dart';
@@ -95,7 +96,7 @@ class _AnnualAssetAnalysisPageState extends State<AnnualAssetAnalysisPage> {
               _moveYear(-1);
             }
           },
-          child: RefreshIndicator(
+          child: AppRefreshIndicator(
             onRefresh: _refreshPage,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),

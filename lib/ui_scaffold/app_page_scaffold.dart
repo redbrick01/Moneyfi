@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:moneyfy/widgets/app_refresh_indicator.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/components/icons/app_icon.dart';
 import 'app_insets.dart';
@@ -116,7 +117,7 @@ class AppPageScaffold extends StatelessWidget {
           );
 
     if (enablePullToRefresh && onRefresh != null) {
-      return RefreshIndicator(onRefresh: onRefresh!, child: scrollView);
+      return AppRefreshIndicator(onRefresh: onRefresh!, child: scrollView);
     }
 
     return scrollView;

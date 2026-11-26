@@ -1,3 +1,4 @@
+import 'package:moneyfy/widgets/app_refresh_indicator.dart';
 import 'package:moneyfy/utils/monthly_pivot.dart';
 import 'package:moneyfy/features/portfolio/services/market_instrument_search.dart';
 import 'package:flutter/material.dart';
@@ -515,7 +516,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
 
               final loadSupplemental = !marketLoading || _cachedQuote != null;
               return SafeArea(
-                child: RefreshIndicator(
+                child: AppRefreshIndicator(
                   onRefresh: () => _refreshMarket(holding),
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),

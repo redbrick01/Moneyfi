@@ -1,3 +1,4 @@
+import 'package:moneyfy/widgets/app_refresh_indicator.dart';
 import 'package:moneyfy/utils/monthly_pivot.dart';
 import '../widgets/portfolio_instrument_search.dart';
 import 'dart:ui' as ui;
@@ -619,7 +620,7 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
               (investmentHoldings.isEmpty && cashLikeHoldings.isNotEmpty);
 
           return SafeArea(
-            child: RefreshIndicator(
+            child: AppRefreshIndicator(
               onRefresh: _refreshPage,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),

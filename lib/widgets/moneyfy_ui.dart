@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import 'package:moneyfy/widgets/app_refresh_indicator.dart';
 import 'package:moneyfy/components/section_card.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/design_system/spec.dart';
@@ -86,7 +87,7 @@ class MoneyfyPage extends StatelessWidget {
       child: SafeArea(
         child: onRefresh == null
             ? scrollView
-            : RefreshIndicator(onRefresh: onRefresh!, child: scrollView),
+            : AppRefreshIndicator(onRefresh: onRefresh!, child: scrollView),
       ),
     );
   }
