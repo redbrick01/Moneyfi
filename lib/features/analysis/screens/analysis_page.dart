@@ -1,8 +1,10 @@
+import 'package:moneyfy/utils/monthly_pivot.dart';
 import 'package:moneyfy/features/analysis/screens/reddit_chat_page.dart';
 import 'package:flutter/material.dart';
 
 import 'package:moneyfy/components/chips/moneyfy_pill.dart';
-import 'package:moneyfy/components/icons/app_icon.dart';
+import 'package:moneyfy/features/account/widgets/total_asset_history_card.dart';
+import 'package:moneyfy/features/account/widgets/snapshot_calendar_section.dart';
 import 'package:moneyfy/components/section_card.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/design_system/spec.dart';
@@ -10,7 +12,7 @@ import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/navigation/moneyfy_navigation.dart';
 import 'package:moneyfy/features/analysis/services/company_news_summary_service.dart';
 import 'package:moneyfy/utils/display_currency.dart';
-import 'package:moneyfy/widgets/company_news_summary_card.dart';
+import 'package:moneyfy/features/analysis/widgets/analysis_news_cards.dart';
 import 'package:moneyfy/widgets/market_news_summary_card.dart';
 import 'package:moneyfy/widgets/moneyfy_ui.dart';
 import 'package:moneyfy/features/analysis/screens/annual_asset_analysis_page.dart';
@@ -34,208 +36,178 @@ class AnalysisPage extends StatefulWidget {
 }
 
 class _AnalysisPageState extends State<AnalysisPage> {
-  late Future<_AnalysisSnapshotBundle> _pageFuture;
+  late Future<List<DailyPortfolioSnapshot>> _history;
+  late Future<(List<DailyPortfolioSnapshot>, Set<String>)> _calendar;
+  late Future<List<CompanyNewsSummaryItem>> _companyNews;
+  late Future<MarketNewsSummary?> _marketNews;
 
   @override
   void initState() {
     super.initState();
-    _pageFuture = _loadAnalysisSnapshotBundle();
+    _load();
   }
 
   @override
-  void didUpdateWidget(covariant AnalysisPage oldWidget) {
+  void didUpdateWidget(AnalysisPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.dataRefreshTick != widget.dataRefreshTick) {
-      setState(() {
-        _pageFuture = _loadAnalysisSnapshotBundle();
-      });
-    }
+    if (widget.dataRefreshTick != oldWidget.dataRefreshTick) _load();
   }
 
-  Future<void> _refreshPage() async {
-    final refreshed = await Future.wait<Object?>([
-      fetchMarketNewsSummary(forceRefresh: true),
-      CompanyNewsSummaryService.instance.fetchUserSummaries(forceRefresh: true),
-    ]);
-    final refreshedMarketNews = refreshed[0] as MarketNewsSummary?;
-    final refreshedCompanyNews = refreshed[1] as List<CompanyNewsSummaryItem>;
-    if (!mounted) return;
-    setState(() {
-      _pageFuture = _loadAnalysisSnapshotBundle(
-        prefetchedMarketNewsSummary: refreshedMarketNews,
-        prefetchedCompanyNewsSummaries: refreshedCompanyNews,
-      );
-    });
+  void _load({bool refresh = false}) {
+    _history = AppDatabase.instance.fetchAllPortfolioSnapshots();
+    _calendar = (_history, AppDatabase.instance.fetchTransactionDates()).wait;
+    _companyNews = CompanyNewsSummaryService.instance.fetchUserSummaries(
+      forceRefresh: refresh,
+    );
+    _marketNews = fetchMarketNewsSummary(forceRefresh: refresh);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<_AnalysisSnapshotBundle>(
-      future: _pageFuture,
-      builder: (context, snapshot) {
-        final bundle = snapshot.data ?? const _AnalysisSnapshotBundle.empty();
-
-        return MoneyfyPage(
-          title: '분석',
-          onRefresh: _refreshPage,
-          scrollController: widget.scrollController,
-          children: [
-            MarketNewsSummaryCard(summary: bundle.marketNewsSummary),
-            SizedBox(height: context.spacing.sectionGap),
-            _Level1WidthCard(
-              child: CompanyNewsSummaryCard(items: bundle.companyNewsSummaries),
-            ),
-            SizedBox(height: context.spacing.sectionGap),
-            _AnalysisEntryCard(
-              icon: Icons.rate_review_rounded,
-              title: '투자 회고',
-              subtitle: '오늘 · 주간 · 월간 판단 복기',
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (context) => const InvestmentReviewPage(),
-                  ),
-                );
-              },
-            ),
-            SizedBox(height: context.spacing.sm),
-            _AnalysisEntryCard(
-              icon: Icons.insights_rounded,
-              title: '포트폴리오 진단',
-              onTap: context.openPortfolioDiagnosis,
-            ),
-            SizedBox(height: context.spacing.sm),
-            _AnalysisEntryCard(
-              icon: Icons.query_stats_rounded,
-              title: '투자성과 분석',
-              onTap: context.openInvestmentPerformance,
-            ),
-            SizedBox(height: context.spacing.sm),
-            _AnalysisEntryCard(
-              icon: Icons.payments_rounded,
-              title: '배당/이자 분석',
-              onTap: context.openDividendInterest,
-            ),
-            SizedBox(height: context.spacing.sm),
-            _AnalysisEntryCard(
-              icon: Icons.manage_search_rounded,
-              title: '기업 리서치',
-              subtitle: '투자 논지 · 리스크 · 출처',
-              onTap: context.openEquityResearch,
-            ),
-            SizedBox(height: context.spacing.sm),
-            _AnalysisEntryCard(
-              icon: Icons.chat_bubble_outline,
-              title: '뉴스·Reddit 채팅',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const RedditChatPage()),
-              ),
-            ),
-            SizedBox(height: context.spacing.sm),
-            _AnalysisEntryCard(
-              icon: Icons.forum_rounded,
-              title: 'Reddit 요약',
-              subtitle: '핵심 게시글 · 댓글 인사이트',
-              onTap: context.openRedditPostSummaries,
-            ),
-            SizedBox(height: context.spacing.sm),
-            _AnalysisEntryCard(
-              icon: Icons.insert_chart_outlined_rounded,
-              title: '통계',
-              onTap: context.openStatistics,
-            ),
-          ],
-        );
-      },
+  Future<void> _refresh() async {
+    setState(() => _load(refresh: true));
+    // Each card presents its own error state.
+    await Future.wait<void>(
+      [_history, _calendar, _companyNews, _marketNews].map(
+        (future) =>
+            future.then<void>((_) {}, onError: (Object _, StackTrace _) {}),
+      ),
     );
   }
-}
 
-class _Level1WidthCard extends StatelessWidget {
-  const _Level1WidthCard({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = context.cardWidths.apply(constraints.maxWidth, level: 1);
-        return Align(
-          alignment: Alignment.center,
-          child: SizedBox(width: width, child: child),
-        );
-      },
-    );
+  void _open(Widget page) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
   }
-}
 
-class _AnalysisEntryCard extends StatelessWidget {
-  const _AnalysisEntryCard({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-    this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final VoidCallback onTap;
+  Widget _link(String label, Widget icon, VoidCallback onTap) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: icon,
+    title: Text(label),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: onTap,
+  );
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return SectionCard(
-      dense: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: context.spacing.xs / 2),
-          child: Row(
+    final gap = SizedBox(height: context.spacing.sectionGap);
+    final smallGap = SizedBox(height: context.spacing.sm);
+    return MoneyfyPage(
+      title: '분석',
+      scrollController: widget.scrollController,
+      onRefresh: _refresh,
+      children: [
+        FutureBuilder<List<DailyPortfolioSnapshot>>(
+          future: _history,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const SectionCard(
+                title: '총자산 변화',
+                child: Text('자산 기록을 불러오지 못했어요. 아래로 당겨 다시 시도해 주세요.'),
+              );
+            }
+            if (!snapshot.hasData) {
+              return const SectionCard(
+                title: '총자산 변화',
+                child: LinearProgressIndicator(),
+              );
+            }
+            return TotalAssetHistoryCard(
+              snapshots: snapshot.requireData,
+              loadItems: fetchVisibleSnapshotSummaryItemsByDates,
+            );
+          },
+        ),
+        gap,
+        Text('내 투자 분석', style: context.typography.sectionTitle),
+        smallGap,
+        SectionCard(
+          title: '성과·수입',
+          child: Column(
             children: [
-              Container(
-                width: VisualSpec.icon.badgeBox,
-                height: VisualSpec.icon.badgeBox,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(context.radius.rMd),
-                ),
-                child: AppIcon.raw(
-                  icon,
-                  color: colorScheme.primary,
-                  size: VisualSpec.icon.sizeDefault,
-                ),
+              _link(
+                '투자성과 분석',
+                const Icon(Icons.query_stats_rounded),
+                context.openInvestmentPerformance,
               ),
-              SizedBox(width: context.spacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: context.typography.cardTitle),
-                    if (subtitle != null) ...[
-                      SizedBox(height: context.spacing.xs / 2),
-                      Text(
-                        subtitle!,
-                        style: context.typography.meta.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              SizedBox(width: context.spacing.sm),
-              AppIcon(
-                AppIconName.chevronRight,
-                color: colorScheme.onSurfaceVariant,
+              _link(
+                '배당/이자 분석',
+                const Icon(Icons.payments_rounded),
+                context.openDividendInterest,
               ),
             ],
           ),
         ),
-      ),
+        smallGap,
+        SectionCard(
+          title: '자산 구성·위험',
+          child: Column(
+            children: [
+              _link(
+                '포트폴리오 진단',
+                const Icon(Icons.insights_rounded),
+                context.openPortfolioDiagnosis,
+              ),
+              _link(
+                '자산 추이·통계',
+                const Icon(Icons.insert_chart_outlined_rounded),
+                context.openStatistics,
+              ),
+            ],
+          ),
+        ),
+        if (showInvestmentReviewEntryPoints) ...[
+          smallGap,
+          SectionCard(
+            title: '투자 기록',
+            child: _link(
+              '투자 회고',
+              const Icon(Icons.rate_review_rounded),
+              () => _open(const InvestmentReviewPage()),
+            ),
+          ),
+        ],
+        smallGap,
+        SectionCard(
+          title: '리서치·채팅',
+          child: Column(
+            children: [
+              _link(
+                '기업 리서치',
+                const Icon(Icons.manage_search_rounded),
+                context.openEquityResearch,
+              ),
+              _link(
+                'Reddit 요약',
+                const ImageIcon(AssetImage('assets/reddit_snoo.png')),
+                context.openRedditPostSummaries,
+              ),
+              _link(
+                'RAG채팅',
+                const Icon(Icons.chat_bubble_outline),
+                () => _open(const RedditChatPage()),
+              ),
+            ],
+          ),
+        ),
+        gap,
+        AnalysisNewsCards(marketNews: _marketNews, companyNews: _companyNews),
+        gap,
+        FutureBuilder<(List<DailyPortfolioSnapshot>, Set<String>)>(
+          future: _calendar,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData && !snapshot.hasError) {
+              return const SectionCard(
+                title: '스냅샷 캘린더',
+                child: LinearProgressIndicator(),
+              );
+            }
+            return SnapshotCalendarSection(
+              snapshots: snapshot.data?.$1 ?? const [],
+              transactionDates: snapshot.data?.$2 ?? const {},
+              sectionError: snapshot.error,
+              onRetry: _refresh,
+            );
+          },
+        ),
+      ],
     );
   }
 }
@@ -344,12 +316,14 @@ class SnapshotCalendarCard extends StatelessWidget {
                 final snapshot = snapshotByDate[dateKey];
                 final hasSnapshot = snapshot != null;
                 final hasTransaction = transactionDates.contains(dateKey);
-                final isPivotDay = day == 20;
-                final dayColor = isPivotDay || hasSnapshot
+                final isPivotDay = MonthlyPivot.current.matches(date);
+                final dayColor = isPivotDay
+                    ? VisualSpec.brand.brandRed
+                    : hasSnapshot
                     ? context.colors.primary
                     : context.colors.neutralTextMuted;
                 final borderColor = isPivotDay
-                    ? context.colors.primary.withValues(alpha: 0.34)
+                    ? VisualSpec.brand.brandRed.withValues(alpha: 0.34)
                     : hasSnapshot
                     ? context.colors.primary
                     : context.colors.neutralOutline;
@@ -470,47 +444,6 @@ class YearlyAssetAnalysisCard extends StatelessWidget {
   }
 }
 
-Future<_AnalysisSnapshotBundle> _loadAnalysisSnapshotBundle({
-  MarketNewsSummary? prefetchedMarketNewsSummary,
-  List<CompanyNewsSummaryItem>? prefetchedCompanyNewsSummaries,
-}) async {
-  final allSnapshotsFuture = AppDatabase.instance.fetchRecentPortfolioSnapshots(
-    maxDates: 240,
-  );
-  final transactionDatesFuture = AppDatabase.instance.fetchTransactionDates();
-  final marketNewsSummaryFuture = prefetchedMarketNewsSummary != null
-      ? Future<MarketNewsSummary?>.value(prefetchedMarketNewsSummary)
-      : fetchMarketNewsSummary();
-  final companyNewsSummariesFuture = prefetchedCompanyNewsSummaries != null
-      ? Future<List<CompanyNewsSummaryItem>>.value(
-          prefetchedCompanyNewsSummaries,
-        )
-      : CompanyNewsSummaryService.instance.fetchUserSummaries();
-  final allSnapshots = await allSnapshotsFuture;
-  final recentSnapshots = selectMonthlyClosingSnapshots(allSnapshots);
-  final recentItemsFuture = fetchVisibleSnapshotSummaryItemsByDates(
-    recentSnapshots.map((snapshot) => snapshot.snapshotDate).toList(),
-  );
-  final annualItemsFuture = fetchVisibleSnapshotSummaryItemsByDates(
-    allSnapshots.map((snapshot) => snapshot.snapshotDate).toList(),
-  );
-  final recentItems = await recentItemsFuture;
-  final annualItems = await annualItemsFuture;
-  final transactionDates = await transactionDatesFuture;
-  final marketNewsSummary = await marketNewsSummaryFuture;
-  final companyNewsSummaries = await companyNewsSummariesFuture;
-
-  return _AnalysisSnapshotBundle(
-    recentSnapshots: recentSnapshots,
-    recentItems: recentItems,
-    annualItems: annualItems,
-    allSnapshots: allSnapshots,
-    transactionDates: transactionDates,
-    marketNewsSummary: marketNewsSummary,
-    companyNewsSummaries: companyNewsSummaries,
-  );
-}
-
 List<DailyPortfolioSnapshot> selectMonthlyClosingSnapshots(
   List<DailyPortfolioSnapshot> snapshots, {
   int maxItems = 6,
@@ -525,7 +458,7 @@ List<DailyPortfolioSnapshot> selectMonthlyClosingSnapshots(
   for (final snapshot in sorted.reversed.skip(1)) {
     if (selected.length >= maxItems) break;
     final date = DateTime.parse(snapshot.snapshotDate);
-    if (date.day != 20) continue;
+    if (!MonthlyPivot.current.matches(date)) continue;
     if (selected.any((item) => item.snapshotDate == snapshot.snapshotDate)) {
       continue;
     }
@@ -853,33 +786,4 @@ Color _analysisValueColor(BuildContext context, String value) {
   }
   if (trimmed.contains('+')) return context.colors.gainOn;
   return context.colors.neutralTextMuted;
-}
-
-class _AnalysisSnapshotBundle {
-  const _AnalysisSnapshotBundle({
-    required this.recentSnapshots,
-    required this.recentItems,
-    required this.annualItems,
-    required this.allSnapshots,
-    required this.transactionDates,
-    required this.marketNewsSummary,
-    required this.companyNewsSummaries,
-  });
-
-  const _AnalysisSnapshotBundle.empty()
-    : recentSnapshots = const [],
-      recentItems = const [],
-      annualItems = const [],
-      allSnapshots = const [],
-      transactionDates = const {},
-      marketNewsSummary = null,
-      companyNewsSummaries = const [];
-
-  final List<DailyPortfolioSnapshot> recentSnapshots;
-  final List<DailyPortfolioSnapshotItem> recentItems;
-  final List<DailyPortfolioSnapshotItem> annualItems;
-  final List<DailyPortfolioSnapshot> allSnapshots;
-  final Set<String> transactionDates;
-  final MarketNewsSummary? marketNewsSummary;
-  final List<CompanyNewsSummaryItem> companyNewsSummaries;
 }

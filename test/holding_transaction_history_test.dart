@@ -9,11 +9,12 @@ import 'package:moneyfy/components/transaction_history_list.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
+import 'package:moneyfy/features/portfolio/screens/cash_account_detail_page.dart';
 import 'package:moneyfy/features/portfolio/screens/holding_detail_page.dart';
 import 'package:moneyfy/features/transactions/screens/forms/transaction_form_page.dart';
 
 void main() {
-  testWidgets('holding history shows recent trades and their controls', (
+  testWidgets('holding and cash history show recent transactions', (
     tester,
   ) async {
     final directory = Directory.systemTemp.createTempSync('moneyfy_history_');
@@ -220,6 +221,59 @@ void main() {
         await tester.pump();
         expect(tester.takeException(), isNull, reason: '$width dp');
       }
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      final cashId = await db.createCashAccount(
+        assetId: assetId,
+        currencyCode: 'KRW',
+        name: '테스트 현금 계좌',
+        note: '',
+      );
+      for (final day in [2, 6, 1, 4, 3, 5]) {
+        await db.createTransaction(
+          assetId: assetId,
+          holdingId: cashId,
+          date: '2026.02.0$day',
+          type: '입금',
+          name: '테스트 입금 $day',
+          amount: '1000',
+          quantity: '',
+        );
+      }
+      tester.view.physicalSize = const Size(800, 900);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: CashAccountDetailPage(holdingId: cashId),
+        ),
+      );
+      for (
+        var attempt = 0;
+        attempt < 40 && history.evaluate().isEmpty;
+        attempt++
+      ) {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+        await tester.pump();
+      }
+      expect(history, findsOneWidget);
+      final cashDates = tester
+          .widgetList<Text>(
+            find.descendant(of: history, matching: find.byType(Text)),
+          )
+          .map((text) => text.data)
+          .whereType<String>()
+          .where((text) => text.startsWith('2026-02-'));
+      expect(cashDates, [
+        '2026-02-06',
+        '2026-02-05',
+        '2026-02-04',
+        '2026-02-03',
+        '2026-02-02',
+      ]);
+      expect(find.widgetWithText(TextButton, '추가'), findsOneWidget);
+      expect(find.text('거래 금액'), findsOneWidget);
+      expect(find.text('수량 × 단가'), findsNothing);
+      expect(find.byTooltip('거래 옵션'), findsNWidgets(5));
       await tester.pumpWidget(const SizedBox.shrink());
     });
   });

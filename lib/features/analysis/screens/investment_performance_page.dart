@@ -1252,12 +1252,7 @@ Future<double> loadMonthInvestmentPerformance(
   List<AssetItem> assets,
 ) async {
   final report = await _loadInvestmentPerformanceReport(
-    _PerformanceDateRange(
-      preset: _PerformanceDatePreset.oneMonth,
-      label: '이번 달',
-      from: DateTime(today.year, today.month),
-      to: DateUtils.dateOnly(today),
-    ),
+    _PerformanceDateRange.monthToDate(today),
     database: db,
     loadedAssets: assets,
     includeBenchmarks: false,
@@ -1394,16 +1389,18 @@ Future<_AdvancedPerformanceReport> _loadAdvancedPerformanceReport(
   final to = range.to == null ? null : _dateKey(range.to!);
 
   await db.rebuildPortfolioDailyReturns(from: from, to: to);
-  final rows = await db.fetchPortfolioDailyReturns(from: from, to: to);
-  final dailyReturns = rows
-      .map((row) => row.dailyReturn)
+  final returnRows = await db.fetchPortfolioDailyReturns(from: from, to: to);
+  final dailyReturns = returnRows
+      .map((r) => r.dailyReturn)
       .whereType<double>()
-      .toList(growable: false);
+      .toList();
   final snapshots = await db.fetchAllPortfolioSnapshots(from: from, to: to);
   final metrics = await loadPortfolioPerformanceMetrics(db, snapshots);
   final drawdown = metrics.drawdown;
-  final benchmarkFrom = from ?? (rows.isEmpty ? null : rows.first.returnDate);
-  final benchmarkTo = to ?? (rows.isEmpty ? null : rows.last.returnDate);
+  final benchmarkFrom =
+      from ?? (returnRows.isEmpty ? null : returnRows.first.returnDate);
+  final benchmarkTo =
+      to ?? (returnRows.isEmpty ? null : returnRows.last.returnDate);
   if (benchmarkFrom != null && benchmarkTo != null) {
     await BenchmarkPriceService.instance.ensureBenchmarkPrices(
       benchmarkCode: _defaultBenchmarkCode,
@@ -1703,7 +1700,14 @@ class _HoldingPerformance {
       realizedProfit + unrealizedProfit + incomeAmount;
 }
 
-enum _PerformanceDatePreset { oneMonth, threeMonths, sixMonths, year, all }
+enum _PerformanceDatePreset {
+  monthToDate,
+  oneMonth,
+  threeMonths,
+  sixMonths,
+  year,
+  all,
+}
 
 class _PerformanceDateRange {
   const _PerformanceDateRange({
@@ -1712,6 +1716,14 @@ class _PerformanceDateRange {
     required this.from,
     required this.to,
   });
+
+  factory _PerformanceDateRange.monthToDate(DateTime date) =>
+      _PerformanceDateRange(
+        preset: _PerformanceDatePreset.monthToDate,
+        label: '이번 달',
+        from: DateTime(date.year, date.month),
+        to: DateUtils.dateOnly(date),
+      );
 
   factory _PerformanceDateRange.yearToDate(DateTime today) {
     final normalizedToday = DateUtils.dateOnly(today);
@@ -1731,6 +1743,7 @@ class _PerformanceDateRange {
   static List<_PerformanceDateRange> presets(DateTime today) {
     final normalizedToday = DateUtils.dateOnly(today);
     return [
+      _PerformanceDateRange.monthToDate(today),
       _monthsBack(
         preset: _PerformanceDatePreset.oneMonth,
         label: '1개월',

@@ -45,6 +45,37 @@ void main() {
     expect(uniqueIndexes, contains('daily_portfolio_snapshots_date_unique'));
   });
 
+  test('delta imports preserve unchanged dates and unsent notes', () async {
+    await db.assignLocalDataOwner('owner');
+    await db.importRemotePortfolioSnapshots([
+      {'snapshot_date': '2026-06-01', 'sync_revision': 'first'},
+      {'snapshot_date': '2026-06-02', 'sync_revision': 'second'},
+    ], ownerId: 'owner');
+    await db.saveSnapshotNote(snapshotDate: '2026-06-01', note: 'local edit');
+    await db.importRemotePortfolioSnapshots([
+      {'snapshot_date': '2026-06-01', 'sync_revision': 'edited'},
+    ], ownerId: 'owner');
+    expect(await db.snapshotRevisions(), {
+      '2026-06-01': 'edited',
+      '2026-06-02': 'second',
+    });
+    await expectLater(
+      db.importRemotePortfolioSnapshots(
+        [],
+        removedDates: ['2026-06-02'],
+        ownerId: 'other',
+      ),
+      throwsStateError,
+    );
+    await db.importRemotePortfolioSnapshots(
+      [],
+      removedDates: ['2026-06-01'],
+      ownerId: 'owner',
+    );
+    expect(await db.snapshotRevisions(), {'2026-06-02': 'second'});
+    expect(await db.fetchSnapshotNote('2026-06-01'), 'local edit');
+  });
+
   test(
     'cash snapshots expose saved IDs even without current local rows',
     () async {

@@ -46,7 +46,12 @@ class TransactionHistoryDivider extends StatelessWidget {
 enum _TransactionAction { edit, delete }
 
 class TransactionHistoryHeader extends StatelessWidget {
-  const TransactionHistoryHeader({super.key});
+  const TransactionHistoryHeader({
+    super.key,
+    this.showPriceDetailColumn = true,
+  });
+
+  final bool showPriceDetailColumn;
 
   @override
   Widget build(BuildContext context) {
@@ -59,11 +64,13 @@ class TransactionHistoryHeader extends StatelessWidget {
         end: VisualSpec.icon.minTapTarget,
       ),
       child: _TransactionHistoryColumns(
+        showPriceDetailColumn: showPriceDetailColumn,
         cells: [
           Text('거래일', style: style),
           Text('유형', style: style),
           Text('거래명', style: style),
-          Text('수량 × 단가', style: style, textAlign: TextAlign.end),
+          if (showPriceDetailColumn)
+            Text('수량 × 단가', style: style, textAlign: TextAlign.end),
           Text('거래 금액', style: style, textAlign: TextAlign.end),
         ],
       ),
@@ -72,13 +79,19 @@ class TransactionHistoryHeader extends StatelessWidget {
 }
 
 class _TransactionHistoryColumns extends StatelessWidget {
-  const _TransactionHistoryColumns({required this.cells});
+  const _TransactionHistoryColumns({
+    required this.cells,
+    required this.showPriceDetailColumn,
+  });
 
   final List<Widget> cells;
+  final bool showPriceDetailColumn;
 
   @override
   Widget build(BuildContext context) {
-    const widths = [18, 10, 30, 23, 19];
+    final widths = showPriceDetailColumn
+        ? const [18, 10, 30, 23, 19]
+        : const [18, 10, 53, 19];
     return Row(
       children: [
         for (final (index, cell) in cells.indexed) ...[
@@ -101,6 +114,7 @@ class TransactionHistoryRow extends StatelessWidget {
     required this.priceDetail,
     required this.showColumns,
     required this.groupTag,
+    this.showPriceDetailColumn = true,
     this.isTrade = false,
     this.onEdit,
     required this.onDelete,
@@ -113,6 +127,7 @@ class TransactionHistoryRow extends StatelessWidget {
   final Color amountColor;
   final String? priceDetail;
   final bool showColumns;
+  final bool showPriceDetailColumn;
   final Object groupTag;
   final bool isTrade;
   final VoidCallback? onEdit;
@@ -173,6 +188,7 @@ class TransactionHistoryRow extends StatelessWidget {
                 ),
                 child: showColumns
                     ? _TransactionHistoryColumns(
+                        showPriceDetailColumn: showPriceDetailColumn,
                         cells: [
                           dateText,
                           Align(
@@ -180,7 +196,7 @@ class TransactionHistoryRow extends StatelessWidget {
                             child: badge,
                           ),
                           Text(description, style: metaStyle),
-                          detail,
+                          if (showPriceDetailColumn) detail,
                           amount,
                         ],
                       )

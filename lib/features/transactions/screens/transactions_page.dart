@@ -1,3 +1,4 @@
+import 'package:moneyfy/utils/monthly_pivot.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
@@ -91,6 +92,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
             AppDatabase.instance.fetchAssets());
     final accounts = <_TransactionAccountOption>[];
     final rawRows = <_TransactionEntry>[];
+    final hiddenInvestmentEventIds = <int>{};
 
     for (final asset in assets) {
       for (final holding in asset.holdings) {
@@ -111,6 +113,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
         );
         accounts.add(account);
 
+        if (asset.isHidden || holding.isHidden) {
+          if (!account.isCash) {
+            hiddenInvestmentEventIds.addAll(
+              holding.transactions
+                  .map((transaction) => transaction.ledgerEventId)
+                  .whereType<int>(),
+            );
+          }
+          continue;
+        }
+
         for (var index = 0; index < holding.transactions.length; index++) {
           rawRows.add(
             _TransactionEntry(
@@ -125,6 +138,12 @@ class _TransactionsPageState extends State<TransactionsPage> {
       }
     }
 
+    // Cash settlement lines belong to the originating investment transaction.
+    rawRows.removeWhere(
+      (entry) =>
+          entry.account.isCash &&
+          hiddenInvestmentEventIds.contains(entry.transaction.ledgerEventId),
+    );
     final rows = _groupEntriesByLedgerEvent(rawRows);
     rows.sort(_compareTransactionEntries);
     return _TransactionsPageData(
@@ -1913,9 +1932,7 @@ DateTime _parseDate(String value) {
 String _transactionStatementPeriodKey(String date) {
   final parsed = _parseDate(date);
   if (parsed.year <= 1970 && !date.startsWith('1970')) return date;
-  final start = parsed.day >= 20
-      ? DateTime(parsed.year, parsed.month, 20)
-      : DateTime(parsed.year, parsed.month - 1, 20);
+  final start = MonthlyPivot.current.periodStart(parsed);
   final month = start.month.toString().padLeft(2, '0');
   final day = start.day.toString().padLeft(2, '0');
   return '${start.year}-$month-$day';
@@ -1930,7 +1947,7 @@ String _statementPeriodLabel(String periodKey) {
   if (year == null || month == null || day == null) return periodKey;
 
   final start = DateTime(year, month, day);
-  final end = DateTime(start.year, start.month + 1, 19);
+  final end = MonthlyPivot.current.periodEnd(start);
   final endLabel = start.year == end.year
       ? '${end.month}월 ${end.day}일'
       : '${end.year}년 ${end.month}월 ${end.day}일';

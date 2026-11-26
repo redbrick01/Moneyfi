@@ -76,7 +76,6 @@ flutter pub get
 
 ```bash
 cp assets/config.example.json assets/config.json
-cp config.example.json config.json
 ```
 
 `assets/config.json`:
@@ -88,13 +87,13 @@ cp config.example.json config.json
 }
 ```
 
-`config.example.json`을 프로젝트 루트의 `config.json`으로 복사한 뒤
-`KIS_APP_KEY`와 `KIS_APP_SECRET`을 채웁니다. KIS 설정은 빌드할 때 전달합니다.
+KIS 키는 Supabase Edge Function secrets에 설정합니다. 앱은 로그인한 사용자의
+서버 저장 시세와 마지막 갱신 시각을 읽습니다.
 
 ### 3. Run the app
 
 ```bash
-flutter run --dart-define-from-file=config.json
+flutter run
 ```
 
 ### USB로 연결한 아이폰에 설치

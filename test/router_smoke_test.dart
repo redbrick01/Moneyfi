@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
+import 'package:moneyfy/features/account/screens/statistics_page.dart';
+import 'package:moneyfy/features/auth/screens/startup_gate.dart';
+import 'package:moneyfy/features/auth/services/app_data_lifecycle_service.dart';
 import 'package:moneyfy/navigation/moneyfy_router.dart';
 import 'package:moneyfy/navigation/moneyfy_routes.dart';
 import 'package:moneyfy/features/portfolio/screens/forms/asset_form_page.dart';
@@ -14,10 +17,11 @@ void main() {
   Future<void> pumpRouter(
     WidgetTester tester, {
     required String initialLocation,
+    bool useStartupGate = false,
   }) async {
     final router = buildMoneyfyRouter(
       initialLocation: initialLocation,
-      useStartupGate: false,
+      useStartupGate: useStartupGate,
     );
     await tester.pumpWidget(
       MaterialApp.router(
@@ -52,14 +56,52 @@ void main() {
     });
   }
 
-  testWidgets('opens statistics compatibility route under analysis tab', (
+  testWidgets('legacy statistics opens as a detail and returns to analysis', (
     tester,
   ) async {
-    await pumpRouter(tester, initialLocation: MoneyfyRoutePaths.statistics);
+    await pumpRouter(
+      tester,
+      initialLocation: MoneyfyRoutePaths.legacyStatistics,
+    );
 
+    expect(find.byKey(const ValueKey('bottom-tab-분석')), findsNothing);
+    expect(find.text('자산 추이·통계'), findsOneWidget);
+    await tester.tap(find.byTooltip('뒤로'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('bottom-tab-분석')), findsOneWidget);
-    expect(find.byKey(const ValueKey('bottom-tab-통계')), findsNothing);
-    expect(find.text('통계'), findsWidgets);
+  });
+
+  testWidgets('opens statistics from analysis and returns to the list', (
+    tester,
+  ) async {
+    AppDataLifecycleService.markStartupChecked();
+    addTearDown(AppDataLifecycleService.resetForTesting);
+    await pumpRouter(
+      tester,
+      initialLocation: MoneyfyRoutePaths.analysis,
+      useStartupGate: true,
+    );
+    final entry = find.text('자산 추이·통계');
+    await tester.ensureVisible(entry);
+    await tester.tap(entry);
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+    expect(find.byType(StartupSplashPage), findsNothing);
+    expect(find.byType(StatisticsPage), findsOneWidget);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byTooltip('뒤로'), findsOneWidget);
+    expect(find.byKey(const ValueKey('bottom-tab-분석')), findsNothing);
+    expect(find.text('기업 리서치'), findsNothing);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(tester.takeException(), isNull);
+    expect(find.text('기업 리서치'), findsOneWidget);
   });
 
   testWidgets('opens analysis detail route', (tester) async {

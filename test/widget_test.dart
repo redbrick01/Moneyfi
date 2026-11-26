@@ -164,7 +164,7 @@ void main() {
               id: 1,
               assetId: 1,
               holdingId: 10,
-              date: '2026-07-19',
+              date: '2026-07-31',
               type: '매수',
               name: '현재 기간 첫 거래',
               amount: '1000',
@@ -174,7 +174,7 @@ void main() {
               id: 2,
               assetId: 1,
               holdingId: 10,
-              date: '2026-06-20',
+              date: '2026-07-01',
               type: '매수',
               name: '현재 기간 마지막 거래',
               amount: '1000',
@@ -184,7 +184,7 @@ void main() {
               id: 3,
               assetId: 1,
               holdingId: 10,
-              date: '2026-06-19',
+              date: '2026-06-30',
               type: '매수',
               name: '이전 기간 첫 거래',
               amount: '1000',
@@ -194,7 +194,7 @@ void main() {
               id: 4,
               assetId: 1,
               holdingId: 10,
-              date: '2026-05-20',
+              date: '2026-06-01',
               type: '매수',
               name: '이전 기간 마지막 거래',
               amount: '1000',
@@ -204,7 +204,7 @@ void main() {
               id: 5,
               assetId: 1,
               holdingId: 10,
-              date: '2026-05-19',
+              date: '2026-05-31',
               type: '매수',
               name: '더 이전 기간 거래',
               amount: '1000',
@@ -225,7 +225,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('표시 2건 · 전체 5건'), findsOneWidget);
-    expect(find.text('2026년 6월 20일 ~ 7월 19일'), findsOneWidget);
+    expect(find.text('2026년 7월 1일 ~ 7월 31일'), findsOneWidget);
     expect(find.textContaining('현재 기간 첫 거래'), findsOneWidget);
     expect(find.textContaining('현재 기간 마지막 거래'), findsOneWidget);
     expect(find.textContaining('이전 기간 첫 거래'), findsNothing);
@@ -236,11 +236,95 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('표시 4건 · 전체 5건'), findsOneWidget);
-    expect(find.text('2026년 5월 20일 ~ 6월 19일'), findsOneWidget);
+    expect(find.text('2026년 6월 1일 ~ 6월 30일'), findsOneWidget);
     expect(find.textContaining('이전 기간 첫 거래'), findsOneWidget);
     expect(find.textContaining('이전 기간 마지막 거래'), findsOneWidget);
     expect(find.textContaining('더 이전 기간 거래'), findsNothing);
     expect(find.text('이전 기간 더 보기'), findsOneWidget);
+  });
+
+  testWidgets('transactions exclude hidden assets and their settlements', (
+    tester,
+  ) async {
+    HoldingItem holding(
+      int assetId,
+      int id,
+      String name, {
+      bool hidden = false,
+      int? eventId,
+      String? action,
+    }) => HoldingItem(
+      id: id,
+      assetId: assetId,
+      isHidden: hidden,
+      name: '계좌 $id',
+      symbol: '',
+      quantity: 1,
+      averagePrice: 1000,
+      currentPrice: 1000,
+      note: '',
+      transactions: [
+        TransactionItem(
+          id: id,
+          date: '2026-11-03',
+          type: id < 0 ? '입금' : '매수',
+          name: name,
+          amount: '1000',
+          quantity: id < 0 ? '' : '1',
+          ledgerEventId: eventId,
+          ledgerAction: action,
+        ),
+      ],
+    );
+
+    AssetItem asset(
+      int id,
+      List<HoldingItem> holdings, {
+      bool hidden = false,
+    }) => AssetItem(
+      id: id,
+      assetType: '주식',
+      title: '자산군 $id',
+      alias: '',
+      isHidden: hidden,
+      value: '0',
+      change: '',
+      icon: Icons.wallet,
+      quantityLabel: '',
+      quantityValue: '',
+      averageLabel: '',
+      averageValue: '',
+      note: '',
+      holdings: holdings,
+      transactions: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: TransactionsPage(
+          assetsFutureForTesting: Future.value([
+            asset(1, [
+              holding(1, 10, '표시할 투자 거래'),
+              holding(1, -10, '표시할 현금 거래'),
+              holding(1, 11, '숨긴 종목 거래', hidden: true, eventId: 3),
+              holding(1, -11, '숨긴 현금 거래', hidden: true),
+              holding(1, -12, '숨긴 종목 정산', eventId: 3, action: 'settlement'),
+            ]),
+            asset(2, [holding(2, 20, '숨긴 자산군 거래')], hidden: true),
+          ]),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('표시 2건 · 전체 2건'), findsOneWidget);
+    expect(find.textContaining('표시할 투자 거래'), findsOneWidget);
+    expect(find.textContaining('표시할 현금 거래'), findsOneWidget);
+    expect(find.textContaining('숨긴'), findsNothing);
+    await tester.enterText(find.byType(TextField), '숨긴');
+    await tester.pumpAndSettle();
+    expect(find.text('표시 0건 · 조건 일치 0건'), findsOneWidget);
   });
 
   testWidgets('transactions filter and search cash distributions by source', (
@@ -2025,6 +2109,26 @@ void main() {
     expect(tapped, isTrue);
   });
 
+  testWidgets('portfolio dashboard hides investment review by default', (
+    tester,
+  ) async {
+    var loads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: PortfolioDashboardPage(
+          todayReviewBuilderForTesting: () async {
+            loads++;
+            return reviewReport('헤드라인');
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(InvestmentReviewHomeCard), findsNothing);
+    expect(loads, 0);
+  });
+
   testWidgets(
     'portfolio dashboard wires in-progress investment review status',
     (tester) async {
@@ -2032,6 +2136,7 @@ void main() {
         MaterialApp(
           theme: AppTheme.light,
           home: PortfolioDashboardPage(
+            showInvestmentReview: true,
             todayReviewBuilderForTesting: () async => reviewReport('헤드라인'),
             todayReviewLoaderForTesting: (_) async => dailyReviewEntry(
               status: DailyInvestmentReviewStatus.inProgress,
@@ -2054,6 +2159,7 @@ void main() {
         MaterialApp(
           theme: AppTheme.light,
           home: PortfolioDashboardPage(
+            showInvestmentReview: true,
             todayReviewBuilderForTesting: () async => reviewReport('헤드라인'),
             todayReviewLoaderForTesting: (_) async {
               throw StateError('status load failed');
@@ -2077,6 +2183,7 @@ void main() {
         MaterialApp(
           theme: AppTheme.light,
           home: PortfolioDashboardPage(
+            showInvestmentReview: true,
             todayReviewBuilderForTesting: () async => reviewReport('헤드라인'),
             todayReviewLoaderForTesting: (_) async {
               loadCount++;
@@ -2135,6 +2242,7 @@ void main() {
         MaterialApp(
           theme: AppTheme.light,
           home: PortfolioDashboardPage(
+            showInvestmentReview: true,
             todayReviewBuilderForTesting: loadTodayReview,
             todayReviewLoaderForTesting: (_) async => savedReview,
           ),
@@ -2155,6 +2263,7 @@ void main() {
           theme: AppTheme.light,
           home: PortfolioDashboardPage(
             dataRefreshTick: 1,
+            showInvestmentReview: true,
             todayReviewBuilderForTesting: loadTodayReview,
             todayReviewLoaderForTesting: (_) async => savedReview,
           ),

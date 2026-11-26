@@ -304,45 +304,73 @@ class SyncService {
     _isPullingSnapshots = true;
     try {
       debugPrint('[snapshot-pull] start reason=$reason');
-      final response = await AuthService.client.functions.invoke(
-        'get-portfolio-snapshots',
-        body: const <String, Object?>{},
+      final db = AppDatabase.instance;
+      bool sameUser() => AuthService.currentUser?.id == userId;
+      if (await db.localDataOwner() != userId || !sameUser()) return -1;
+
+      Future<Map<String, dynamic>> request(Map<String, Object?> body) async {
+        if (!sameUser()) throw StateError('Snapshot owner changed');
+        final response = await AuthService.client.functions.invoke(
+          'get-portfolio-snapshots',
+          body: body,
+        );
+        final data = response.data;
+        if (response.status != 200 ||
+            data is! Map ||
+            data['ok'] != true ||
+            data['user_id'] != userId ||
+            !sameUser()) {
+          throw StateError('Invalid snapshot response');
+        }
+        return Map<String, dynamic>.from(data);
+      }
+
+      List<Map<String, dynamic>> rows(Map<String, dynamic> payload) =>
+          (payload['snapshots'] as List).cast<Map<String, dynamic>>();
+
+      final manifest = await request({'mode': 'manifest'});
+      if (!manifest.containsKey('revisions')) {
+        // Servers predating revision tracking return the full snapshot payload.
+        return await db.importRemotePortfolioSnapshots(
+          rows(manifest),
+          ownerId: userId,
+          canApply: sameUser,
+        );
+      }
+      final revisions = Map<String, String>.from(manifest['revisions'] as Map);
+      final local = await db.snapshotRevisions();
+      final changed = revisions.keys
+          .where((date) => revisions[date] != local[date])
+          .toList();
+      final removed = local.keys
+          .where((date) => !revisions.containsKey(date))
+          .toList();
+      var imported = 0;
+      for (var start = 0; start < changed.length; start += 20) {
+        final dates = changed.skip(start).take(20).toList();
+        final snapshots = rows(
+          await request({'mode': 'dates', 'dates': dates}),
+        );
+        if (snapshots.any(
+          (row) =>
+              !dates.contains(row['snapshot_date']) ||
+              row['sync_revision'] is! String,
+        )) {
+          throw StateError('Invalid snapshot batch');
+        }
+        imported += await db.importRemotePortfolioSnapshots(
+          snapshots,
+          ownerId: userId,
+          canApply: sameUser,
+        );
+      }
+      await db.importRemotePortfolioSnapshots(
+        [],
+        removedDates: removed,
+        ownerId: userId,
+        canApply: sameUser,
       );
-      debugPrint(
-        '[snapshot-pull] response reason=$reason status=${response.status}',
-      );
-
-      if (response.status != 200 || response.data is! Map) {
-        return -1;
-      }
-      final payload = Map<String, dynamic>.from(response.data as Map);
-      if (payload['ok'] != true) {
-        return -1;
-      }
-
-      final rawSnapshots = payload['snapshots'];
-      if (rawSnapshots is! List) {
-        return -1;
-      }
-
-      final snapshots = rawSnapshots
-          .whereType<Map>()
-          .map((row) => row.map((key, value) => MapEntry('$key', value)))
-          .toList(growable: false);
-      if (AuthService.currentUser?.id != userId) {
-        debugPrint('[snapshot-pull] ignored stale response reason=$reason');
-        return -1;
-      }
-      if (snapshots.isEmpty) {
-        return 0;
-      }
-
-      final importedCount = await AppDatabase.instance
-          .importRemotePortfolioSnapshots(snapshots);
-      debugPrint(
-        '[snapshot-pull] success reason=$reason imported=$importedCount',
-      );
-      return importedCount;
+      return imported;
     } catch (error, stackTrace) {
       debugPrint(
         '[snapshot-pull] failed reason=$reason type=${error.runtimeType}',

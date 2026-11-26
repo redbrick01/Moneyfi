@@ -15,14 +15,13 @@ class StartupGate extends StatefulWidget {
 }
 
 class _StartupGateState extends State<StartupGate> {
-  late final Future<void> _startup = _initialize();
+  // A deep link may build the tab and its detail page in the same frame.
+  static Future<void>? _pending;
+  late final Future<void> _startup =
+      _pending ??= _initialize().whenComplete(() => _pending = null);
 
-  Future<void> _initialize() async {
+  static Future<void> _initialize() async {
     try {
-      debugPrint(
-        '[main] env KIS_APP_KEY=${const String.fromEnvironment('KIS_APP_KEY').isNotEmpty} '
-        'KIS_APP_SECRET=${const String.fromEnvironment('KIS_APP_SECRET').isNotEmpty}',
-      );
       await AuthService.initialize();
       final owner = await AppDatabase.instance.localDataOwner();
       final userId = AuthService.currentUser?.id;
@@ -46,6 +45,8 @@ class _StartupGateState extends State<StartupGate> {
 
   @override
   Widget build(BuildContext context) {
+    if (AppDataLifecycleService.startupChecked) return widget.child;
+
     return FutureBuilder<void>(
       future: _startup,
       builder: (context, snapshot) {

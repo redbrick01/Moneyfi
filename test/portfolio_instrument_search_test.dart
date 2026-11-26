@@ -15,6 +15,7 @@ import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/widgets/moneyfy_ui.dart';
 import 'package:moneyfy/features/portfolio/widgets/holding_price_history_card.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
+import 'package:moneyfy/features/portfolio/screens/holding_detail_page.dart';
 import 'package:moneyfy/features/portfolio/screens/portfolio_page.dart';
 
 void main() {
@@ -187,76 +188,100 @@ void main() {
     },
   );
 
-  testWidgets(
-    'selecting a closed position in another account opens its existing history',
-    (tester) async {
-      final assets = [
-        for (final id in [1, 2])
-          AssetItem(
-            assetType: '주식',
-            title: '계좌 $id',
-            alias: '',
-            value: '',
-            change: '',
-            icon: Icons.wallet,
-            quantityLabel: '',
-            quantityValue: '',
-            averageLabel: '',
-            averageValue: '',
-            note: '',
-            transactions: const [],
-            holdings: [
-              HoldingItem(
-                id: id,
-                clientId: 'holding-$id',
-                currencyCode: 'USD',
-                exchangeCode: 'NAS',
-                name: 'Apple',
-                symbol: 'AAPL',
-                quantity: id == 1 ? 1 : 0,
-                averagePrice: 0,
-                currentPrice: 0,
-                note: '',
-                transactions: const [],
-              ),
-            ],
-          ),
-      ];
-      final router = GoRouter(
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (_, _) => Scaffold(
-              body: PortfolioInstrumentSearch(
-                assets: assets,
-                onHoldingClosed: () {},
+  for (final onlyClosed in [false, true]) {
+    testWidgets(
+      onlyClosed
+          ? 'search opens the market page when every matching position is closed'
+          : 'search opens the active holding when another account has closed it',
+      (tester) async {
+        final messenger = tester.binding.defaultBinaryMessenger;
+        messenger.setMockMessageHandler('flutter/assets', (message) async {
+          if (const StringCodec().decodeMessage(message) ==
+              'assets/config.json') {
+            return const StringCodec().encodeMessage('{}');
+          }
+          return null;
+        });
+        addTearDown(
+          () => messenger.setMockMessageHandler('flutter/assets', null),
+        );
+        final assets = [
+          for (final id in [1, 2])
+            AssetItem(
+              assetType: '주식',
+              title: '계좌 $id',
+              alias: '',
+              value: '',
+              change: '',
+              icon: Icons.wallet,
+              quantityLabel: '',
+              quantityValue: '',
+              averageLabel: '',
+              averageValue: '',
+              note: '',
+              transactions: const [],
+              holdings: [
+                HoldingItem(
+                  id: id,
+                  clientId: 'holding-$id',
+                  currencyCode: 'USD',
+                  exchangeCode: 'NAS',
+                  name: 'Apple',
+                  symbol: 'AAPL',
+                  quantity: !onlyClosed && id == 1 ? 1 : 0,
+                  averagePrice: 0,
+                  currentPrice: 0,
+                  note: '',
+                  transactions: const [],
+                ),
+              ],
+            ),
+        ];
+        final router = GoRouter(
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (_, _) => Scaffold(
+                body: PortfolioInstrumentSearch(
+                  assets: assets,
+                  onHoldingClosed: () {},
+                ),
               ),
             ),
-          ),
-          GoRoute(
-            path: '/holdings/:id',
-            builder: (_, state) => Text(state.uri.toString()),
-          ),
-        ],
-      );
-      addTearDown(router.dispose);
-      await tester.pumpWidget(
-        MaterialApp.router(theme: AppTheme.light, routerConfig: router),
-      );
-      final search = tester.widget<MarketSearchField<MarketSearchResult>>(
-        find.byType(MarketSearchField<MarketSearchResult>),
-      );
-      search.onSelected(
-        MarketSearchResult.fromHolding(assets.first.holdings.single, '주식'),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('계좌 1'), findsOneWidget);
-      await tester.tap(find.text('계좌 2'));
-      await tester.pumpAndSettle();
-      expect(
-        find.text('/holdings/2?holdingClientId=holding-2'),
-        findsOneWidget,
-      );
-    },
-  );
+            GoRoute(
+              path: '/holdings/:id',
+              builder: (_, state) => Text(state.uri.toString()),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+        await tester.pumpWidget(
+          MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+        );
+        final search = tester.widget<MarketSearchField<MarketSearchResult>>(
+          find.byType(MarketSearchField<MarketSearchResult>),
+        );
+        search.onSelected(
+          MarketSearchResult.fromHolding(assets.first.holdings.single, '주식'),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('조회할 계좌 선택'), findsNothing);
+        if (onlyClosed) {
+          final page = tester.widget<HoldingDetailPage>(
+            find.byType(HoldingDetailPage),
+          );
+          expect(page.instrument?.symbol, 'AAPL');
+          expect(page.holdingId, isNull);
+          expect(find.text('거래 내역'), findsNothing);
+        } else {
+          expect(
+            find.text('/holdings/1?holdingClientId=holding-1'),
+            findsOneWidget,
+          );
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      },
+    );
+  }
 }

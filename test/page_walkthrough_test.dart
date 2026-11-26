@@ -1,3 +1,10 @@
+import 'dart:async';
+import 'package:moneyfy/features/account/widgets/snapshot_calendar_section.dart';
+import 'package:moneyfy/features/account/widgets/total_asset_history_card.dart';
+
+import 'package:moneyfy/features/analysis/widgets/analysis_news_cards.dart';
+import 'package:moneyfy/features/analysis/services/company_news_summary_service.dart';
+import 'package:moneyfy/widgets/market_news_summary_card.dart';
 import 'package:moneyfy/design_system/spec.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,12 +25,10 @@ import 'package:moneyfy/features/portfolio/screens/forms/holding_form_page.dart'
 import 'package:moneyfy/features/transactions/screens/forms/transaction_form_page.dart';
 import 'package:moneyfy/features/portfolio/screens/holding_detail_page.dart';
 import 'package:moneyfy/features/analysis/screens/investment_performance_page.dart';
-import 'package:moneyfy/features/analysis/screens/investment_review_page.dart';
 import 'package:moneyfy/features/auth/screens/login_page.dart';
 import 'package:moneyfy/features/auth/screens/signup_page.dart';
 import 'package:moneyfy/features/portfolio/screens/snapshot_detail_page.dart';
 import 'package:moneyfy/features/shell/screens/app_shell_page.dart';
-import 'package:moneyfy/features/account/screens/statistics_page.dart';
 import 'package:moneyfy/features/transactions/screens/transactions_page.dart';
 
 void main() {
@@ -196,76 +201,136 @@ void main() {
   ) async {
     await pumpInteractivePage(tester, const AnalysisPage());
 
-    await tester.scrollUntilVisible(
-      find.text('투자 회고'),
-      240,
-      scrollable: find.byType(Scrollable).first,
+    expect(find.text('투자 기록'), findsNothing);
+    expect(find.text('투자 회고'), findsNothing);
+    expect(find.text('내 포트폴리오'), findsNothing);
+    expect(find.text('먼저 확인할 항목'), findsNothing);
+    final titles = ['총자산 변화', '내 투자 분석', '리서치·채팅', '종합 뉴스', '종목별 뉴스'];
+    expect(
+      tester.getTopLeft(find.text('스냅샷 캘린더')).dy,
+      greaterThan(tester.getTopLeft(find.text('종목별 뉴스')).dy),
     );
-    expect(find.text('오늘 · 주간 · 월간 판단 복기'), findsOneWidget);
-    await tester.tap(find.text('투자 회고').first);
-    await settlePage(tester);
-    expect(find.byType(InvestmentReviewPage), findsOneWidget);
-    expect(find.text('투자 회고'), findsWidgets);
-    expect(find.byTooltip('뒤로'), findsOneWidget);
+    for (var i = 1; i < titles.length; i++) {
+      expect(
+        tester.getTopLeft(find.text(titles[i])).dy,
+        greaterThan(tester.getTopLeft(find.text(titles[i - 1])).dy),
+      );
+    }
+    for (final (label, destination) in [
+      ('투자성과 분석', '순 투자성과'),
+      ('배당/이자 분석', '배당/이자 총합'),
+      ('포트폴리오 진단', '포트폴리오 진단'),
+      ('자산 추이·통계', '자산 추이·통계'),
+    ]) {
+      await tester.ensureVisible(find.text(label));
+      await tester.tap(find.text(label));
+      await settlePage(tester);
+      expect(find.text(destination), findsWidgets);
+      if (label == '자산 추이·통계') expect(find.text('총자산 변화'), findsNothing);
+      Navigator.of(tester.element(find.text(destination).first)).pop();
+      await settlePage(tester);
+      expect(find.text('총자산 변화'), findsOneWidget);
+    }
+    for (final label in ['기업 리서치', 'Reddit 요약', 'RAG채팅']) {
+      expect(find.widgetWithText(ListTile, label), findsOneWidget);
+    }
+  });
 
-    await tester.tap(find.byTooltip('뒤로'));
-    await settlePage(tester);
-    expect(find.text('종목별 뉴스'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('포트폴리오 진단'),
-      240,
-      scrollable: find.byType(Scrollable).first,
+  testWidgets('market and company news load independently as separate cards', (
+    tester,
+  ) async {
+    final companies = Completer<List<CompanyNewsSummaryItem>>();
+    final market = MarketNewsSummary.fromJson({'market_summary': '시장 동향'});
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: AnalysisNewsCards(
+              marketNews: Future.value(market),
+              companyNews: companies.future,
+            ),
+          ),
+        ),
+      ),
     );
-    await tester.tap(find.text('포트폴리오 진단').first);
-    await settlePage(tester);
-    expect(find.text('포트폴리오 진단'), findsWidgets);
-    expect(find.byTooltip('뒤로'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('뒤로'));
-    await settlePage(tester);
+    await tester.pump();
+    expect(find.text('종합 뉴스'), findsOneWidget);
     expect(find.text('종목별 뉴스'), findsOneWidget);
+    expect(find.text('시장 동향'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    companies.complete([
+      const CompanyNewsSummaryItem(
+        symbol: 'AAPL',
+        assetType: '주식',
+        found: true,
+        summary: {'company_summary': '종목 소식'},
+      ),
+    ]);
+    await tester.pumpAndSettle();
+    expect(find.text('종목 소식'), findsOneWidget);
+    expect(find.text('시장 동향'), findsOneWidget);
+  });
 
-    await tester.scrollUntilVisible(
-      find.text('투자성과 분석'),
-      240,
-      scrollable: find.byType(Scrollable).first,
+  testWidgets('snapshot calendar navigates months and opens a saved date', (
+    tester,
+  ) async {
+    final saved = _snapshotFor(_walkthroughIds);
+    await pumpInteractivePage(
+      tester,
+      Scaffold(
+        body: SingleChildScrollView(
+          child: SnapshotCalendarSection(
+            snapshots: [saved],
+            transactionDates: {saved.snapshotDate},
+            onRetry: () async {},
+          ),
+        ),
+      ),
     );
-    await tester.tap(find.text('투자성과 분석').first);
+    expect(find.text('2026년 5월'), findsOneWidget);
+    expect(find.text('월 분기점(1일)'), findsOneWidget);
+    for (final text in tester.widgetList<Text>(find.text('1'))) {
+      expect(text.style?.color, VisualSpec.brand.brandRed);
+    }
+    await tester.tap(find.byTooltip('이전 달'));
     await settlePage(tester);
-    expect(find.text('순 투자성과'), findsWidgets);
-    expect(find.byTooltip('뒤로'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('뒤로'));
+    expect(find.text('2026년 4월'), findsOneWidget);
+    await tester.tap(find.byTooltip('다음 달'));
     await settlePage(tester);
-    expect(find.text('종목별 뉴스'), findsOneWidget);
+    await tester.tap(find.text('23'));
+    await settlePage(tester);
+    expect(find.byType(SnapshotDetailPage), findsOneWidget);
+  });
 
-    await tester.scrollUntilVisible(
-      find.text('배당/이자 분석'),
-      240,
-      scrollable: find.byType(Scrollable).first,
+  testWidgets('annual asset history follows the selected year', (tester) async {
+    final latest = _snapshotFor(_walkthroughIds);
+    final prior = latest.copyWith(id: 2, snapshotDate: '2025-05-23');
+    final item = _snapshotItemFor(_walkthroughIds);
+    await pumpInteractivePage(
+      tester,
+      AnnualAssetAnalysisPage(
+        snapshots: [prior, latest],
+        items: [
+          item,
+          item.copyWith(snapshotId: prior.id),
+        ],
+      ),
     );
-    await tester.tap(find.text('배당/이자 분석').first);
-    await settlePage(tester);
-    expect(find.text('배당/이자 총합'), findsOneWidget);
-    expect(find.byTooltip('뒤로'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('뒤로'));
-    await settlePage(tester);
-    expect(find.text('종목별 뉴스'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('통계'),
-      240,
-      scrollable: find.byType(Scrollable).first,
+    expect(find.text('총자산 변화'), findsOneWidget);
+    final chart = find.byType(TotalAssetHistoryCard);
+    expect(
+      tester.widget<TotalAssetHistoryCard>(chart).snapshots.single.id,
+      latest.id,
     );
-    await tester.tap(find.text('통계').first);
+    await tester.tap(find.byTooltip('이전 연도'));
     await settlePage(tester);
-    expect(find.byType(StatisticsPage), findsOneWidget);
-
-    Navigator.of(tester.element(find.byType(StatisticsPage))).pop();
-    await settlePage(tester);
-    expect(find.text('종목별 뉴스'), findsOneWidget);
+    final historical = tester.widget<TotalAssetHistoryCard>(chart);
+    expect(historical.snapshots.single.id, prior.id);
+    expect(
+      (await historical.loadItems([prior.snapshotDate])).single.snapshotId,
+      prior.id,
+    );
   });
 
   test('transactions page groups ledger lines by event id', () {
@@ -366,10 +431,7 @@ void main() {
     );
 
     expect(find.text('새 종목 검색'), findsOneWidget);
-    expect(
-      find.widgetWithText(TextField, '종목명 또는 티커'),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(TextField, '종목명 또는 티커'), findsOneWidget);
   });
 
   testWidgets('new transaction forms default to calculation included', (

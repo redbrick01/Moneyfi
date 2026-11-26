@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthService {
   AuthService._();
 
+  static const monthlyPivotMetadataKey = 'monthly_pivot_day';
   static const String _configAssetPath = 'assets/config.json';
   static const String configSetupMessage =
       'Supabase 설정 파일이 없습니다. assets/config.example.json을 복사해 '
@@ -98,6 +99,13 @@ class AuthService {
 
   static Future<UserResponse> updateProfileName(String name) {
     return client.auth.updateUser(UserAttributes(data: {'name': name.trim()}));
+  }
+
+  static Future<UserResponse> updateMonthlyPivotDay(int day) {
+    RangeError.checkValueInInterval(day, 1, 31);
+    return client.auth.updateUser(
+      UserAttributes(data: {monthlyPivotMetadataKey: day}),
+    );
   }
 
   static Future<UserResponse> updatePassword(String password) {

@@ -2803,6 +2803,59 @@ class AppDatabase extends _$AppDatabase {
     ];
   }
 
+  Future<int> applyServerHoldingPrices(
+    List<Map<String, dynamic>> prices, {
+    required String ownerId,
+    required bool Function() canApply,
+  }) async {
+    return transaction(() async {
+      if (await localDataOwner() != ownerId || !canApply()) return 0;
+      final remoteByClientId = {
+        for (final price in prices)
+          if (price['client_id'] is String) price['client_id'] as String: price,
+      };
+      var matched = 0;
+      var priceChanged = false;
+      for (final holding in await fetchHoldingsForMarketRefresh()) {
+        final remote = remoteByClientId[holding.clientId];
+        final price = remote?['current_price'];
+        final timestamp = remote?['market_updated_at'];
+        final updatedAt = timestamp is String
+            ? DateTime.tryParse(timestamp)
+            : null;
+        final previous = DateTime.tryParse(holding.marketUpdatedAt ?? '');
+        if (holding.id == null ||
+            remote == null ||
+            price is! num ||
+            !price.isFinite ||
+            price <= 0 ||
+            updatedAt == null ||
+            (previous != null && updatedAt.isBefore(previous)) ||
+            remote['symbol'] != holding.symbol.trim().toUpperCase() ||
+            remote['currency_code'] !=
+                holding.currencyCode.trim().toUpperCase() ||
+            remote['exchange_code'] !=
+                holding.exchangeCode.trim().toUpperCase()) {
+          continue;
+        }
+        matched++;
+        if (previous == updatedAt && holding.currentPrice == price) continue;
+        await (update(
+          holdings,
+        )..where((row) => row.id.equals(holding.id!))).write(
+          HoldingsCompanion(
+            currentPrice: Value(price.toDouble()),
+            marketUpdatedAt: Value(updatedAt.toUtc().toIso8601String()),
+          ),
+        );
+        priceChanged = priceChanged || holding.currentPrice != price;
+      }
+      if (priceChanged) await refreshTodaySnapshot();
+      if (!canApply()) throw StateError('Account changed during price refresh');
+      return matched;
+    });
+  }
+
   HoldingItem _investmentHoldingItem(
     Holding holdingRow,
     Asset assetRow, {
@@ -5560,10 +5613,27 @@ class AppDatabase extends _$AppDatabase {
     // Snapshots are no longer generated on-device.
   }
 
+  Future<Map<String, String?>> snapshotRevisions() async {
+    if (!await _columnExists('daily_portfolio_snapshots', 'sync_revision')) {
+      await _createCurrentTablesIfNeeded();
+    }
+    final rows = await customSelect(
+      'SELECT snapshot_date, sync_revision FROM daily_portfolio_snapshots',
+    ).get();
+    return {
+      for (final row in rows)
+        _normalizeSnapshotDateKey(row.read<String>('snapshot_date')):
+            row.readNullable<String>('sync_revision'),
+    };
+  }
+
   Future<int> importRemotePortfolioSnapshots(
-    List<Map<String, dynamic>> snapshots,
-  ) async {
-    if (snapshots.isEmpty) {
+    List<Map<String, dynamic>> snapshots, {
+    List<String> removedDates = const [],
+    String? ownerId,
+    bool Function()? canApply,
+  }) async {
+    if (snapshots.isEmpty && removedDates.isEmpty) {
       return 0;
     }
 
@@ -5621,6 +5691,17 @@ class AppDatabase extends _$AppDatabase {
 
     var importedCount = 0;
     await transaction(() async {
+      if ((ownerId != null && await localDataOwner() != ownerId) ||
+          canApply?.call() == false) {
+        throw StateError('Snapshot owner changed');
+      }
+      for (final date in removedDates) {
+        await _deleteExistingSnapshotForDate(date);
+        await customStatement(
+          'DELETE FROM snapshot_notes WHERE snapshot_date = ? AND dirty = 0',
+          [date],
+        );
+      }
       for (final snapshot in snapshots) {
         final snapshotDate = _normalizeSnapshotDateKey(
           _readString(snapshot['snapshot_date']),
@@ -5741,13 +5822,22 @@ class AppDatabase extends _$AppDatabase {
           }
         });
 
-        await saveSnapshotNote(
-          snapshotDate: snapshotDate,
-          note: _readString(snapshot['note']),
-          markDirty: false,
+        await customStatement(
+          'INSERT INTO snapshot_notes (snapshot_date, note, dirty, last_modified_at) '
+          'VALUES (?, ?, 0, ?) ON CONFLICT(snapshot_date) DO UPDATE SET '
+          'note = excluded.note, last_modified_at = excluded.last_modified_at '
+          'WHERE snapshot_notes.dirty = 0',
+          [snapshotDate, _readString(snapshot['note']), _syncTimestamp()],
         );
+        if (snapshot['sync_revision'] != null) {
+          await customStatement(
+            'UPDATE daily_portfolio_snapshots SET sync_revision = ? WHERE id = ?',
+            [snapshot['sync_revision'], snapshotId],
+          );
+        }
         importedCount++;
       }
+      if (canApply?.call() == false) throw StateError('Snapshot owner changed');
     });
 
     return importedCount;
@@ -8760,6 +8850,22 @@ class AppDatabase extends _$AppDatabase {
         );
       }
       await _normalizeLedgerTransactionNames();
+      // Core replacement assigns fresh numeric IDs. Cached snapshot dates are
+      // no longer reimported on every pull, so relink their stable client IDs.
+      for (final (table, field, source, missing) in [
+        ('daily_portfolio_snapshot_items', 'asset', 'assets', '-1'),
+        ('daily_portfolio_snapshot_holding_items', 'asset', 'assets', 'NULL'),
+        ('daily_portfolio_snapshot_holding_items', 'holding', 'holdings', 'NULL'),
+        ('daily_portfolio_snapshot_cash_accounts', 'asset', 'assets', 'NULL'),
+        ('daily_portfolio_snapshot_cash_accounts', 'cash_account', 'cash_accounts', 'NULL'),
+      ]) {
+        final lookup = 'COALESCE((SELECT id FROM $source WHERE '
+            'client_id = $table.${field}_client_id), $missing)';
+        await customStatement(
+          'UPDATE $table SET ${field}_id = $lookup WHERE ${field}_client_id IS NOT NULL '
+          'AND ${field}_id IS NOT $lookup',
+        );
+      }
       if (canApply != null && !canApply()) {
         throw StateError('계정이 변경되어 서버 데이터를 적용하지 않았습니다.');
       }
@@ -8882,6 +8988,11 @@ class AppDatabase extends _$AppDatabase {
     if (!await _columnExists('daily_portfolio_snapshots', 'exchange_rate')) {
       await customStatement(
         'ALTER TABLE daily_portfolio_snapshots ADD COLUMN exchange_rate REAL NOT NULL DEFAULT 1',
+      );
+    }
+    if (!await _columnExists('daily_portfolio_snapshots', 'sync_revision')) {
+      await customStatement(
+        'ALTER TABLE daily_portfolio_snapshots ADD COLUMN sync_revision TEXT',
       );
     }
     await customStatement(

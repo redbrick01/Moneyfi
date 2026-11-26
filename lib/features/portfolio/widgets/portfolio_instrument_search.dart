@@ -40,6 +40,7 @@ class _PortfolioInstrumentSearchState extends State<PortfolioInstrumentSearch> {
         if (asset.assetType == result.assetType)
           for (final holding in asset.holdings)
             if (holding.id != null &&
+                holding.quantity > 0 &&
                 holding.currencyCode == result.currencyCode &&
                 holding.symbol.trim().toUpperCase() ==
                     result.symbol.trim().toUpperCase() &&

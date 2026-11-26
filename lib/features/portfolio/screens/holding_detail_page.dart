@@ -1,6 +1,7 @@
+import 'package:moneyfy/utils/monthly_pivot.dart';
 import 'package:moneyfy/features/portfolio/services/market_instrument_search.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:intl/intl.dart';
 
 import 'package:moneyfy/components/buttons/app_buttons.dart';
 import 'package:moneyfy/components/chips/delta_chip.dart';
@@ -8,7 +9,6 @@ import 'package:moneyfy/components/chips/moneyfy_pill.dart';
 import 'package:moneyfy/components/panels/app_detail_section.dart';
 import 'package:moneyfy/components/panels/app_inner_panel.dart';
 import 'package:moneyfy/components/rows/transaction_history_row.dart';
-import 'package:moneyfy/components/transaction_history_list.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/design_system/spec.dart';
 import 'package:moneyfy/db/app_database.dart';
@@ -19,6 +19,8 @@ import 'package:moneyfy/features/analysis/services/company_news_summary_service.
 import 'package:moneyfy/features/analysis/services/equity_research_service.dart';
 import 'package:moneyfy/features/portfolio/services/market_data_service.dart';
 import 'package:moneyfy/features/portfolio/widgets/holding_price_history_card.dart';
+import 'package:moneyfy/features/portfolio/widgets/portfolio_instrument_search.dart';
+import 'package:moneyfy/features/portfolio/widgets/portfolio_transaction_history_card.dart';
 import 'package:moneyfy/features/sync/services/sync_service.dart';
 import 'package:moneyfy/utils/display_currency.dart';
 import 'package:moneyfy/widgets/company_news_summary_card.dart';
@@ -72,6 +74,8 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   int _priceHistoryRefreshVersion = 0;
   Future<_HoldingComparisonMetrics>? _comparisonMetricsFuture;
   String? _comparisonMetricsCacheKey;
+  int? _coinSearchAssetId;
+  Future<AssetItem?>? _coinSearchAsset;
   int _missingHoldingRetryCount = 0;
   static const int _kMaxMissingHoldingRetries = 3;
 
@@ -137,6 +141,8 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
       _resetMarketRequests();
       _comparisonMetricsFuture = null;
       _comparisonMetricsCacheKey = null;
+      _coinSearchAssetId = null;
+      _coinSearchAsset = null;
     });
   }
 
@@ -182,7 +188,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
     final assetType = holding.assetType ?? holding.assetTitle;
     final cacheKey =
         '${holding.id}|${holding.clientId}|${holding.symbol}|'
-        '${holding.exchangeCode}|${holding.currencyCode}|$assetType';
+        '${holding.exchangeCode}|${holding.currencyCode}|$assetType|${holding.currentPrice}';
     if (_marketSnapshotCacheKey == cacheKey) return;
 
     _resetMarketRequests();
@@ -217,6 +223,14 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   }
 
   Future<void> _refreshMarket(HoldingItem holding) async {
+    if (holding.id != null && !holding.isCashLike) {
+      await MarketDataService.instance.refreshAllMarketData();
+      if (mounted) {
+        _priceHistoryRefreshVersion++;
+        _reloadHolding();
+      }
+      return;
+    }
     setState(() {
       _priceHistoryRefreshVersion++;
       _requestMarketSnapshot(holding);
@@ -445,9 +459,6 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
           }
 
           _ensureMarketRequests(holding);
-          final transactions = _holdingTransactionsNewestFirst(
-            holding.transactions,
-          );
           return FutureBuilder<HoldingMarketSnapshot>(
             key: ValueKey(_marketSnapshotCacheKey),
             future: _marketSnapshotFuture,
@@ -459,6 +470,18 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
               final displayHolding = _holdingWithMarketPrice(holding, market);
               final assetType =
                   displayHolding.assetType ?? displayHolding.assetTitle;
+              final coinSearchAssetId = assetType == '코인'
+                  ? displayHolding.assetId ?? widget.preferredAssetId
+                  : null;
+              if (coinSearchAssetId != _coinSearchAssetId) {
+                _coinSearchAssetId = coinSearchAssetId;
+                _coinSearchAsset = coinSearchAssetId == null
+                    ? null
+                    : AppDatabase.instance.fetchAssetById(coinSearchAssetId);
+              }
+              final quoteUpdatedAt = DateTime.tryParse(
+                displayHolding.marketUpdatedAt ?? '',
+              )?.toLocal();
               final marketLoading =
                   marketSnapshot.connectionState == ConnectionState.waiting;
 
@@ -717,7 +740,26 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                               ],
                             ),
                           ),
+                        if (assetType == '코인') ...[
+                          SizedBox(height: context.spacing.md),
+                          FutureBuilder<AssetItem?>(
+                            future: _coinSearchAsset,
+                            builder: (context, assetSnapshot) =>
+                                PortfolioInstrumentSearch(
+                                  assetType: '코인',
+                                  assets: [?assetSnapshot.data],
+                                  onHoldingClosed: _reloadHolding,
+                                ),
+                          ),
+                        ],
                         if (!displayHolding.isCashLike) ...[
+                          SizedBox(height: context.spacing.sm),
+                          Text(
+                            quoteUpdatedAt == null
+                                ? '시세 갱신 기록 없음'
+                                : '시세 갱신 ${DateFormat('MM/dd HH:mm').format(quoteUpdatedAt)}',
+                            style: context.typography.meta,
+                          ),
                           SizedBox(height: context.spacing.md),
                           Row(
                             children: [
@@ -889,65 +931,26 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                           },
                         ),
                         if (!marketOnly) ...[
-                          _CardSection(
-                            title: '거래 내역',
-                            trailing: TextButton.icon(
-                              onPressed: () =>
-                                  _openTransactionForm(displayHolding),
-                              icon: Icon(VisualSpec.icon.add),
-                              label: const Text('추가'),
-                              style: TextButton.styleFrom(
-                                foregroundColor:
-                                    context.colors.neutralTextMuted,
-                                textStyle: context.typography.meta.copyWith(
-                                  fontWeight: AppFontWeights.semibold,
-                                ),
-                              ),
-                            ),
-                            child: TransactionHistoryLayout(
-                              builder: (context, showColumns) {
-                                final divider = TransactionHistoryDivider(
+                          PortfolioTransactionHistoryCard(
+                            transactions: displayHolding.transactions,
+                            onAdd: () => _openTransactionForm(displayHolding),
+                            rowBuilder: (context, transaction, showColumns) =>
+                                _TransactionRow(
+                                  key: ValueKey(
+                                    transaction.ledgerLineId != null
+                                        ? 'holding-line-${transaction.ledgerLineId}'
+                                        : 'holding-tx-${transaction.id ?? transaction.hashCode}',
+                                  ),
+                                  holding: displayHolding,
+                                  transaction: transaction,
                                   showColumns: showColumns,
-                                );
-                                return Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    if (showColumns &&
-                                        transactions.isNotEmpty) ...[
-                                      const TransactionHistoryHeader(),
-                                      divider,
-                                    ],
-                                    SlidableAutoCloseBehavior(
-                                      child: TransactionHistoryList(
-                                        itemCount: transactions.length,
-                                        separator: divider,
-                                        itemBuilder: (context, index) {
-                                          final transaction =
-                                              transactions[index];
-                                          return _TransactionRow(
-                                            key: ValueKey(
-                                              transaction.ledgerLineId != null
-                                                  ? 'holding-line-${transaction.ledgerLineId}'
-                                                  : 'holding-tx-${transaction.id ?? transaction.hashCode}',
-                                            ),
-                                            holding: displayHolding,
-                                            transaction: transaction,
-                                            showColumns: showColumns,
-                                            onEdit: () => _openTransactionForm(
-                                              displayHolding,
-                                              item: transaction,
-                                            ),
-                                            onDelete: () =>
-                                                _deleteTransaction(transaction),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
+                                  onEdit: () => _openTransactionForm(
+                                    displayHolding,
+                                    item: transaction,
+                                  ),
+                                  onDelete: () =>
+                                      _deleteTransaction(transaction),
+                                ),
                           ),
                           SizedBox(height: context.spacing.md),
                           _CardSection(
@@ -1109,11 +1112,10 @@ bool _isCashLikeHolding(HoldingItem holding) {
 }
 
 String _previousMonthComparisonDate(DateTime date) {
-  final comparisonDate = date.day <= 20
-      ? (date.month == 1
-            ? DateTime(date.year - 1, 12, 20)
-            : DateTime(date.year, date.month - 1, 20))
-      : DateTime(date.year, date.month, 20);
+  final comparisonDate = MonthlyPivot.current.periodStart(
+    date,
+    includeToday: false,
+  );
   final month = comparisonDate.month.toString().padLeft(2, '0');
   final day = comparisonDate.day.toString().padLeft(2, '0');
   return '${comparisonDate.year}-$month-$day';
@@ -1617,6 +1619,9 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
           title: '시장 정보',
           items: [
             _MetricTileData(label: '현재가', value: displayPrice),
+            _MetricTileData(label: '전일종가', value: market.previousClose),
+            _MetricTileData(label: '등락액', value: market.dayChange),
+            _MetricTileData(label: '등락률', value: market.dayChangeRate),
             _MetricTileData(label: '시가', value: market.openPrice),
             _MetricTileData(label: '고가', value: market.highPrice),
             _MetricTileData(label: '저가', value: market.lowPrice),
@@ -1677,6 +1682,7 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
             _MetricTileData(label: '고가', value: market.highPrice),
             _MetricTileData(label: '저가', value: market.lowPrice),
             _MetricTileData(label: '거래량', value: market.volume),
+            _MetricTileData(label: '거래대금', value: market.turnover),
             _MetricTileData(label: 'NAV', value: market.nav),
             _MetricTileData(label: 'NAV 등락률', value: market.navChangeRate),
             _MetricTileData(
@@ -2089,31 +2095,6 @@ class _MetricTile extends StatelessWidget {
       ),
     );
   }
-}
-
-List<TransactionItem> _holdingTransactionsNewestFirst(
-  List<TransactionItem> transactions,
-) {
-  final unknownDate = DateTime.utc(0);
-  final legacySeparator = RegExp(r'[./]');
-  final datedTransactions = [
-    for (final (index, transaction) in transactions.indexed)
-      (
-        index: index,
-        date:
-            DateTime.tryParse(transaction.date.trim()) ??
-            DateTime.tryParse(
-              transaction.date.trim().replaceAll(legacySeparator, '-'),
-            ) ??
-            unknownDate,
-        transaction: transaction,
-      ),
-  ];
-  datedTransactions.sort((a, b) {
-    final byDate = b.date.compareTo(a.date);
-    return byDate == 0 ? a.index.compareTo(b.index) : byDate;
-  });
-  return [for (final entry in datedTransactions) entry.transaction];
 }
 
 class _TransactionRow extends StatelessWidget {

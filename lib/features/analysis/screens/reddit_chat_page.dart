@@ -117,7 +117,7 @@ class _ChatRoomsState extends State<_ChatRooms> {
         scrolledUnderElevation: 0,
         centerTitle: true,
         title: Text(
-          _title ?? '뉴스·Reddit 채팅',
+          _title ?? 'RAG채팅',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),

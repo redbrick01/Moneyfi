@@ -138,19 +138,33 @@ Deno.serve(async (req) => {
       },
     );
 
+    if (body?.mode === "manifest") {
+      const { data, error } = await supabase.rpc("portfolio_snapshot_manifest", { p_user_id: targetUserId });
+      if (error) throw new Error(error.message);
+      return Response.json({ ok: true, user_id: targetUserId, revisions: data });
+    }
+    const byDate = body?.mode === "dates";
+    const dates = body?.dates;
+    if (byDate && (!Array.isArray(dates) || dates.length === 0 || dates.length > 20 ||
+      !dates.every((d: unknown) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)))) {
+      return Response.json({ ok: false, error: "Invalid snapshot dates" }, { status: 400 });
+    }
+
     logStep("Loading snapshots", {
       user_id: targetUserId,
       limit,
     });
 
-    const snapshotQuery = () =>
-      supabase
+    const snapshotQuery = () => {
+      const query = supabase
         .from("daily_portfolio_snapshots")
         .select(
-          "id, snapshot_date, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, exchange_rate, created_at, user_id",
+          "id, snapshot_date, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, exchange_rate, created_at, user_id, sync_revision",
         )
         .eq("user_id", targetUserId)
         .order("snapshot_date", { ascending: true });
+      return byDate ? query.in("snapshot_date", dates) : query;
+    };
 
     const { data: snapshots, error: snapshotError } = limit == null
       ? await fetchAllRows(snapshotQuery)
@@ -341,6 +355,7 @@ Deno.serve(async (req) => {
         id: snapshotId,
         snapshot_date: snapshotDate,
         total_purchase_amount: parseNumber(row.total_purchase_amount),
+        ...(byDate ? { sync_revision: row.sync_revision } : {}),
         total_valuation_amount: parseNumber(row.total_valuation_amount),
         profit_amount: parseNumber(row.profit_amount),
         profit_rate: parseNumber(row.profit_rate),

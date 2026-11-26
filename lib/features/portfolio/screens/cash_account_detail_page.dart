@@ -1,17 +1,17 @@
+import 'package:moneyfy/utils/monthly_pivot.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 
 import 'package:moneyfy/components/buttons/app_buttons.dart';
 import 'package:moneyfy/components/chips/delta_chip.dart';
 import 'package:moneyfy/components/chips/moneyfy_pill.dart';
 import 'package:moneyfy/components/panels/app_detail_section.dart';
 import 'package:moneyfy/components/panels/app_inner_panel.dart';
-import 'package:moneyfy/components/rows/transaction_row.dart';
-import 'package:moneyfy/components/transaction_history_list.dart';
+import 'package:moneyfy/components/rows/transaction_history_row.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/design_system/spec.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
+import 'package:moneyfy/features/portfolio/widgets/portfolio_transaction_history_card.dart';
 import 'package:moneyfy/navigation/moneyfy_navigation.dart';
 import 'package:moneyfy/features/sync/services/sync_service.dart';
 import 'package:moneyfy/utils/display_currency.dart';
@@ -433,58 +433,56 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                     ),
                   ),
                   SizedBox(height: context.spacing.sectionGap),
-                  _CashCardSection(
-                    title: '거래 내역',
-                    trailing: IconButton(
-                      onPressed: () => _openTransactionForm(holding),
-                      icon: const Icon(Icons.add_rounded),
-                      color: context.colors.neutralTextMuted,
-                    ),
-                    child: SlidableAutoCloseBehavior(
-                      child: TransactionHistoryList(
-                        itemCount: holding.transactions.length,
-                        itemBuilder: (context, index) => Slidable(
-                          key: ValueKey(
-                            'cash-tx-${holding.transactions[index].id ?? holding.transactions[index].hashCode}',
-                          ),
-                          groupTag:
-                              _CashAccountDetailPageState._kSlidableGroupTag,
-                          endActionPane: moneyfySingleSlideActionPane(
-                            onPressed: () =>
-                                _deleteTransaction(holding.transactions[index]),
-                            icon: Icons.delete_outline_rounded,
-                            iconColor: Theme.of(context).colorScheme.error,
-                          ),
-                          child: TransactionRow(
-                            typeLabel: holding.transactions[index].type,
-                            title: holding.transactions[index].name,
-                            subtitle: holding.transactions[index].date,
-                            amountText:
-                                MoneyfyDisplayCurrencySettings.formatAmountFromSource(
-                                  double.tryParse(
-                                        holding.transactions[index].amount
-                                            .replaceAll(',', '')
-                                            .trim(),
-                                      ) ??
-                                      0,
-                                  sourceCurrency: holding.currencyCode,
-                                  exchangeRate: holding.exchangeRate,
-                                ),
-                            amountColor: _cashTransactionAmountColor(
-                              context,
-                              holding.transactions[index],
-                            ),
-                            metaText: _ledgerLineMeta(
-                              holding.transactions[index],
-                            ),
-                            onTap: () => _openTransactionForm(
-                              holding,
-                              item: holding.transactions[index],
-                            ),
-                          ),
+                  PortfolioTransactionHistoryCard(
+                    transactions: holding.transactions,
+                    showPriceDetailColumn: false,
+                    onAdd: () => _openTransactionForm(holding),
+                    rowBuilder: (context, transaction, showColumns) {
+                      final canEdit =
+                          !transaction.isLedgerBacked ||
+                          transaction.canOpenCashFormFromLedger;
+                      return TransactionHistoryRow(
+                        key: ValueKey(
+                          transaction.ledgerLineId != null
+                              ? 'cash-line-${transaction.ledgerLineId}'
+                              : 'cash-tx-${transaction.id ?? transaction.hashCode}',
                         ),
-                      ),
-                    ),
+                        date: transaction.date,
+                        typeLabel: transaction.type,
+                        description: [
+                          transaction.name.trim(),
+                          transaction.memo.trim(),
+                          _ledgerLineMeta(transaction),
+                          if (!transaction.includeInCalculations) '기록전용',
+                        ].where((value) => value.isNotEmpty).join(' · '),
+                        amountText:
+                            MoneyfyDisplayCurrencySettings.formatAmountFromSource(
+                              double.tryParse(
+                                    transaction.amount
+                                        .replaceAll(',', '')
+                                        .trim(),
+                                  ) ??
+                                  0,
+                              sourceCurrency: holding.currencyCode,
+                              exchangeRate: holding.exchangeRate,
+                            ),
+                        amountColor: _cashTransactionAmountColor(
+                          context,
+                          transaction,
+                        ),
+                        priceDetail: null,
+                        showColumns: showColumns,
+                        showPriceDetailColumn: false,
+                        groupTag: _kSlidableGroupTag,
+                        onEdit: canEdit
+                            ? () => _openTransactionForm(
+                                holding,
+                                item: transaction,
+                              )
+                            : null,
+                        onDelete: () => _deleteTransaction(transaction),
+                      );
+                    },
                   ),
                   SizedBox(height: context.spacing.sectionGap),
                   _CashCardSection(
@@ -705,9 +703,7 @@ Color _cashValueStringColor(BuildContext context, String value) {
 }
 
 String _cashPreviousMonthComparisonDate(DateTime date) {
-  final previousMonth = date.month == 1
-      ? DateTime(date.year - 1, 12, 20)
-      : DateTime(date.year, date.month - 1, 20);
+  final previousMonth = MonthlyPivot.current.inMonth(date.year, date.month - 1);
   final month = previousMonth.month.toString().padLeft(2, '0');
   final day = previousMonth.day.toString().padLeft(2, '0');
   return '${previousMonth.year}-$month-$day';

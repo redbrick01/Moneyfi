@@ -1,12 +1,20 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 import { authenticateUser } from "../_shared/auth.ts";
+import {
+  defaultCoinoneTickerTemplate,
+  fetchCoinoneTicker,
+  isCoinMarketMode,
+  readCoinMarket,
+} from "../_shared/coinone_market_data.ts";
+import { isMarketDetailMode, readMarketDetail } from "../_shared/kis_market_details.ts";
 import { fetchAllRows } from "../_shared/paginated_rows.ts";
 
 type AssetType = "주식" | "코인" | "현금" | "펀드" | string;
 
 type HoldingRow = {
   id: string | number;
+  client_id: string | null;
   user_id: string;
   asset_type: AssetType;
   symbol: string;
@@ -14,6 +22,7 @@ type HoldingRow = {
   exchange_code: string;
   deleted_at: string | null;
   current_price: number | null;
+  market_updated_at: string | null;
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -39,7 +48,7 @@ const KIS_FUND_QUOTE_TR_ID = Deno.env.get("KIS_FUND_QUOTE_TR_ID") ??
   "FHPST02400000";
 const COINONE_TICKER_URL_TEMPLATE =
   Deno.env.get("COINONE_TICKER_URL_TEMPLATE") ??
-    "https://api.coinone.co.kr/public/v2/ticker_utc_new/{quote}/{symbol}?additional_data=true";
+    defaultCoinoneTickerTemplate;
 const KIS_TOKEN_PROVIDER = "kis";
 
 let kisAccessToken: string | null = null;
@@ -72,13 +81,7 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function hasMeaningfulPriceChange(
-  previousPrice: number | null,
-  nextPrice: number,
-) {
-  if (previousPrice == null) return true;
-  return Math.abs(previousPrice - nextPrice) >= 0.000001;
-}
+
 
 function requireEnv(name: string, value: string) {
   if (!value) {
@@ -230,6 +233,7 @@ async function kisGet(
   trId: string,
   query: Record<string, string>,
   allowAuthRetry = true,
+  allowNoDailyData = false,
 ) {
   const token = await issueKisAccessToken(supabase);
   const url = new URL(`${KIS_BASE_URL}${path}`);
@@ -253,7 +257,7 @@ async function kisGet(
       allowAuthRetry && (response.status === 401 || response.status === 403)
     ) {
       await clearStoredKisAccessToken(supabase);
-      return await kisGet(supabase, path, trId, query, false);
+      return await kisGet(supabase, path, trId, query, false, allowNoDailyData);
     }
     throw new Error(
       `KIS request failed: ${response.status} ${await response.text()}`,
@@ -262,9 +266,13 @@ async function kisGet(
 
   const json = await response.json() as Record<string, unknown>;
   if (!isKisSuccess(json)) {
+    if (allowNoDailyData &&
+        /(조회|해당).*(자료|데이터|내역).*(없|존재하지)/.test(String(json.msg1 ?? ""))) {
+      return { output2: [] };
+    }
     if (allowAuthRetry && isKisAuthError(json)) {
       await clearStoredKisAccessToken(supabase);
-      return await kisGet(supabase, path, trId, query, false);
+      return await kisGet(supabase, path, trId, query, false, allowNoDailyData);
     }
     throw new Error(
       `KIS business failed: rt_cd=${String(json.rt_cd ?? "")} msg_cd=${
@@ -326,19 +334,11 @@ async function fetchFundPrice(
 }
 
 async function fetchCoinPrice(row: HoldingRow) {
-  const url = COINONE_TICKER_URL_TEMPLATE
-    .replaceAll("{symbol}", row.symbol.trim().toUpperCase())
-    .replaceAll("{quote}", row.currency_code.trim().toUpperCase());
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(
-      `Coinone request failed: ${response.status} ${await response.text()}`,
-    );
-  }
-
-  const json = await response.json();
-  const ticker = Array.isArray(json?.tickers) ? json.tickers[0] : null;
+  const ticker = await fetchCoinoneTicker(
+    COINONE_TICKER_URL_TEMPLATE,
+    row.currency_code,
+    row.symbol,
+  );
   return parseNumber(ticker?.last);
 }
 
@@ -370,6 +370,7 @@ function normalizeHoldingRow(row: Record<string, unknown>): HoldingRow {
   const asset = (row.assets ?? {}) as Record<string, unknown>;
   return {
     id: row.id as string | number,
+    client_id: typeof row.client_id === "string" ? row.client_id : null,
     user_id: String(row.user_id ?? ""),
     asset_type: String(asset.asset_type ?? ""),
     symbol: String(row.symbol ?? "").trim().toUpperCase(),
@@ -377,6 +378,9 @@ function normalizeHoldingRow(row: Record<string, unknown>): HoldingRow {
     exchange_code: String(row.exchange_code ?? "").trim().toUpperCase(),
     deleted_at: row.deleted_at == null ? null : String(row.deleted_at),
     current_price: parseNumber(row.current_price),
+    market_updated_at: typeof row.market_updated_at === "string"
+      ? row.market_updated_at
+      : null,
   };
 }
 
@@ -399,10 +403,11 @@ Deno.serve(async (req) => {
     const requestedUserId = typeof body?.user_id === "string" && body.user_id
       ? body.user_id
       : null;
+    const readOnly = body?.mode === "read";
 
     const cronSecret = Deno.env.get("CRON_SECRET");
     let targetUserId = requestedUserId;
-    if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+    if (readOnly || !cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
       const auth = await authenticateUser(
         req.headers.get("Authorization"),
         SUPABASE_URL,
@@ -421,11 +426,46 @@ Deno.serve(async (req) => {
       targetUserId = auth.userId;
     }
 
+    if (isMarketDetailMode(body?.mode)) {
+      try {
+        return await readMarketDetail(
+          body.mode,
+          body,
+          (path, trId, query, allowNoDailyData) =>
+            kisGet(supabase, path, trId, query, true, allowNoDailyData),
+          {
+            domestic: { path: KIS_STOCK_QUOTE_PATH, trId: KIS_STOCK_QUOTE_TR_ID },
+            overseas: {
+              path: KIS_OVERSEAS_STOCK_QUOTE_PATH,
+              trId: KIS_OVERSEAS_STOCK_QUOTE_TR_ID,
+            },
+            fund: { path: KIS_FUND_QUOTE_PATH, trId: KIS_FUND_QUOTE_TR_ID },
+            componentScreenCode: Deno.env.get("KIS_FUND_COMPONENTS_SCR_DIV_CODE") ??
+              "11216",
+          },
+        );
+      } catch {
+        return Response.json({ ok: false, error: "market_data_unavailable" }, {
+          status: 502,
+        });
+      }
+    }
+
+    if (isCoinMarketMode(body?.mode)) {
+      try {
+        return await readCoinMarket(body.mode, body, COINONE_TICKER_URL_TEMPLATE);
+      } catch {
+        return Response.json({ ok: false, error: "market_data_unavailable" }, {
+          status: 502,
+        });
+      }
+    }
+
     const { data } = await fetchAllRows(() => {
       let query = supabase
-        .from("holdings")
+        .from(readOnly ? "holdings_with_quote_checks" : "holdings")
         .select(
-          "id, user_id, symbol, currency_code, exchange_code, deleted_at, current_price, assets!inner(asset_type)",
+          `id, asset_id, client_id, user_id, symbol, currency_code, exchange_code, deleted_at, current_price, ${readOnly ? "market_updated_at:quote_checked_at" : "market_updated_at"}, assets!inner(asset_type)`,
           { count: "exact" },
         )
         .is("deleted_at", null)
@@ -443,13 +483,35 @@ Deno.serve(async (req) => {
       normalizeHoldingRow(row as Record<string, unknown>)
     );
 
+    if (readOnly) {
+      return Response.json({
+        ok: true,
+        prices: holdings.filter((holding) =>
+          holding.client_id && holding.market_updated_at &&
+          holding.current_price != null && holding.current_price > 0
+        ).map((holding) => ({
+          client_id: holding.client_id,
+          symbol: holding.symbol,
+          currency_code: holding.currency_code,
+          exchange_code: holding.exchange_code,
+          current_price: holding.current_price,
+          market_updated_at: holding.market_updated_at,
+        })),
+      });
+    }
+
     let updatedCount = 0;
+    let refreshedCount = 0;
     let skippedCount = 0;
     let recomputedAssetsCount = 0;
     const failures: Array<{ holding_id: string | number; error: string }> = [];
 
-    const quotes = new Map<string, Promise<number | null>>();
-    for (const holding of holdings) {
+    const batches = new Map<string, Array<Record<string, unknown>>>();
+    const quotes = new Map<
+      string,
+      Promise<{ price: number | null; fetchedAt: string }>
+    >();
+    for (const [index, holding] of holdings.entries()) {
       try {
         const key = JSON.stringify([
           holding.asset_type,
@@ -459,33 +521,28 @@ Deno.serve(async (req) => {
         ]);
         let quote = quotes.get(key);
         if (!quote) {
-          quote = fetchCurrentPrice(supabase, holding);
+          // Order overlapping runs by request start, even if an older response arrives last.
+          const fetchedAt = nowIso();
+          quote = fetchCurrentPrice(supabase, holding).then((price) => ({
+            price,
+            fetchedAt,
+          }));
           quotes.set(key, quote);
         }
-        const price = await quote;
-        if (price == null) {
+        const { price, fetchedAt } = await quote;
+        if (price == null || price <= 0) {
           skippedCount += 1;
           continue;
         }
 
-        if (!hasMeaningfulPriceChange(holding.current_price, price)) {
-          skippedCount += 1;
-          continue;
-        }
-
-        const { error: updateError } = await supabase
-          .from("holdings")
-          .update({
-            current_price: price,
-            market_updated_at: nowIso(),
-          })
-          .eq("id", holding.id);
-
-        if (updateError) {
-          throw new Error(updateError.message);
-        }
-
-        updatedCount += 1;
+        const source = data[index];
+        const batch = batches.get(holding.user_id) ?? [];
+        batch.push({
+          id: holding.id, asset_id: source.asset_id, symbol: source.symbol,
+          currency_code: source.currency_code, exchange_code: source.exchange_code,
+          price, checked_at: fetchedAt,
+        });
+        batches.set(holding.user_id, batch);
       } catch (error) {
         failures.push({
           holding_id: holding.id,
@@ -494,29 +551,29 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (updatedCount > 0) {
-      const { data: recomputeData, error: recomputeError } = await supabase.rpc(
-        "recompute_asset_metrics",
-        { target_user_id: targetUserId },
-      );
-      if (recomputeError) {
-        failures.push({
-          holding_id: "recompute_asset_metrics",
-          error: recomputeError.message,
-        });
-      } else {
-        const parsed = parseNumber(recomputeData);
-        recomputedAssetsCount = parsed == null ? 0 : Math.trunc(parsed);
+    for (const [userId, quotesForUser] of batches) {
+      const { data: result, error } = await supabase.rpc("apply_holding_quote_batch", {
+        p_user_id: userId,
+        p_quotes: quotesForUser,
+      });
+      if (error) {
+        failures.push({ holding_id: "apply_holding_quote_batch", error: error.message });
+        continue;
       }
+      refreshedCount += result.refreshed;
+      updatedCount += result.updated;
+      recomputedAssetsCount += result.recomputed;
+      skippedCount += quotesForUser.length - result.refreshed;
     }
 
-    const status = failures.length > 0 && updatedCount === 0 ? 500 : 200;
+    const status = failures.length > 0 && refreshedCount === 0 ? 500 : 200;
 
     return new Response(
       JSON.stringify({
         ok: failures.length === 0,
         processed_count: holdings.length,
         updated_count: updatedCount,
+        refreshed_count: refreshedCount,
         skipped_count: skippedCount,
         recomputed_assets_count: recomputedAssetsCount,
         failures,

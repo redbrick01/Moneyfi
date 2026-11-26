@@ -1,3 +1,5 @@
+import 'package:moneyfy/features/account/widgets/monthly_pivot_setting.dart';
+import 'package:moneyfy/utils/monthly_pivot.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -462,7 +464,7 @@ class _LoggedInViewState extends State<_LoggedInView> {
           padding: EdgeInsets.zero,
           child: Semantics(
             button: true,
-            label: '내 계정',
+            label: '마이페이지',
             child: InkWell(
               onTap: () => Navigator.of(context).push<void>(
                 MaterialPageRoute(
@@ -758,7 +760,7 @@ class _AccountDetailsPageState extends State<_AccountDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('내 계정')),
+      appBar: AppBar(title: const Text('마이페이지')),
       body: StreamBuilder<AuthState>(
         stream: AuthService.authStateChanges,
         builder: (context, snapshot) {
@@ -782,6 +784,15 @@ class _AccountDetailsPageState extends State<_AccountDetailsPage> {
                       trailing: _isUpdatingProfile
                           ? _inlineProgressIndicator(context)
                           : null,
+                    ),
+                    AppDivider(),
+                    MonthlyPivotSetting(
+                      key: ValueKey(user.id),
+                      day: MonthlyPivot.fromMetadata(user.userMetadata).day,
+                      onSave: (day) async {
+                        if (AuthService.currentUser?.id != user.id) return;
+                        await AuthService.updateMonthlyPivotDay(day);
+                      },
                     ),
                     AppDivider(),
                     SettingsActionRow(

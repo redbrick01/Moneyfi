@@ -19,21 +19,6 @@ if ! command -v flutter >/dev/null; then
   echo "Flutter를 찾을 수 없습니다. Flutter 설치와 PATH를 확인하세요."
   exit 1
 fi
-if [[ ! -f config.json ]]; then
-  echo "config.json이 없습니다. config.example.json을 복사하고 KIS 키를 입력하세요."
-  exit 1
-fi
-if ! /usr/bin/python3 -c 'import json, sys
-try:
-    with open("config.json", encoding="utf-8") as f: config = json.load(f)
-    missing = [k for k in ("KIS_APP_KEY", "KIS_APP_SECRET") if not isinstance(config.get(k), str) or not config[k].strip() or config[k].startswith("YOUR_")]
-    if missing: raise ValueError("입력되지 않은 설정: " + ", ".join(missing))
-except (OSError, ValueError, TypeError) as e:
-    print("KIS 설정을 확인하세요:", e, file=sys.stderr)
-    sys.exit(1)' ; then
-  exit 1
-fi
-
 BUILD_SOURCE=""
 STAGING=""
 cleanup() {
@@ -63,7 +48,6 @@ for name in dict.fromkeys(sys.stdin.buffer.read().split(b"\0")):
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, target, follow_symlinks=False)
 ' "$BUILD_SOURCE"
-cp config.json "$BUILD_SOURCE/config.json"
 if [[ -f assets/config.json ]]; then
   mkdir -p "$BUILD_SOURCE/assets"
   cp assets/config.json "$BUILD_SOURCE/assets/config.json"
@@ -80,7 +64,7 @@ p.write_text(s.replace(needle, needle + "    target.build_configurations.each do
 echo "Moneyfy macOS 릴리스 빌드 중..."
 # Enable the listener only in this personal installation build.
 /usr/libexec/PlistBuddy -c 'Add :com.apple.security.network.server bool true' macos/Runner/Release.entitlements
-flutter build macos --release --dart-define-from-file=config.json --dart-define=MONEYFY_MCP_INSTALLED=true
+flutter build macos --release --dart-define=MONEYFY_MCP_INSTALLED=true
 
 APP="build/macos/Build/Products/Release/Moneyfy.app"
 [[ -d "$APP" ]] || { echo "빌드된 앱을 찾을 수 없습니다: $APP"; exit 1; }

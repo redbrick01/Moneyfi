@@ -2342,7 +2342,8 @@ List<_AttentionItem> _buildAttentionItems(
   final topThree = _topThreeRatio(metrics);
   final hhi = _hhiScore(metrics);
   final drawdown = data.drawdown;
-  final maxGap = _maxTargetGap(metrics);
+  final targetAsset = _largestTargetGapAsset(metrics);
+  final maxGap = targetAsset?.targetGap;
   final worstAsset = metrics.isEmpty
       ? null
       : ([...metrics]..sort((a, b) => a.profit.compareTo(b.profit))).first;
@@ -2391,7 +2392,7 @@ List<_AttentionItem> _buildAttentionItems(
       title: '목표 비중 이탈',
       body: maxGap == null
           ? '목표 비중을 설정하면 조정 후보를 볼 수 있어요.'
-          : '현재 비중과 목표 비중의 가장 큰 차이예요.',
+          : '${targetAsset!.label} 비중이 목표보다 ${maxGap.abs().toStringAsFixed(1)}%p ${maxGap >= 0 ? '높아요' : '낮아요'}.',
       value: maxGap == null ? '미설정' : '${maxGap.abs().toStringAsFixed(1)}%p',
       color: targetColor,
     ),
@@ -2428,13 +2429,16 @@ int _hhiScore(List<_AssetMetric> metrics) {
   return (hhi * 10000).round();
 }
 
-double? _maxTargetGap(List<_AssetMetric> metrics) {
+double? _maxTargetGap(List<_AssetMetric> metrics) =>
+    _largestTargetGapAsset(metrics)?.targetGap;
+
+_AssetMetric? _largestTargetGapAsset(List<_AssetMetric> metrics) {
   final entries = metrics
       .where((item) => item.targetRatio != null)
       .toList(growable: false);
   if (entries.isEmpty) return null;
   entries.sort((a, b) => b.targetGap.abs().compareTo(a.targetGap.abs()));
-  return entries.first.targetGap;
+  return entries.first;
 }
 
 Color _valueColor(BuildContext context, double value) {

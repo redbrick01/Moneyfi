@@ -1,3 +1,4 @@
+import 'package:moneyfy/features/account/screens/statistics_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -29,7 +30,7 @@ GoRouter buildMoneyfyRouter({
   return GoRouter(
     initialLocation: initialLocation,
     routes: [
-      for (final path in MoneyfyRoutePaths.shellCompatiblePaths)
+      for (final path in MoneyfyRoutePaths.shellTabPaths)
         GoRoute(
           path: path,
           name: MoneyfyRouteNames.shellRouteNameForPath(path),
@@ -41,7 +42,21 @@ GoRouter buildMoneyfyRouter({
             final child = useStartupGate ? StartupGate(child: shell) : shell;
             return NoTransitionPage(key: _shellPageKey, child: child);
           },
+          routes: [
+            if (path == MoneyfyRoutePaths.analysis)
+              GoRoute(
+                path: 'statistics',
+                name: MoneyfyRouteNames.statistics,
+                builder: (_, _) => useStartupGate
+                    ? const StartupGate(child: StatisticsPage())
+                    : const StatisticsPage(),
+              ),
+          ],
         ),
+      GoRoute(
+        path: MoneyfyRoutePaths.legacyStatistics,
+        redirect: (_, _) => MoneyfyRoutePaths.statistics,
+      ),
       GoRoute(
         path: MoneyfyRoutePaths.assetCreate,
         name: MoneyfyRouteNames.assetCreate,

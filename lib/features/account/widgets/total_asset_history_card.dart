@@ -7,8 +7,11 @@ class TotalAssetHistoryCard extends StatelessWidget {
   const TotalAssetHistoryCard({
     super.key,
     required this.snapshots,
+    this.initialPeriod = HistoryPeriod.quarter,
     required this.loadItems,
   });
+
+  final HistoryPeriod initialPeriod;
 
   /// Snapshots ordered from oldest to newest.
   final List<DailyPortfolioSnapshot> snapshots;
@@ -21,6 +24,7 @@ class TotalAssetHistoryCard extends StatelessWidget {
     final now = DateTime.now();
     return ValueHistoryCard(
       title: '총자산 변화',
+      initialPeriod: initialPeriod,
       valueLabel: '총자산',
       chartLabel: '날짜별 총자산 차트',
       periodAverageLabel: '기간 평균 자산',

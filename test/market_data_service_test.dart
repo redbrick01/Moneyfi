@@ -180,6 +180,8 @@ void main() {
       expect(snapshot.currentPriceValue, 96000000);
       expect(snapshot.currentPrice, '₩96,000,000');
       expect(snapshot.previousClose, '₩95,000,000');
+      expect(snapshot.dayChange, '+₩1,000,000');
+      expect(snapshot.dayChangeRate, '+1.05%');
       expect(snapshot.quoteVolume24h, '₩1,180,000,000');
       expect(snapshot.targetVolume24h, '12.35');
       expect(snapshot.bestAskPrice, '₩96,010,000');

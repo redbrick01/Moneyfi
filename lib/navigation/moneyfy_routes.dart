@@ -37,7 +37,6 @@ abstract final class MoneyfyRouteNames {
       MoneyfyRoutePaths.portfolio => portfolio,
       MoneyfyRoutePaths.transactions => transactions,
       MoneyfyRoutePaths.analysis => analysis,
-      MoneyfyRoutePaths.statistics => statistics,
       MoneyfyRoutePaths.my => my,
       _ => home,
     };
@@ -49,7 +48,8 @@ abstract final class MoneyfyRoutePaths {
   static const portfolio = '/portfolio';
   static const transactions = '/transactions';
   static const analysis = '/analysis';
-  static const statistics = '/statistics';
+  static const statistics = '/analysis/statistics';
+  static const legacyStatistics = '/statistics';
   static const my = '/my';
 
   static const shellTabPaths = <String>[
@@ -59,8 +59,6 @@ abstract final class MoneyfyRoutePaths {
     analysis,
     my,
   ];
-
-  static const shellCompatiblePaths = <String>[...shellTabPaths, statistics];
 
   static const assetDetailPattern = '/assets/:assetId';
   static const holdingDetailPattern = '/holdings/:holdingId';

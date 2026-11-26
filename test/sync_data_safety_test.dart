@@ -24,6 +24,60 @@ void main() {
     note: '',
   );
 
+  test('server quote refresh updates only matching owned holdings', () async {
+    await db.assignLocalDataOwner('first-user');
+    final id = await db.createHolding(
+      assetId: await asset('주식'),
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      name: '삼성전자',
+      symbol: '005930',
+      quantity: 2,
+      averagePrice: 70,
+      currentPrice: 75,
+      note: 'local edit',
+    );
+    final before = (await db.select(db.holdings).get()).single;
+    final quote = {
+      'client_id': before.clientId,
+      'symbol': '005930',
+      'currency_code': 'KRW',
+      'exchange_code': '',
+      'current_price': 80,
+      'market_updated_at': '2026-11-26T12:00:00Z',
+    };
+
+    Future<int> apply(
+      Map<String, dynamic> row, {
+      String owner = 'first-user',
+    }) => db.applyServerHoldingPrices(
+      [row],
+      ownerId: owner,
+      canApply: () => true,
+    );
+
+    expect(await apply(quote, owner: 'second-user'), 0);
+    expect(await apply({...quote, 'symbol': '000660'}), 0);
+    expect(await apply(quote), 1);
+    final updated = (await db.select(db.holdings).get()).single;
+    expect(updated.id, id);
+    expect(updated.currentPrice, 80);
+    expect(updated.note, 'local edit');
+    expect(updated.dirty, before.dirty);
+    expect(updated.lastModifiedAt, before.lastModifiedAt);
+    expect(
+      await apply({...quote, 'market_updated_at': '2026-11-26T12:01:00Z'}),
+      1,
+    );
+    expect(await apply({...quote, 'current_price': 60}), 0);
+    final latest = (await db.select(db.holdings).get()).single;
+    expect(latest.currentPrice, 80);
+    expect(
+      DateTime.parse(latest.marketUpdatedAt!),
+      DateTime.utc(2026, 11, 26, 12, 1),
+    );
+  });
+
   test(
     'remote replacement refuses dirty local records without deleting them',
     () async {

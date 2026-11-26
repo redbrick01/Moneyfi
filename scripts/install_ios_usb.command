@@ -26,7 +26,6 @@ cd "$PROJECT_DIR"
 
 command -v flutter >/dev/null || fail 'Flutter를 찾을 수 없습니다. 설치 경로와 PATH를 확인하세요.'
 xcrun --find xcodebuild >/dev/null || fail 'Xcode를 설치하고 활성 개발자 디렉터리를 확인하세요.'
-[[ -f config.json ]] || fail 'config.json이 없습니다. config.example.json을 복사하고 로컬 설정을 입력하세요.'
 
 echo 'USB로 연결된 iOS 기기를 찾는 중입니다...'
 DEVICE_JSON="$(flutter devices --machine --device-connection=attached)" || fail 'Flutter에서 연결된 기기를 조회하지 못했습니다.'
@@ -63,5 +62,5 @@ sys.exit(1)
 
 echo 'Moneyfy iOS 릴리스 앱을 빌드하고 설치합니다...'
 flutter run --release --no-resident --device-connection=attached \
-  -d "$DEVICE_ID" --dart-define-from-file=config.json
+  -d "$DEVICE_ID"
 echo 'Moneyfy 설치가 완료되었습니다.'

@@ -1,3 +1,4 @@
+import 'package:moneyfy/utils/monthly_pivot.dart';
 import '../widgets/portfolio_instrument_search.dart';
 import 'dart:ui' as ui;
 
@@ -836,13 +837,15 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                     SizedBox(
                       height: context.spacing.md + context.spacing.xs / 2,
                     ),
-                    if (!isCashAssetGroup) ...[
+                    if (!isCashAssetGroup || item.assetType == '코인') ...[
                       PortfolioInstrumentSearch(
                         assetType: item.assetType,
                         assets: [item],
                         onHoldingClosed: _reloadDetail,
                       ),
                       SizedBox(height: context.spacing.md),
+                    ],
+                    if (!isCashAssetGroup) ...[
                       _DetailSection(
                         title: '보유 정보',
                         wrapBodyWithInnerCard: false,
@@ -1376,11 +1379,10 @@ bool _isUsableComparisonValue(double? value) {
 }
 
 String _previousMonthComparisonDate(DateTime date) {
-  final comparisonDate = date.day <= 20
-      ? (date.month == 1
-            ? DateTime(date.year - 1, 12, 20)
-            : DateTime(date.year, date.month - 1, 20))
-      : DateTime(date.year, date.month, 20);
+  final comparisonDate = MonthlyPivot.current.periodStart(
+    date,
+    includeToday: false,
+  );
   final month = comparisonDate.month.toString().padLeft(2, '0');
   final day = comparisonDate.day.toString().padLeft(2, '0');
   return '${comparisonDate.year}-$month-$day';

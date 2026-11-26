@@ -20,6 +20,8 @@ typedef DailyInvestmentReviewDraftSaver =
     Future<void> Function(DailyInvestmentReviewDraft draft);
 typedef DailyInvestmentReviewCompleter = Future<void> Function(DateTime date);
 
+const showInvestmentReviewEntryPoints = false;
+
 class InvestmentReviewPage extends StatefulWidget {
   const InvestmentReviewPage({
     super.key,

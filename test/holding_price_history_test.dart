@@ -40,6 +40,17 @@ const _overseas = HoldingItem(
   transactions: [],
 );
 
+const _coin = HoldingItem(
+  assetType: '코인',
+  name: '비트코인',
+  symbol: 'BTC',
+  quantity: 1,
+  averagePrice: 1,
+  currentPrice: 1,
+  note: '',
+  transactions: [],
+);
+
 void main() {
   test('periods follow calendar boundaries and clamp the end of a month', () {
     final end = DateTime.utc(2024, 5, 31);
@@ -76,6 +87,11 @@ void main() {
 
   test('uses the last completed session cutoff in each market', () {
     final service = _service((_) async => throw StateError('No HTTP expected'));
+    expect(service.supportsPriceHistory(_coin), isTrue);
+    expect(
+      service.latestDailyCloseDate(_coin, now: DateTime.utc(2026, 7, 20, 0, 1)),
+      DateTime.utc(2026, 7, 19),
+    );
     expect(
       service.latestDailyCloseDate(_etf, now: DateTime.utc(2026, 7, 15, 6, 29)),
       DateTime.utc(2026, 7, 14),
@@ -484,7 +500,11 @@ void main() {
       expect(find.text(r'$150.25'), findsOneWidget);
       expect(averageLabel, findsOneWidget);
       // Dio dispatches the request after the loading frame.
-      for (var frame = 0; frame < 10 && dailyRequests.length == requestsBefore; frame++) {
+      for (
+        var frame = 0;
+        frame < 10 && dailyRequests.length == requestsBefore;
+        frame++
+      ) {
         await tester.pump(const Duration(milliseconds: 1));
       }
       expect(dailyRequests, hasLength(requestsBefore + 1));

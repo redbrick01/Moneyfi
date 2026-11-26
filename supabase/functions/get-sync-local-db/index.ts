@@ -37,16 +37,12 @@ async function ensureClientIds(
 ) {
   const { data } = await fetchAllRows(() => supabase
     .from(table)
-    .select("id, client_id", { count: "exact" })
+    .select("id", { count: "exact" })
     .eq("user_id", userId)
+    .is("client_id", null)
     .order("id", { ascending: true }));
 
   for (const row of data ?? []) {
-    const currentClientId = typeof row.client_id === "string"
-      ? row.client_id.trim()
-      : "";
-    if (currentClientId.length > 0) continue;
-
     const id = parseNumber(row.id, -1);
     if (id < 0) continue;
     const nextClientId = crypto.randomUUID();
@@ -54,6 +50,7 @@ async function ensureClientIds(
       .from(table)
       .update({ client_id: nextClientId })
       .eq("user_id", userId)
+      .is("client_id", null)
       .eq("id", id);
     if (updateError) {
       throw new Error(
@@ -129,9 +126,9 @@ Deno.serve(async (req) => {
         .order("sort_order", { ascending: true })
         .order("id", { ascending: true })),
       fetchAllRows(() => supabase
-        .from("holdings")
+        .from("holdings_with_quote_checks")
         .select(
-          "id, client_id, last_modified_at, asset_id, currency_code, market_updated_at, exchange_code, name, symbol, quantity, average_price, average_price_source, average_price_krw, average_purchase_fx_rate, cost_basis_krw, current_price, note, sort_order",
+          "id, client_id, last_modified_at, asset_id, currency_code, market_updated_at:quote_checked_at, exchange_code, name, symbol, quantity, average_price, average_price_source, average_price_krw, average_purchase_fx_rate, cost_basis_krw, current_price, note, sort_order",
           { count: "exact" },
         )
         .eq("user_id", userId)

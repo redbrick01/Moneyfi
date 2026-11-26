@@ -1,3 +1,4 @@
+import 'package:moneyfy/utils/monthly_pivot.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -1142,11 +1143,10 @@ String _formatSnapshotDate(String value) {
 
 String _comparisonSnapshotDate(String value) {
   final date = DateTime.parse(value);
-  final comparisonDate = date.day <= 20
-      ? (date.month == 1
-            ? DateTime(date.year - 1, 12, 20)
-            : DateTime(date.year, date.month - 1, 20))
-      : DateTime(date.year, date.month, 20);
+  final comparisonDate = MonthlyPivot.current.periodStart(
+    date,
+    includeToday: false,
+  );
   final month = comparisonDate.month.toString().padLeft(2, '0');
   final day = comparisonDate.day.toString().padLeft(2, '0');
   return '${comparisonDate.year}-$month-$day';

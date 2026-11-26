@@ -44,6 +44,8 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
+IDI_APP_ICON            ICON                    "resources\\app_icon.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

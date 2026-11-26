@@ -1,3 +1,4 @@
+import 'package:moneyfy/utils/monthly_pivot.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -18,7 +19,6 @@ import 'package:moneyfy/features/analysis/screens/analysis_page.dart';
 import 'package:moneyfy/features/account/screens/my_page.dart';
 import 'package:moneyfy/features/portfolio/screens/portfolio_dashboard_page.dart';
 import 'package:moneyfy/features/portfolio/screens/portfolio_page.dart';
-import 'package:moneyfy/features/account/screens/statistics_page.dart';
 import 'package:moneyfy/features/transactions/screens/transactions_page.dart';
 
 class AppShellPage extends StatefulWidget {
@@ -80,6 +80,8 @@ class _AppShellPageState extends State<AppShellPage>
   bool _isPolling = false;
   late final List<ScrollController> _pageScrollControllers;
   int _dataRefreshTick = 0;
+  int _monthlyPivotDay = MonthlyPivot.current.day;
+  int _transactionsActivationTick = 0;
   int _homeMarketRefreshTick = 0;
   int _dataScopeVersion = 0;
   int _analysisReselectionTick = 0;
@@ -102,6 +104,11 @@ class _AppShellPageState extends State<AppShellPage>
     AppDataLifecycleService.state.addListener(_handleAppDataLifecycleChanged);
     _syncDisplayCurrencySettings();
     _authSubscription = AuthService.authStateChanges.listen((authState) {
+      final pivotDay = MonthlyPivot.current.day;
+      if (mounted && pivotDay != _monthlyPivotDay) {
+        _monthlyPivotDay = pivotDay;
+        setState(() => _dataRefreshTick++);
+      }
       if (authState.session == null) {
         AppDataLifecycleService.beginReplacement(
           message: '다시 로그인하면 저장된 데이터를 확인할 수 있어요.',
@@ -133,6 +140,10 @@ class _AppShellPageState extends State<AppShellPage>
     if (nextIndex != selectedIndex) {
       setState(() {
         selectedIndex = nextIndex;
+        if (_destinations[nextIndex].routePath ==
+            MoneyfyRoutePaths.transactions) {
+          _transactionsActivationTick++;
+        }
       });
     }
   }
@@ -214,18 +225,11 @@ class _AppShellPageState extends State<AppShellPage>
 
   int _tabIndexForLocation(String location) {
     final path = _normalizeLocation(location);
-    if (path == MoneyfyRoutePaths.statistics) {
-      return _analysisTabIndex;
-    }
     final index = _destinations.indexWhere((item) => item.routePath == path);
     return index < 0 ? 0 : index;
   }
 
   String get _normalizedLocation => _normalizeLocation(widget.initialLocation);
-
-  bool get _showsStatisticsRoute {
-    return _normalizedLocation == MoneyfyRoutePaths.statistics;
-  }
 
   String _normalizeLocation(String location) {
     return Uri.tryParse(location)?.path ?? location;
@@ -309,25 +313,19 @@ class _AppShellPageState extends State<AppShellPage>
                   title: '거래',
                   child: TransactionsPage(
                     scrollController: _pageScrollControllers[2],
-                    dataRefreshTick: _dataRefreshTick,
+                    dataRefreshTick:
+                        _dataRefreshTick + _transactionsActivationTick,
                   ),
                 ),
                 _DataScopedTabPage(
                   scopeVersion: _dataScopeVersion,
                   replacementMessage: _dataReplacementMessage,
-                  title: _showsStatisticsRoute ? '통계' : '분석',
-                  child: _showsStatisticsRoute
-                      ? StatisticsPage(
-                          scrollController:
-                              _pageScrollControllers[_analysisTabIndex],
-                          dataRefreshTick: _dataRefreshTick,
-                        )
-                      : AnalysisPage(
-                          scrollController:
-                              _pageScrollControllers[_analysisTabIndex],
-                          reselectionTick: _analysisReselectionTick,
-                          dataRefreshTick: _dataRefreshTick,
-                        ),
+                  title: '분석',
+                  child: AnalysisPage(
+                    scrollController: _pageScrollControllers[_analysisTabIndex],
+                    reselectionTick: _analysisReselectionTick,
+                    dataRefreshTick: _dataRefreshTick,
+                  ),
                 ),
                 _DataScopedTabPage(
                   scopeVersion: _dataScopeVersion,

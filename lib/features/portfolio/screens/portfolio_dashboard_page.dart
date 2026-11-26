@@ -1,3 +1,4 @@
+import 'package:moneyfy/utils/monthly_pivot.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -120,6 +121,7 @@ class PortfolioDashboardPage extends StatefulWidget {
     this.scrollController,
     this.onOpenPortfolioDiagnosis,
     this.dataRefreshTick = 0,
+    this.showInvestmentReview = showInvestmentReviewEntryPoints,
     this.todayReviewBuilderForTesting,
     this.todayReviewLoaderForTesting,
     this.investmentReviewPageBuilderForTesting,
@@ -128,6 +130,7 @@ class PortfolioDashboardPage extends StatefulWidget {
   final ScrollController? scrollController;
   final VoidCallback? onOpenPortfolioDiagnosis;
   final int dataRefreshTick;
+  final bool showInvestmentReview;
   final TodayInvestmentReviewReportBuilder? todayReviewBuilderForTesting;
   final TodayInvestmentReviewLoader? todayReviewLoaderForTesting;
   final InvestmentReviewPageBuilder? investmentReviewPageBuilderForTesting;
@@ -138,23 +141,17 @@ class PortfolioDashboardPage extends StatefulWidget {
 
 class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
   _AssetSortOption _assetSortOption = _AssetSortOption.custom;
-  late Future<_TodayInvestmentReviewHomeData> _todayReviewFuture;
+  Future<_TodayInvestmentReviewHomeData>? _todayReviewFuture;
   int _refreshTick = 0;
   bool _isEditMode = false;
   bool _isRefreshing = false;
   bool _hasVisibleAssets = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _todayReviewFuture = _loadTodayReview();
-  }
-
   void _markChanged() {
     if (!mounted) return;
     _invalidateDashboardSharedDataCache();
     setState(() {
-      _todayReviewFuture = _loadTodayReview();
+      _todayReviewFuture = null;
       _refreshTick++;
     });
   }
@@ -228,7 +225,7 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
     ).push<void>(MaterialPageRoute(builder: pageBuilder));
     if (!mounted) return;
     setState(() {
-      _todayReviewFuture = _loadTodayReview();
+      _todayReviewFuture = null;
     });
   }
 
@@ -321,29 +318,30 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
             ),
           ),
           SizedBox(height: context.spacing.xl),
-          FutureBuilder<_TodayInvestmentReviewHomeData>(
-            future: _todayReviewFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox.shrink();
-              }
-              final data = snapshot.data;
-              if (data == null) {
-                return const SizedBox.shrink();
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  InvestmentReviewHomeCard(
-                    report: data.report,
-                    reviewStatus: data.reviewStatus,
-                    onOpen: _openInvestmentReview,
-                  ),
-                  SizedBox(height: context.spacing.xl),
-                ],
-              );
-            },
-          ),
+          if (widget.showInvestmentReview)
+            FutureBuilder<_TodayInvestmentReviewHomeData>(
+              future: _todayReviewFuture ??= _loadTodayReview(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox.shrink();
+                }
+                final data = snapshot.data;
+                if (data == null) {
+                  return const SizedBox.shrink();
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    InvestmentReviewHomeCard(
+                      report: data.report,
+                      reviewStatus: data.reviewStatus,
+                      onOpen: _openInvestmentReview,
+                    ),
+                    SizedBox(height: context.spacing.xl),
+                  ],
+                );
+              },
+            ),
           _AnalysisSectionBasePlate(
             refreshTick: _refreshTick,
             child: _InsightCard(
@@ -805,7 +803,9 @@ class _SummaryCardState extends State<_SummaryCard> {
                                                         opacity: animation,
                                                         child: SizeTransition(
                                                           sizeFactor: animation,
-                                                          alignment: AlignmentDirectional.topStart,
+                                                          alignment:
+                                                              AlignmentDirectional
+                                                                  .topStart,
                                                           child: child,
                                                         ),
                                                       );
@@ -1101,11 +1101,10 @@ Future<_SummaryCardData> _loadSummaryCardData() async {
 }
 
 String _previousMonthComparisonDate(DateTime date) {
-  final comparisonDate = date.day <= 20
-      ? (date.month == 1
-            ? DateTime(date.year - 1, 12, 20)
-            : DateTime(date.year, date.month - 1, 20))
-      : DateTime(date.year, date.month, 20);
+  final comparisonDate = MonthlyPivot.current.periodStart(
+    date,
+    includeToday: false,
+  );
   final month = comparisonDate.month.toString().padLeft(2, '0');
   final day = comparisonDate.day.toString().padLeft(2, '0');
   return '${comparisonDate.year}-$month-$day';

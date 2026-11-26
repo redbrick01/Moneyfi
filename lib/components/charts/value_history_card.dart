@@ -65,6 +65,7 @@ class ValueHistoryCard extends StatefulWidget {
     required this.through,
     required this.sourceKey,
     required this.loadPoints,
+    this.initialPeriod = HistoryPeriod.quarter,
     this.currencyCode = 'KRW',
     this.transactions = const [],
     this.averagePrice,
@@ -77,6 +78,7 @@ class ValueHistoryCard extends StatefulWidget {
   final DateTime through;
   final Object sourceKey;
   final HistoryLoader loadPoints;
+  final HistoryPeriod initialPeriod;
   final String currencyCode;
   final List<TransactionItem> transactions;
   final double? averagePrice;
@@ -87,7 +89,7 @@ class ValueHistoryCard extends StatefulWidget {
 }
 
 class _ValueHistoryCardState extends State<ValueHistoryCard> {
-  var _period = HistoryPeriod.quarter;
+  late HistoryPeriod _period;
   var _requestId = 0;
   late Future<List<HistoryPoint>> _points;
   List<HistoryPoint> _cached = const [];
@@ -97,6 +99,7 @@ class _ValueHistoryCardState extends State<ValueHistoryCard> {
   @override
   void initState() {
     super.initState();
+    _period = widget.initialPeriod;
     _points = _load();
   }
 
