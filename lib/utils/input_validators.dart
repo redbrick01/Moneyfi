@@ -20,7 +20,9 @@ class MoneyfyInputValidators {
     r'^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$',
     caseSensitive: false,
   );
-  static final RegExp _symbolPattern = RegExp(r'^[A-Z0-9][A-Z0-9._-]{0,19}$');
+  static final RegExp _symbolPattern = RegExp(
+    r'^(?=.{1,20}$)[A-Z0-9][A-Z0-9._-]*(?:/[A-Z0-9]+)?$',
+  );
 
   static InputValidationResult<String> requiredText(
     String raw, {
@@ -119,7 +121,7 @@ class MoneyfyInputValidators {
     }
     if (!_symbolPattern.hasMatch(value)) {
       return const InputValidationResult.invalid(
-        '종목 코드는 영문, 숫자, 점, 하이픈, 밑줄만 20자 이내로 입력해 주세요.',
+        '종목 코드는 영문, 숫자, 점, 하이픈, 밑줄, 슬래시만 20자 이내로 입력해 주세요.',
       );
     }
     return InputValidationResult.valid(value);

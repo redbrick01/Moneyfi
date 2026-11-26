@@ -491,7 +491,6 @@ class _MonthlyNavigationCard extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) => SnapshotDetailPage(
                       snapshot: bundle.monthRows[i].snapshot,
-                      items: bundle.monthRows[i].items,
                     ),
                   ),
                 );
@@ -624,10 +623,6 @@ _YearBundle _buildYearBundle({
       label: '$year년 ${date.month}월',
       value: total,
       snapshot: snapshot,
-      items:
-          (snapshotIdToItems[snapshot.id] ??
-                  const <DailyPortfolioSnapshotItem>[])
-              .toList(),
     );
   }).toList();
 
@@ -977,13 +972,11 @@ class _MonthNavigationRow {
     required this.label,
     required this.value,
     required this.snapshot,
-    required this.items,
   });
 
   final String label;
   final double value;
   final DailyPortfolioSnapshot snapshot;
-  final List<DailyPortfolioSnapshotItem> items;
 }
 
 List<String> _buildYAxisLabels(List<_MonthlyAssetSeries> series) {

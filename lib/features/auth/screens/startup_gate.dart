@@ -36,6 +36,7 @@ class _StartupGateState extends State<StartupGate> {
           message: '계정 확인 후 데이터를 불러올 수 있어요.',
         );
       }
+      AppDataLifecycleService.markStartupChecked();
     } catch (error, stackTrace) {
       debugPrint('[main] startup failed: $error');
       debugPrint(stackTrace.toString());

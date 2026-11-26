@@ -1,12 +1,11 @@
-import 'dart:async';
+import 'package:moneyfy/components/forms/market_search_field.dart';
 
 import 'package:flutter/material.dart';
 
-import 'package:moneyfy/data/asset_data.dart';
+import 'package:moneyfy/features/portfolio/services/market_instrument_search.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
-import 'package:moneyfy/features/portfolio/services/market_data_service.dart';
 import 'package:moneyfy/features/sync/services/sync_service.dart';
 import 'package:moneyfy/utils/input_validators.dart';
 import 'package:moneyfy/components/forms/form_design.dart';
@@ -51,13 +50,9 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
   late String selectedCurrencyCode;
   late String selectedExchangeCode;
   bool isSaving = false;
-  bool isSearching = false;
   String? searchMessage;
   AssetItem? _asset;
-  Timer? _searchDebounce;
-  int _searchGeneration = 0;
-  List<_MarketSearchResult> _searchResults = const [];
-  _MarketSearchResult? _selectedMarketResult;
+  MarketSearchResult? _selectedMarketResult;
 
   @override
   void initState() {
@@ -98,68 +93,12 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
     currentPriceController.dispose();
     noteController.dispose();
     searchController.dispose();
-    _searchDebounce?.cancel();
     super.dispose();
   }
 
-  void _queueMarketSearch(String query) {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      _searchMarketItems(query);
-    });
-  }
-
-  Future<void> _searchMarketItems(String rawQuery) async {
-    final assetType = widget.item?.assetType ?? _asset?.assetType;
-    final query = rawQuery.trim();
-    if (assetType == null || assetType == '현금') return;
-    if (query.isEmpty) {
-      setState(() {
-        _searchResults = const [];
-        _selectedMarketResult = null;
-        searchMessage = null;
-      });
-      return;
-    }
-
-    final generation = ++_searchGeneration;
-    final localResults = _localMarketSearch(assetType, query);
-    setState(() {
-      isSearching = true;
-      searchMessage = null;
-      _searchResults = localResults;
-      _selectedMarketResult = null;
-    });
-
-    try {
-      final apiResult = await _fetchFirstVerifiedMarketResult(
-        assetType: assetType,
-        query: query,
-        localResults: localResults,
-      );
-
-      if (!mounted || generation != _searchGeneration) return;
-      setState(() {
-        if (apiResult != null) {
-          _searchResults = _mergeSearchResults(apiResult, localResults);
-          searchMessage = null;
-        } else {
-          searchMessage = localResults.isEmpty ? '연관 종목이 없습니다.' : null;
-        }
-      });
-    } finally {
-      if (mounted && generation == _searchGeneration) {
-        setState(() {
-          isSearching = false;
-        });
-      }
-    }
-  }
-
-  void _selectMarketResult(_MarketSearchResult result) {
+  void _selectMarketResult(MarketSearchResult result) {
     setState(() {
       _selectedMarketResult = result;
-      _searchResults = const [];
       searchController.text = '${result.name} (${result.symbol})';
       nameController.text = result.name;
       symbolController.text = result.symbol;
@@ -167,139 +106,12 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
       selectedExchangeCode = result.exchangeCode.isNotEmpty
           ? result.exchangeCode
           : exchangeOptions.keys.first;
-      currentPriceController.text = _numberInputText(result.currentPrice);
+      currentPriceController.text = result.currentPrice > 0
+          ? _numberInputText(result.currentPrice)
+          : '';
       searchMessage = '선택됨: ${result.symbol}';
     });
     FocusScope.of(context).unfocus();
-  }
-
-  List<_MarketSearchResult> _localMarketSearch(String assetType, String query) {
-    final normalizedQuery = query.trim().toUpperCase();
-    if (normalizedQuery.isEmpty) return const [];
-
-    final results = <_MarketSearchResult>[];
-    final seen = <String>{};
-
-    for (final instrument in _knownMarketInstruments) {
-      if (instrument.assetType != assetType) continue;
-      if (!instrument.matches(normalizedQuery)) continue;
-      final key = '${instrument.currencyCode}:${instrument.symbol}';
-      if (seen.add(key)) results.add(instrument);
-    }
-
-    for (final asset in assetItems) {
-      if (asset.assetType != assetType) continue;
-      for (final holding in asset.holdings) {
-        final result = _MarketSearchResult.fromHolding(holding, assetType);
-        if (!result.matches(normalizedQuery)) continue;
-        final key = '${result.currencyCode}:${result.symbol}';
-        if (seen.add(key)) results.add(result);
-      }
-    }
-
-    return results.take(8).toList(growable: false);
-  }
-
-  List<_MarketSearchResult> _mergeSearchResults(
-    _MarketSearchResult apiResult,
-    List<_MarketSearchResult> localResults,
-  ) {
-    return [
-      apiResult,
-      ...localResults.where(
-        (result) =>
-            result.symbol != apiResult.symbol ||
-            result.currencyCode != apiResult.currencyCode,
-      ),
-    ].take(8).toList(growable: false);
-  }
-
-  Future<_MarketSearchResult?> _fetchFirstVerifiedMarketResult({
-    required String assetType,
-    required String query,
-    required List<_MarketSearchResult> localResults,
-  }) async {
-    for (final candidate in _marketLookupCandidates(assetType, query)) {
-      final lookupHolding = HoldingItem(
-        assetTitle: query,
-        assetType: assetType,
-        currencyCode: candidate.currencyCode,
-        exchangeCode: candidate.exchangeCode,
-        name: query,
-        symbol: candidate.symbol,
-        quantity: 0,
-        averagePrice: 0,
-        currentPrice: -1,
-        note: '',
-        transactions: const [],
-      );
-
-      final snapshot = await MarketDataService.instance.fetchSnapshot(
-        lookupHolding,
-        includeFundComponents: false,
-      );
-      final currentPrice = snapshot.currentPriceValue;
-      if (currentPrice == null || currentPrice < 0) continue;
-
-      _MarketSearchResult? matchedLocal;
-      for (final result in localResults) {
-        if (result.symbol == candidate.symbol &&
-            result.currencyCode == candidate.currencyCode) {
-          matchedLocal = result;
-          break;
-        }
-      }
-      return _MarketSearchResult(
-        name: matchedLocal?.name ?? query,
-        symbol: candidate.symbol,
-        assetType: assetType,
-        currencyCode: candidate.currencyCode,
-        exchangeCode: candidate.exchangeCode,
-        currentPrice: currentPrice,
-        sourceLabel: 'API',
-        aliases: matchedLocal?.aliases ?? const [],
-      );
-    }
-    return null;
-  }
-
-  List<_MarketLookupCandidate> _marketLookupCandidates(
-    String assetType,
-    String query,
-  ) {
-    final normalized = query.trim().toUpperCase();
-    final candidates = <_MarketLookupCandidate>[];
-    final seen = <String>{};
-
-    void add(String symbol, String currencyCode, String exchangeCode) {
-      final key = '$currencyCode:$exchangeCode:$symbol';
-      if (seen.add(key)) {
-        candidates.add(
-          _MarketLookupCandidate(
-            symbol: symbol,
-            currencyCode: currencyCode,
-            exchangeCode: exchangeCode,
-          ),
-        );
-      }
-    }
-
-    final known = _knownMarketInstruments.where(
-      (instrument) =>
-          instrument.assetType == assetType && instrument.matches(normalized),
-    );
-    for (final instrument in known) {
-      add(instrument.symbol, instrument.currencyCode, instrument.exchangeCode);
-    }
-
-    if (assetType == '코인') {
-      add(normalized, 'KRW', '');
-      return candidates;
-    }
-
-    add(normalized, 'KRW', '');
-    add(normalized, 'USD', exchangeOptions.keys.first);
-    return candidates;
   }
 
   String _numberInputText(double value) {
@@ -450,9 +262,10 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
     return FutureBuilder<AssetItem?>(
       future: _assetFuture,
       builder: (context, snapshot) {
-        final isCashAsset =
-            widget.item?.assetType == '현금' || snapshot.data?.assetType == '현금';
-        final canSearchMarketItem = widget.item == null && !isCashAsset;
+        final assetType = widget.item?.assetType ?? snapshot.data?.assetType;
+        final isCashAsset = assetType == '현금';
+        final canSearchMarketItem =
+            widget.item == null && assetType != null && !isCashAsset;
 
         return MoneyfyFormScaffold(
           title: widget.item == null ? '보유 항목 추가' : '보유 항목 수정',
@@ -518,14 +331,38 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
               child: Column(
                 children: [
                   if (canSearchMarketItem) ...[
-                    _MarketItemSearchField(
+                    MarketSearchField<MarketSearchResult>(
+                      label: '종목 검색',
                       controller: searchController,
-                      isSearching: isSearching,
-                      results: _searchResults,
-                      selectedResult: _selectedMarketResult,
                       message: searchMessage,
-                      onChanged: _queueMarketSearch,
-                      onResultSelected: _selectMarketResult,
+                      localSearch: (query) =>
+                          searchMarketLocally([?_asset], {assetType}, query),
+                      verify: (query, local) async {
+                        final result = await verifyMarketSymbol(
+                          searchableAssetTypes: {assetType},
+                          primaryAssetType: assetType,
+                          query: query,
+                          localResults: local,
+                        );
+                        return result == null
+                            ? local
+                            : mergeMarketResults(result, local);
+                      },
+                      itemBuilder: (_, item) =>
+                          _SearchResultTile(result: item, onTap: null),
+                      selected: _selectedMarketResult == null
+                          ? null
+                          : _SelectedMarketResultView(
+                              result: _selectedMarketResult!,
+                            ),
+                      onEdited: () {
+                        if (_selectedMarketResult == null) return;
+                        setState(() {
+                          _selectedMarketResult = null;
+                          searchMessage = null;
+                        });
+                      },
+                      onSelected: _selectMarketResult,
                     ),
                     SizedBox(height: context.spacing.xs / 2),
                   ],
@@ -596,185 +433,11 @@ class _HoldingFormPageState extends State<HoldingFormPage> {
   }
 }
 
-class _MarketItemSearchField extends StatelessWidget {
-  const _MarketItemSearchField({
-    required this.controller,
-    required this.isSearching,
-    required this.results,
-    required this.onChanged,
-    required this.onResultSelected,
-    this.selectedResult,
-    this.message,
-  });
+class _SearchResultTile extends StatelessWidget {
+  const _SearchResultTile({required this.result, required this.onTap});
 
-  final TextEditingController controller;
-  final bool isSearching;
-  final List<_MarketSearchResult> results;
-  final _MarketSearchResult? selectedResult;
-  final ValueChanged<String> onChanged;
-  final ValueChanged<_MarketSearchResult> onResultSelected;
-  final String? message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: context.spacing.sm + context.spacing.xs / 4,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '종목 검색',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: context.colors.neutralTextMuted,
-              fontWeight: AppFontWeights.semibold,
-            ),
-          ),
-          SizedBox(height: context.spacing.xs),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  textInputAction: TextInputAction.search,
-                  onChanged: onChanged,
-                  onSubmitted: (_) {
-                    FocusScope.of(context).unfocus();
-                    onChanged(controller.text);
-                  },
-                  onTapOutside: (_) => FocusScope.of(context).unfocus(),
-                  decoration: InputDecoration(
-                    hintText: '예: 005930, AAPL, BTC',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                    hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                      color: context.colors.neutralTextMuted,
-                    ),
-                    filled: true,
-                    fillColor: context.colors.neutralSurfaceRaised,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: context.spacing.md,
-                      vertical: context.spacing.sm + context.spacing.xs / 4,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(context.radius.rLg),
-                      borderSide: BorderSide(
-                        color: context.colors.neutralOutline,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(context.radius.rLg),
-                      borderSide: BorderSide(
-                        color: context.colors.neutralOutline,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(context.radius.rLg),
-                      borderSide: BorderSide(
-                        color: context.colors.primary,
-                        width: 1.4,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: context.spacing.xs + context.spacing.xs / 4),
-              SizedBox(
-                height: 50,
-                child: IconButton.filled(
-                  onPressed: isSearching
-                      ? null
-                      : () => onChanged(controller.text),
-                  icon: isSearching
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.search_rounded),
-                  style: IconButton.styleFrom(
-                    backgroundColor: context.colors.neutralText,
-                    foregroundColor: context.colors.neutralBackground,
-                    disabledBackgroundColor:
-                        context.colors.neutralSurfaceRaised,
-                    disabledForegroundColor: context.colors.neutralTextMuted,
-                    fixedSize: const Size(50, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(context.radius.rMd),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (results.isNotEmpty) ...[
-            SizedBox(height: context.spacing.xs),
-            _MarketSearchDropdown(
-              results: results,
-              onSelected: onResultSelected,
-            ),
-          ] else if (selectedResult != null) ...[
-            SizedBox(height: context.spacing.xs),
-            _SelectedMarketResultView(result: selectedResult!),
-          ],
-          if (message != null) ...[
-            SizedBox(height: context.spacing.xs),
-            Text(
-              message!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: message!.startsWith('선택됨')
-                    ? context.colors.primary
-                    : context.colors.neutralTextMuted,
-                fontWeight: AppFontWeights.semibold,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MarketSearchDropdown extends StatelessWidget {
-  const _MarketSearchDropdown({
-    required this.results,
-    required this.onSelected,
-  });
-
-  final List<_MarketSearchResult> results;
-  final ValueChanged<_MarketSearchResult> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.neutralSurfaceRaised,
-        borderRadius: BorderRadius.circular(context.radius.rMd),
-        border: Border.all(color: context.colors.neutralOutline),
-      ),
-      child: Column(
-        children: [
-          for (var index = 0; index < results.length; index++) ...[
-            _MarketSearchResultTile(
-              result: results[index],
-              onTap: () => onSelected(results[index]),
-            ),
-            if (index != results.length - 1)
-              Divider(height: 1, color: context.colors.neutralOutline),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MarketSearchResultTile extends StatelessWidget {
-  const _MarketSearchResultTile({required this.result, required this.onTap});
-
-  final _MarketSearchResult result;
-  final VoidCallback onTap;
+  final MarketSearchResult result;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -830,7 +493,7 @@ class _MarketSearchResultTile extends StatelessWidget {
 class _SelectedMarketResultView extends StatelessWidget {
   const _SelectedMarketResultView({required this.result});
 
-  final _MarketSearchResult result;
+  final MarketSearchResult result;
 
   @override
   Widget build(BuildContext context) {
@@ -844,177 +507,7 @@ class _SelectedMarketResultView extends StatelessWidget {
           color: context.colors.primary.withValues(alpha: 0.2),
         ),
       ),
-      child: _MarketSearchResultTile(result: result, onTap: () {}),
+      child: _SearchResultTile(result: result, onTap: () {}),
     );
   }
 }
-
-class _MarketSearchResult {
-  const _MarketSearchResult({
-    required this.name,
-    required this.symbol,
-    required this.assetType,
-    required this.currencyCode,
-    required this.exchangeCode,
-    required this.currentPrice,
-    required this.sourceLabel,
-    this.aliases = const [],
-  });
-
-  factory _MarketSearchResult.fromHolding(
-    HoldingItem holding,
-    String assetType,
-  ) {
-    return _MarketSearchResult(
-      name: holding.name,
-      symbol: holding.symbol,
-      assetType: assetType,
-      currencyCode: holding.currencyCode,
-      exchangeCode: holding.exchangeCode,
-      currentPrice: holding.currentPrice,
-      sourceLabel: '목록',
-    );
-  }
-
-  final String name;
-  final String symbol;
-  final String assetType;
-  final String currencyCode;
-  final String exchangeCode;
-  final double currentPrice;
-  final String sourceLabel;
-  final List<String> aliases;
-
-  bool matches(String normalizedQuery) {
-    return name.toUpperCase().contains(normalizedQuery) ||
-        symbol.toUpperCase().contains(normalizedQuery) ||
-        aliases.any((alias) => alias.toUpperCase().contains(normalizedQuery));
-  }
-
-  String get subtitle {
-    final exchange = exchangeCode.isEmpty ? currencyCode : exchangeCode;
-    return '$symbol · $exchange · $sourceLabel';
-  }
-
-  String get priceLabel {
-    final rounded = currentPrice % 1 == 0
-        ? currentPrice.toStringAsFixed(0)
-        : currentPrice.toStringAsFixed(2);
-    return currencyCode == 'USD' ? '\$$rounded' : '₩$rounded';
-  }
-}
-
-class _MarketLookupCandidate {
-  const _MarketLookupCandidate({
-    required this.symbol,
-    required this.currencyCode,
-    required this.exchangeCode,
-  });
-
-  final String symbol;
-  final String currencyCode;
-  final String exchangeCode;
-}
-
-const _knownMarketInstruments = <_MarketSearchResult>[
-  _MarketSearchResult(
-    name: '삼성전자',
-    symbol: '005930',
-    assetType: '주식',
-    currencyCode: 'KRW',
-    exchangeCode: '',
-    currentPrice: 0,
-    sourceLabel: '추천',
-    aliases: ['SAMSUNG'],
-  ),
-  _MarketSearchResult(
-    name: 'SK하이닉스',
-    symbol: '000660',
-    assetType: '주식',
-    currencyCode: 'KRW',
-    exchangeCode: '',
-    currentPrice: 0,
-    sourceLabel: '추천',
-    aliases: ['HYNIX'],
-  ),
-  _MarketSearchResult(
-    name: 'NAVER',
-    symbol: '035420',
-    assetType: '주식',
-    currencyCode: 'KRW',
-    exchangeCode: '',
-    currentPrice: 0,
-    sourceLabel: '추천',
-    aliases: ['네이버'],
-  ),
-  _MarketSearchResult(
-    name: '카카오',
-    symbol: '035720',
-    assetType: '주식',
-    currencyCode: 'KRW',
-    exchangeCode: '',
-    currentPrice: 0,
-    sourceLabel: '추천',
-    aliases: ['KAKAO'],
-  ),
-  _MarketSearchResult(
-    name: 'Apple',
-    symbol: 'AAPL',
-    assetType: '주식',
-    currencyCode: 'USD',
-    exchangeCode: 'NAS',
-    currentPrice: 0,
-    sourceLabel: '추천',
-    aliases: ['애플'],
-  ),
-  _MarketSearchResult(
-    name: 'Microsoft',
-    symbol: 'MSFT',
-    assetType: '주식',
-    currencyCode: 'USD',
-    exchangeCode: 'NAS',
-    currentPrice: 0,
-    sourceLabel: '추천',
-    aliases: ['마이크로소프트'],
-  ),
-  _MarketSearchResult(
-    name: 'NVIDIA',
-    symbol: 'NVDA',
-    assetType: '주식',
-    currencyCode: 'USD',
-    exchangeCode: 'NAS',
-    currentPrice: 0,
-    sourceLabel: '추천',
-    aliases: ['엔비디아'],
-  ),
-  _MarketSearchResult(
-    name: 'Tesla',
-    symbol: 'TSLA',
-    assetType: '주식',
-    currencyCode: 'USD',
-    exchangeCode: 'NAS',
-    currentPrice: 0,
-    sourceLabel: '추천',
-    aliases: ['테슬라'],
-  ),
-  _MarketSearchResult(
-    name: 'Bitcoin',
-    symbol: 'BTC',
-    assetType: '코인',
-    currencyCode: 'KRW',
-    exchangeCode: '',
-    currentPrice: 0,
-    sourceLabel: '추천',
-    aliases: ['비트코인'],
-  ),
-  _MarketSearchResult(
-    name: 'Ethereum',
-    symbol: 'ETH',
-    assetType: '코인',
-    currencyCode: 'KRW',
-    exchangeCode: '',
-    currentPrice: 0,
-    sourceLabel: '추천',
-    aliases: ['이더리움'],
-  ),
-];

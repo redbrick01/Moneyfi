@@ -21,7 +21,7 @@ class DailyInvestmentReviewRepository {
   }
 
   Future<void> saveDraft(DailyInvestmentReviewDraft draft) async {
-    final now = DateTime.now().toIso8601String();
+    final now = DateTime.now().toUtc().toIso8601String();
     final existing = await loadByDate(draft.reviewDate);
     final existingCompleted =
         existing?.status == DailyInvestmentReviewStatus.completed;
@@ -58,7 +58,7 @@ class DailyInvestmentReviewRepository {
   }
 
   Future<void> markCompleted(DateTime date) async {
-    final now = DateTime.now().toIso8601String();
+    final now = DateTime.now().toUtc().toIso8601String();
     await (_database.update(
       _database.dailyInvestmentReviews,
     )..where((table) => table.reviewDate.equals(_dateKey(date)))).write(

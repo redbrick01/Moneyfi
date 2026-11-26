@@ -165,7 +165,7 @@ class _LoginPageState extends State<LoginPage> {
       if (owner == null && hasLocalData) {
         setState(() {
           _syncErrorDetail =
-              '이 Mac에 기존 자산·거래 데이터가 있지만 소유 계정을 확인할 수 없어 자동으로 덮어쓰지 않았어요. 닫기를 누른 뒤 My에서 서버 데이터 가져오기를 선택해 기존 로컬 데이터 교체 여부를 확인해 주세요. 로컬 전용 투자 일지는 교체하면 삭제될 수 있어요.';
+              '이 Mac에 기존 자산·거래 데이터가 있지만 소유 계정을 확인할 수 없어 자동으로 덮어쓰지 않았어요. 닫기를 누른 뒤 My에서 서버 데이터 가져오기를 선택해 기존 로컬 데이터 교체 여부를 확인해 주세요. 소유자 정보가 없는 투자 일지는 My에서 교체 전에 백업할 수 있어요.';
           _syncRetryMessage = '소유 계정이 확인되기 전에는 재시도해도 같은 상태가 반복됩니다.';
         });
       } else if (pending || (owner != null && owner != AuthService.currentUser?.id)) {

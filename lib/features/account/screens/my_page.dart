@@ -22,8 +22,6 @@ import 'package:moneyfy/features/sync/services/sync_service.dart';
 import 'package:moneyfy/ui_scaffold/app_page_scaffold.dart';
 import 'package:moneyfy/utils/input_validators.dart';
 
-enum _SyncBannerState { idle, running, success, failed }
-
 class MyPage extends StatelessWidget {
   const MyPage({super.key, this.scrollController});
 
@@ -179,13 +177,10 @@ class _LoggedInView extends StatefulWidget {
 }
 
 class _LoggedInViewState extends State<_LoggedInView> {
-  bool _isSyncing = false;
   bool _isPullingCoreData = false;
   bool _isCopyingDbSummary = false;
-  bool _isUpdatingProfile = false;
-  bool _isUpdatingPassword = false;
   bool _isSigningOut = false;
-  _SyncBannerState _syncBannerState = _SyncBannerState.idle;
+  bool _pullFailed = false;
   String? _syncMessage;
   DateTime? _lastSyncedAt;
 
@@ -226,14 +221,15 @@ class _LoggedInViewState extends State<_LoggedInView> {
     return approved == true;
   }
 
-  Future<void> _confirmAndHandleSync() async {
-    final approved = await _confirmSyncAction(
-      title: '지금 동기화할까요?',
-      content: '로컬 변경사항을 서버와 동기화합니다. 원치 않으면 취소해 주세요.',
-      confirmLabel: '동기화 시작',
-    );
-    if (!approved || !mounted || _isSyncing || _isPullingCoreData) return;
-    await _handleSync();
+  Future<void> _copyReviewBackup(String? owner) async {
+    final backup = await AppDatabase.instance.exportReviewBackup(owner);
+    if (!mounted || (owner != null && AuthService.currentUser?.id != owner)) {
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: backup));
+    if (mounted) {
+      AppSnackBar.showSuccess(context, '일지 백업을 복사했어요. 개인 파일에 저장해 주세요.');
+    }
   }
 
   Future<void> _confirmAndHandleCorePull() async {
@@ -260,247 +256,37 @@ class _LoggedInViewState extends State<_LoggedInView> {
       await _handleCorePull();
       return;
     }
+    if (owner == null &&
+        hasLocalData &&
+        (await (AppDatabase.instance.select(
+          AppDatabase.instance.dailyInvestmentReviews,
+        )..limit(1)).get()).isNotEmpty) {
+      if (!mounted) return;
+      final backup = await _confirmSyncAction(
+        title: '기존 투자 일지를 보관할까요?',
+        content:
+            '소유자를 확인할 수 없는 일지를 먼저 복사해 개인 파일에 저장해 주세요. 이후 코어 데이터를 가져올 수 있어요.',
+        confirmLabel: '백업 복사',
+      );
+      if (!backup || !mounted) return;
+      await _copyReviewBackup(null);
+      if (!mounted) return;
+    }
     final approved = await _confirmSyncAction(
       title: '코어 데이터를 가져올까요?',
       content: hasLocalData && owner != userId
-          ? '현재 로컬 데이터의 계정이 다르거나 확인되지 않습니다. 계속하면 이 기기의 기존 자산, 스냅샷, 투자 일지가 현재 계정의 데이터로 교체됩니다. 투자 일지처럼 서버에 저장되지 않는 항목도 삭제됩니다.'
-          : '서버의 코어 데이터를 가져와 로컬 DB에 반영합니다.',
+          ? '현재 로컬 데이터의 계정이 다르거나 확인되지 않습니다. 계속하면 이 기기의 기존 자산, 스냅샷, 투자 일지가 현재 계정의 데이터로 교체됩니다. 기존 계정의 투자 일지는 기기에 보관되며 해당 계정으로 돌아오면 복원됩니다.'
+          : '이 기기에 아직 보내지 않은 변경사항이 있으면 먼저 서버에 저장한 뒤, 현재 계정의 자산과 거래 내역을 가져옵니다.',
       confirmLabel: '가져오기',
     );
-    if (!approved || !mounted || _isPullingCoreData || _isSyncing) return;
+    if (!approved || !mounted || _isPullingCoreData) return;
     await _handleCorePull(allowAccountSwitch: owner != userId);
-  }
-
-  Future<void> _showEditNameDialog(String currentName) async {
-    if (_isUpdatingProfile) return;
-    final controller = TextEditingController(text: currentName);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('이름 수정'),
-          content: TextField(
-            controller: controller,
-            textInputAction: TextInputAction.done,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: '이름',
-              hintText: '표시할 이름을 입력하세요',
-            ),
-            onSubmitted: (_) => Navigator.of(context).pop(controller.text),
-          ),
-          actions: [
-            AppGhostButton(
-              expand: false,
-              onPressed: () => Navigator.of(context).pop(),
-              label: '취소',
-            ),
-            AppPrimaryButton(
-              expand: false,
-              onPressed: () => Navigator.of(context).pop(controller.text),
-              label: '저장',
-              icon: VisualSpec.icon.check,
-            ),
-          ],
-        );
-      },
-    );
-    controller.dispose();
-    if (result == null || !mounted) return;
-
-    final validation = MoneyfyInputValidators.requiredText(
-      result,
-      fieldName: '이름',
-    );
-    if (!validation.isValid) {
-      AppSnackBar.showError(
-        context,
-        validation.message!,
-        hasFloatingNavInset: true,
-      );
-      return;
-    }
-
-    final nextName = validation.value!;
-    if (nextName == currentName.trim()) {
-      AppSnackBar.showInfo(context, '변경된 이름이 없습니다.', hasFloatingNavInset: true);
-      return;
-    }
-
-    setState(() {
-      _isUpdatingProfile = true;
-    });
-    try {
-      await AuthService.updateProfileName(nextName);
-      if (!mounted) return;
-      setState(() {});
-      AppSnackBar.showSuccess(context, '이름을 수정했어요.', hasFloatingNavInset: true);
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      AppSnackBar.showError(context, error.message, hasFloatingNavInset: true);
-    } catch (_) {
-      if (!mounted) return;
-      AppSnackBar.showError(
-        context,
-        '이름 수정에 실패했어요. 잠시 후 다시 시도해 주세요.',
-        hasFloatingNavInset: true,
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUpdatingProfile = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _showChangePasswordDialog() async {
-    if (_isUpdatingPassword) return;
-    final passwordController = TextEditingController();
-    final confirmController = TextEditingController();
-    final result = await showDialog<_PasswordChangeInput>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('비밀번호 변경'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: '새 비밀번호',
-                  hintText: '6자 이상 입력하세요',
-                ),
-              ),
-              SizedBox(height: context.spacing.sm),
-              TextField(
-                controller: confirmController,
-                obscureText: true,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: '새 비밀번호 확인',
-                  hintText: '한 번 더 입력하세요',
-                ),
-                onSubmitted: (_) => Navigator.of(context).pop(
-                  _PasswordChangeInput(
-                    password: passwordController.text,
-                    confirmPassword: confirmController.text,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            AppGhostButton(
-              expand: false,
-              onPressed: () => Navigator.of(context).pop(),
-              label: '취소',
-            ),
-            AppPrimaryButton(
-              expand: false,
-              onPressed: () => Navigator.of(context).pop(
-                _PasswordChangeInput(
-                  password: passwordController.text,
-                  confirmPassword: confirmController.text,
-                ),
-              ),
-              label: '변경',
-              icon: VisualSpec.icon.check,
-            ),
-          ],
-        );
-      },
-    );
-    passwordController.dispose();
-    confirmController.dispose();
-    if (result == null || !mounted) return;
-
-    final validation = validatePasswordChangeForTesting(
-      result.password,
-      result.confirmPassword,
-    );
-    if (validation != null) {
-      AppSnackBar.showError(context, validation, hasFloatingNavInset: true);
-      return;
-    }
-
-    setState(() {
-      _isUpdatingPassword = true;
-    });
-    try {
-      await AuthService.updatePassword(result.password);
-      if (!mounted) return;
-      AppSnackBar.showSuccess(
-        context,
-        '비밀번호를 변경했어요.',
-        hasFloatingNavInset: true,
-      );
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      AppSnackBar.showError(context, error.message, hasFloatingNavInset: true);
-    } catch (_) {
-      if (!mounted) return;
-      AppSnackBar.showError(
-        context,
-        '비밀번호 변경에 실패했어요. 다시 로그인한 뒤 시도해 주세요.',
-        hasFloatingNavInset: true,
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUpdatingPassword = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _handleSync() async {
-    setState(() {
-      _isSyncing = true;
-      _syncBannerState = _SyncBannerState.running;
-      _syncMessage = '동기화를 시작했어요.';
-    });
-
-    final success = await SyncService.instance.syncNow(
-      reason: 'my_page_manual_sync',
-    );
-    if (!mounted) return;
-
-    setState(() {
-      _isSyncing = false;
-      _syncBannerState = success
-          ? _SyncBannerState.success
-          : _SyncBannerState.failed;
-      _syncMessage = success ? '코어 동기화가 완료됐어요.' : '동기화에 실패했어요. 다시 시도해 주세요.';
-      if (success) {
-        _lastSyncedAt = DateTime.now();
-      }
-    });
-
-    if (success) {
-      AppSnackBar.showSuccess(
-        context,
-        '동기화가 완료됐어요.',
-        hasFloatingNavInset: true,
-      );
-    } else {
-      AppSnackBar.showError(
-        context,
-        '동기화 실패',
-        actionLabel: CopySpec.retry,
-        onAction: _confirmAndHandleSync,
-        hasFloatingNavInset: true,
-      );
-    }
   }
 
   Future<void> _handleCorePull({bool allowAccountSwitch = false}) async {
     setState(() {
       _isPullingCoreData = true;
-      _syncBannerState = _SyncBannerState.running;
+      _pullFailed = false;
       _syncMessage = '서버 코어 데이터를 가져오는 중이에요.';
     });
 
@@ -517,9 +303,7 @@ class _LoggedInViewState extends State<_LoggedInView> {
 
     setState(() {
       _isPullingCoreData = false;
-      _syncBannerState = success
-          ? _SyncBannerState.success
-          : _SyncBannerState.failed;
+      _pullFailed = !success;
       _syncMessage = success
           ? '서버 코어 데이터를 로컬 DB에 적용했어요.'
           : '코어 데이터 가져오기에 실패했어요.';
@@ -647,19 +431,8 @@ class _LoggedInViewState extends State<_LoggedInView> {
     }
   }
 
-  Widget _inlineProgressIndicator(BuildContext context) {
-    return SizedBox(
-      width: VisualSpec.icon.progressIndicatorSize,
-      height: VisualSpec.icon.progressIndicatorSize,
-      child: CircularProgressIndicator(
-        strokeWidth: VisualSpec.icon.progressIndicatorStroke,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final hasSyncError = _syncBannerState == _SyncBannerState.failed;
     final metadata = widget.user.userMetadata ?? const <String, dynamic>{};
     final displayName = (metadata['name'] as String?)?.trim();
     final resolvedName = (displayName?.isNotEmpty == true)
@@ -671,98 +444,72 @@ class _LoggedInViewState extends State<_LoggedInView> {
       children: [
         StatusCard(
           icon: AppIconName.sync,
-          title: '동기화 상태',
-          description: _statusDescription(),
-          iconBackgroundColor: hasSyncError
+          title: '코어 데이터',
+          description:
+              _syncMessage ?? '서버에 저장된 자산, 보유 종목, 현금 계좌와 거래 내역을 이 기기로 가져와요.',
+          iconBackgroundColor: _pullFailed
               ? context.colors.negativeContainer
               : context.colors.primaryContainer,
-          iconColor: hasSyncError
+          iconColor: _pullFailed
               ? context.colors.negativeOn
               : context.colors.primary,
-          primaryLabel: (_isSyncing || _isPullingCoreData) ? '진행 중' : '지금 동기화',
-          onPrimary: (_isSyncing || _isPullingCoreData)
-              ? null
-              : _confirmAndHandleSync,
+          primaryLabel: _isPullingCoreData ? '가져오는 중…' : '코어 데이터 가져오기',
+          onPrimary: _isPullingCoreData ? null : _confirmAndHandleCorePull,
           meta: _syncMetaLine(),
         ),
         SizedBox(height: context.spacing.sectionGap),
         SectionCard(
-          child: Row(
-            children: [
-              AppAvatar(
-                child: Text(
-                  resolvedName.substring(0, 1).toUpperCase(),
-                  style: context.typography.cardTitle,
+          padding: EdgeInsets.zero,
+          child: Semantics(
+            button: true,
+            label: '내 계정',
+            child: InkWell(
+              onTap: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => _AccountDetailsPage(userId: widget.user.id),
                 ),
               ),
-              SizedBox(width: context.spacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: Padding(
+                padding: EdgeInsets.all(context.cardPadding()),
+                child: Row(
                   children: [
-                    Text(resolvedName, style: context.typography.cardTitle),
-                    SizedBox(height: context.spacing.xs / 2),
-                    Text(
-                      widget.user.email ?? '-',
-                      style: context.typography.meta,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    AppAvatar(
+                      child: Text(
+                        resolvedName.substring(0, 1).toUpperCase(),
+                        style: context.typography.cardTitle,
+                      ),
                     ),
+                    SizedBox(width: context.spacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            resolvedName,
+                            style: context.typography.cardTitle,
+                          ),
+                          SizedBox(height: context.spacing.xs / 2),
+                          Text(
+                            widget.user.email ?? '-',
+                            style: context.typography.meta,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const AppIcon(AppIconName.chevronRight),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
         SizedBox(height: context.spacing.sectionGap),
         SectionCard(
-          title: '계정 및 동기화',
+          title: '계정 및 데이터',
           child: Column(
             children: [
-              SettingsActionRow(
-                icon: VisualSpec.icon.person,
-                title: _isUpdatingProfile ? '이름 수정 중...' : '이름 수정',
-                subtitle: 'My 화면에 표시되는 이름을 변경해요',
-                enabled: !_isUpdatingProfile && !_isUpdatingPassword,
-                onTap: () => _showEditNameDialog(resolvedName),
-                trailing: _isUpdatingProfile
-                    ? _inlineProgressIndicator(context)
-                    : null,
-              ),
-              AppDivider(),
-              SettingsActionRow(
-                icon: VisualSpec.icon.settings,
-                title: _isUpdatingPassword ? '비밀번호 변경 중...' : '비밀번호 변경',
-                subtitle: '현재 로그인된 계정의 비밀번호를 새 값으로 바꿔요',
-                enabled: !_isUpdatingPassword && !_isUpdatingProfile,
-                onTap: _showChangePasswordDialog,
-                trailing: _isUpdatingPassword
-                    ? _inlineProgressIndicator(context)
-                    : null,
-              ),
-              AppDivider(),
-              SettingsActionRow(
-                icon: VisualSpec.icon.sync,
-                title: '지금 동기화',
-                subtitle: _isSyncing ? '동기화 진행 중' : '로컬 변경사항을 서버와 동기화',
-                enabled: !_isSyncing && !_isPullingCoreData,
-                onTap: _confirmAndHandleSync,
-                trailing: _isSyncing ? _inlineProgressIndicator(context) : null,
-              ),
-              AppDivider(),
-              SettingsActionRow(
-                icon: VisualSpec.icon.currencyExchange,
-                title: '코어 데이터 가져오기',
-                subtitle: _isPullingCoreData
-                    ? '코어 데이터 적용 중'
-                    : '서버 코어 데이터를 로컬 DB에 반영해요',
-                enabled: !_isPullingCoreData && !_isSyncing,
-                onTap: _confirmAndHandleCorePull,
-                trailing: _isPullingCoreData
-                    ? _inlineProgressIndicator(context)
-                    : null,
-              ),
-              AppDivider(),
               SettingsActionRow(
                 icon: VisualSpec.icon.insights,
                 title: 'GPT용 DB 요약 복사',
@@ -791,23 +538,281 @@ class _LoggedInViewState extends State<_LoggedInView> {
     );
   }
 
-  String _statusDescription() {
-    return switch (_syncBannerState) {
-      _SyncBannerState.idle => '마지막 동기화 상태를 확인하고 필요 시 수동 동기화를 실행하세요.',
-      _SyncBannerState.running => '동기화 중…',
-      _SyncBannerState.success => '최근 동기화가 성공적으로 완료됐어요.',
-      _SyncBannerState.failed => '동기화 실패: 재시도해 주세요.',
-    };
+  String? _syncMetaLine() {
+    final syncedAt = _lastSyncedAt;
+    if (syncedAt == null) return null;
+    return '마지막 가져오기 ${syncedAt.hour.toString().padLeft(2, '0')}:${syncedAt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class _AccountDetailsPage extends StatefulWidget {
+  const _AccountDetailsPage({required this.userId});
+  final String userId;
+
+  @override
+  State<_AccountDetailsPage> createState() => _AccountDetailsPageState();
+}
+
+class _AccountDetailsPageState extends State<_AccountDetailsPage> {
+  bool _isUpdatingProfile = false;
+  bool _isUpdatingPassword = false;
+  Future<void> _showEditNameDialog(String currentName) async {
+    if (_isUpdatingProfile) return;
+    var name = currentName;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('이름 수정'),
+          content: TextFormField(
+            initialValue: currentName,
+            onChanged: (value) => name = value,
+            textInputAction: TextInputAction.done,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: '이름',
+              hintText: '표시할 이름을 입력하세요',
+            ),
+            onFieldSubmitted: (value) => Navigator.of(context).pop(value),
+          ),
+          actions: [
+            AppGhostButton(
+              expand: false,
+              onPressed: () => Navigator.of(context).pop(),
+              label: '취소',
+            ),
+            AppPrimaryButton(
+              expand: false,
+              onPressed: () => Navigator.of(context).pop(name),
+              label: '저장',
+              icon: VisualSpec.icon.check,
+            ),
+          ],
+        );
+      },
+    );
+    if (result == null ||
+        !mounted ||
+        AuthService.currentUser?.id != widget.userId) {
+      return;
+    }
+
+    final validation = MoneyfyInputValidators.requiredText(
+      result,
+      fieldName: '이름',
+    );
+    if (!validation.isValid) {
+      AppSnackBar.showError(
+        context,
+        validation.message!,
+        hasFloatingNavInset: false,
+      );
+      return;
+    }
+
+    final nextName = validation.value!;
+    if (nextName == currentName.trim()) {
+      AppSnackBar.showInfo(
+        context,
+        '변경된 이름이 없습니다.',
+        hasFloatingNavInset: false,
+      );
+      return;
+    }
+
+    setState(() {
+      _isUpdatingProfile = true;
+    });
+    try {
+      await AuthService.updateProfileName(nextName);
+      if (!mounted) return;
+      AppSnackBar.showSuccess(
+        context,
+        '이름을 수정했어요.',
+        hasFloatingNavInset: false,
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      AppSnackBar.showError(context, error.message, hasFloatingNavInset: false);
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackBar.showError(
+        context,
+        '이름 수정에 실패했어요. 잠시 후 다시 시도해 주세요.',
+        hasFloatingNavInset: false,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingProfile = false;
+        });
+      }
+    }
   }
 
-  String _syncMetaLine() {
-    final syncedAt = _lastSyncedAt;
-    final timeText = syncedAt == null
-        ? '아직 동기화 이력이 없어요.'
-        : '마지막 동기화: ${syncedAt.hour.toString().padLeft(2, '0')}:${syncedAt.minute.toString().padLeft(2, '0')}';
-    if ((_syncMessage ?? '').trim().isEmpty) return timeText;
-    return '$timeText · $_syncMessage';
+  Future<void> _showChangePasswordDialog() async {
+    if (_isUpdatingPassword) return;
+    var password = '';
+    var confirmation = '';
+    final result = await showDialog<_PasswordChangeInput>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('비밀번호 변경'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                onChanged: (value) => password = value,
+                obscureText: true,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: '새 비밀번호',
+                  hintText: '6자 이상 입력하세요',
+                ),
+              ),
+              SizedBox(height: context.spacing.sm),
+              TextField(
+                onChanged: (value) => confirmation = value,
+                obscureText: true,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: '새 비밀번호 확인',
+                  hintText: '한 번 더 입력하세요',
+                ),
+                onSubmitted: (_) => Navigator.of(context).pop(
+                  _PasswordChangeInput(
+                    password: password,
+                    confirmPassword: confirmation,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            AppGhostButton(
+              expand: false,
+              onPressed: () => Navigator.of(context).pop(),
+              label: '취소',
+            ),
+            AppPrimaryButton(
+              expand: false,
+              onPressed: () => Navigator.of(context).pop(
+                _PasswordChangeInput(
+                  password: password,
+                  confirmPassword: confirmation,
+                ),
+              ),
+              label: '변경',
+              icon: VisualSpec.icon.check,
+            ),
+          ],
+        );
+      },
+    );
+    if (result == null ||
+        !mounted ||
+        AuthService.currentUser?.id != widget.userId) {
+      return;
+    }
+
+    final validation = validatePasswordChangeForTesting(
+      result.password,
+      result.confirmPassword,
+    );
+    if (validation != null) {
+      AppSnackBar.showError(context, validation, hasFloatingNavInset: false);
+      return;
+    }
+
+    setState(() {
+      _isUpdatingPassword = true;
+    });
+    try {
+      await AuthService.updatePassword(result.password);
+      if (!mounted) return;
+      AppSnackBar.showSuccess(
+        context,
+        '비밀번호를 변경했어요.',
+        hasFloatingNavInset: false,
+      );
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      AppSnackBar.showError(context, error.message, hasFloatingNavInset: false);
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackBar.showError(
+        context,
+        '비밀번호 변경에 실패했어요. 다시 로그인한 뒤 시도해 주세요.',
+        hasFloatingNavInset: false,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingPassword = false;
+        });
+      }
+    }
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('내 계정')),
+      body: StreamBuilder<AuthState>(
+        stream: AuthService.authStateChanges,
+        builder: (context, snapshot) {
+          final user = AuthService.currentUser;
+          if (user == null || user.id != widget.userId) {
+            return const Center(child: Text('계정 정보를 확인할 수 없어요.'));
+          }
+          final name = (user.userMetadata?['name'] as String?)?.trim() ?? '';
+          return ListView(
+            padding: EdgeInsets.all(context.cardPadding()),
+            children: [
+              SectionCard(
+                child: Column(
+                  children: [
+                    SettingsActionRow(
+                      icon: VisualSpec.icon.person,
+                      title: _isUpdatingProfile ? '이름 수정 중...' : '이름 수정',
+                      subtitle: name.isEmpty ? '사용자' : name,
+                      enabled: !_isUpdatingProfile && !_isUpdatingPassword,
+                      onTap: () => _showEditNameDialog(name),
+                      trailing: _isUpdatingProfile
+                          ? _inlineProgressIndicator(context)
+                          : null,
+                    ),
+                    AppDivider(),
+                    SettingsActionRow(
+                      icon: VisualSpec.icon.settings,
+                      title: _isUpdatingPassword ? '비밀번호 변경 중...' : '비밀번호 변경',
+                      subtitle: '현재 로그인된 계정의 비밀번호를 새 값으로 바꿔요',
+                      enabled: !_isUpdatingPassword && !_isUpdatingProfile,
+                      onTap: _showChangePasswordDialog,
+                      trailing: _isUpdatingPassword
+                          ? _inlineProgressIndicator(context)
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+Widget _inlineProgressIndicator(BuildContext context) {
+  return SizedBox(
+    width: VisualSpec.icon.progressIndicatorSize,
+    height: VisualSpec.icon.progressIndicatorSize,
+    child: CircularProgressIndicator(
+      strokeWidth: VisualSpec.icon.progressIndicatorStroke,
+    ),
+  );
 }
 
 @visibleForTesting

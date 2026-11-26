@@ -1,3 +1,4 @@
+import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter/material.dart';
 
 import 'package:moneyfy/components/buttons/app_buttons.dart';
@@ -149,7 +150,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
               _SnapshotCalendarSection(
                 focusedMonth: focusedMonth,
                 snapshots: bundle.allSnapshots,
-                items: bundle.allItems,
                 transactionDates: bundle.transactionDates,
                 sectionError: bundle.calendarError,
                 selectedDateKey: _selectedCalendarDateKey,
@@ -217,17 +217,6 @@ Future<_StatisticsSnapshotBundle> _loadStatisticsSnapshotBundle() async {
     monthEndError = error;
   }
 
-  List<DailyPortfolioSnapshotItem> allItems = const [];
-  Object? allItemsError;
-  try {
-    allItems = await AppDatabase.instance
-        .fetchDisplayPortfolioSnapshotItemsByDates(
-          allSnapshots.map((snapshot) => snapshot.snapshotDate).toList(),
-        );
-  } catch (error) {
-    allItemsError = error;
-  }
-
   List<DailyPortfolioSnapshotItem> annualItems = const [];
   Object? annualItemsError;
   try {
@@ -252,11 +241,10 @@ Future<_StatisticsSnapshotBundle> _loadStatisticsSnapshotBundle() async {
     recentItems: recentItems,
     annualItems: annualItems,
     allSnapshots: allSnapshots,
-    allItems: allItems,
     transactionDates: transactionDates,
     monthEndError: monthEndError,
     yearAnalysisError: annualItemsError,
-    calendarError: allItemsError ?? transactionError,
+    calendarError: transactionError,
   );
 }
 
@@ -416,7 +404,6 @@ class _SnapshotCalendarSection extends StatelessWidget {
   const _SnapshotCalendarSection({
     required this.focusedMonth,
     required this.snapshots,
-    required this.items,
     required this.transactionDates,
     required this.selectedDateKey,
     required this.onMonthChanged,
@@ -428,7 +415,6 @@ class _SnapshotCalendarSection extends StatelessWidget {
 
   final DateTime focusedMonth;
   final List<DailyPortfolioSnapshot> snapshots;
-  final List<DailyPortfolioSnapshotItem> items;
   final Set<String> transactionDates;
   final String? selectedDateKey;
   final ValueChanged<DateTime> onMonthChanged;
@@ -456,11 +442,6 @@ class _SnapshotCalendarSection extends StatelessWidget {
       );
     }
 
-    final firstDay = DateTime(focusedMonth.year, focusedMonth.month, 1);
-    final lastDay = DateTime(focusedMonth.year, focusedMonth.month + 1, 0);
-    final leadingEmpty = firstDay.weekday % 7;
-    final totalCells = leadingEmpty + lastDay.day;
-    final trailingEmpty = (7 - (totalCells % 7)) % 7;
     final snapshotByDate = <String, DailyPortfolioSnapshot>{};
     for (final snapshot in snapshots) {
       final normalized = _normalizeDateKey(snapshot.snapshotDate);
@@ -471,10 +452,6 @@ class _SnapshotCalendarSection extends StatelessWidget {
         .map(_normalizeDateKey)
         .whereType<String>()
         .toSet();
-    final itemsBySnapshotId = <int, List<DailyPortfolioSnapshotItem>>{};
-    for (final item in items) {
-      itemsBySnapshotId.putIfAbsent(item.snapshotId, () => []).add(item);
-    }
 
     if (snapshots.isEmpty) {
       final isLoggedIn = AuthService.currentUser != null;
@@ -497,81 +474,64 @@ class _SnapshotCalendarSection extends StatelessWidget {
 
     return SectionCard(
       title: '스냅샷 캘린더',
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onHorizontalDragEnd: (details) {
-          final velocity = details.primaryVelocity ?? 0;
-          if (velocity > 250) {
-            onMonthChanged(DateTime(focusedMonth.year, focusedMonth.month - 1));
-          } else if (velocity < -250) {
-            onMonthChanged(DateTime(focusedMonth.year, focusedMonth.month + 1));
-          }
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('날짜별 저장 기록과 거래 흔적을 확인해요.', style: context.typography.meta),
-            SizedBox(height: context.spacing.sm),
-            Row(
-              children: [
-                _MonthControlButton(
-                  icon: AppIconName.chevronLeft,
-                  tooltip: '이전 달',
-                  onPressed: () => onMonthChanged(
-                    DateTime(focusedMonth.year, focusedMonth.month - 1),
-                  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('날짜별 저장 기록과 거래 흔적을 확인해요.', style: context.typography.meta),
+          SizedBox(height: context.spacing.sm),
+          Row(
+            children: [
+              _MonthControlButton(
+                icon: AppIconName.chevronLeft,
+                tooltip: '이전 달',
+                onPressed: () => onMonthChanged(
+                  DateTime(focusedMonth.year, focusedMonth.month - 1),
                 ),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      '${focusedMonth.year}년 ${focusedMonth.month}월',
-                      style: context.typography.cardTitle,
-                    ),
-                  ),
-                ),
-                _MonthControlButton(
-                  icon: AppIconName.chevronRight,
-                  tooltip: '다음 달',
-                  onPressed: () => onMonthChanged(
-                    DateTime(focusedMonth.year, focusedMonth.month + 1),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: context.spacing.xs),
-            Row(
-              children: ['일', '월', '화', '수', '목', '금', '토']
-                  .map(
-                    (label) => Expanded(
-                      child: Center(
-                        child: Text(label, style: context.typography.caption),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-            SizedBox(height: context.spacing.xs),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: totalCells + trailingEmpty,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 6,
-                childAspectRatio: 0.92,
               ),
-              itemBuilder: (context, index) {
-                if (index < leadingEmpty || index >= totalCells) {
-                  return const SizedBox.shrink();
-                }
-
-                final day = index - leadingEmpty + 1;
-                final date = DateTime(
-                  focusedMonth.year,
-                  focusedMonth.month,
-                  day,
-                );
+              Expanded(
+                child: Center(
+                  child: Text(
+                    '${focusedMonth.year}년 ${focusedMonth.month}월',
+                    style: context.typography.cardTitle,
+                  ),
+                ),
+              ),
+              _MonthControlButton(
+                icon: AppIconName.chevronRight,
+                tooltip: '다음 달',
+                onPressed: () => onMonthChanged(
+                  DateTime(focusedMonth.year, focusedMonth.month + 1),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: context.spacing.xs),
+          Row(
+            children: ['일', '월', '화', '수', '목', '금', '토']
+                .map(
+                  (label) => Expanded(
+                    child: Center(
+                      child: Text(label, style: context.typography.caption),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          SizedBox(height: context.spacing.xs),
+          TableCalendar<void>(
+            firstDay: DateTime.utc(1),
+            lastDay: DateTime.utc(9999, 12, 31),
+            focusedDay: focusedMonth,
+            headerVisible: false,
+            daysOfWeekVisible: false,
+            availableGestures: AvailableGestures.horizontalSwipe,
+            startingDayOfWeek: StartingDayOfWeek.sunday,
+            calendarStyle: const CalendarStyle(outsideDaysVisible: false),
+            onPageChanged: onMonthChanged,
+            calendarBuilders: CalendarBuilders(
+              prioritizedBuilder: (context, date, focused) {
+                if (date.month != focused.month) return const SizedBox.shrink();
+                final day = date.day;
                 final dateKey = _dateKey(date);
                 final snapshot = snapshotByDate[dateKey];
                 final hasSnapshot = snapshot != null;
@@ -581,40 +541,40 @@ class _SnapshotCalendarSection extends StatelessWidget {
                 final isPivotDay = day == 20;
                 final isSelected = selectedDateKey == dateKey;
                 final isToday = _dateKey(DateTime.now()) == dateKey;
-                final snapshotItems = snapshot == null
-                    ? const <DailyPortfolioSnapshotItem>[]
-                    : (itemsBySnapshotId[snapshot.id] ??
-                          const <DailyPortfolioSnapshotItem>[]);
 
-                return _CalendarDayCell(
-                  day: day,
-                  hasSnapshot: hasSnapshot,
-                  hasTransaction: hasTransaction,
-                  isPivotDay: isPivotDay,
-                  isSelected: isSelected,
-                  isToday: isToday,
-                  onTap: () {
-                    onDateSelected(dateKey);
-                    if (!hasSnapshot) {
-                      onShowNoSnapshotHint();
-                      return;
-                    }
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => SnapshotDetailPage(
-                          snapshot: snapshot,
-                          items: snapshotItems,
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 3,
+                    vertical: 4,
+                  ),
+                  child: _CalendarDayCell(
+                    day: day,
+                    hasSnapshot: hasSnapshot,
+                    hasTransaction: hasTransaction,
+                    isPivotDay: isPivotDay,
+                    isSelected: isSelected,
+                    isToday: isToday,
+                    onTap: () {
+                      onDateSelected(dateKey);
+                      if (!hasSnapshot) {
+                        onShowNoSnapshotHint();
+                        return;
+                      }
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              SnapshotDetailPage(snapshot: snapshot),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 );
               },
             ),
-            SizedBox(height: context.spacing.md),
-            Center(child: _CalendarLegendRow()),
-          ],
-        ),
+          ),
+          SizedBox(height: context.spacing.md),
+          Center(child: _CalendarLegendRow()),
+        ],
       ),
     );
   }
@@ -739,6 +699,7 @@ class _CalendarDayCell extends StatelessWidget {
       child: AnimatedContainer(
         duration: context.motion.fast,
         curve: Curves.easeOut,
+        width: double.infinity,
         decoration: BoxDecoration(
           color: background,
           borderRadius: BorderRadius.circular(context.radius.rSm),
@@ -782,7 +743,6 @@ class _StatisticsSnapshotBundle {
     required this.recentItems,
     required this.annualItems,
     required this.allSnapshots,
-    required this.allItems,
     required this.transactionDates,
     required this.monthEndError,
     required this.yearAnalysisError,
@@ -795,7 +755,6 @@ class _StatisticsSnapshotBundle {
       recentItems = const [],
       annualItems = const [],
       allSnapshots = const [],
-      allItems = const [],
       transactionDates = const {},
       monthEndError = null,
       yearAnalysisError = null,
@@ -806,7 +765,6 @@ class _StatisticsSnapshotBundle {
   final List<DailyPortfolioSnapshotItem> recentItems;
   final List<DailyPortfolioSnapshotItem> annualItems;
   final List<DailyPortfolioSnapshot> allSnapshots;
-  final List<DailyPortfolioSnapshotItem> allItems;
   final Set<String> transactionDates;
   final Object? monthEndError;
   final Object? yearAnalysisError;

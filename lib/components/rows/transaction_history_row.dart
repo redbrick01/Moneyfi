@@ -134,7 +134,7 @@ class TransactionHistoryRow extends StatelessWidget {
               fontWeight: AppFontWeights.semibold,
             ),
     );
-    final badge = MoneyfyBadge(label: typeLabel);
+    final badge = MoneyfyBadge.transactionType(typeLabel);
     final amount = FittedBox(
       alignment: AlignmentDirectional.centerEnd,
       fit: BoxFit.scaleDown,

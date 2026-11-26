@@ -9,11 +9,13 @@ class HoldingPriceHistoryCard extends StatelessWidget {
     required this.holding,
     required this.marketData,
     this.refreshVersion = 0,
+    this.showAveragePrice = true,
   });
 
   final HoldingItem holding;
   final MarketDataService marketData;
   final int refreshVersion;
+  final bool showAveragePrice;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +46,9 @@ class HoldingPriceHistoryCard extends StatelessWidget {
       },
       currencyCode: holding.currencyCode,
       transactions: holding.transactions,
-      averagePrice: holding.averagePriceInTradingCurrency,
+      averagePrice: showAveragePrice
+          ? holding.averagePriceInTradingCurrency
+          : null,
     );
   }
 }

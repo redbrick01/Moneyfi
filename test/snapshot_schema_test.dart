@@ -45,6 +45,33 @@ void main() {
     expect(uniqueIndexes, contains('daily_portfolio_snapshots_date_unique'));
   });
 
+  test(
+    'cash snapshots expose saved IDs even without current local rows',
+    () async {
+      await db.importRemotePortfolioSnapshots([
+        {
+          'snapshot_date': '2026-06-02',
+          'cash_accounts': [
+            {
+              'asset_client_id': 'snapshot-group',
+              'asset_title': 'Cash',
+              'cash_account_client_id': 'snapshot-account',
+              'cash_account_name': 'USD Cash',
+              'currency_code': 'USD',
+              'balance': 25,
+            },
+          ],
+        },
+      ]);
+
+      final rows = await db.fetchPortfolioSnapshotCashAccountsByDates([
+        '2026-06-02',
+      ]);
+      expect(rows.single.assetClientId, 'snapshot-group');
+      expect(rows.single.cashAccountClientId, 'snapshot-account');
+    },
+  );
+
   test('snapshot note edits are included in dirty sync payload', () async {
     await db.saveSnapshotNote(
       snapshotDate: '2026-06-02',

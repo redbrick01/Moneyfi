@@ -97,6 +97,20 @@ cp config.example.json config.json
 flutter run --dart-define-from-file=config.json
 ```
 
+### USB로 연결한 아이폰에 설치
+
+iOS 15 이상이 필요합니다. 맥에 아이폰을 USB로 연결하고 잠금을 푼 뒤 ‘이 컴퓨터를 신뢰’를 선택하세요. 아이폰에서 **설정 → 개인정보 보호 및 보안 → 개발자 모드**를 켜고, Xcode에서 Runner의 개발 서명을 설정하세요.
+
+Finder에서 `scripts/install_ios_usb.command`를 더블클릭하거나 프로젝트 루트에서 아래 명령을 실행하면 릴리스 빌드를 설치하고 실행합니다.
+
+```bash
+./scripts/install_ios_usb.command
+```
+
+USB로 연결된 iOS 기기가 여러 대면 스크립트에 표시된 기기 ID를 인수로 전달하세요. 예를 들어 `./scripts/install_ios_usb.command <기기-ID>` 형태로 실행합니다.
+
+설치 후 아이폰에서 ‘신뢰하지 않는 개발자’가 표시되면 **설정 → 일반 → VPN 및 기기 관리**에서 MONEYFY를 서명한 개발자를 선택해 신뢰하고, 홈 화면에서 MONEYFY를 다시 여세요.
+
 ## Development
 
 자주 쓰는 명령어입니다.

@@ -71,7 +71,9 @@ Future<_DashboardSharedData> _loadDashboardSharedData() async {
   _dashboardSharedDataInFlight = future;
   try {
     final resolved = await future;
-    _dashboardSharedDataCache = resolved;
+    if (identical(_dashboardSharedDataInFlight, future)) {
+      _dashboardSharedDataCache = resolved;
+    }
     return resolved;
   } finally {
     if (identical(_dashboardSharedDataInFlight, future)) {
@@ -243,8 +245,10 @@ class _PortfolioDashboardPageState extends State<PortfolioDashboardPage> {
       _isRefreshing = true;
     });
     try {
-      await MarketDataService.instance.refreshAllMarketData();
+      final result = await MarketDataService.instance.refreshAllMarketData();
+      if (!mounted) return;
       _markChanged();
+      AppSnackBar.showInfo(context, result.message, hasFloatingNavInset: true);
     } catch (_) {
       if (mounted) {
         AppSnackBar.showError(

@@ -1,3 +1,4 @@
+import 'support/mock_market_adapter.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -45,13 +46,103 @@ void main() {
     );
   }
 
+  test(
+    'KIS shares identical reads, isolates exchanges and releases failures',
+    () async {
+      final pending = Completer<http.Response>();
+      final started = Completer<void>();
+      final exchanges = <String>[];
+      final service = MarketDataService.test(
+        kisAppKey: 'test',
+        kisAppSecret: 'test',
+        adapter: MockMarketAdapter((request) async {
+          if (request.method == 'POST') {
+            return jsonResponse({'access_token': 'token', 'expires_in': 3600});
+          }
+          final exchange = request.url.queryParameters['EXCD']!;
+          exchanges.add(exchange);
+          if (exchange == 'NAS' && !pending.isCompleted) {
+            if (!started.isCompleted) started.complete();
+            return pending.future;
+          }
+          return jsonResponse({
+            'rt_cd': '0',
+            'output': {'last': '123'},
+          });
+        }),
+      );
+      final nas = holding(
+        assetType: '주식',
+        symbol: 'ABC',
+        currencyCode: 'USD',
+        exchangeCode: 'NAS',
+      );
+      final nys = holding(
+        assetType: '주식',
+        symbol: 'ABC',
+        currencyCode: 'USD',
+        exchangeCode: 'NYS',
+      );
+      final first = service.fetchSnapshot(nas);
+      await started.future;
+      final duplicate = service.fetchSnapshot(nas);
+      expect((await service.fetchSnapshot(nys)).currentPriceValue, 123);
+      pending.complete(http.Response('error', 500));
+      final failed = await Future.wait([first, duplicate]);
+      expect(failed.every((quote) => quote.isFallback), isTrue);
+      expect(exchanges, ['NAS', 'NYS']);
+      expect((await service.fetchSnapshot(nas)).currentPriceValue, 123);
+      expect(exchanges, ['NAS', 'NYS', 'NAS']);
+    },
+  );
+
   group('Coinone ticker API', () {
+    test('shares concurrent quotes but refreshes after completion', () async {
+      final pending = Completer<http.Response>();
+      final started = Completer<void>();
+      var calls = 0;
+      final service = MarketDataService.test(
+        adapter: MockMarketAdapter((_) async {
+          calls++;
+          if (!started.isCompleted) started.complete();
+          if (!pending.isCompleted) return pending.future;
+          return jsonResponse({
+            'tickers': [
+              {'last': '200'},
+            ],
+          });
+        }),
+      );
+      final preview = holding(assetType: '코인', symbol: 'btc', assetTitle: '검색');
+      final detail = holding(
+        assetType: '코인',
+        symbol: 'BTC',
+        assetTitle: '보유 종목',
+      );
+      final first = service.fetchSnapshot(preview);
+      await started.future;
+      final second = service.fetchSnapshot(detail);
+      pending.complete(
+        jsonResponse({
+          'tickers': [
+            {'last': '100'},
+          ],
+        }),
+      );
+      final quotes = await Future.wait([first, second]);
+      expect(calls, 1);
+      expect(quotes.map((q) => q.currentPriceValue), [100, 100]);
+      expect(quotes.map((q) => q.marketName), ['검색', '보유 종목']);
+      expect((await service.fetchSnapshot(detail)).currentPriceValue, 200);
+      expect(calls, 2);
+    });
+
     test('parses ticker, order book, and volume fields', () async {
       Uri? requestedUri;
       final service = MarketDataService.test(
         coinTickerUrlTemplate:
             'https://coinone.test/public/v2/ticker_utc_new/{quote}/{symbol}?additional_data=true',
-        client: MockClient((request) async {
+        adapter: MockMarketAdapter((request) async {
           requestedUri = request.url;
           return jsonResponse({
             'result': 'success',
@@ -99,7 +190,7 @@ void main() {
 
     test('falls back when Coinone returns no tickers', () async {
       final service = MarketDataService.test(
-        client: MockClient((_) async => jsonResponse({'tickers': []})),
+        adapter: MockMarketAdapter((_) async => jsonResponse({'tickers': []})),
       );
       final fallbackHolding = holding(
         assetType: '코인',
@@ -282,7 +373,7 @@ void main() {
     test('falls back without required KIS credentials', () async {
       var requestCount = 0;
       final service = MarketDataService.test(
-        client: MockClient((_) async {
+        adapter: MockMarketAdapter((_) async {
           requestCount += 1;
           return jsonResponse({});
         }),
@@ -303,7 +394,7 @@ void main() {
         kisBaseUrl: 'https://kis.test',
         kisAppKey: 'app-key',
         kisAppSecret: 'app-secret',
-        client: MockClient((request) async {
+        adapter: MockMarketAdapter((request) async {
           requests.add(request);
           if (request.method == 'POST') {
             expect(request.url.path, '/oauth2/tokenP');
@@ -372,7 +463,7 @@ void main() {
         kisBaseUrl: 'https://kis.test',
         kisAppKey: 'app-key',
         kisAppSecret: 'app-secret',
-        client: MockClient((request) async {
+        adapter: MockMarketAdapter((request) async {
           if (request.method == 'POST') {
             return jsonResponse({
               'access_token': 'token-1',
@@ -430,12 +521,52 @@ void main() {
       expect(snapshot.week52High, r'$210');
     });
 
+    test(
+      'repairs a missing US exchange only for a matching KIS identifier',
+      () async {
+        final exchanges = <String>[];
+        final service = MarketDataService.test(
+          kisAppKey: 'key',
+          kisAppSecret: 'secret',
+          adapter: MockMarketAdapter((request) async {
+            if (request.method == 'POST') {
+              return jsonResponse({
+                'access_token': 'token',
+                'expires_in': 3600,
+              });
+            }
+            final exchange = request.url.queryParameters['EXCD']!;
+            exchanges.add(exchange);
+            return jsonResponse({
+              'rt_cd': '0',
+              'output': {
+                'rsym': exchange == 'NYS' ? 'DNYSAI' : 'D${exchange}OTHER',
+                'last': '10.00',
+              },
+            });
+          }),
+        );
+        final match = await service.fetchSnapshot(
+          holding(assetType: '주식', symbol: 'AI', currencyCode: 'USD'),
+        );
+        expect(match.currentPriceValue, 10);
+        expect(match.isFallback, isFalse);
+        expect(exchanges, ['NAS', 'NYS']);
+        final missing = await service.fetchSnapshot(
+          holding(assetType: '주식', symbol: 'UNKNOWN', currencyCode: 'USD'),
+        );
+        expect(missing.isFallback, isTrue);
+        expect(missing.exchangeNotFound, isTrue);
+        expect(exchanges.skip(2), ['NAS', 'NYS', 'AMS']);
+      },
+    );
+
     test('parses ETF summary and top component quotes', () async {
       final service = MarketDataService.test(
         kisBaseUrl: 'https://kis.test',
         kisAppKey: 'app-key',
         kisAppSecret: 'app-secret',
-        client: MockClient((request) async {
+        adapter: MockMarketAdapter((request) async {
           if (request.method == 'POST') {
             return jsonResponse({
               'access_token': 'token-1',
@@ -518,6 +649,7 @@ void main() {
 
       final snapshot = await service.fetchSnapshot(
         holding(assetType: '펀드', assetTitle: 'KODEX 테스트', symbol: '069500'),
+        includeFundComponents: true,
       );
 
       expect(snapshot.currentPriceValue, 10250);
@@ -543,7 +675,7 @@ void main() {
           kisBaseUrl: 'https://kis.test',
           kisAppKey: 'app-key',
           kisAppSecret: 'app-secret',
-          client: MockClient((request) async {
+          adapter: MockMarketAdapter((request) async {
             if (request.method == 'POST') {
               tokenRequestCount += 1;
               return jsonResponse({
@@ -563,10 +695,7 @@ void main() {
         );
         final fund = holding(assetType: '펀드', symbol: '069500');
 
-        final summaryRequest = service.fetchSnapshot(
-          fund,
-          includeFundComponents: false,
-        );
+        final summaryRequest = service.fetchSnapshot(fund);
         final detailsRequest = service.fetchFundMarketDetails(fund);
         await componentRequested.future;
 
@@ -599,7 +728,7 @@ void main() {
         kisBaseUrl: 'https://kis.test',
         kisAppKey: 'app-key',
         kisAppSecret: 'app-secret',
-        client: MockClient((request) async {
+        adapter: MockMarketAdapter((request) async {
           if (request.method == 'POST') {
             return jsonResponse({
               'access_token': 'token-1',
@@ -629,6 +758,7 @@ void main() {
 
       final snapshot = await service.fetchSnapshot(
         holding(assetType: '펀드', assetTitle: 'KODEX 테스트', symbol: '069500'),
+        includeFundComponents: true,
       );
 
       expect(componentRequestCount, 1);
@@ -648,7 +778,7 @@ void main() {
         kisBaseUrl: 'https://kis.test',
         kisAppKey: 'app-key',
         kisAppSecret: 'app-secret',
-        client: MockClient((request) async {
+        adapter: MockMarketAdapter((request) async {
           if (request.method == 'POST') {
             return jsonResponse({
               'access_token': 'token-1',
@@ -688,7 +818,7 @@ void main() {
           kisBaseUrl: 'https://kis.test',
           kisAppKey: 'app-key',
           kisAppSecret: 'app-secret',
-          client: MockClient((request) async {
+          adapter: MockMarketAdapter((request) async {
             if (request.method == 'POST') {
               tokenRequests += 1;
               return jsonResponse({
@@ -729,7 +859,7 @@ void main() {
           kisBaseUrl: 'https://kis.test',
           kisAppKey: 'app-key',
           kisAppSecret: 'app-secret',
-          client: MockClient((request) async {
+          adapter: MockMarketAdapter((request) async {
             if (request.method == 'POST') {
               tokenRequests += 1;
               return jsonResponse({

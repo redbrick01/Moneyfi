@@ -9,6 +9,7 @@ import 'package:moneyfy/components/section_card.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/design_system/spec.dart';
 import 'package:moneyfy/features/analysis/services/reddit_post_summary_service.dart';
+import 'package:moneyfy/features/analysis/screens/reddit_chat_page.dart';
 import 'package:moneyfy/widgets/moneyfy_ui.dart';
 
 enum _RedditPostFilter { all, valuable }
@@ -156,6 +157,13 @@ class _RedditPostSummariesPageState extends State<RedditPostSummariesPage> {
 
         return MoneyfyPage(
           title: 'Reddit 요약',
+          trailing: TextButton.icon(
+            icon: const Icon(Icons.chat_bubble_outline),
+            label: const Text('질문하기'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const RedditChatPage()),
+            ),
+          ),
           onRefresh: _refreshPage,
           children: [
             _RedditPostSummaryToolbar(

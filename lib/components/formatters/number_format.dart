@@ -1,7 +1,5 @@
-/// App-wide numeric formatting helpers.
-///
-/// TODO: If intl is adopted later, replace internal grouping logic with
-/// locale-aware NumberFormat.
+import 'package:intl/intl.dart';
+
 String formatCurrency(
   num value, {
   String? currencyCode,
@@ -11,7 +9,7 @@ String formatCurrency(
   final abs = value.abs().toDouble();
   final formatted = compact
       ? _formatCompact(abs, fractionDigits: fractionDigits)
-      : _withGrouping(abs.toStringAsFixed(fractionDigits));
+      : _grouped(abs, fractionDigits);
 
   if (currencyCode == null || currencyCode.isEmpty) {
     return formatted;
@@ -29,8 +27,8 @@ String formatSigned(num value, {int fractionDigits = 0}) {
       : value < 0
       ? '-'
       : '';
-  final abs = value.abs().toStringAsFixed(fractionDigits);
-  return '$sign${_withGrouping(abs)}';
+  final abs = _grouped(value.abs(), fractionDigits);
+  return '$sign$abs';
 }
 
 String formatSignedPercent(num value, {int fractionDigits = 1}) {
@@ -59,19 +57,9 @@ String _formatCompact(double value, {int fractionDigits = 1}) {
   return value.toStringAsFixed(0);
 }
 
-String _withGrouping(String raw) {
-  final parts = raw.split('.');
-  final integer = parts.first;
-  final buffer = StringBuffer();
-
-  for (var i = 0; i < integer.length; i++) {
-    final positionFromEnd = integer.length - i;
-    buffer.write(integer[i]);
-    if (positionFromEnd > 1 && positionFromEnd % 3 == 1) {
-      buffer.write(',');
-    }
-  }
-
-  if (parts.length == 1) return buffer.toString();
-  return '${buffer.toString()}.${parts[1]}';
+String _grouped(num value, int fractionDigits) {
+  final format = NumberFormat.decimalPattern('en_US')
+    ..minimumFractionDigits = fractionDigits
+    ..maximumFractionDigits = fractionDigits;
+  return format.format(value);
 }

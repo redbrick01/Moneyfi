@@ -56,7 +56,7 @@ class TransactionRow extends StatelessWidget {
             children: [
               SizedBox(
                 width: badgeWidth,
-                child: MoneyfyBadge(label: typeLabel, maxLines: null),
+                child: MoneyfyBadge.transactionType(typeLabel, maxLines: null),
               ),
               SizedBox(width: context.spacing.xs),
               Expanded(

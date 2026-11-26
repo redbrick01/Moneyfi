@@ -428,7 +428,7 @@ class _IncomeTransactionRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        MoneyfyBadge(label: item.type),
+        MoneyfyBadge.transactionType(item.type),
         SizedBox(width: context.spacing.sm),
         Expanded(
           child: Column(

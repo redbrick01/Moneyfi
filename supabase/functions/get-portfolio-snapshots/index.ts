@@ -36,7 +36,7 @@ async function fetchAllRows<T>(
     range: (
       from: number,
       to: number,
-    ) => Promise<{ data: T[] | null; error: { message: string } | null }>;
+    ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
   },
 ) {
   const rows: T[] = [];
@@ -51,6 +51,26 @@ async function fetchAllRows<T>(
   }
 
   return { data: rows, error: null };
+}
+
+// Bound the encoded PostgREST IN filters even for multi-year histories.
+async function fetchForSnapshots<T>(
+  snapshots: Array<{ id: number; snapshot_date: string }>,
+  buildQuery: (batch: typeof snapshots) => {
+    range: (
+      from: number,
+      to: number,
+    ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
+  },
+) {
+  const data: T[] = [];
+  for (let from = 0; from < snapshots.length; from += 100) {
+    const batch = snapshots.slice(from, from + 100);
+    const result = await fetchAllRows(() => buildQuery(batch));
+    if (result.error) return result;
+    data.push(...result.data);
+  }
+  return { data, error: null };
 }
 
 Deno.serve(async (req) => {
@@ -123,19 +143,18 @@ Deno.serve(async (req) => {
       limit,
     });
 
-    let snapshotQuery = supabase
-      .from("daily_portfolio_snapshots")
-      .select(
-        "id, snapshot_date, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, exchange_rate, created_at, user_id",
-      )
-      .eq("user_id", targetUserId)
-      .order("snapshot_date", { ascending: true });
+    const snapshotQuery = () =>
+      supabase
+        .from("daily_portfolio_snapshots")
+        .select(
+          "id, snapshot_date, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, exchange_rate, created_at, user_id",
+        )
+        .eq("user_id", targetUserId)
+        .order("snapshot_date", { ascending: true });
 
-    if (limit != null) {
-      snapshotQuery = snapshotQuery.limit(limit);
-    }
-
-    const { data: snapshots, error: snapshotError } = await snapshotQuery;
+    const { data: snapshots, error: snapshotError } = limit == null
+      ? await fetchAllRows(snapshotQuery)
+      : await snapshotQuery().limit(limit);
     if (snapshotError) {
       throw new Error(`Failed to load snapshots: ${snapshotError.message}`);
     }
@@ -144,10 +163,6 @@ Deno.serve(async (req) => {
     const snapshotIds = snapshotRows.map((row) => Number(row.id)).filter(
       Number.isFinite,
     );
-    const snapshotDates = snapshotRows.map((row) =>
-      String(row.snapshot_date ?? "")
-    );
-
     if (snapshotIds.length === 0) {
       return new Response(
         JSON.stringify({
@@ -162,48 +177,48 @@ Deno.serve(async (req) => {
 
     const [itemsResult, holdingItemsResult, cashAccountsResult, notesResult] =
       await Promise.all([
-        fetchAllRows(() =>
+        fetchForSnapshots(snapshotRows, (batch) =>
           supabase
             .from("daily_portfolio_snapshot_items")
             .select(
               "id, snapshot_id, asset_id, asset_client_id, asset_title, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, holding_count, user_id",
             )
             .eq("user_id", targetUserId)
-            .in("snapshot_id", snapshotIds)
+            .in("snapshot_id", batch.map((row) => row.id))
             .order("snapshot_id", { ascending: true })
             .order("asset_title", { ascending: true })
-        ),
-        fetchAllRows(() =>
+            .order("id")),
+        fetchForSnapshots(snapshotRows, (batch) =>
           supabase
             .from("daily_portfolio_snapshot_holding_items")
             .select(
               "id, snapshot_id, asset_id, asset_client_id, asset_title, holding_id, holding_client_id, holding_name, holding_symbol, currency_code, quantity, total_purchase_amount, total_valuation_amount, profit_amount, profit_rate, user_id",
             )
             .eq("user_id", targetUserId)
-            .in("snapshot_id", snapshotIds)
+            .in("snapshot_id", batch.map((row) => row.id))
             .order("snapshot_id", { ascending: true })
             .order("asset_title", { ascending: true })
             .order("holding_name", { ascending: true })
-        ),
-        fetchAllRows(() =>
+            .order("id")),
+        fetchForSnapshots(snapshotRows, (batch) =>
           supabase
             .from("daily_portfolio_snapshot_cash_accounts")
             .select(
               "id, snapshot_id, asset_id, asset_client_id, asset_title, cash_account_id, cash_account_client_id, cash_account_name, currency_code, balance, note, user_id",
             )
             .eq("user_id", targetUserId)
-            .in("snapshot_id", snapshotIds)
+            .in("snapshot_id", batch.map((row) => row.id))
             .order("snapshot_id", { ascending: true })
             .order("asset_title", { ascending: true })
             .order("cash_account_name", { ascending: true })
-        ),
-        fetchAllRows(() =>
+            .order("id")),
+        fetchForSnapshots(snapshotRows, (batch) =>
           supabase
             .from("snapshot_notes")
             .select("snapshot_date, note, user_id, created_at, updated_at")
             .eq("user_id", targetUserId)
-            .in("snapshot_date", snapshotDates)
-        ),
+            .in("snapshot_date", batch.map((row) => row.snapshot_date))
+            .order("snapshot_date")),
       ]);
 
     if (itemsResult.error) {

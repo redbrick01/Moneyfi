@@ -1,3 +1,4 @@
+import '../widgets/portfolio_instrument_search.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -185,8 +186,18 @@ class _PortfolioPageState extends State<PortfolioPage> {
           onRefresh: _refreshPage,
           hasFloatingNavInset: true,
           scrollController: widget.scrollController,
-          body: items.isEmpty
-              ? _PortfolioSectionBasePlate(
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PortfolioInstrumentSearch(
+                assets: data.assets,
+                onHoldingClosed: () {
+                  setState(() => _pageFuture = _loadPortfolioPageData());
+                },
+              ),
+              SizedBox(height: context.spacing.sectionGap),
+              if (items.isEmpty)
+                _PortfolioSectionBasePlate(
                   child: AppInnerPanel(
                     child: _PortfolioEmptyContent(
                       title: '자산을 추가하면 비중을 볼 수 있어요',
@@ -198,50 +209,48 @@ class _PortfolioPageState extends State<PortfolioPage> {
                     ),
                   ),
                 )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _AllocationSectionCard(
-                      items: items,
-                      selectedAssetLabel: _selectedAssetLabel,
-                      selectedHoldingLabel: _selectedHoldingLabel,
-                      onSelectAsset: (label) {
-                        setState(() {
-                          if (_selectedAssetLabel == label) {
-                            _selectedAssetLabel = null;
-                          } else {
-                            _selectedAssetLabel = label;
-                          }
-                          _selectedHoldingLabel = null;
-                        });
-                      },
-                      onSelectHolding: (label) {
-                        setState(() {
-                          _selectedHoldingLabel = _selectedHoldingLabel == label
-                              ? null
-                              : label;
-                        });
-                      },
-                      onOpenAssetDetail: _openAssetDetail,
-                    ),
-                    SizedBox(height: context.spacing.sectionGap),
-                    _RebalancingSectionCard(
-                      entries: rebalanceEntries,
-                      onOpenTargetSheet: () =>
-                          _openTargetAllocationSheet(items),
-                    ),
-                    SizedBox(height: context.spacing.sectionGap),
-                    _PortfolioDiagnosisSectionCard(
-                      diagnosis: data.diagnosis,
-                      isGenerating: _isGeneratingDiagnosis,
-                      generatedAt: data.diagnosisCachedAt,
-                      onGenerate: data.diagnosisPayload == null
+              else ...[
+                _AllocationSectionCard(
+                  items: items,
+                  selectedAssetLabel: _selectedAssetLabel,
+                  selectedHoldingLabel: _selectedHoldingLabel,
+                  onSelectAsset: (label) {
+                    setState(() {
+                      if (_selectedAssetLabel == label) {
+                        _selectedAssetLabel = null;
+                      } else {
+                        _selectedAssetLabel = label;
+                      }
+                      _selectedHoldingLabel = null;
+                    });
+                  },
+                  onSelectHolding: (label) {
+                    setState(() {
+                      _selectedHoldingLabel = _selectedHoldingLabel == label
                           ? null
-                          : () => _generatePortfolioDiagnosis(data),
-                      onOpenDetail: _openPortfolioDiagnosisDetail,
-                    ),
-                  ],
+                          : label;
+                    });
+                  },
+                  onOpenAssetDetail: _openAssetDetail,
                 ),
+                SizedBox(height: context.spacing.sectionGap),
+                _RebalancingSectionCard(
+                  entries: rebalanceEntries,
+                  onOpenTargetSheet: () => _openTargetAllocationSheet(items),
+                ),
+                SizedBox(height: context.spacing.sectionGap),
+                _PortfolioDiagnosisSectionCard(
+                  diagnosis: data.diagnosis,
+                  isGenerating: _isGeneratingDiagnosis,
+                  generatedAt: data.diagnosisCachedAt,
+                  onGenerate: data.diagnosisPayload == null
+                      ? null
+                      : () => _generatePortfolioDiagnosis(data),
+                  onOpenDetail: _openPortfolioDiagnosisDetail,
+                ),
+              ],
+            ],
+          ),
         );
       },
     );

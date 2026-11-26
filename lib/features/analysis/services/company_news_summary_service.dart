@@ -1,7 +1,10 @@
+import 'package:json_annotation/json_annotation.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/features/auth/services/auth_service.dart';
+
+part 'company_news_summary_service.g.dart';
 
 class CompanyNewsSummaryService {
   CompanyNewsSummaryService._();
@@ -230,6 +233,7 @@ List<CompanyNewsSummaryItem> _buildLocalFallbackSummaries(
       .toList(growable: false);
 }
 
+@JsonSerializable(fieldRename: FieldRename.snake)
 class CompanyNewsSummaryItem {
   const CompanyNewsSummaryItem({
     required this.symbol,
@@ -244,54 +248,39 @@ class CompanyNewsSummaryItem {
     this.summary,
   });
 
-  factory CompanyNewsSummaryItem.fromJson(Map<String, dynamic> json) {
-    return CompanyNewsSummaryItem(
-      symbol: '${json['symbol'] ?? ''}',
-      found: json['found'] == true,
-      assetType: json['asset_type']?.toString(),
-      summaryDate: json['summary_date']?.toString(),
-      model: json['model']?.toString(),
-      newsCount: json['news_count'] is num
-          ? (json['news_count'] as num).toInt()
-          : int.tryParse('${json['news_count'] ?? ''}'),
-      createdAt: json['created_at']?.toString(),
-      updatedAt: json['updated_at']?.toString(),
-      cachedAt: json['cached_at']?.toString(),
-      summary: json['summary'] is Map
-          ? Map<String, dynamic>.from(
-              (json['summary'] as Map).map(
-                (key, value) => MapEntry('$key', value),
-              ),
-            )
-          : null,
-    );
-  }
+  factory CompanyNewsSummaryItem.fromJson(Map<String, dynamic> json) =>
+      _$CompanyNewsSummaryItemFromJson(json);
 
+  @JsonKey(fromJson: _symbol)
   final String symbol;
+  @JsonKey(fromJson: _found)
   final bool found;
+  @JsonKey(fromJson: _text)
   final String? assetType;
+  @JsonKey(fromJson: _text)
   final String? summaryDate;
+  @JsonKey(fromJson: _text)
   final String? model;
+  @JsonKey(fromJson: _count)
   final int? newsCount;
+  @JsonKey(fromJson: _text)
   final String? createdAt;
+  @JsonKey(fromJson: _text)
   final String? updatedAt;
+  @JsonKey(fromJson: _text)
   final String? cachedAt;
+  @JsonKey(fromJson: _summary)
   final Map<String, dynamic>? summary;
 
   bool get hasKnownAssetType => assetType == '주식' || assetType == '코인';
 
-  Map<String, dynamic> toJson() {
-    return {
-      'symbol': symbol,
-      'found': found,
-      'asset_type': assetType,
-      'summary_date': summaryDate,
-      'model': model,
-      'news_count': newsCount,
-      'created_at': createdAt,
-      'updated_at': updatedAt,
-      'cached_at': cachedAt,
-      'summary': summary,
-    };
-  }
+  Map<String, dynamic> toJson() => _$CompanyNewsSummaryItemToJson(this);
+
+  static String _symbol(Object? value) => value?.toString() ?? '';
+  static bool _found(Object? value) => value == true;
+  static String? _text(Object? value) => value?.toString();
+  static int? _count(Object? value) =>
+      value is num ? value.toInt() : int.tryParse('$value');
+  static Map<String, dynamic>? _summary(Object? value) =>
+      value is Map ? value.map((key, item) => MapEntry('$key', item)) : null;
 }

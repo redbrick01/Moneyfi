@@ -8,9 +8,13 @@ import 'package:moneyfy/components/panels/app_inner_panel.dart';
 import 'package:moneyfy/components/section_card.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/db/app_database.dart';
+import 'package:moneyfy/features/analysis/services/benchmark_price_service.dart';
+import 'package:moneyfy/features/analysis/services/portfolio_drawdown.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 import 'package:moneyfy/utils/display_currency.dart';
 import 'package:moneyfy/widgets/moneyfy_ui.dart';
+
+const _assetChangeSnapshotLimit = 60;
 
 class PortfolioAnalysisMvpPage extends StatelessWidget {
   const PortfolioAnalysisMvpPage({super.key});
@@ -34,14 +38,20 @@ class PortfolioAnalysisMvpPage extends StatelessWidget {
                 title: '분석 데이터를 불러오지 못했어요',
                 body: '잠시 후 다시 시도해 주세요.',
               )
-            else if (data == null || data.assets.isEmpty)
+            else if (data == null || data.assets.isEmpty) ...[
               const _MessageCard(
                 icon: Icons.add_chart_rounded,
                 title: '분석할 자산이 없어요',
                 body: '자산과 보유 종목을 추가하면 포트폴리오 진단을 확인할 수 있어요.',
-              )
-            else ...[
+              ),
+              if (data != null) ...[
+                SizedBox(height: context.spacing.sectionGap),
+                _PortfolioPerformanceCard(data: data),
+              ],
+            ] else ...[
               _OverviewCard(data: data),
+              SizedBox(height: context.spacing.sectionGap),
+              _PortfolioPerformanceCard(data: data),
               SizedBox(height: context.spacing.sectionGap),
               _AttentionItemsCard(data: data),
               SizedBox(height: context.spacing.sectionGap),
@@ -50,8 +60,6 @@ class PortfolioAnalysisMvpPage extends StatelessWidget {
               _PerformanceContributionCard(data: data),
               SizedBox(height: context.spacing.sectionGap),
               _AssetChangeCauseCard(data: data),
-              SizedBox(height: context.spacing.sectionGap),
-              _DrawdownCard(data: data),
               SizedBox(height: context.spacing.sectionGap),
               _ConcentrationCard(data: data),
             ],
@@ -67,41 +75,34 @@ Future<_PortfolioAnalysisMvpData> _loadPortfolioAnalysisMvpData() async {
   final results = await Future.wait<Object>([
     db.fetchAssets(),
     db.fetchAssetAllocationTargets(),
-    db.fetchRecentPortfolioSnapshots(maxDates: 60),
+    db.fetchAllPortfolioSnapshots(),
   ]);
   final assets = (results[0] as List<AssetItem>)
       .where((asset) => !asset.isHidden && asset.totalValuationAmount > 0)
       .toList(growable: false);
   final targetRatios = results[1] as Map<int, double>;
   final snapshots = results[2] as List<DailyPortfolioSnapshot>;
-  final snapshotDates = snapshots
-      .map((snapshot) => snapshot.snapshotDate)
-      .toList(growable: false);
-  final snapshotItems = await db.fetchDisplayPortfolioSnapshotItemsByDates(
-    snapshotDates,
-  );
-  final visibleValuationBySnapshotId = <int, double>{};
-  for (final item in snapshotItems) {
-    visibleValuationBySnapshotId.update(
-      item.snapshotId,
-      (value) => value + item.totalValuationAmount,
-      ifAbsent: () => item.totalValuationAmount,
-    );
+  final metrics = await loadPortfolioPerformanceMetrics(db, snapshots);
+  final period = snapshots.length < 2
+      ? null
+      : (from: snapshots.first.snapshotDate, to: snapshots.last.snapshotDate);
+  BenchmarkRiskFreeRate? riskFreeRate;
+  if (period != null && metrics.dailyReturnCount >= minimumSharpeObservations) {
+    final service = BenchmarkPriceService.instance;
+    await service
+        .ensureRiskFreeRates(from: period.from, to: period.to)
+        .timeout(const Duration(seconds: 5), onTimeout: () => 0);
+    riskFreeRate = await service.fetchLatestRiskFreeRate(to: period.to);
   }
-  final riskSnapshots = snapshots
-      .map(
-        (snapshot) => snapshot.copyWith(
-          totalValuationAmount:
-              visibleValuationBySnapshotId[snapshot.id] ??
-              snapshot.totalValuationAmount,
-        ),
-      )
-      .toList(growable: false);
   return _PortfolioAnalysisMvpData(
     assets: assets,
     targetRatios: targetRatios,
-    snapshots: snapshots,
-    riskSnapshots: riskSnapshots,
+    snapshots: snapshots
+        .skip(math.max(0, snapshots.length - _assetChangeSnapshotLimit))
+        .toList(growable: false),
+    metrics: metrics,
+    metricsPeriod: period,
+    riskFreeRate: riskFreeRate,
   );
 }
 
@@ -110,13 +111,19 @@ class _PortfolioAnalysisMvpData {
     required this.assets,
     required this.targetRatios,
     required this.snapshots,
-    required this.riskSnapshots,
+    required this.metrics,
+    required this.metricsPeriod,
+    required this.riskFreeRate,
   });
 
   final List<AssetItem> assets;
   final Map<int, double> targetRatios;
   final List<DailyPortfolioSnapshot> snapshots;
-  final List<DailyPortfolioSnapshot> riskSnapshots;
+  final PortfolioPerformanceMetrics metrics;
+  final ({String from, String to})? metricsPeriod;
+  final BenchmarkRiskFreeRate? riskFreeRate;
+
+  PortfolioDrawdown? get drawdown => metrics.drawdown;
 
   double get totalValue =>
       assets.fold<double>(0, (sum, asset) => sum + asset.totalValuationAmount);
@@ -272,13 +279,13 @@ class _OverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final diagnosis = _PortfolioDiagnosis.fromData(context, data);
-    final drawdown = _calculateMaxDrawdown(data.riskSnapshots);
+    final drawdown = data.drawdown;
     final maxTargetGap = _maxTargetGap(data.assetMetrics);
     final colors = context.colors;
 
     return _AnalysisSectionCard(
       title: '진단 요약',
-      subtitle: '최근 자산과 스냅샷 기준',
+      subtitle: '현재 자산 비중과 스냅샷 기록 기준',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -494,38 +501,100 @@ class _AssetChangeCauseCard extends StatelessWidget {
   }
 }
 
-class _DrawdownCard extends StatelessWidget {
-  const _DrawdownCard({required this.data});
+class _PortfolioPerformanceCard extends StatelessWidget {
+  const _PortfolioPerformanceCard({required this.data});
 
   final _PortfolioAnalysisMvpData data;
 
   @override
   Widget build(BuildContext context) {
-    final drawdown = _calculateMaxDrawdown(data.riskSnapshots);
-    final drawdownLevel = drawdown == null
-        ? null
-        : _MddLevel.fromPercent(context, drawdown.percent);
+    final metrics = data.metrics;
+    final period = data.metricsPeriod;
+    final cagr = metrics.cagr;
+    final volatility = metrics.annualizedVolatility;
+    final drawdown = data.drawdown;
+    final dates = drawdown?.dates;
+    final riskFreeRate = data.riskFreeRate;
+    final sharpe = metrics.sharpeRatio(riskFreeRate?.annualRate ?? 0);
+    final colors = context.colors;
+
     return _AnalysisSectionCard(
-      title: '최대 낙폭 MDD',
-      subtitle: '스냅샷 고점 대비 가장 크게 하락한 구간',
-      child: drawdown == null
-          ? const _InlineNotice(
-              icon: Icons.show_chart_rounded,
-              title: '스냅샷 데이터가 부족해요',
-              body: '2개 이상의 스냅샷이 있어야 고점 대비 하락률을 계산할 수 있어요.',
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _SectionExplanation(
-                  text:
-                      '선택된 스냅샷 기간에서 고점 이후 가장 크게 내려간 구간을 계산합니다. 앱에서는 5%, 15%, 30%를 기준으로 체감 위험 구간을 나눕니다.',
-                ),
-                _MddGauge(percent: drawdown.percent, level: drawdownLevel!),
-                SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
-                _MddDetailGrid(drawdown: drawdown),
-              ],
+      title: '수익·위험 요약',
+      subtitle: period == null ? null : '${period.from} ~ ${period.to}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionExplanation(text: '전체 포트폴리오의 스냅샷을 기준으로 외부 입출금을 보정합니다.'),
+          _MetricGrid(
+            maxColumns: 2,
+            minTileWidth: math.max(
+              170,
+              MediaQuery.textScalerOf(context).scale(150),
             ),
+            metrics: [
+              _MetricTileData(
+                label: '복리 수익률 (CAGR)',
+                value: cagr == null
+                    ? '데이터 부족'
+                    : '연 ${_formatSignedPercent(cagr * 100)}',
+                caption: cagr == null ? '계산 가능한 수익 기록 1년 이상 필요' : '연평균 복리 수익률',
+                accent: cagr == null
+                    ? colors.neutralTextMuted
+                    : _valueColor(context, cagr),
+              ),
+              _MetricTileData(
+                label: '변동성 (표준편차)',
+                value: volatility == null
+                    ? '데이터 부족'
+                    : '연 ${(volatility * 100).toStringAsFixed(1)}%',
+                caption: volatility == null
+                    ? '유효한 일별 수익률 $minimumVolatilityObservations개 필요'
+                    : '일별 수익률이 흔들린 정도',
+                accent: volatility == null
+                    ? colors.neutralTextMuted
+                    : colors.neutralText,
+              ),
+              _MetricTileData(
+                label: '최대 낙폭 (MDD)',
+                value: drawdown == null
+                    ? '데이터 부족'
+                    : '${drawdown.percent.toStringAsFixed(1)}%',
+                caption: drawdown == null
+                    ? '비교할 수 있는 스냅샷 2개 필요'
+                    : '고점 대비 가장 크게 하락한 비율',
+                accent: drawdown == null
+                    ? colors.neutralTextMuted
+                    : _valueColor(context, drawdown.percent),
+              ),
+              _MetricTileData(
+                label: '샤프 지수 (Sharpe)',
+                value: sharpe == null ? '데이터 부족' : sharpe.toStringAsFixed(2),
+                caption: sharpe != null
+                    ? riskFreeRate == null
+                          ? '무위험수익률 0% 임시 적용'
+                          : '미국 13주 국채 금리 기준'
+                    : metrics.dailyReturnCount < minimumSharpeObservations
+                    ? '유효한 일별 수익률 $minimumSharpeObservations개 필요'
+                    : '변동성이 0이면 계산할 수 없음',
+                accent: sharpe == null
+                    ? colors.neutralTextMuted
+                    : _valueColor(context, sharpe),
+              ),
+            ],
+          ),
+          if (drawdown != null) ...[
+            SizedBox(height: context.spacing.md),
+            _MddGauge(
+              percent: drawdown.percent,
+              level: _MddLevel.fromPercent(context, drawdown.percent),
+            ),
+            if (dates != null) ...[
+              SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
+              _MddDetailGrid(dates: dates, amount: drawdown.amount),
+            ],
+          ],
+        ],
+      ),
     );
   }
 }
@@ -980,18 +1049,24 @@ class _ExpandableSubsectionHeader extends StatelessWidget {
 }
 
 class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({required this.metrics});
+  const _MetricGrid({
+    required this.metrics,
+    this.maxColumns = 3,
+    this.minTileWidth = 140,
+  });
 
   final List<_MetricTileData> metrics;
+  final int maxColumns;
+  final double minTileWidth;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final gap = context.spacing.xs + context.spacing.xs / 4;
-        final columns = ((constraints.maxWidth + gap) / (140 + gap))
+        final columns = ((constraints.maxWidth + gap) / (minTileWidth + gap))
             .floor()
-            .clamp(1, 3);
+            .clamp(1, maxColumns);
         final tileWidth =
             (constraints.maxWidth - (gap * (columns - 1))) / columns;
         return Wrap(
@@ -1209,13 +1284,34 @@ class _HhiGauge extends StatelessWidget {
 class _MddGauge extends StatelessWidget {
   const _MddGauge({required this.percent, required this.level});
 
+  static const _axisMax = 50;
+
   final double percent;
   final _MddLevel level;
 
   @override
   Widget build(BuildContext context) {
     final drawdown = percent.abs();
-    final markerPosition = (drawdown / 50).clamp(0.0, 1.0);
+    final markerPosition = (drawdown / _axisMax).clamp(0.0, 1.0);
+    final colors = context.colors;
+    final segments = [
+      _GaugeSegment(0, _MddLevel.lowLimit, '낮음', colors.positiveOn, 0.66),
+      _GaugeSegment(
+        _MddLevel.lowLimit,
+        _MddLevel.cautionLimit,
+        '주의',
+        colors.warningOn,
+        0.60,
+      ),
+      _GaugeSegment(
+        _MddLevel.cautionLimit,
+        _MddLevel.highLimit,
+        '높음',
+        colors.negativeOn,
+        0.52,
+      ),
+      _GaugeSegment(_MddLevel.highLimit, _axisMax, '심각', colors.negativeOn, 1),
+    ];
 
     return AppInnerPanel(
       tone: AppInnerPanelTone.raised,
@@ -1231,7 +1327,7 @@ class _MddGauge extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '현재 MDD',
+                      '기간 내 최대 낙폭',
                       style: context.typography.meta.copyWith(
                         color: context.colors.neutralTextMuted,
                       ),
@@ -1259,176 +1355,121 @@ class _MddGauge extends StatelessWidget {
           SizedBox(height: context.spacing.sm + context.spacing.xs / 4),
           LayoutBuilder(
             builder: (context, constraints) {
-              final segments = [
-                _GaugeSegment(
-                  start: 0,
-                  end: 0.10,
-                  label: '낮음',
-                  color: context.colors.positiveContainer,
-                  textColor: context.colors.positiveOn,
-                ),
-                _GaugeSegment(
-                  start: 0.10,
-                  end: 0.30,
-                  label: '주의',
-                  color: context.colors.warningContainer,
-                  textColor: context.colors.warningOn,
-                ),
-                _GaugeSegment(
-                  start: 0.30,
-                  end: 0.60,
-                  label: '높음',
-                  color: context.colors.negativeContainer.withValues(
-                    alpha: 0.72,
-                  ),
-                  textColor: context.colors.negativeOn,
-                ),
-                _GaugeSegment(
-                  start: 0.60,
-                  end: 1,
-                  label: '심각',
-                  color: context.colors.negativeContainer,
-                  textColor: context.colors.negativeOn,
-                ),
-              ];
               const markerSize = 16.0;
               const markerRadius = markerSize / 2;
-              final trackLeft = markerRadius;
               final trackWidth = math.max(
                 0.0,
                 constraints.maxWidth - markerSize,
               );
-              double gaugeX(double ratio) => trackLeft + (trackWidth * ratio);
-              final markerCenter = gaugeX(markerPosition);
+              double gaugeX(int value) =>
+                  markerRadius + trackWidth * value / _axisMax;
+              final thresholds = segments
+                  .skip(1)
+                  .map((segment) => segment.start);
+              final captionStyle = context.typography.caption.copyWith(
+                color: colors.neutralTextMuted,
+              );
+              final captionHeight =
+                  MediaQuery.textScalerOf(
+                    context,
+                  ).scale(captionStyle.fontSize ?? 12) *
+                  (captionStyle.height ?? 1.4);
+              final showTicks = trackWidth >= captionHeight * 13;
 
-              Widget labelFor(_GaugeSegment segment) {
-                final width = trackWidth * (segment.end - segment.start);
-                return Positioned(
-                  left: gaugeX(segment.start),
-                  width: width,
-                  top: 0,
-                  child: Text(
-                    segment.label,
-                    textAlign: segment.start == 0
-                        ? TextAlign.left
-                        : segment.end == 1
-                        ? TextAlign.right
-                        : TextAlign.center,
-                    style: context.typography.meta.copyWith(
-                      color: segment.textColor,
-                      fontWeight: AppFontWeights.bold,
-                    ),
-                  ),
-                );
-              }
-
-              return Column(
-                children: [
-                  SizedBox(
-                    height: 64,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned(
-                          left: trackLeft,
-                          width: trackWidth,
-                          top: 17,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              context.radius.rPill,
-                            ),
-                            child: SizedBox(
-                              height: 10,
-                              child: Stack(
-                                children: [
-                                  for (final segment in segments)
-                                    Positioned(
-                                      left: trackWidth * segment.start,
-                                      width:
-                                          trackWidth *
-                                          (segment.end - segment.start),
-                                      top: 0,
-                                      bottom: 0,
-                                      child: ColoredBox(color: segment.color),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
+              return SizedBox(
+                height: showTicks ? 46 + captionHeight : 44,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      left: markerRadius,
+                      width: trackWidth,
+                      top: 17,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          context.radius.rPill,
                         ),
-                        Positioned(
-                          left: gaugeX(0.10) - 1,
-                          top: 10,
-                          height: 34,
-                          child: const _GaugeThresholdLine(),
-                        ),
-                        Positioned(
-                          left: gaugeX(0.30) - 1,
-                          top: 10,
-                          height: 34,
-                          child: const _GaugeThresholdLine(),
-                        ),
-                        Positioned(
-                          left: gaugeX(0.60) - 1,
-                          top: 10,
-                          height: 34,
-                          child: const _GaugeThresholdLine(),
-                        ),
-                        Positioned(
-                          left: markerCenter - markerRadius,
-                          top: 6,
-                          child: Column(
+                        child: SizedBox(
+                          height: 10,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Container(
-                                width: 16,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: level.color,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: context.colors.neutralSurfaceBase,
-                                    width: 3,
+                              for (final segment in segments)
+                                Expanded(
+                                  flex: segment.end - segment.start,
+                                  child: ColoredBox(
+                                    color: segment.color.withValues(
+                                      alpha: segment.opacity,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              Container(
-                                width: 2,
-                                height: 22,
-                                color: level.color,
-                              ),
                             ],
                           ),
                         ),
-                        _GaugeThresholdLabel(
-                          left: gaugeX(0.10),
-                          top: 46,
-                          width: constraints.maxWidth,
-                          label: '5%',
-                        ),
-                        _GaugeThresholdLabel(
-                          left: gaugeX(0.30),
-                          top: 46,
-                          width: constraints.maxWidth,
-                          label: '15%',
-                        ),
-                        _GaugeThresholdLabel(
-                          left: gaugeX(0.60),
-                          top: 46,
-                          width: constraints.maxWidth,
-                          label: '30%',
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    height: 20,
-                    child: Stack(
-                      children: [for (final s in segments) labelFor(s)],
+                    for (final threshold in thresholds)
+                      Positioned(
+                        left: gaugeX(threshold) - 1,
+                        top: 13,
+                        height: 22,
+                        width: 2,
+                        child: ColoredBox(color: colors.neutralTextMuted),
+                      ),
+                    Positioned(
+                      left: trackWidth * markerPosition,
+                      top: 6,
+                      child: Column(
+                        children: [
+                          Container(
+                            width: markerSize,
+                            height: markerSize,
+                            decoration: BoxDecoration(
+                              color: level.color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: context.colors.neutralSurfaceBase,
+                                width: 3,
+                              ),
+                            ),
+                          ),
+                          Container(width: 2, height: 22, color: level.color),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    if (showTicks) ...[
+                      for (final threshold in thresholds)
+                        _GaugeThresholdLabel(
+                          left: gaugeX(threshold),
+                          top: 46,
+                          width: constraints.maxWidth,
+                          labelWidth: captionHeight * 3,
+                          label: '$threshold%',
+                        ),
+                      Positioned(
+                        right: 0,
+                        top: 46,
+                        child: Text('$_axisMax%+', style: captionStyle),
+                      ),
+                    ],
+                  ],
+                ),
               );
             },
+          ),
+          SizedBox(height: context.spacing.xs),
+          Wrap(
+            spacing: context.spacing.md,
+            runSpacing: context.spacing.xs,
+            children: [
+              for (final segment in segments)
+                Text(
+                  '${segment.label} ${segment.rangeLabel}',
+                  style: context.typography.meta.copyWith(
+                    color: colors.neutralText,
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -1437,9 +1478,10 @@ class _MddGauge extends StatelessWidget {
 }
 
 class _MddDetailGrid extends StatelessWidget {
-  const _MddDetailGrid({required this.drawdown});
+  const _MddDetailGrid({required this.dates, required this.amount});
 
-  final _DrawdownResult drawdown;
+  final ({String peak, String trough}) dates;
+  final double amount;
 
   @override
   Widget build(BuildContext context) {
@@ -1457,7 +1499,7 @@ class _MddDetailGrid extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: _DateMetricText(label: '고점', value: drawdown.peakDate),
+                child: _DateMetricText(label: '고점', value: dates.peak),
               ),
               Container(
                 width: 1,
@@ -1466,15 +1508,15 @@ class _MddDetailGrid extends StatelessWidget {
                 color: context.colors.neutralOutline,
               ),
               Expanded(
-                child: _DateMetricText(label: '저점', value: drawdown.troughDate),
+                child: _DateMetricText(label: '저점', value: dates.trough),
               ),
             ],
           ),
         ),
         SizedBox(height: context.spacing.xs + context.spacing.xs / 4),
         _CompactMetricBlock(
-          label: '하락 금액',
-          value: _formatSignedAmount(drawdown.amount),
+          label: '고점 평가액 기준 환산 손실',
+          value: _formatSignedAmount(amount),
           color: context.colors.negativeOn,
         ),
       ],
@@ -1483,19 +1525,25 @@ class _MddDetailGrid extends StatelessWidget {
 }
 
 class _GaugeSegment {
-  const _GaugeSegment({
-    required this.start,
-    required this.end,
-    required this.label,
-    required this.color,
-    required this.textColor,
-  });
+  const _GaugeSegment(
+    this.start,
+    this.end,
+    this.label,
+    this.color,
+    this.opacity,
+  );
 
-  final double start;
-  final double end;
+  final int start;
+  final int end;
   final String label;
   final Color color;
-  final Color textColor;
+  final double opacity;
+
+  String get rangeLabel => switch (start) {
+    0 => '$end% 이하',
+    _MddLevel.highLimit => '$start% 초과',
+    _ => '$start% 초과–$end% 이하',
+  };
 }
 
 class _DateMetricText extends StatelessWidget {
@@ -1553,16 +1601,17 @@ class _GaugeThresholdLabel extends StatelessWidget {
     required this.top,
     required this.width,
     required this.label,
+    this.labelWidth = 52,
   });
 
   final double left;
   final double top;
   final double width;
   final String label;
+  final double labelWidth;
 
   @override
   Widget build(BuildContext context) {
-    const labelWidth = 52.0;
     final resolvedLeft = (left - (labelWidth / 2))
         .clamp(0.0, math.max(0.0, width - labelWidth))
         .toDouble();
@@ -1627,23 +1676,27 @@ class _MddLevel {
   final Color color;
   final Color background;
 
+  static const lowLimit = 5;
+  static const cautionLimit = 15;
+  static const highLimit = 30;
+
   static _MddLevel fromPercent(BuildContext context, double percent) {
     final drawdown = percent.abs();
-    if (drawdown <= 5) {
+    if (drawdown <= lowLimit) {
       return _MddLevel(
         label: '낮은 낙폭',
         color: context.colors.positiveOn,
         background: context.colors.neutralSurfaceBase,
       );
     }
-    if (drawdown <= 15) {
+    if (drawdown <= cautionLimit) {
       return _MddLevel(
         label: '주의 구간',
         color: context.colors.warningOn,
         background: context.colors.neutralSurfaceBase,
       );
     }
-    if (drawdown <= 30) {
+    if (drawdown <= highLimit) {
       return _MddLevel(
         label: '높은 낙폭',
         color: context.colors.negativeOn,
@@ -1663,11 +1716,13 @@ class _MetricTileData {
     required this.label,
     required this.value,
     required this.accent,
+    this.caption,
   });
 
   final String label;
   final String value;
   final Color accent;
+  final String? caption;
 }
 
 class _MetricTile extends StatelessWidget {
@@ -1680,6 +1735,7 @@ class _MetricTile extends StatelessWidget {
     return AppMetricTile(
       label: data.label,
       value: data.value,
+      caption: data.caption,
       valueColor: data.accent,
       minHeight: 86,
     );
@@ -2217,7 +2273,7 @@ class _PortfolioDiagnosis {
   ) {
     final topThreeRatio = _topThreeRatio(data.assetMetrics);
     final hhiScore = _hhiScore(data.assetMetrics);
-    final drawdown = _calculateMaxDrawdown(data.riskSnapshots);
+    final drawdown = data.drawdown;
     final maxTargetGap = _maxTargetGap(data.assetMetrics)?.abs();
     final drawdownAbs = drawdown?.percent.abs() ?? 0;
     final colors = context.colors;
@@ -2226,7 +2282,7 @@ class _PortfolioDiagnosis {
       return _PortfolioDiagnosis(
         label: '위험',
         message: '포트폴리오 쏠림이나 낙폭을 먼저 점검해야 해요.',
-        reason: '상위 자산 비중, 집중도, 최근 낙폭 중 하나 이상이 높은 구간에 있어요.',
+        reason: '상위 자산 비중, 집중도, 기간 내 최대 낙폭 중 하나 이상이 높은 구간에 있어요.',
         icon: Icons.warning_amber_rounded,
         color: colors.negativeOn,
         background: colors.neutralSurfaceRaised,
@@ -2277,60 +2333,6 @@ class _PortfolioDiagnosis {
   }
 }
 
-class _DrawdownResult {
-  const _DrawdownResult({
-    required this.percent,
-    required this.amount,
-    required this.peakDate,
-    required this.troughDate,
-  });
-
-  final double percent;
-  final double amount;
-  final String peakDate;
-  final String troughDate;
-}
-
-_DrawdownResult? _calculateMaxDrawdown(List<DailyPortfolioSnapshot> snapshots) {
-  if (snapshots.length < 2) return null;
-
-  final sorted = [...snapshots]
-    ..sort((a, b) => a.snapshotDate.compareTo(b.snapshotDate));
-
-  var peakValue = sorted.first.totalValuationAmount;
-  var peakDate = sorted.first.snapshotDate;
-  var worstPercent = 0.0;
-  var worstAmount = 0.0;
-  var worstPeakDate = peakDate;
-  var worstTroughDate = sorted.first.snapshotDate;
-
-  for (final snapshot in sorted.skip(1)) {
-    final value = snapshot.totalValuationAmount;
-    if (value > peakValue) {
-      peakValue = value;
-      peakDate = snapshot.snapshotDate;
-      continue;
-    }
-    if (peakValue <= 0) continue;
-
-    final amount = value - peakValue;
-    final percent = (amount / peakValue) * 100;
-    if (percent < worstPercent) {
-      worstPercent = percent;
-      worstAmount = amount;
-      worstPeakDate = peakDate;
-      worstTroughDate = snapshot.snapshotDate;
-    }
-  }
-
-  return _DrawdownResult(
-    percent: worstPercent,
-    amount: worstAmount,
-    peakDate: worstPeakDate,
-    troughDate: worstTroughDate,
-  );
-}
-
 List<_AttentionItem> _buildAttentionItems(
   BuildContext context,
   _PortfolioAnalysisMvpData data,
@@ -2339,7 +2341,7 @@ List<_AttentionItem> _buildAttentionItems(
   final topOne = metrics.isEmpty ? 0.0 : metrics.first.ratio;
   final topThree = _topThreeRatio(metrics);
   final hhi = _hhiScore(metrics);
-  final drawdown = _calculateMaxDrawdown(data.riskSnapshots);
+  final drawdown = data.drawdown;
   final maxGap = _maxTargetGap(metrics);
   final worstAsset = metrics.isEmpty
       ? null
@@ -2378,7 +2380,7 @@ List<_AttentionItem> _buildAttentionItems(
       title: '최대 낙폭',
       body: drawdown == null
           ? '2개 이상의 스냅샷이 쌓이면 낙폭을 계산할 수 있어요.'
-          : '최근 스냅샷 기준 고점 대비 하락폭이에요.',
+          : '전체 스냅샷에서 외부 입출금을 보정한 최대 낙폭이에요.',
       value: drawdown == null
           ? '부족'
           : '${drawdown.percent.toStringAsFixed(1)}%',

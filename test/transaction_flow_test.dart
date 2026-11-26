@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/db/app_database.dart';
+import 'package:moneyfy/features/analysis/screens/investment_performance_page.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 
 void main() {
@@ -1307,79 +1308,75 @@ void main() {
     },
   );
 
-  test(
-    'initial buy creates the holding and ledger atomically',
-    () async {
-      final assetId = await createAsset('주식');
-      final cashHoldingId = await db.createCashAccount(
-        assetId: assetId,
-        currencyCode: 'KRW',
-        name: '결제 현금',
-        note: '',
-        balance: 1000,
-      );
+  test('initial buy creates the holding and ledger atomically', () async {
+    final assetId = await createAsset('주식');
+    final cashHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '결제 현금',
+      note: '',
+      balance: 1000,
+    );
 
-      final holdingId = await db.createHoldingWithInitialBuy(
+    final holdingId = await db.createHoldingWithInitialBuy(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      exchangeCode: '',
+      holdingName: '신규 주식',
+      symbol: 'NEW',
+      currentPrice: 110,
+      note: '',
+      date: '2026.07.22',
+      transactionName: '신규 주식 매수',
+      amount: '100',
+      quantity: '5',
+    );
+
+    final holding = await findHolding(holdingId);
+    expect(holding.quantity, 5);
+    expect(holding.averagePrice, 100);
+    expect(holding.transactions, hasLength(1));
+    expect(holding.transactions.single.type, '매수');
+    expect((await findHolding(cashHoldingId)).quantity, 500);
+    expect(await db.fetchLedgerStateParityIssues(), isEmpty);
+  });
+
+  test('initial buy failure rolls back the newly created holding', () async {
+    final assetId = await createAsset('주식');
+    final cashHoldingId = await db.createCashAccount(
+      assetId: assetId,
+      currencyCode: 'KRW',
+      name: '결제 현금',
+      note: '',
+      balance: 100,
+    );
+
+    await expectLater(
+      db.createHoldingWithInitialBuy(
         assetId: assetId,
         currencyCode: 'KRW',
         exchangeCode: '',
-        holdingName: '신규 주식',
-        symbol: 'NEW',
-        currentPrice: 110,
+        holdingName: '실패 주식',
+        symbol: 'FAIL',
+        currentPrice: 100,
         note: '',
         date: '2026.07.22',
-        transactionName: '신규 주식 매수',
+        transactionName: '실패할 매수',
         amount: '100',
         quantity: '5',
-      );
+      ),
+      throwsA(isA<StateError>()),
+    );
 
-      final holding = await findHolding(holdingId);
-      expect(holding.quantity, 5);
-      expect(holding.averagePrice, 100);
-      expect(holding.transactions, hasLength(1));
-      expect(holding.transactions.single.type, '매수');
-      expect((await findHolding(cashHoldingId)).quantity, 500);
-      expect(await db.fetchLedgerStateParityIssues(), isEmpty);
-    },
-  );
-
-  test(
-    'initial buy failure rolls back the newly created holding',
-    () async {
-      final assetId = await createAsset('주식');
-      final cashHoldingId = await db.createCashAccount(
-        assetId: assetId,
-        currencyCode: 'KRW',
-        name: '결제 현금',
-        note: '',
-        balance: 100,
-      );
-
-      await expectLater(
-        db.createHoldingWithInitialBuy(
-          assetId: assetId,
-          currencyCode: 'KRW',
-          exchangeCode: '',
-          holdingName: '실패 주식',
-          symbol: 'FAIL',
-          currentPrice: 100,
-          note: '',
-          date: '2026.07.22',
-          transactionName: '실패할 매수',
-          amount: '100',
-          quantity: '5',
-        ),
-        throwsA(isA<StateError>()),
-      );
-
-      final rows = await db.customSelect(
-        "SELECT id FROM holdings WHERE asset_id = ? AND symbol = 'FAIL' AND deleted_at IS NULL",
-        variables: [Variable.withInt(assetId)],
-      ).get();
-      expect(rows, isEmpty);
-      expect((await findHolding(cashHoldingId)).quantity, 100);
-    },
-  );
+    final rows = await db
+        .customSelect(
+          "SELECT id FROM holdings WHERE asset_id = ? AND symbol = 'FAIL' AND deleted_at IS NULL",
+          variables: [Variable.withInt(assetId)],
+        )
+        .get();
+    expect(rows, isEmpty);
+    expect((await findHolding(cashHoldingId)).quantity, 100);
+  });
 
   test(
     'buy and sell synchronize settlement cash and holding quantity',
@@ -1651,7 +1648,7 @@ void main() {
   test(
     'sell edit can use current quantity plus existing sell quantity',
     () async {
-      final assetId = await createAsset('가상화폐');
+      final assetId = await createAsset('코인');
       final holdingId = await db.createHolding(
         assetId: assetId,
         currencyCode: 'KRW',
@@ -1695,6 +1692,11 @@ void main() {
         closeTo(0.07345678, 0.000000000001),
       );
 
+      expect(
+        (await db.fetchHoldingsForMarketRefresh()).map((h) => h.id),
+        contains(holdingId),
+      );
+
       await db.updateTransactionItem(
         TransactionItem(
           id: sellId,
@@ -1709,6 +1711,7 @@ void main() {
       );
 
       expect((await findHolding(holdingId)).quantity, 0);
+      expect(await db.fetchHoldingsForMarketRefresh(), isEmpty);
     },
   );
 
@@ -4011,6 +4014,140 @@ void main() {
           quantity: '',
         ),
         throwsA(isA<StateError>()),
+      );
+    },
+  );
+
+  test(
+    'linked income moves cash once through create, replace and delete',
+    () async {
+      final asset = await createAsset('주식');
+      final id = await db.createHolding(
+        assetId: asset,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '배당주',
+        symbol: 'DIV',
+        quantity: 2,
+        averagePrice: 100,
+        currentPrice: 110,
+        note: '',
+      );
+      final account = await db.createCashAccount(
+        assetId: asset,
+        currencyCode: 'KRW',
+        name: '입금 계좌',
+        note: '',
+        balance: 500,
+      );
+      final other = await db.createCashAccount(
+        assetId: asset,
+        currencyCode: 'USD',
+        name: '달러 계좌',
+        note: '',
+        balance: 0,
+      );
+      final event = await db.createTransaction(
+        assetId: asset,
+        holdingId: id,
+        date: '2026.05.21',
+        type: '배당',
+        name: '배당',
+        amount: '30',
+        quantity: '',
+        incomeCashAccountId: account.abs(),
+      );
+      expect((await findHolding(account)).quantity, 530);
+      expect(
+        (await findHolding(id)).transactions.single.counterpartyHoldingId,
+        account,
+      );
+      final period = await db.fetchLedgerPortfolioPerformance(
+        from: DateTime(2026, 5, 21),
+        to: DateTime(2026, 5, 21),
+      );
+      expect(period.incomeAmount, 30);
+      expect(period.externalCashFlowAmount, 0);
+      expect(period.tradeSettlementCashFlowAmount, 0);
+      TransactionItem edit({int? target}) => TransactionItem(
+        ledgerEventId: event,
+        holdingId: id,
+        counterpartyHoldingId: target,
+        type: '이자',
+        date: '2026.05.21',
+        name: '이자',
+        amount: '45',
+        quantity: '',
+      );
+      await expectLater(
+        db.replaceLedgerTransactionItem(edit(target: other)),
+        throwsStateError,
+      );
+      expect((await findHolding(account)).quantity, 530);
+      final updated = await db.replaceLedgerTransactionItem(edit());
+      expect((await findHolding(account)).quantity, 545);
+      await db.deleteTransactionItem(updated!);
+      expect((await findHolding(account)).quantity, 500);
+      expect((await findHolding(id)).quantity, 2);
+    },
+  );
+
+  test(
+    'monthly home figures distinguish deposits from investment income',
+    () async {
+      final asset = await createAsset('주식');
+      final id = await db.createHolding(
+        assetId: asset,
+        currencyCode: 'KRW',
+        exchangeCode: '',
+        name: '주식',
+        symbol: 'DIV',
+        quantity: 1,
+        averagePrice: 100,
+        currentPrice: 100,
+        note: '',
+      );
+      final cash = await db.createCashAccount(
+        assetId: asset,
+        currencyCode: 'KRW',
+        name: '현금',
+        note: '',
+        balance: 0,
+      );
+      for (final date in ['2026.04.30', '2026.05.01']) {
+        await db.createTransaction(
+          assetId: asset,
+          holdingId: cash,
+          date: date,
+          type: '입금',
+          name: '입금',
+          amount: '400',
+          quantity: '',
+        );
+        await db.createTransaction(
+          assetId: asset,
+          holdingId: id,
+          date: date,
+          type: '배당',
+          name: '배당',
+          amount: '100',
+          quantity: '',
+          incomeCashAccountId: cash.abs(),
+        );
+      }
+      final flows = await db.fetchExternalCashFlowKrwByDate(
+        from: '2026-05-01',
+        to: '2026-05-31',
+        visibleOnly: true,
+      );
+      expect(flows, {'2026-05-01': 400.0});
+      expect(
+        await loadMonthInvestmentPerformance(
+          db,
+          DateTime(2026, 5, 31),
+          await db.fetchAssets(),
+        ),
+        100,
       );
     },
   );

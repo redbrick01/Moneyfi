@@ -8,6 +8,11 @@ class AppDataLifecycleService {
 
   static int _version = 0;
   static int _refreshToken = 0;
+  static bool _startupChecked = false;
+
+  static bool get startupChecked => _startupChecked;
+
+  static void markStartupChecked() => _startupChecked = true;
 
   static void beginReplacement({required String message}) {
     _version++;
@@ -38,6 +43,7 @@ class AppDataLifecycleService {
   static void resetForTesting() {
     _version = 0;
     _refreshToken = 0;
+    _startupChecked = false;
     state.value = const AppDataLifecycleState.ready();
   }
 }

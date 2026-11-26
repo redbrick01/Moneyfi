@@ -268,6 +268,7 @@ ActionPane moneyfySingleSlideActionPane({
   required VoidCallback onPressed,
   required IconData icon,
   required Color iconColor,
+  String? semanticLabel,
   Color? backgroundColor,
 }) {
   return ActionPane(
@@ -284,6 +285,7 @@ ActionPane moneyfySingleSlideActionPane({
           child: Icon(
             icon,
             color: iconColor,
+            semanticLabel: semanticLabel,
             size: VisualSpec.icon.sizeDefault,
           ),
         ),

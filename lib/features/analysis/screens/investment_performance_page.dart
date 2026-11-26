@@ -1,13 +1,14 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import 'package:moneyfy/components/chips/moneyfy_pill.dart';
-import 'package:moneyfy/components/metrics/app_metric_tile.dart';
 import 'package:moneyfy/components/section_card.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 import 'package:moneyfy/features/analysis/services/benchmark_price_service.dart';
 import 'package:moneyfy/features/analysis/services/investment_performance/performance_judgment.dart';
+import 'package:moneyfy/features/analysis/services/portfolio_drawdown.dart';
 import 'package:moneyfy/utils/display_currency.dart';
 import 'package:moneyfy/utils/risk_adjusted_performance_calculator.dart';
 import 'package:moneyfy/widgets/moneyfy_ui.dart';
@@ -80,8 +81,6 @@ class _InvestmentPerformancePageState extends State<InvestmentPerformancePage> {
                     setState(() => _holdingSortMode = mode);
                   },
                 ),
-                SizedBox(height: context.spacing.sectionGap),
-                _RiskInterpretationCard(viewModel: viewModel),
                 SizedBox(height: context.spacing.sectionGap),
                 _DataBasisCard(viewModel: viewModel),
               ],
@@ -451,10 +450,7 @@ class _AttributionComposition extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (var index = 0; index < visibleEntries.length; index++) ...[
-          _AttributionCompositionRow(
-            item: visibleEntries[index],
-            total: total,
-          ),
+          _AttributionCompositionRow(item: visibleEntries[index], total: total),
           if (index != visibleEntries.length - 1)
             SizedBox(height: context.spacing.xs),
         ],
@@ -468,10 +464,7 @@ class _AttributionComposition extends StatelessWidget {
 }
 
 class _AttributionCompositionRow extends StatelessWidget {
-  const _AttributionCompositionRow({
-    required this.item,
-    required this.total,
-  });
+  const _AttributionCompositionRow({required this.item, required this.total});
 
   final _AttributionData item;
   final double total;
@@ -734,116 +727,6 @@ class _PerformanceReconciliationCard extends StatelessWidget {
   }
 }
 
-class _RiskInterpretationCard extends StatelessWidget {
-  const _RiskInterpretationCard({required this.viewModel});
-
-  final _InvestmentPerformanceViewModel viewModel;
-
-  @override
-  Widget build(BuildContext context) {
-    final report = viewModel.report.advancedPerformance;
-    final metrics = [
-      _RiskMetricData(
-        label: '변동성',
-        value: _formatAnnualizedPercent(report.annualizedVolatility),
-        numericValue: report.annualizedVolatility,
-        caption: report.annualizedVolatility == null
-            ? '최소 기간 데이터가 더 필요합니다.'
-            : '수익률 변동 폭입니다.',
-      ),
-      _RiskMetricData(
-        label: 'Sharpe',
-        value: _formatDecimal(report.sharpeRatio),
-        numericValue: report.sharpeRatio,
-        caption: report.sharpeRatio == null
-            ? '최소 기간 데이터가 더 필요합니다.'
-            : '위험 대비 성과입니다.',
-      ),
-      _RiskMetricData(
-        label: '최대 낙폭',
-        value: _formatSignedRatePercent(report.maxDrawdown),
-        numericValue: report.maxDrawdown,
-        caption: report.maxDrawdown == null
-            ? '최소 기간 데이터가 더 필요합니다.'
-            : '선택 기간 중 고점 대비 가장 큰 하락입니다.',
-      ),
-    ];
-
-    return SectionCard(
-      title: '리스크 신호',
-      footer: Text(
-        report.isRiskFreeRateFallback
-            ? '무위험수익률은 임시로 0% 기준을 사용했습니다.'
-            : '${report.riskFreeRateLabel} 기준 Sharpe입니다.',
-        style: context.typography.caption.copyWith(
-          color: context.colors.neutralTextMuted,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _EvidenceSubtitle('변동성, 낙폭, 위험 대비 성과를 판단합니다.'),
-          SizedBox(height: context.spacing.md),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth < 360 ? 1 : 2;
-              final gap = context.spacing.sm;
-              final width =
-                  (constraints.maxWidth - gap * (columns - 1)) / columns;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  for (final metric in metrics)
-                    SizedBox(
-                      width: width,
-                      child: _RiskMetricTile(metric: metric),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RiskMetricTile extends StatelessWidget {
-  const _RiskMetricTile({required this.metric});
-
-  final _RiskMetricData metric;
-
-  @override
-  Widget build(BuildContext context) {
-    final value = metric.value ?? '데이터 부족';
-    final color = metric.numericValue == null
-        ? context.colors.neutralTextMuted
-        : _valueColor(context, metric.numericValue!);
-    return AppMetricTile(
-      label: metric.label,
-      value: value,
-      caption: metric.caption,
-      valueColor: color,
-      dense: true,
-    );
-  }
-}
-
-class _RiskMetricData {
-  const _RiskMetricData({
-    required this.label,
-    required this.value,
-    required this.numericValue,
-    required this.caption,
-  });
-
-  final String label;
-  final String? value;
-  final double? numericValue;
-  final String caption;
-}
-
 class _DataBasisCard extends StatelessWidget {
   const _DataBasisCard({required this.viewModel});
 
@@ -954,70 +837,67 @@ class _MonthlyBarStrip extends StatelessWidget {
           ? item.pureRealizedPerformance.abs()
           : maxValue,
     );
+    final extent = maxAbs > 0 ? maxAbs : 1.0;
     return SizedBox(
-      height: 72,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (var index = 0; index < items.length; index++) ...[
-            Expanded(
-              child: _MonthlyBar(
-                item: items[index],
-                fraction: maxAbs <= 0
-                    ? 0
-                    : (items[index].pureRealizedPerformance.abs() / maxAbs)
-                          .clamp(0.0, 1.0),
+      height: 88,
+      child: BarChart(
+        BarChartData(
+          minY: items.any((item) => item.pureRealizedPerformance < 0)
+              ? -extent
+              : 0,
+          maxY:
+              items.any((item) => item.pureRealizedPerformance > 0) ||
+                  maxAbs == 0
+              ? extent
+              : 0,
+          gridData: const FlGridData(show: false),
+          borderData: FlBorderData(show: false),
+          extraLinesData: ExtraLinesData(
+            horizontalLines: [
+              HorizontalLine(
+                y: 0,
+                color: context.colors.neutralOutline,
+                strokeWidth: 1,
+              ),
+            ],
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(),
+            rightTitles: const AxisTitles(),
+            topTitles: const AxisTitles(),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 20,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  final month = items[value.toInt()].month;
+                  return Text(
+                    month.length >= 7 ? month.substring(5, 7) : month,
+                    style: context.typography.caption,
+                  );
+                },
               ),
             ),
-            if (index != items.length - 1) SizedBox(width: context.spacing.xs),
+          ),
+          barGroups: [
+            for (final (index, item) in items.indexed)
+              BarChartGroupData(
+                x: index,
+                barRods: [
+                  BarChartRodData(
+                    toY: item.pureRealizedPerformance,
+                    width: 12,
+                    borderRadius: BorderRadius.circular(3),
+                    color: item.pureRealizedPerformance < 0
+                        ? context.colors.negativeContainer
+                        : context.colors.positiveContainer,
+                  ),
+                ],
+              ),
           ],
-        ],
+        ),
       ),
-    );
-  }
-}
-
-class _MonthlyBar extends StatelessWidget {
-  const _MonthlyBar({required this.item, required this.fraction});
-
-  final _MonthlyPerformance item;
-  final double fraction;
-
-  @override
-  Widget build(BuildContext context) {
-    final amount = item.pureRealizedPerformance;
-    final color = amount > 0
-        ? context.colors.positiveContainer
-        : amount < 0
-        ? context.colors.negativeContainer
-        : context.colors.neutralSurfaceOverlay;
-    final monthLabel = item.month.length >= 7 ? item.month.substring(5, 7) : '';
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: FractionallySizedBox(
-              heightFactor: fraction <= 0 ? 0.04 : fraction,
-              widthFactor: 1,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(context.radius.rSm),
-                ),
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: context.spacing.xs),
-        Text(
-          monthLabel,
-          style: context.typography.caption.copyWith(
-            color: context.colors.neutralTextMuted,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1368,11 +1248,33 @@ class _MetricRow extends StatelessWidget {
   }
 }
 
-Future<_InvestmentPerformanceReport> _loadInvestmentPerformanceReport(
-  _PerformanceDateRange range,
+Future<double> loadMonthInvestmentPerformance(
+  AppDatabase db,
+  DateTime today,
+  List<AssetItem> assets,
 ) async {
-  final db = AppDatabase.instance;
-  final assets = await db.fetchAssets();
+  final report = await _loadInvestmentPerformanceReport(
+    _PerformanceDateRange(
+      preset: _PerformanceDatePreset.oneMonth,
+      label: '이번 달',
+      from: DateTime(today.year, today.month),
+      to: DateUtils.dateOnly(today),
+    ),
+    database: db,
+    loadedAssets: assets,
+    includeBenchmarks: false,
+  );
+  return report.pureInvestmentPerformance;
+}
+
+Future<_InvestmentPerformanceReport> _loadInvestmentPerformanceReport(
+  _PerformanceDateRange range, {
+  bool includeBenchmarks = true,
+  AppDatabase? database,
+  List<AssetItem>? loadedAssets,
+}) async {
+  final db = database ?? AppDatabase.instance;
+  final assets = loadedAssets ?? await db.fetchAssets();
   final ledgerPerformanceByHoldingId = await db
       .fetchLedgerHoldingPerformanceByHoldingId(from: range.from, to: range.to);
   final ledgerPortfolioPerformanceByCurrency = await db
@@ -1478,7 +1380,9 @@ Future<_InvestmentPerformanceReport> _loadInvestmentPerformanceReport(
       usdKrwRate,
       (record) => record.sellAmount,
     ),
-    advancedPerformance: await _loadAdvancedPerformanceReport(db, range),
+    advancedPerformance: includeBenchmarks
+        ? await _loadAdvancedPerformanceReport(db, range)
+        : const _AdvancedPerformanceReport.empty(),
     startSnapshot: reconciliationSnapshots.start,
     endSnapshot: reconciliationSnapshots.end,
   );
@@ -1497,18 +1401,14 @@ Future<_AdvancedPerformanceReport> _loadAdvancedPerformanceReport(
       .map((row) => row.dailyReturn)
       .whereType<double>()
       .toList(growable: false);
-  final portfolioValues = rows
-      .map((row) => row.portfolioValueKrw)
-      .toList(growable: false);
+  final snapshots = await db.fetchAllPortfolioSnapshots(from: from, to: to);
+  final metrics = await loadPortfolioPerformanceMetrics(db, snapshots);
+  final drawdown = metrics.drawdown;
   final benchmarkFrom = from ?? (rows.isEmpty ? null : rows.first.returnDate);
   final benchmarkTo = to ?? (rows.isEmpty ? null : rows.last.returnDate);
   if (benchmarkFrom != null && benchmarkTo != null) {
     await BenchmarkPriceService.instance.ensureBenchmarkPrices(
       benchmarkCode: _defaultBenchmarkCode,
-      from: benchmarkFrom,
-      to: benchmarkTo,
-    );
-    await BenchmarkPriceService.instance.ensureRiskFreeRates(
       from: benchmarkFrom,
       to: benchmarkTo,
     );
@@ -1518,13 +1418,6 @@ Future<_AdvancedPerformanceReport> _loadAdvancedPerformanceReport(
     from: from,
     to: to,
   );
-  final riskFreeRate = benchmarkTo == null
-      ? null
-      : await BenchmarkPriceService.instance.fetchLatestRiskFreeRate(
-          to: benchmarkTo,
-        );
-  final annualRiskFreeRate = riskFreeRate?.annualRate ?? 0;
-
   return _AdvancedPerformanceReport(
     benchmarkCode: _defaultBenchmarkCode,
     benchmarkLabel: _defaultBenchmarkLabel,
@@ -1532,18 +1425,8 @@ Future<_AdvancedPerformanceReport> _loadAdvancedPerformanceReport(
     benchmarkReturn: benchmarkComparison?.benchmarkPeriodReturn,
     excessReturn: benchmarkComparison?.excessReturn,
     dailyReturnCount: dailyReturns.length,
-    annualizedVolatility: dailyReturns.length < 20
-        ? null
-        : calculateAnnualizedVolatility(dailyReturns),
-    sharpeRatio: calculateSharpeRatio(
-      dailyReturns,
-      riskFreeRate: annualRiskFreeRate,
-    ),
-    riskFreeRate: annualRiskFreeRate,
-    riskFreeRateSource: riskFreeRate?.source,
-    riskFreeRateDate: riskFreeRate?.priceDate,
-    isRiskFreeRateFallback: riskFreeRate == null,
-    maxDrawdown: calculateMaxDrawdown(portfolioValues)?.maxDrawdown,
+    annualizedVolatility: metrics.annualizedVolatility,
+    maxDrawdown: drawdown == null ? null : drawdown.percent / 100,
   );
 }
 
@@ -1751,11 +1634,6 @@ class _AdvancedPerformanceReport {
     required this.excessReturn,
     required this.dailyReturnCount,
     required this.annualizedVolatility,
-    required this.sharpeRatio,
-    required this.riskFreeRate,
-    required this.riskFreeRateSource,
-    required this.riskFreeRateDate,
-    required this.isRiskFreeRateFallback,
     required this.maxDrawdown,
   });
 
@@ -1767,11 +1645,6 @@ class _AdvancedPerformanceReport {
       excessReturn = null,
       dailyReturnCount = 0,
       annualizedVolatility = null,
-      sharpeRatio = null,
-      riskFreeRate = 0,
-      riskFreeRateSource = null,
-      riskFreeRateDate = null,
-      isRiskFreeRateFallback = true,
       maxDrawdown = null;
 
   final String benchmarkCode;
@@ -1781,18 +1654,7 @@ class _AdvancedPerformanceReport {
   final double? excessReturn;
   final int dailyReturnCount;
   final double? annualizedVolatility;
-  final double? sharpeRatio;
-  final double riskFreeRate;
-  final String? riskFreeRateSource;
-  final String? riskFreeRateDate;
-  final bool isRiskFreeRateFallback;
   final double? maxDrawdown;
-
-  String get riskFreeRateLabel {
-    if (isRiskFreeRateFallback) return '0% 무위험수익률';
-    final dateText = riskFreeRateDate == null ? '' : ' ${riskFreeRateDate!}';
-    return '미국 13주 T-Bill$dateText';
-  }
 }
 
 class _MonthlyPerformance {
@@ -2343,11 +2205,6 @@ String? _formatSignedRatePercent(double? rate) {
   return _formatSignedPercent(rate * 100);
 }
 
-String? _formatAnnualizedPercent(double? rate) {
-  final percentText = _formatSignedRatePercent(rate);
-  return percentText == null ? null : '연 $percentText';
-}
-
 String? _formatPercentagePoint(double? rate) {
   if (rate == null) return null;
   final percent = rate * 100;
@@ -2357,8 +2214,3 @@ String? _formatPercentagePoint(double? rate) {
 
 String? _formatSignedPercentagePoint(double? rate) =>
     _formatPercentagePoint(rate);
-
-String? _formatDecimal(double? value) {
-  if (value == null) return null;
-  return value.toStringAsFixed(2);
-}

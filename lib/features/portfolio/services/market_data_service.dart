@@ -1,26 +1,63 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:async/async.dart' show AsyncCache;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
+import 'package:moneyfy/components/formatters/number_format.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 import 'package:moneyfy/features/portfolio/models/holding_price_history.dart';
 import 'package:moneyfy/features/portfolio/models/market_snapshot.dart';
 
+class MarketRefreshResult {
+  const MarketRefreshResult({
+    required this.total,
+    required this.updated,
+    required this.unresolvedExchanges,
+    required this.fxUpdated,
+  });
+
+  final int total;
+  final int updated;
+  final int unresolvedExchanges;
+  final bool fxUpdated;
+
+  String get message {
+    final failed = total - updated - unresolvedExchanges;
+    return [
+      if (total > 0) '시세 $updated/$total건 갱신' else '갱신할 종목이 없어요',
+      if (unresolvedExchanges > 0) '거래소 미확인 $unresolvedExchanges건',
+      if (failed > 0) '시세 조회·저장 실패 $failed건',
+      if (!fxUpdated) '환율 갱신 실패',
+    ].join(' · ');
+  }
+}
+
 class MarketDataService {
   MarketDataService._({
-    http.Client? client,
+    HttpClientAdapter? adapter,
     _MarketApiConfig? config,
     bool persistKisTokenStorage = true,
-  }) : _client = client ?? http.Client(),
+  }) : _client = Dio(
+         BaseOptions(
+           connectTimeout: _quoteTimeout,
+           sendTimeout: _quoteTimeout,
+           receiveTimeout: _quoteTimeout,
+           responseType: ResponseType.plain,
+           validateStatus: (status) => status != null,
+         ),
+       ),
        _config = config ?? _MarketApiConfig(),
-       _persistKisTokenStorage = persistKisTokenStorage;
+       _persistKisTokenStorage = persistKisTokenStorage {
+    if (adapter != null) _client.httpClientAdapter = adapter;
+  }
 
   @visibleForTesting
   factory MarketDataService.test({
-    required http.Client client,
+    required HttpClientAdapter adapter,
     String kisBaseUrl = 'https://openapi.koreainvestment.com:9443',
     String kisAppKey = '',
     String kisAppSecret = '',
@@ -40,7 +77,7 @@ class MarketDataService {
     String usdKrwRateUrl = '',
   }) {
     return MarketDataService._(
-      client: client,
+      adapter: adapter,
       persistKisTokenStorage: false,
       config: _MarketApiConfig(
         kisBaseUrl: kisBaseUrl,
@@ -67,7 +104,10 @@ class MarketDataService {
   static const _kisAccessTokenExpiryStorageKey = 'kis_access_token_expires_at';
   static const _quoteTimeout = Duration(seconds: 15);
 
-  final http.Client _client;
+  final Dio _client;
+  final _pendingReads =
+      <(Uri, String?, bool), AsyncCache<Map<String, dynamic>>>{};
+
   final _MarketApiConfig _config;
   final bool _persistKisTokenStorage;
 
@@ -77,29 +117,52 @@ class MarketDataService {
   Future<void>? _accessTokenRestoreFuture;
   DateTime? _kisTokenRetryAvailableAt;
 
-  Future<void> refreshAllMarketData() async {
+  Future<MarketRefreshResult>? _marketRefresh;
+
+  Future<MarketRefreshResult> refreshAllMarketData() {
+    return _marketRefresh ??= _refreshAllMarketData().whenComplete(() {
+      _marketRefresh = null;
+    });
+  }
+
+  Future<MarketRefreshResult> _refreshAllMarketData() async {
+    var fxUpdated = false;
     try {
-      await refreshUsdKrwRate();
+      fxUpdated = await refreshUsdKrwRate() != null;
     } catch (error, stackTrace) {
       _log('FX refresh failed: $error');
       _logStack(stackTrace);
     }
 
-    final assets = await AppDatabase.instance.fetchAssets();
-    final holdings = assets
-        .expand((asset) => asset.holdings)
-        .where(_supportsMarketRefresh)
-        .toList(growable: false);
+    final positions = await AppDatabase.instance
+        .fetchHoldingsForMarketRefresh();
+    final holdings = positions
+        .where((holding) => !_isCashLikeHolding(holding))
+        .toList();
+    var updated = 0;
+    var unresolvedExchanges = 0;
     await _runWithConcurrency(
       holdings,
       concurrency: 4,
       worker: (holding) async {
-        await fetchSnapshot(holding);
+        final quote = await fetchSnapshot(holding);
+        if (!quote.isFallback && quote.currentPriceValue != null) {
+          updated++;
+        } else if (quote.exchangeNotFound) {
+          unresolvedExchanges++;
+        }
       },
+    );
+    return MarketRefreshResult(
+      total: holdings.length,
+      updated: updated,
+      unresolvedExchanges: unresolvedExchanges,
+      fxUpdated: fxUpdated,
     );
   }
 
   Future<void> clearLocalCache() async {
+    _pendingReads.clear();
     _accessToken = null;
     _accessTokenExpiresAt = null;
     _accessTokenFuture = null;
@@ -141,18 +204,18 @@ class MarketDataService {
 
     final uri = Uri.parse(_config.usdKrwRateUrl);
     _log('FX request GET $uri');
-    final response = await _client.get(uri);
+    final response = await _request(uri);
     _log('FX response status=${response.statusCode}');
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      _log('FX request failed body=${_truncate(response.body)}');
+    if (response.statusCode! < 200 || response.statusCode! >= 300) {
+      _log('FX request failed body=${_truncate(response.data ?? '')}');
       return null;
     }
 
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final json = jsonDecode(response.data ?? '') as Map<String, dynamic>;
     final rate = _extractUsdKrwRate(json);
     if (rate == null) {
-      _log('FX response parse failed body=${_truncate(response.body)}');
+      _log('FX response parse failed body=${_truncate(response.data ?? '')}');
       return null;
     }
 
@@ -279,7 +342,7 @@ class MarketDataService {
 
   Future<HoldingMarketSnapshot> fetchSnapshot(
     HoldingItem holding, {
-    bool includeFundComponents = true,
+    bool includeFundComponents = false,
   }) async {
     try {
       final assetType = holding.assetType ?? holding.assetTitle;
@@ -316,20 +379,8 @@ class MarketDataService {
     }
   }
 
-  bool _supportsMarketRefresh(HoldingItem holding) {
-    if (_isCashLikeHolding(holding)) return false;
-
-    switch (holding.assetType ?? holding.assetTitle) {
-      case '주식':
-      case '펀드':
-      case '코인':
-        return true;
-      default:
-        return false;
-    }
-  }
-
   bool _isCashLikeHolding(HoldingItem holding) {
+    if (holding.isCashLike) return true;
     final symbol = holding.symbol.trim().toUpperCase();
     final currencyCode = holding.currencyCode.trim().toUpperCase();
     if (symbol.isEmpty || currencyCode.isEmpty) return false;
@@ -420,18 +471,33 @@ class MarketDataService {
       return HoldingMarketSnapshot.fallback(holding);
     }
 
-    if (holding.exchangeCode.isEmpty) {
-      _log('fetchSnapshot fallback: overseas exchangeCode missing');
-      return HoldingMarketSnapshot.fallback(holding);
+    final configuredExchange = holding.exchangeCode.trim().toUpperCase();
+    final symbol = holding.symbol.trim().toUpperCase();
+    final needsExchange = configuredExchange.isEmpty;
+    var exchange = configuredExchange;
+    Map<String, dynamic> output = const {};
+    for (final candidate
+        in needsExchange ? const ['NAS', 'NYS', 'AMS'] : [configuredExchange]) {
+      final json = await _kisGet(
+        path: _config.kisOverseasStockQuotePath,
+        trId: _config.kisOverseasStockQuoteTrId,
+        query: {'AUTH': '', 'EXCD': candidate, 'SYMB': symbol},
+      );
+      final data =
+          (json['output'] as Map?)?.cast<String, dynamic>() ?? const {};
+      if (needsExchange && data['rsym'] != 'D$candidate$symbol') continue;
+      final price = _parseNumber(data['last']);
+      if (price == null || !price.isFinite || price <= 0) continue;
+      exchange = candidate;
+      output = data;
+      break;
     }
-
-    final json = await _kisGet(
-      path: _config.kisOverseasStockQuotePath,
-      trId: _config.kisOverseasStockQuoteTrId,
-      query: {'AUTH': '', 'EXCD': holding.exchangeCode, 'SYMB': holding.symbol},
-    );
-    final output =
-        (json['output'] as Map?)?.cast<String, dynamic>() ?? const {};
+    if (output.isEmpty) {
+      return HoldingMarketSnapshot.fallback(
+        holding,
+        exchangeNotFound: needsExchange,
+      );
+    }
     final currentPrice = _parseNumber(output['last'])?.toDouble();
     final previousClose = _parseNumber(output['base']);
     final dayChange = currentPrice != null && previousClose != null
@@ -443,7 +509,7 @@ class MarketDataService {
         : null;
 
     final snapshot = HoldingMarketSnapshot(
-      marketName: _marketNameForExchange(holding.exchangeCode),
+      marketName: _marketNameForExchange(exchange),
       sectorName: '-',
       currentPrice: _formatMoney(output['last'], currencyCode: 'USD'),
       currentPriceValue: currentPrice,
@@ -479,7 +545,11 @@ class MarketDataService {
       bestAskQty: '-',
       bestBidQty: '-',
     );
-    await _persistCurrentPrice(holding, output['last']);
+    await _persistCurrentPrice(
+      holding,
+      output['last'],
+      recoveredExchange: needsExchange ? exchange : null,
+    );
     return snapshot;
   }
 
@@ -632,20 +702,18 @@ class MarketDataService {
               .replaceAll('{quote}', quoteCurrency)
         : 'https://api.coinone.co.kr/public/v2/ticker_utc_new/'
               '$quoteCurrency/$symbol?additional_data=true';
-    _log('Coin request GET $url');
-    final response = await _client.get(Uri.parse(url)).timeout(_quoteTimeout);
-    _log('Coin response status=${response.statusCode} symbol=$symbol');
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      _log('Coin request failed body=${_truncate(response.body)}');
-      return HoldingMarketSnapshot.fallback(holding);
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final uri = Uri.parse(url);
+    final json = await _shareMarketRead(uri, () async {
+      _log('Coin request GET $uri');
+      final response = await _request(uri);
+      if (response.statusCode! < 200 || response.statusCode! >= 300) {
+        throw StateError('Coin quote request failed: ${response.statusCode}');
+      }
+      return jsonDecode(response.data ?? '') as Map<String, dynamic>;
+    });
     final tickers = (json['tickers'] as List?) ?? const [];
     if (tickers.isEmpty) {
-      _log(
-        'Coin response has no tickers symbol=$symbol body=${_truncate(response.body)}',
-      );
+      _log('Coin response has no tickers symbol=$symbol');
       return HoldingMarketSnapshot.fallback(holding);
     }
 
@@ -697,6 +765,45 @@ class MarketDataService {
     return snapshot;
   }
 
+  Future<Response<String>> _request(Uri uri, {Options? options, Object? data}) {
+    final cancel = CancelToken();
+    return _client
+        .requestUri<String>(
+          uri,
+          options: options,
+          data: data,
+          cancelToken: cancel,
+        )
+        .timeout(
+          _quoteTimeout,
+          onTimeout: () {
+            cancel.cancel('Request deadline exceeded');
+            throw TimeoutException(
+              'Market request deadline exceeded',
+              _quoteTimeout,
+            );
+          },
+        );
+  }
+
+  // Share the API payload. Formatting, fallbacks and writes belong to each holding.
+  Future<Map<String, dynamic>> _shareMarketRead(
+    Uri uri,
+    Future<Map<String, dynamic>> Function() load, {
+    String? trId,
+    bool allowNoData = false,
+  }) {
+    final key = (uri, trId, allowNoData);
+    final cache = _pendingReads.putIfAbsent(key, AsyncCache.ephemeral);
+    return cache.fetch(() async {
+      try {
+        return await load();
+      } finally {
+        if (identical(_pendingReads[key], cache)) _pendingReads.remove(key);
+      }
+    });
+  }
+
   Future<Map<String, dynamic>> _kisGet({
     required String path,
     required String trId,
@@ -706,23 +813,36 @@ class MarketDataService {
     final uri = Uri.parse(
       '${_config.kisBaseUrl}$path',
     ).replace(queryParameters: query);
-    Future<http.Response> requestWithToken(String accessToken) async {
+    return _shareMarketRead(
+      uri,
+      () => _loadKisData(uri, trId, allowNoData),
+      trId: trId,
+      allowNoData: allowNoData,
+    );
+  }
+
+  Future<Map<String, dynamic>> _loadKisData(
+    Uri uri,
+    String trId,
+    bool allowNoData,
+  ) async {
+    Future<Response<String>> requestWithToken(String accessToken) async {
       for (var attempt = 0; ; attempt++) {
-        final response = await _client
-            .get(
-              uri,
-              headers: {
-                'content-type': 'application/json; charset=utf-8',
-                'authorization': 'Bearer $accessToken',
-                'appkey': _config.kisAppKey,
-                'appsecret': _config.kisAppSecret,
-                'tr_id': trId,
-                'custtype': 'P',
-              },
-            )
-            .timeout(_quoteTimeout);
+        final response = await _request(
+          uri,
+          options: Options(
+            headers: {
+              'content-type': 'application/json; charset=utf-8',
+              'authorization': 'Bearer $accessToken',
+              'appkey': _config.kisAppKey,
+              'appsecret': _config.kisAppSecret,
+              'tr_id': trId,
+              'custtype': 'P',
+            },
+          ),
+        );
         if (response.statusCode != 429 &&
-            !response.body.contains('"EGW00201"')) {
+            !(response.data ?? '').contains('"EGW00201"')) {
           return response;
         }
         if (attempt == 2) {
@@ -736,9 +856,11 @@ class MarketDataService {
     var token = await _issueKisAccessToken();
     _log('KIS request GET $uri tr_id=$trId');
     var response = await requestWithToken(token);
-    _log('KIS response status=${response.statusCode} tr_id=$trId path=$path');
+    _log(
+      'KIS response status=${response.statusCode} tr_id=$trId path=${uri.path}',
+    );
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
+    if (response.statusCode! < 200 || response.statusCode! >= 300) {
       if (response.statusCode == 401 || response.statusCode == 403) {
         _log('KIS auth appears stale. Clearing token cache and retrying once.');
         await _clearPersistedKisAccessToken();
@@ -746,17 +868,17 @@ class MarketDataService {
         response = await requestWithToken(token);
         _log(
           'KIS retry response status=${response.statusCode} '
-          'tr_id=$trId path=$path',
+          'tr_id=$trId path=${uri.path}',
         );
       }
     }
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      _log('KIS request failed body=${_truncate(response.body)}');
+    if (response.statusCode! < 200 || response.statusCode! >= 300) {
+      _log('KIS request failed body=${_truncate(response.data ?? '')}');
       throw Exception('KIS request failed: ${response.statusCode}');
     }
 
-    var json = jsonDecode(response.body) as Map<String, dynamic>;
+    var json = jsonDecode(response.data ?? '') as Map<String, dynamic>;
     if (!_isKisSuccess(json)) {
       _log(
         'KIS business error rt_cd=${json['rt_cd']} '
@@ -771,13 +893,13 @@ class MarketDataService {
         response = await requestWithToken(token);
         _log(
           'KIS business retry response status=${response.statusCode} '
-          'tr_id=$trId path=$path',
+          'tr_id=$trId path=${uri.path}',
         );
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          _log('KIS retry failed body=${_truncate(response.body)}');
+        if (response.statusCode! < 200 || response.statusCode! >= 300) {
+          _log('KIS retry failed body=${_truncate(response.data ?? '')}');
           throw Exception('KIS request failed: ${response.statusCode}');
         }
-        json = jsonDecode(response.body) as Map<String, dynamic>;
+        json = jsonDecode(response.data ?? '') as Map<String, dynamic>;
       }
       if (!_isKisSuccess(json)) {
         final message = json['msg1']?.toString() ?? '';
@@ -790,7 +912,7 @@ class MarketDataService {
       }
     }
 
-    _log('KIS response body=${_truncate(response.body)}');
+    _log('KIS response body=${_truncate(response.data ?? '')}');
     return json;
   }
 
@@ -834,23 +956,24 @@ class MarketDataService {
   Future<String> _requestKisAccessToken() async {
     _log('KIS token request POST ${_config.kisBaseUrl}/oauth2/tokenP');
 
-    final response = await _client
-        .post(
-          Uri.parse('${_config.kisBaseUrl}/oauth2/tokenP'),
-          headers: const {'content-type': 'application/json; charset=utf-8'},
-          body: jsonEncode({
-            'grant_type': 'client_credentials',
-            'appkey': _config.kisAppKey,
-            'appsecret': _config.kisAppSecret,
-          }),
-        )
-        .timeout(_quoteTimeout);
+    final response = await _request(
+      Uri.parse('${_config.kisBaseUrl}/oauth2/tokenP'),
+      options: Options(
+        method: 'POST',
+        contentType: 'application/json; charset=utf-8',
+      ),
+      data: {
+        'grant_type': 'client_credentials',
+        'appkey': _config.kisAppKey,
+        'appsecret': _config.kisAppSecret,
+      },
+    );
     _log('KIS token response status=${response.statusCode}');
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      _log('KIS token request failed body=${_truncate(response.body)}');
+    if (response.statusCode! < 200 || response.statusCode! >= 300) {
+      _log('KIS token request failed body=${_truncate(response.data ?? '')}');
       try {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final json = jsonDecode(response.data ?? '') as Map<String, dynamic>;
         if (json['error_code']?.toString() == 'EGW00133') {
           _kisTokenRetryAvailableAt = DateTime.now().add(
             const Duration(minutes: 1),
@@ -860,11 +983,11 @@ class MarketDataService {
       throw Exception('KIS auth failed: ${response.statusCode}');
     }
 
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final json = jsonDecode(response.data ?? '') as Map<String, dynamic>;
     _kisTokenRetryAvailableAt = null;
     _accessToken = json['access_token'] as String?;
     if (_accessToken == null || _accessToken!.isEmpty) {
-      _log('KIS token missing body=${_truncate(response.body)}');
+      _log('KIS token missing body=${_truncate(response.data ?? '')}');
       throw Exception('KIS access token missing');
     }
     _accessTokenExpiresAt = _resolveKisTokenExpiry(json);
@@ -977,24 +1100,25 @@ class MarketDataService {
 
   Future<void> _persistCurrentPrice(
     HoldingItem holding,
-    Object? rawPrice,
-  ) async {
-    final holdingId = holding.id;
-    final parsedPrice = _parseNumber(rawPrice);
-    if (holdingId == null || parsedPrice == null) return;
-    _log(
-      'Persist current price holdingId=$holdingId '
-      'symbol=${holding.symbol} price=${parsedPrice.toDouble()}',
-    );
-    try {
-      await AppDatabase.instance.updateHoldingCurrentPrice(
-        holdingId,
-        parsedPrice.toDouble(),
-      );
-    } catch (error, stackTrace) {
-      _log('Current price save failed symbol=${holding.symbol}: $error');
-      _logStack(stackTrace);
+    Object? rawPrice, {
+    String? recoveredExchange,
+  }) async {
+    final price = _parseNumber(rawPrice)?.toDouble();
+    if (price == null || !price.isFinite || price <= 0) {
+      throw const FormatException('Invalid market price');
     }
+    final id = holding.id;
+    if (id == null) return; // Lookup previews have no stored holding.
+    final saved = await AppDatabase.instance.updateHoldingCurrentPrice(
+      id,
+      price,
+      recoveredExchange: recoveredExchange,
+      expectedSymbol: holding.symbol,
+      expectedCurrency: holding.currencyCode,
+      expectedClientId: holding.clientId,
+      expectedExchange: holding.exchangeCode,
+    );
+    if (!saved) throw StateError('Holding changed before quote was saved');
   }
 
   void _log(String message) {
@@ -1243,26 +1367,8 @@ String _marketNameForExchange(String exchangeCode) {
 String _formatNumber(Object? value) {
   final number = _parseNumber(value);
   if (number == null) return '-';
-  final fixed = number.toStringAsFixed(number % 1 == 0 ? 0 : 2);
-  final parts = fixed.split('.');
-  final whole = parts.first;
-  final isNegative = whole.startsWith('-');
-  final digits = isNegative ? whole.substring(1) : whole;
-  final buffer = StringBuffer();
-
-  for (var index = 0; index < digits.length; index++) {
-    final reverseIndex = digits.length - index;
-    buffer.write(digits[index]);
-    if (reverseIndex > 1 && reverseIndex % 3 == 1) {
-      buffer.write(',');
-    }
-  }
-
-  final formattedWhole = '${isNegative ? '-' : ''}$buffer';
-  if (parts.length == 1 || parts[1] == '00') {
-    return formattedWhole;
-  }
-  return '$formattedWhole.${parts[1]}';
+  final digits = number.abs().toStringAsFixed(2).endsWith('.00') ? 0 : 2;
+  return "${number.isNegative ? '-' : ''}${formatCurrency(number.abs(), fractionDigits: digits)}";
 }
 
 String _formatPercent(Object? value) {
@@ -1302,19 +1408,8 @@ String _formatKrw(Object? value) {
   final number = _parseNumber(value);
   if (number == null) return '-';
   final rounded = number.round();
-  final digits = rounded.abs().toString();
-  final buffer = StringBuffer();
-
-  for (var index = 0; index < digits.length; index++) {
-    final reverseIndex = digits.length - index;
-    buffer.write(digits[index]);
-    if (reverseIndex > 1 && reverseIndex % 3 == 1) {
-      buffer.write(',');
-    }
-  }
-
   final prefix = rounded < 0 ? '-₩' : '₩';
-  return '$prefix$buffer';
+  return '$prefix${formatCurrency(rounded.abs())}';
 }
 
 String _formatSignedKrw(Object? value, {Object? sign}) {

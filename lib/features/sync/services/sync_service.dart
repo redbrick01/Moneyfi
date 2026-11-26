@@ -25,9 +25,12 @@ class SyncService {
   bool get canSync =>
       AuthService.isInitialized && AuthService.currentUser != null;
 
+  bool get isSyncing => _isSyncing || _isPullingCoreData || _isPullingSnapshots;
+
   Future<bool> syncNow({
     String reason = 'manual',
     bool requireAcknowledgement = true,
+    String? expectedUserId,
   }) async {
     if (!canSync || _isSyncing) {
       return false;
@@ -37,7 +40,10 @@ class SyncService {
     try {
       final startedUserId = AuthService.currentUser?.id;
       final owner = await AppDatabase.instance.localDataOwner();
-      if (startedUserId == null || (owner != null && owner != startedUserId)) {
+      if (startedUserId == null ||
+          (expectedUserId != null && startedUserId != expectedUserId) ||
+          AuthService.currentUser?.id != startedUserId ||
+          (owner != null && owner != startedUserId)) {
         return false;
       }
       if (owner == null) {
@@ -45,10 +51,10 @@ class SyncService {
         await AppDatabase.instance.assignLocalDataOwner(startedUserId);
       }
       final payload = await _buildPayload();
+      if (AuthService.currentUser?.id != startedUserId) return false;
       final session = AuthService.client.auth.currentSession;
       debugPrint(
-        '[sync] start reason=$reason canSync=$canSync hasSession=${session != null} '
-        'hasAccessToken=${(session?.accessToken ?? '').isNotEmpty}',
+        '[sync] start reason=$reason canSync=$canSync hasSession=${session != null}',
       );
       if (_isPayloadEmpty(payload)) {
         debugPrint('[sync] skipped empty payload reason=$reason');
@@ -59,15 +65,13 @@ class SyncService {
         'sync-local-db',
         body: payload,
       );
-      debugPrint(
-        '[sync] response reason=$reason status=${response.status} data=${response.data}',
-      );
+      debugPrint('[sync] response reason=$reason status=${response.status}');
       if (response.status != 200) {
-        debugPrint('[sync] non-200 reason=$reason error=${response.data}');
+        debugPrint('[sync] non-200 reason=$reason');
         return false;
       }
       if (response.data is Map && (response.data as Map)['ok'] == false) {
-        debugPrint('[sync] rejected reason=$reason error=${response.data}');
+        debugPrint('[sync] rejected reason=$reason');
         return false;
       }
       final responsePayload = response.data is Map
@@ -82,8 +86,7 @@ class SyncService {
       final conflictCount = responsePayload['conflict_count'];
       if (conflictCount is num && conflictCount > 0) {
         debugPrint(
-          '[sync] conflict reason=$reason count=${conflictCount.toInt()} '
-          'conflicts=${responsePayload['conflicts']}',
+          '[sync] conflict reason=$reason count=${conflictCount.toInt()}',
         );
       }
       if (requireAcknowledgement &&
@@ -98,13 +101,9 @@ class SyncService {
       return true;
     } catch (error, stackTrace) {
       final session = AuthService.client.auth.currentSession;
+      debugPrint('[sync] failed reason=$reason type=${error.runtimeType}');
       debugPrint(
-        '[sync] failed reason=$reason type=${error.runtimeType} error=$error',
-      );
-      debugPrint(
-        '[sync] session state reason=$reason hasSession=${session != null} '
-        'hasAccessToken=${(session?.accessToken ?? '').isNotEmpty} '
-        'userId=${AuthService.currentUser?.id}',
+        '[sync] session state reason=$reason hasSession=${session != null}',
       );
       debugPrintStack(stackTrace: stackTrace);
       return false;
@@ -222,13 +221,13 @@ class SyncService {
           return false;
         }
       }
-      debugPrint('[core-pull] start reason=$reason userId=$userId');
+      debugPrint('[core-pull] start reason=$reason');
       final response = await AuthService.client.functions.invoke(
         'get-sync-local-db',
         body: const <String, Object?>{},
       );
       debugPrint(
-        '[core-pull] response reason=$reason status=${response.status} data=${response.data}',
+        '[core-pull] response reason=$reason status=${response.status}',
       );
 
       if (response.status != 200 || response.data is! Map) {
@@ -257,10 +256,7 @@ class SyncService {
         'transaction_lines=${_payloadCount(payload['transaction_lines'])}',
       );
       if (AuthService.currentUser?.id != userId) {
-        debugPrint(
-          '[core-pull] ignored stale response reason=$reason '
-          'startedUserId=$userId currentUserId=${AuthService.currentUser?.id}',
-        );
+        debugPrint('[core-pull] ignored stale response reason=$reason');
         return false;
       }
       await AppDatabase.instance.replaceLocalSyncData(
@@ -274,9 +270,7 @@ class SyncService {
       debugPrint('[core-pull] success reason=$reason');
       return true;
     } catch (error, stackTrace) {
-      debugPrint(
-        '[core-pull] failed reason=$reason type=${error.runtimeType} error=$error',
-      );
+      debugPrint('[core-pull] failed reason=$reason type=${error.runtimeType}');
       debugPrintStack(stackTrace: stackTrace);
       return false;
     } finally {
@@ -309,13 +303,13 @@ class SyncService {
   }) async {
     _isPullingSnapshots = true;
     try {
-      debugPrint('[snapshot-pull] start reason=$reason userId=$userId');
+      debugPrint('[snapshot-pull] start reason=$reason');
       final response = await AuthService.client.functions.invoke(
         'get-portfolio-snapshots',
         body: const <String, Object?>{},
       );
       debugPrint(
-        '[snapshot-pull] response reason=$reason status=${response.status} data=${response.data}',
+        '[snapshot-pull] response reason=$reason status=${response.status}',
       );
 
       if (response.status != 200 || response.data is! Map) {
@@ -336,10 +330,7 @@ class SyncService {
           .map((row) => row.map((key, value) => MapEntry('$key', value)))
           .toList(growable: false);
       if (AuthService.currentUser?.id != userId) {
-        debugPrint(
-          '[snapshot-pull] ignored stale response reason=$reason '
-          'startedUserId=$userId currentUserId=${AuthService.currentUser?.id}',
-        );
+        debugPrint('[snapshot-pull] ignored stale response reason=$reason');
         return -1;
       }
       if (snapshots.isEmpty) {
@@ -354,7 +345,7 @@ class SyncService {
       return importedCount;
     } catch (error, stackTrace) {
       debugPrint(
-        '[snapshot-pull] failed reason=$reason type=${error.runtimeType} error=$error',
+        '[snapshot-pull] failed reason=$reason type=${error.runtimeType}',
       );
       debugPrintStack(stackTrace: stackTrace);
       return -1;

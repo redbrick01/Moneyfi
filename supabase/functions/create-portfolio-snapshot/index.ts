@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { authenticateUser } from "../_shared/auth.ts";
 
+import { fetchAllRows } from "../_shared/paginated_rows.ts";
+
 type AssetRow = {
   id: number;
   client_id: string;
@@ -275,45 +277,29 @@ async function resolveCronTargetUserIds(
     return [requestedUserId];
   }
 
-  const response = ensureSupabaseResponse(
-    await supabase
-      .from("assets")
-      .select("user_id")
-      .is("deleted_at", null),
-    "resolveCronTargetUserIds",
-  );
-  const { data, error } = response;
-
-  if (error) {
-    throw new Error(`Failed to load snapshot target users: ${error.message}`);
+  const users: string[] = [];
+  for (let from = 0;; from += 500) {
+    const { data, error } = await supabase.rpc("snapshot_target_users")
+      .order("user_id").range(from, from + 499);
+    if (error) throw new Error(error.message);
+    const page = data ?? [];
+    users.push(...page.map((row: { user_id: string }) => row.user_id));
+    if (page.length < 500) return users;
   }
-
-  return Array.from(
-    new Set(
-      (data ?? [])
-        .map((row) => String(row.user_id ?? "").trim())
-        .filter((userId) => userId.length > 0),
-    ),
-  );
 }
 
 async function loadAssets(supabase: SupabaseClient<any>, userId: string) {
-  const response = ensureSupabaseResponse(
-    await supabase
+  const { data } = await fetchAllRows(() =>
+    supabase
       .from("assets")
       .select(
         "id, client_id, asset_type, title, alias, currency_code, value, user_id",
+        { count: "exact" },
       )
       .eq("user_id", userId)
       .is("deleted_at", null)
-      .order("sort_order", { ascending: true }),
-    "loadAssets",
+      .order("sort_order").order("id")
   );
-  const { data, error } = response;
-
-  if (error) {
-    throw new Error(`Failed to load assets: ${error.message}`);
-  }
 
   return (data ?? []).map((row) => ({
     id: Number(row.id),
@@ -328,22 +314,17 @@ async function loadAssets(supabase: SupabaseClient<any>, userId: string) {
 }
 
 async function loadHoldings(supabase: SupabaseClient<any>, userId: string) {
-  const response = ensureSupabaseResponse(
-    await supabase
+  const { data } = await fetchAllRows(() =>
+    supabase
       .from("holdings")
       .select(
         "id, client_id, asset_id, currency_code, name, symbol, quantity, average_price, current_price, note, user_id",
+        { count: "exact" },
       )
       .eq("user_id", userId)
       .is("deleted_at", null)
-      .order("sort_order", { ascending: true }),
-    "loadHoldings",
+      .order("sort_order").order("id")
   );
-  const { data, error } = response;
-
-  if (error) {
-    throw new Error(`Failed to load holdings: ${error.message}`);
-  }
 
   return (data ?? []).map((row) => ({
     id: Number(row.id),
@@ -361,22 +342,17 @@ async function loadHoldings(supabase: SupabaseClient<any>, userId: string) {
 }
 
 async function loadCashAccounts(supabase: SupabaseClient<any>, userId: string) {
-  const response = ensureSupabaseResponse(
-    await supabase
+  const { data } = await fetchAllRows(() =>
+    supabase
       .from("cash_accounts")
       .select(
         "id, client_id, asset_id, currency_code, name, balance, note, user_id",
+        { count: "exact" },
       )
       .eq("user_id", userId)
       .is("deleted_at", null)
-      .order("sort_order", { ascending: true }),
-    "loadCashAccounts",
+      .order("sort_order").order("id")
   );
-  const { data, error } = response;
-
-  if (error) {
-    throw new Error(`Failed to load cash accounts: ${error.message}`);
-  }
 
   return (data ?? []).map((row) => ({
     id: Number(row.id),
@@ -444,65 +420,6 @@ function buildCashAccountSummary(
   };
 }
 
-async function deleteExistingSnapshot(
-  supabase: SupabaseClient<any>,
-  userId: string,
-  snapshotDate: string,
-) {
-  const existingResponse = ensureSupabaseResponse(
-    await supabase
-      .from("daily_portfolio_snapshots")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("snapshot_date", snapshotDate),
-    "deleteExistingSnapshot.loadExisting",
-  );
-  const { data: existing, error: existingError } = existingResponse;
-
-  if (existingError) {
-    throw new Error(
-      `Failed to load existing snapshots: ${existingError.message}`,
-    );
-  }
-
-  const snapshotIds = (existing ?? []).map((row) => Number(row.id)).filter(
-    Number.isFinite,
-  );
-  if (snapshotIds.length === 0) return;
-
-  const childTables = [
-    "daily_portfolio_snapshot_cash_accounts",
-    "daily_portfolio_snapshot_holding_items",
-    "daily_portfolio_snapshot_items",
-  ] as const;
-
-  for (const table of childTables) {
-    const deleteResponse = ensureSupabaseResponse(
-      await supabase.from(table).delete().in("snapshot_id", snapshotIds),
-      `deleteExistingSnapshot.${table}`,
-    );
-    const { error } = deleteResponse;
-    if (error) {
-      throw new Error(`Failed to delete ${table}: ${error.message}`);
-    }
-  }
-
-  const snapshotDeleteResponse = ensureSupabaseResponse(
-    await supabase
-      .from("daily_portfolio_snapshots")
-      .delete()
-      .in("id", snapshotIds),
-    "deleteExistingSnapshot.snapshots",
-  );
-  const { error: snapshotDeleteError } = snapshotDeleteResponse;
-
-  if (snapshotDeleteError) {
-    throw new Error(
-      `Failed to delete snapshots: ${snapshotDeleteError.message}`,
-    );
-  }
-}
-
 async function createSnapshotForUser(
   supabase: SupabaseClient<any>,
   userId: string,
@@ -523,8 +440,6 @@ async function createSnapshotForUser(
       reason: "no_assets",
     };
   }
-
-  await deleteExistingSnapshot(supabase, userId, snapshotDate);
 
   const holdingsByAssetId = new Map<number, HoldingRow[]>();
   for (const holding of holdings) {
@@ -619,39 +534,7 @@ async function createSnapshotForUser(
     ? 0
     : (totalProfitAmount / totalPurchaseAmount) * 100;
 
-  const snapshotInsertResponse = ensureSupabaseResponse(
-    await supabase
-      .from("daily_portfolio_snapshots")
-      .insert({
-        snapshot_date: snapshotDate,
-        total_purchase_amount: totalPurchaseAmount,
-        total_valuation_amount: totalValuationAmount,
-        profit_amount: totalProfitAmount,
-        profit_rate: totalProfitRate,
-        exchange_rate: usdKrwRate,
-        created_at: new Date().toISOString(),
-        user_id: userId,
-      })
-      .select("id")
-      .single(),
-    "createSnapshotForUser.insertSnapshot",
-  );
-  const { data: snapshotInsert, error: snapshotInsertError } =
-    snapshotInsertResponse;
-
-  if (snapshotInsertError) {
-    throw new Error(
-      `Failed to insert snapshot: ${snapshotInsertError.message}`,
-    );
-  }
-  if (!snapshotInsert) {
-    throw new Error("Failed to insert snapshot: empty response");
-  }
-
-  const snapshotId = Number(snapshotInsert.id);
-
   const snapshotItems = assetSummaries.map((summary) => ({
-    snapshot_id: snapshotId,
     asset_id: summary.asset.id,
     asset_client_id: summary.asset.client_id,
     asset_title: summary.assetTitle,
@@ -660,25 +543,10 @@ async function createSnapshotForUser(
     profit_amount: summary.profitAmount,
     profit_rate: summary.profitRate,
     holding_count: summary.holdingCount,
-    user_id: userId,
   }));
-
-  if (snapshotItems.length > 0) {
-    const snapshotItemsResponse = ensureSupabaseResponse(
-      await supabase.from("daily_portfolio_snapshot_items").insert(
-        snapshotItems,
-      ),
-      "createSnapshotForUser.insertSnapshotItems",
-    );
-    const { error } = snapshotItemsResponse;
-    if (error) {
-      throw new Error(`Failed to insert snapshot items: ${error.message}`);
-    }
-  }
 
   const holdingItems = assetSummaries.flatMap((summary) =>
     summary.holdingItems.map((holding) => ({
-      snapshot_id: snapshotId,
       asset_id: holding.assetId,
       asset_client_id: holding.assetClientId,
       asset_title: holding.assetTitle,
@@ -692,28 +560,11 @@ async function createSnapshotForUser(
       total_valuation_amount: holding.totalValuationAmount,
       profit_amount: holding.profitAmount,
       profit_rate: holding.profitRate,
-      user_id: userId,
     }))
   );
 
-  if (holdingItems.length > 0) {
-    const holdingItemsResponse = ensureSupabaseResponse(
-      await supabase
-        .from("daily_portfolio_snapshot_holding_items")
-        .insert(holdingItems),
-      "createSnapshotForUser.insertHoldingItems",
-    );
-    const { error } = holdingItemsResponse;
-    if (error) {
-      throw new Error(
-        `Failed to insert snapshot holding items: ${error.message}`,
-      );
-    }
-  }
-
   const cashAccountItems = assetSummaries.flatMap((summary) =>
     summary.cashAccountItems.map((account) => ({
-      snapshot_id: snapshotId,
       asset_id: account.assetId,
       asset_client_id: account.assetClientId,
       asset_title: account.assetTitle,
@@ -723,24 +574,27 @@ async function createSnapshotForUser(
       currency_code: account.currencyCode,
       balance: account.balance,
       note: account.note,
-      user_id: userId,
     }))
   );
 
-  if (cashAccountItems.length > 0) {
-    const cashAccountItemsResponse = ensureSupabaseResponse(
-      await supabase
-        .from("daily_portfolio_snapshot_cash_accounts")
-        .insert(cashAccountItems),
-      "createSnapshotForUser.insertCashAccountItems",
-    );
-    const { error } = cashAccountItemsResponse;
-    if (error) {
-      throw new Error(
-        `Failed to insert snapshot cash accounts: ${error.message}`,
-      );
-    }
-  }
+  const { data: snapshotId, error } = await supabase.rpc(
+    "replace_portfolio_snapshot",
+    {
+      p_user_id: userId,
+      p_snapshot_date: snapshotDate,
+      p_header: {
+        total_purchase_amount: totalPurchaseAmount,
+        total_valuation_amount: totalValuationAmount,
+        profit_amount: totalProfitAmount,
+        profit_rate: totalProfitRate,
+        exchange_rate: usdKrwRate,
+      },
+      p_items: snapshotItems,
+      p_holdings: holdingItems,
+      p_cash_accounts: cashAccountItems,
+    },
+  );
+  if (error) throw new Error(`Failed to replace snapshot: ${error.message}`);
 
   return {
     user_id: userId,

@@ -1,5 +1,8 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
+import { authenticateUser } from "../_shared/auth.ts";
+import { fetchAllRows } from "../_shared/paginated_rows.ts";
+
 type AssetType = "주식" | "코인" | "현금" | "펀드" | string;
 
 type HoldingRow = {
@@ -369,9 +372,9 @@ function normalizeHoldingRow(row: Record<string, unknown>): HoldingRow {
     id: row.id as string | number,
     user_id: String(row.user_id ?? ""),
     asset_type: String(asset.asset_type ?? ""),
-    symbol: String(row.symbol ?? ""),
-    currency_code: String(row.currency_code ?? ""),
-    exchange_code: String(row.exchange_code ?? ""),
+    symbol: String(row.symbol ?? "").trim().toUpperCase(),
+    currency_code: String(row.currency_code ?? "").trim().toUpperCase(),
+    exchange_code: String(row.exchange_code ?? "").trim().toUpperCase(),
     deleted_at: row.deleted_at == null ? null : String(row.deleted_at),
     current_price: parseNumber(row.current_price),
   };
@@ -393,25 +396,48 @@ Deno.serve(async (req) => {
     const body = req.method === "POST"
       ? await req.json().catch(() => ({}))
       : {};
-    const targetUserId = typeof body?.user_id === "string" && body.user_id
+    const requestedUserId = typeof body?.user_id === "string" && body.user_id
       ? body.user_id
       : null;
 
-    let query = supabase
-      .from("holdings")
-      .select(
-        "id, user_id, symbol, currency_code, exchange_code, deleted_at, current_price, assets!inner(asset_type)",
-      )
-      .is("deleted_at", null);
-
-    if (targetUserId) {
-      query = query.eq("user_id", targetUserId);
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    let targetUserId = requestedUserId;
+    if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+      const auth = await authenticateUser(
+        req.headers.get("Authorization"),
+        SUPABASE_URL,
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      );
+      if (!auth.userId) {
+        return Response.json({ ok: false, error: "Unauthorized" }, {
+          status: 401,
+        });
+      }
+      if (requestedUserId && requestedUserId !== auth.userId) {
+        return Response.json({ ok: false, error: "Forbidden" }, {
+          status: 403,
+        });
+      }
+      targetUserId = auth.userId;
     }
 
-    const { data, error } = await query;
-    if (error) {
-      throw new Error(`Failed to load holdings: ${error.message}`);
-    }
+    const { data } = await fetchAllRows(() => {
+      let query = supabase
+        .from("holdings")
+        .select(
+          "id, user_id, symbol, currency_code, exchange_code, deleted_at, current_price, assets!inner(asset_type)",
+          { count: "exact" },
+        )
+        .is("deleted_at", null)
+        .is("assets.deleted_at", null)
+        .in("assets.asset_type", ["주식", "펀드", "코인"])
+        .gt("quantity", 0);
+
+      if (targetUserId) {
+        query = query.eq("user_id", targetUserId);
+      }
+      return query.order("id");
+    });
 
     const holdings = (data ?? []).map((row) =>
       normalizeHoldingRow(row as Record<string, unknown>)
@@ -422,9 +448,21 @@ Deno.serve(async (req) => {
     let recomputedAssetsCount = 0;
     const failures: Array<{ holding_id: string | number; error: string }> = [];
 
+    const quotes = new Map<string, Promise<number | null>>();
     for (const holding of holdings) {
       try {
-        const price = await fetchCurrentPrice(supabase, holding);
+        const key = JSON.stringify([
+          holding.asset_type,
+          holding.currency_code,
+          holding.exchange_code,
+          holding.symbol,
+        ]);
+        let quote = quotes.get(key);
+        if (!quote) {
+          quote = fetchCurrentPrice(supabase, holding);
+          quotes.set(key, quote);
+        }
+        const price = await quote;
         if (price == null) {
           skippedCount += 1;
           continue;

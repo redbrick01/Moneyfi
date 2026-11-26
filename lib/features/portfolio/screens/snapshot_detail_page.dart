@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:moneyfy/components/headers/detail_header_card.dart';
 import 'package:moneyfy/components/icons/app_icon.dart';
@@ -11,34 +13,29 @@ import 'package:moneyfy/design_system/spec.dart';
 import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/db/app_database.dart';
 import 'package:moneyfy/features/portfolio/services/market_data_service.dart';
+import 'package:moneyfy/features/portfolio/services/snapshot_visibility.dart';
 import 'package:moneyfy/utils/display_currency.dart';
 import 'package:moneyfy/widgets/moneyfy_ui.dart';
 
 class SnapshotDetailPage extends StatefulWidget {
-  const SnapshotDetailPage({
-    super.key,
-    required this.snapshot,
-    required this.items,
-  });
+  const SnapshotDetailPage({super.key, required this.snapshot});
 
   final DailyPortfolioSnapshot snapshot;
-  final List<DailyPortfolioSnapshotItem> items;
 
   @override
   State<SnapshotDetailPage> createState() => _SnapshotDetailPageState();
 }
 
 class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
-  DailyPortfolioSnapshot? _currentSnapshot;
-  List<DailyPortfolioSnapshotItem> _currentItems = const [];
-  List<DailyPortfolioSnapshotHoldingItem> _currentHoldingItems = const [];
-  List<SnapshotCashAccountRecord> _currentCashAccounts = const [];
+  late DailyPortfolioSnapshot _currentSnapshot;
+  List<SnapshotDisplayItem>? _currentItems;
+  bool _loadFailed = false;
   List<SnapshotTransactionRecord> _currentTransactions = const [];
   List<SnapshotCashTransactionRecord> _currentCashTransactions = const [];
   String _note = '';
   DailyPortfolioSnapshot? _previousSnapshot;
   double? _previousDayTotalValue;
-  Map<String, _VisibleSnapshotItem> _previousItemByAssetKey = const {};
+  Map<String, SnapshotDisplayItem> _previousItemByAssetKey = const {};
   final Set<String> _expandedAssetKeys = <String>{};
   bool _isNavigatingSnapshot = false;
   int _transitionDirection = 1;
@@ -49,116 +46,126 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
   void initState() {
     super.initState();
     _currentSnapshot = widget.snapshot;
-    _currentItems = widget.items;
     _loadPageData();
   }
 
   Future<void> _loadPageData() async {
-    final pageData = await _loadSnapshotAuxiliaryData(
-      snapshotDate: (_currentSnapshot ?? widget.snapshot).snapshotDate,
-    );
-    if (!mounted) return;
-    setState(() {
-      _currentItems = pageData.currentItems;
-      _currentHoldingItems = pageData.currentHoldingItems;
-      _currentCashAccounts = pageData.currentCashAccounts;
-      _currentTransactions = pageData.currentTransactions;
-      _currentCashTransactions = pageData.currentCashTransactions;
-      _note = pageData.note;
-      _previousSnapshot = pageData.previousSnapshot;
-      _previousDayTotalValue = pageData.previousDayTotalValue;
-      _previousItemByAssetKey = pageData.previousItemByAssetKey;
-    });
+    final snapshot = _currentSnapshot;
+    try {
+      final pageData = await _loadSnapshotAuxiliaryData(snapshot);
+      if (!mounted || _currentSnapshot != snapshot) return;
+      setState(() {
+        _applyPageData(pageData);
+        _loadFailed = false;
+      });
+    } catch (_) {
+      if (!mounted || _currentSnapshot != snapshot) return;
+      setState(() => _loadFailed = true);
+    }
   }
 
-  Future<_SnapshotAuxiliaryData> _loadSnapshotAuxiliaryData({
-    required String snapshotDate,
-  }) async {
-    final note = await AppDatabase.instance.fetchSnapshotNote(snapshotDate);
-    final currentItems = await AppDatabase.instance
-        .fetchPortfolioSnapshotItemsByDates([snapshotDate]);
-    final currentHoldingItems =
-        (await AppDatabase.instance.fetchPortfolioSnapshotHoldingItemsByDates([
-          snapshotDate,
-        ])).toList(growable: false);
-    final currentCashAccounts =
-        (await AppDatabase.instance.fetchPortfolioSnapshotCashAccountsByDates([
-          snapshotDate,
-        ])).toList(growable: true);
-    final currentTransactions = await AppDatabase.instance
-        .fetchTransactionsForDate(snapshotDate);
-    final currentCashTransactions = await AppDatabase.instance
-        .fetchCashTransactionsForDate(snapshotDate);
-    final previousSnapshotDate = _comparisonSnapshotDate(snapshotDate);
-    final previousSnapshot = await AppDatabase.instance
-        .fetchPortfolioSnapshotByDate(previousSnapshotDate);
-    final previousItems = previousSnapshot == null
-        ? const <DailyPortfolioSnapshotItem>[]
-        : await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates([
-            previousSnapshotDate,
-          ]);
-    final previousDaySnapshotDate = _previousDaySnapshotDate(snapshotDate);
-    final previousDaySnapshot = await AppDatabase.instance
-        .fetchPortfolioSnapshotByDate(previousDaySnapshotDate);
-    final previousDayItems = previousDaySnapshot == null
-        ? const <DailyPortfolioSnapshotItem>[]
-        : await AppDatabase.instance.fetchPortfolioSnapshotItemsByDates([
-            previousDaySnapshotDate,
-          ]);
-    final currentVisibleItems = _buildVisibleSnapshotItems(
-      items: currentItems,
-      holdingItemsByAssetKey: _groupSnapshotHoldingItemsByAssetKey(
-        currentHoldingItems,
-      ),
-      cashAccountsByAssetKey: _groupSnapshotCashAccountsByAssetKey(
-        currentCashAccounts,
-      ),
-    );
-    final previousVisibleItemByAssetKey = {
-      for (final item in _buildVisibleSnapshotItems(
-        items: previousItems,
-        holdingItemsByAssetKey: const {},
-        cashAccountsByAssetKey: const {},
-      ))
-        _snapshotAssetKey(item.item): item,
-    };
-    final previousDayVisibleItemByAssetKey = {
-      for (final item in _buildVisibleSnapshotItems(
-        items: previousDayItems,
-        holdingItemsByAssetKey: const {},
-        cashAccountsByAssetKey: const {},
-      ))
-        _snapshotAssetKey(item.item): item,
-    };
-    final previousDayComparableTotalValue = currentVisibleItems.fold<double>(
-      0,
-      (sum, item) =>
-          sum +
-          (previousDayVisibleItemByAssetKey[_snapshotAssetKey(item.item)]
-                  ?.totalValuationAmount ??
-              0),
-    );
+  void _applyPageData(_SnapshotAuxiliaryData pageData) {
+    _currentItems = pageData.currentItems;
+    _currentTransactions = pageData.currentTransactions;
+    _currentCashTransactions = pageData.currentCashTransactions;
+    _note = pageData.note;
+    _previousSnapshot = pageData.previousSnapshot;
+    _previousDayTotalValue = pageData.previousDayTotalValue;
+    _previousItemByAssetKey = pageData.previousItemByAssetKey;
+  }
 
+  Future<_SnapshotAuxiliaryData> _loadSnapshotAuxiliaryData(
+    DailyPortfolioSnapshot snapshot,
+  ) async {
+    final db = AppDatabase.instance;
+    final snapshotDate = snapshot.snapshotDate;
+    final visibility = SnapshotVisibility(await db.fetchAssets());
+    final currentSnapshot = await db.fetchPortfolioSnapshotByDate(snapshotDate);
+    final comparisonDate = _comparisonSnapshotDate(snapshotDate);
+    final previousDayDate = _previousDaySnapshotDate(snapshotDate);
+    final previousSnapshot = await db.fetchPortfolioSnapshotByDate(
+      comparisonDate,
+    );
+    final previousDaySnapshot = comparisonDate == previousDayDate
+        ? previousSnapshot
+        : await db.fetchPortfolioSnapshotByDate(previousDayDate);
+    final dates = {
+      snapshotDate,
+      if (previousSnapshot != null) previousSnapshot.snapshotDate,
+      if (previousDaySnapshot != null) previousDaySnapshot.snapshotDate,
+    }.toList();
+
+    final itemsFuture = db.fetchPortfolioSnapshotItemsByDates(dates);
+    final holdingsFuture = db.fetchPortfolioSnapshotHoldingItemsByDates(dates);
+    final cashFuture = db.fetchPortfolioSnapshotCashAccountsByDates(dates);
+    final noteFuture = db.fetchSnapshotNote(snapshotDate);
+    final transactionsFuture = db.fetchTransactionsForDate(snapshotDate);
+    final cashTransactionsFuture = db.fetchCashTransactionsForDate(
+      snapshotDate,
+    );
+    final (
+      items,
+      holdings,
+      cash,
+      note,
+      transactions,
+      cashTransactions,
+    ) = await (
+      itemsFuture,
+      holdingsFuture,
+      cashFuture,
+      noteFuture,
+      transactionsFuture,
+      cashTransactionsFuture,
+    ).wait;
+
+    List<SnapshotDisplayItem> itemsFor(DailyPortfolioSnapshot? dateSnapshot) {
+      if (dateSnapshot == null) return const [];
+      final id = dateSnapshot.id;
+      return visibility.buildItems(
+        snapshot: dateSnapshot,
+        items: items.where((item) => item.snapshotId == id).toList(),
+        holdings: holdings.where((item) => item.snapshotId == id).toList(),
+        cashAccounts: cash.where((item) => item.snapshotId == id).toList(),
+      );
+    }
+
+    final currentItems = itemsFor(currentSnapshot);
+    final previousItems = {
+      for (final item in itemsFor(previousSnapshot)) item.assetKey: item,
+    };
+    final previousDayItems = previousDaySnapshot == previousSnapshot
+        ? previousItems
+        : {
+            for (final item in itemsFor(previousDaySnapshot))
+              item.assetKey: item,
+          };
+    final previousDayTotalValue = previousDaySnapshot == null
+        ? null
+        : currentItems.fold<double>(
+            0,
+            (sum, item) =>
+                sum +
+                (previousDayItems[item.assetKey]?.totalValuationAmount ?? 0),
+          );
     return _SnapshotAuxiliaryData(
       currentItems: currentItems,
-      currentHoldingItems: currentHoldingItems,
-      currentCashAccounts: currentCashAccounts,
-      currentTransactions: currentTransactions,
-      currentCashTransactions: currentCashTransactions,
+      currentTransactions: transactions
+          .where(visibility.includesTransaction)
+          .toList(),
+      currentCashTransactions: cashTransactions
+          .where(visibility.includesCashTransaction)
+          .toList(),
       note: note,
       previousSnapshot: previousSnapshot,
-      previousDayTotalValue: previousDaySnapshot == null
-          ? null
-          : previousDayComparableTotalValue,
-      previousItemByAssetKey: previousVisibleItemByAssetKey,
+      previousDayTotalValue: previousDayTotalValue,
+      previousItemByAssetKey: previousItems,
     );
   }
 
   Future<void> _refreshPage() async {
     await MarketDataService.instance.refreshAllMarketData();
     await _loadPageData();
-    if (!mounted) return;
-    setState(() {});
   }
 
   Future<void> _navigateToAdjacentSnapshot({required bool goPrevious}) async {
@@ -168,30 +175,21 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
     try {
       final targetSnapshot = goPrevious
           ? await AppDatabase.instance.fetchPreviousPortfolioSnapshot(
-              (_currentSnapshot ?? widget.snapshot).snapshotDate,
+              _currentSnapshot.snapshotDate,
             )
           : await AppDatabase.instance.fetchNextPortfolioSnapshot(
-              (_currentSnapshot ?? widget.snapshot).snapshotDate,
+              _currentSnapshot.snapshotDate,
             );
       if (!mounted || targetSnapshot == null) return;
 
-      final pageData = await _loadSnapshotAuxiliaryData(
-        snapshotDate: targetSnapshot.snapshotDate,
-      );
+      final pageData = await _loadSnapshotAuxiliaryData(targetSnapshot);
       if (!mounted) return;
 
       setState(() {
         _transitionDirection = goPrevious ? -1 : 1;
         _currentSnapshot = targetSnapshot;
-        _currentItems = pageData.currentItems;
-        _currentHoldingItems = pageData.currentHoldingItems;
-        _currentCashAccounts = pageData.currentCashAccounts;
-        _currentTransactions = pageData.currentTransactions;
-        _currentCashTransactions = pageData.currentCashTransactions;
-        _note = pageData.note;
-        _previousSnapshot = pageData.previousSnapshot;
-        _previousDayTotalValue = pageData.previousDayTotalValue;
-        _previousItemByAssetKey = pageData.previousItemByAssetKey;
+        _applyPageData(pageData);
+        _loadFailed = false;
         _expandedAssetKeys.clear();
       });
     } finally {
@@ -230,7 +228,7 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
 
     final note = controller.text.trim();
     await AppDatabase.instance.saveSnapshotNote(
-      snapshotDate: (_currentSnapshot ?? widget.snapshot).snapshotDate,
+      snapshotDate: _currentSnapshot.snapshotDate,
       note: note,
     );
     if (!mounted) return;
@@ -241,16 +239,28 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentSnapshot = _currentSnapshot ?? widget.snapshot;
-    final visibleItems = _buildVisibleSnapshotItems(
-      items: _currentItems,
-      holdingItemsByAssetKey: _groupSnapshotHoldingItemsByAssetKey(
-        _currentHoldingItems,
-      ),
-      cashAccountsByAssetKey: _groupSnapshotCashAccountsByAssetKey(
-        _currentCashAccounts,
-      ),
-    );
+    final currentSnapshot = _currentSnapshot;
+    final visibleItems = _currentItems;
+    if (_loadFailed || visibleItems == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            '${_formatSnapshotDate(currentSnapshot.snapshotDate)} 스냅샷',
+          ),
+        ),
+        body: Center(
+          child: _loadFailed
+              ? TextButton(
+                  onPressed: () {
+                    setState(() => _loadFailed = false);
+                    _loadPageData();
+                  },
+                  child: const Text('스냅샷을 불러오지 못했어요. 다시 시도'),
+                )
+              : const CircularProgressIndicator(),
+        ),
+      );
+    }
     final previousVisibleItemByAssetKey = _previousItemByAssetKey;
     final filteredTotalValue = visibleItems.fold<double>(
       0,
@@ -264,8 +274,7 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
       0,
       (sum, item) =>
           sum +
-          (previousVisibleItemByAssetKey[_snapshotAssetKey(item.item)]
-                  ?.totalValuationAmount ??
+          (previousVisibleItemByAssetKey[item.assetKey]?.totalValuationAmount ??
               0),
     );
     return Scaffold(
@@ -364,7 +373,6 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _SummaryCard(
-                      snapshot: currentSnapshot,
                       currentTotalValue: filteredTotalValue,
                       currentTotalPurchase: filteredTotalPurchase,
                       previousTotalValue: _previousSnapshot == null
@@ -391,15 +399,14 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
                                   _ExpandableSnapshotItemRow(
                                     item: item,
                                     previousItem:
-                                        previousVisibleItemByAssetKey[_snapshotAssetKey(
-                                          item.item,
-                                        )],
+                                        previousVisibleItemByAssetKey[item
+                                            .assetKey],
                                     totalValue: filteredTotalValue,
                                     isExpanded: _expandedAssetKeys.contains(
-                                      _snapshotAssetKey(item.item),
+                                      item.assetKey,
                                     ),
                                     onTap: () {
-                                      final key = _snapshotAssetKey(item.item);
+                                      final key = item.assetKey;
                                       setState(() {
                                         if (_expandedAssetKeys.contains(key)) {
                                           _expandedAssetKeys.remove(key);
@@ -439,8 +446,6 @@ class _SnapshotDetailPageState extends State<SnapshotDetailPage> {
 class _SnapshotAuxiliaryData {
   const _SnapshotAuxiliaryData({
     required this.currentItems,
-    required this.currentHoldingItems,
-    required this.currentCashAccounts,
     required this.currentTransactions,
     required this.currentCashTransactions,
     required this.note,
@@ -449,131 +454,13 @@ class _SnapshotAuxiliaryData {
     required this.previousItemByAssetKey,
   });
 
-  final List<DailyPortfolioSnapshotItem> currentItems;
-  final List<DailyPortfolioSnapshotHoldingItem> currentHoldingItems;
-  final List<SnapshotCashAccountRecord> currentCashAccounts;
+  final List<SnapshotDisplayItem> currentItems;
   final List<SnapshotTransactionRecord> currentTransactions;
   final List<SnapshotCashTransactionRecord> currentCashTransactions;
   final String note;
   final DailyPortfolioSnapshot? previousSnapshot;
   final double? previousDayTotalValue;
-  final Map<String, _VisibleSnapshotItem> previousItemByAssetKey;
-}
-
-class _VisibleSnapshotItem {
-  const _VisibleSnapshotItem({
-    required this.item,
-    required this.holdings,
-    required this.cashAccounts,
-  });
-
-  final DailyPortfolioSnapshotItem item;
-  final List<DailyPortfolioSnapshotHoldingItem> holdings;
-  final List<SnapshotCashAccountRecord> cashAccounts;
-
-  String get assetTitle => item.assetTitle;
-  double get totalPurchaseAmount => item.totalPurchaseAmount;
-  double get totalValuationAmount => item.totalValuationAmount;
-  double get profitAmount => item.profitAmount;
-  double get profitRate => item.profitRate;
-}
-
-String _snapshotAssetKey(DailyPortfolioSnapshotItem item) {
-  final assetId = item.assetId;
-  if (assetId > 0) {
-    return 'asset:$assetId';
-  }
-  return _snapshotAssetTitleKey(item.assetTitle);
-}
-
-Set<String> _snapshotAssetKeys(DailyPortfolioSnapshotItem item) {
-  return {_snapshotAssetKey(item), _snapshotAssetTitleKey(item.assetTitle)};
-}
-
-List<T> _snapshotRowsForAsset<T>(
-  Map<String, List<T>> rowsByAssetKey,
-  DailyPortfolioSnapshotItem item,
-) {
-  final seen = <T>{};
-  final rows = <T>[];
-  for (final key in _snapshotAssetKeys(item)) {
-    for (final row in rowsByAssetKey[key] ?? <T>[]) {
-      if (seen.add(row)) rows.add(row);
-    }
-  }
-  return rows;
-}
-
-Map<String, List<DailyPortfolioSnapshotHoldingItem>>
-_groupSnapshotHoldingItemsByAssetKey(
-  List<DailyPortfolioSnapshotHoldingItem> rows,
-) {
-  final rowsByAssetKey = <String, List<DailyPortfolioSnapshotHoldingItem>>{};
-  for (final row in rows) {
-    for (final key in _snapshotHoldingAssetKeys(row)) {
-      rowsByAssetKey.putIfAbsent(key, () => []).add(row);
-    }
-  }
-  return rowsByAssetKey;
-}
-
-Map<String, List<SnapshotCashAccountRecord>>
-_groupSnapshotCashAccountsByAssetKey(List<SnapshotCashAccountRecord> rows) {
-  final rowsByAssetKey = <String, List<SnapshotCashAccountRecord>>{};
-  for (final row in rows) {
-    for (final key in _snapshotCashAccountAssetKeys(row)) {
-      rowsByAssetKey.putIfAbsent(key, () => []).add(row);
-    }
-  }
-  return rowsByAssetKey;
-}
-
-List<_VisibleSnapshotItem> _buildVisibleSnapshotItems({
-  required List<DailyPortfolioSnapshotItem> items,
-  required Map<String, List<DailyPortfolioSnapshotHoldingItem>>
-  holdingItemsByAssetKey,
-  required Map<String, List<SnapshotCashAccountRecord>> cashAccountsByAssetKey,
-}) {
-  final visibleItems = <_VisibleSnapshotItem>[];
-
-  for (final item in items) {
-    final holdings = _snapshotRowsForAsset(holdingItemsByAssetKey, item);
-    final cashAccounts = _snapshotRowsForAsset(cashAccountsByAssetKey, item);
-
-    visibleItems.add(
-      _VisibleSnapshotItem(
-        item: item,
-        holdings: holdings,
-        cashAccounts: cashAccounts,
-      ),
-    );
-  }
-
-  return visibleItems;
-}
-
-Set<String> _snapshotHoldingAssetKeys(DailyPortfolioSnapshotHoldingItem item) {
-  final assetId = item.assetId;
-  return {
-    if (assetId != null && assetId > 0) 'asset:$assetId',
-    _snapshotAssetTitleKey(item.assetTitle),
-  };
-}
-
-Set<String> _snapshotCashAccountAssetKeys(SnapshotCashAccountRecord item) {
-  final assetId = item.assetId;
-  return {
-    if (assetId != null && assetId > 0) 'asset:$assetId',
-    _snapshotAssetTitleKey(item.assetTitle),
-  };
-}
-
-String _snapshotAssetTitleKey(String assetTitle) {
-  return 'title:${_normalizeSnapshotAssetTitle(assetTitle)}';
-}
-
-String _normalizeSnapshotAssetTitle(String value) {
-  return value.trim().toLowerCase();
+  final Map<String, SnapshotDisplayItem> previousItemByAssetKey;
 }
 
 class _SnapshotEmbeddedCashAccountRow extends StatelessWidget {
@@ -781,14 +668,12 @@ class _SnapshotNoteCard extends StatelessWidget {
 
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
-    required this.snapshot,
     required this.currentTotalValue,
     required this.currentTotalPurchase,
     required this.previousTotalValue,
     required this.previousDayTotalValue,
   });
 
-  final DailyPortfolioSnapshot snapshot;
   final double currentTotalValue;
   final double currentTotalPurchase;
   final double? previousTotalValue;
@@ -945,8 +830,8 @@ class _SnapshotItemRow extends StatelessWidget {
     required this.totalValue,
   });
 
-  final _VisibleSnapshotItem item;
-  final _VisibleSnapshotItem? previousItem;
+  final SnapshotDisplayItem item;
+  final SnapshotDisplayItem? previousItem;
   final double totalValue;
 
   @override
@@ -1042,8 +927,8 @@ class _ExpandableSnapshotItemRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final _VisibleSnapshotItem item;
-  final _VisibleSnapshotItem? previousItem;
+  final SnapshotDisplayItem item;
+  final SnapshotDisplayItem? previousItem;
   final double totalValue;
   final bool isExpanded;
   final VoidCallback onTap;

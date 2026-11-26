@@ -97,7 +97,7 @@ void main() {
     expect((await db.select(db.assets).get()).single.id, id);
   });
 
-  test('confirmed account switch removes previous local-only journal', () async {
+  test('account switch isolates journal and restores it on return', () async {
     await db.assignLocalDataOwner('first-user');
     await db.customStatement(
       "INSERT INTO daily_investment_reviews (review_date, status, mode, created_at, updated_at) VALUES ('2026-11-15', 'draft', 'manual', 'now', 'now')",
@@ -112,6 +112,16 @@ void main() {
     );
     expect(await db.localDataOwner(), 'second-user');
     expect(await db.select(db.dailyInvestmentReviews).get(), isEmpty);
+    await db.replaceLocalSyncData(
+      {'assets': <Map<String, Object?>>[]},
+      ownerId: 'first-user',
+      enforceOwnerMatch: true,
+      expectedOwnerId: 'second-user',
+    );
+    expect(
+      (await db.select(db.dailyInvestmentReviews).get()).single.reviewDate,
+      '2026-11-15',
+    );
   });
 
   test('matching ownerless core keeps local-only investment review', () async {

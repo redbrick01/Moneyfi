@@ -383,7 +383,8 @@ class _CashAccountDetailPageState extends State<CashAccountDetailPage> {
                                             opacity: animation,
                                             child: SizeTransition(
                                               sizeFactor: animation,
-                                              alignment: AlignmentDirectional.topStart,
+                                              alignment:
+                                                  AlignmentDirectional.topStart,
                                               child: child,
                                             ),
                                           );
@@ -515,7 +516,7 @@ String _ledgerLineMeta(TransactionItem item) {
   final action = item.ledgerAction;
   if (action == null || action.trim().isEmpty) return '';
   return switch (action) {
-    'settlement' => '매매 정산 라인',
+    'settlement' => item.ledgerKind == 'income' ? '배당·이자 입금' : '매매 정산 라인',
     'transfer_out' => '이체 출금 라인',
     'transfer_in' => '이체 입금 라인',
     'fx_out' => '환전 출금 라인',

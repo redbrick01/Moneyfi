@@ -1,12 +1,23 @@
 part of 'app_database.dart';
 
+typedef PortfolioReturnObservation = ({
+  String date,
+  double? beginningValue,
+  double endingValue,
+  double externalCashFlow,
+  double? dailyReturn,
+  String dataQuality,
+});
+
 class SnapshotCashAccountRecord {
   const SnapshotCashAccountRecord({
     required this.id,
     required this.snapshotId,
     required this.assetId,
+    this.assetClientId,
     required this.assetTitle,
     required this.cashAccountId,
+    this.cashAccountClientId,
     required this.cashAccountName,
     required this.currencyCode,
     required this.balance,
@@ -16,8 +27,10 @@ class SnapshotCashAccountRecord {
   final int id;
   final int snapshotId;
   final int? assetId;
+  final String? assetClientId;
   final String assetTitle;
   final int? cashAccountId;
+  final String? cashAccountClientId;
   final String cashAccountName;
   final String currencyCode;
   final double balance;

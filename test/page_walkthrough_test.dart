@@ -367,7 +367,7 @@ void main() {
 
     expect(find.text('새 종목 검색'), findsOneWidget);
     expect(
-      find.widgetWithText(TextField, '예: 005930, AAPL, BTC'),
+      find.widgetWithText(TextField, '종목명 또는 티커'),
       findsOneWidget,
     );
   });
@@ -422,7 +422,8 @@ void main() {
     expect(find.text('자산 변화 대조'), findsWidgets);
     expect(find.text('월별 성과 신호'), findsWidgets);
     expect(find.text('종목별 성과 영향'), findsWidgets);
-    expect(find.text('리스크 신호'), findsWidgets);
+    expect(find.text('리스크 신호'), findsNothing);
+    expect(find.text('Sharpe'), findsNothing);
     expect(find.text('데이터 신뢰도'), findsWidgets);
   });
 
@@ -506,10 +507,7 @@ final _standalonePageCases = <_StandalonePageCase>[
     name: 'snapshot detail',
     build: (ids) {
       final snapshot = _snapshotFor(ids);
-      return SnapshotDetailPage(
-        snapshot: snapshot,
-        items: [_snapshotItemFor(ids)],
-      );
+      return SnapshotDetailPage(snapshot: snapshot);
     },
   ),
 ];

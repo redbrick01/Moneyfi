@@ -554,7 +554,7 @@ class _ValueHistoryChartState extends State<_ValueHistoryChart> {
                             label:
                                 '${type.label} ${totals.quantity > 0 ? '${formatPlainQuantity(totals.quantity)}주 · ' : ''}${_formatValue(totals.amount)}',
                             leading: Icon(
-                              type.markerIcon,
+                              Icons.circle,
                               size: context.spacing.sm,
                               color: type.markerColor(colors),
                             ),
@@ -638,7 +638,9 @@ class _ValueHistoryChartState extends State<_ValueHistoryChart> {
                             tradeMarkers: _tradeMarkers,
                             buyColor: colors.negativeOn,
                             sellColor: colors.positiveOn,
-                            dividendColor: colors.neutralTextMuted,
+                            dividendColor: _ChartTradeType.dividend.markerColor(
+                              colors,
+                            ),
                           ),
                         ),
                       ),
@@ -741,16 +743,10 @@ enum _ChartTradeType {
 
   final String label;
 
-  IconData get markerIcon => switch (this) {
-    buy => Icons.change_history_rounded,
-    sell => Icons.square,
-    dividend => Icons.circle,
-  };
-
   Color markerColor(BrandColors colors) => switch (this) {
     buy => colors.negativeOn,
     sell => colors.positiveOn,
-    dividend => colors.neutralTextMuted,
+    dividend => VisualSpec.brand.brandYellow,
   };
 }
 
@@ -922,12 +918,8 @@ class _HistoryPainter extends CustomPainter {
         yFor(points[index].value),
       );
       const radius = _tradeMarkerRadius;
-      const gap = radius * 2.25;
-      final halfSpan = (markers.length - 1) * gap / 2;
-      final groupX = center.dx.clamp(
-        radius + halfSpan,
-        math.max(radius + halfSpan, size.width - radius - halfSpan),
-      );
+      final bounds = Rect.fromCircle(center: center, radius: radius);
+      final sweep = 2 * math.pi / markers.length;
       for (final (part, marker) in markers.indexed) {
         final paint = Paint()
           ..color = switch (marker) {
@@ -935,24 +927,16 @@ class _HistoryPainter extends CustomPainter {
             _ChartTradeType.sell => sellColor,
             _ChartTradeType.dividend => dividendColor,
           };
-        final point = Offset(groupX - halfSpan + part * gap, center.dy);
-        switch (marker) {
-          case _ChartTradeType.buy:
-            canvas.drawPath(
-              Path()
-                ..moveTo(point.dx, point.dy - radius)
-                ..lineTo(point.dx + radius, point.dy + radius)
-                ..lineTo(point.dx - radius, point.dy + radius)
-                ..close(),
-              paint,
-            );
-          case _ChartTradeType.sell:
-            canvas.drawRect(
-              Rect.fromCircle(center: point, radius: radius),
-              paint,
-            );
-          case _ChartTradeType.dividend:
-            canvas.drawCircle(point, radius, paint);
+        if (markers.length == 1) {
+          canvas.drawCircle(center, radius, paint);
+        } else {
+          canvas.drawArc(
+            bounds,
+            -math.pi / 2 + part * sweep,
+            sweep,
+            true,
+            paint,
+          );
         }
       }
     }

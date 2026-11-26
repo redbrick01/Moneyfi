@@ -1,10 +1,11 @@
+import 'support/mock_market_adapter.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:moneyfy/components/charts/value_history_card.dart';
 import 'package:moneyfy/components/chips/moneyfy_pill.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
@@ -146,6 +147,7 @@ void main() {
       transactions: [
         trade(date(0), '매수', action: 'buy', quantity: '2', grossAmount: 260),
         trade(date(2).replaceAll('-', '.'), '매도'),
+        trade(date(2), '배당', action: 'dividend', quantity: '0'),
         trade('${date(4)}T14:30:00', '매수'),
         trade(date(4), '매도', action: 'sell'),
         trade(date(4), '매도', action: 'sell'),
@@ -178,30 +180,52 @@ void main() {
     const inset = 4.0;
     double y(double price) =>
         inset + (110.8 - price) / (110.8 - 99.2) * (size.height - 2 * inset);
+    bool Function(Symbol, List<dynamic>) sector(
+      int dateIndex,
+      double price,
+      int part,
+      int count,
+      Color color,
+    ) {
+      return (method, args) {
+        if (method != #drawArc) return false;
+        final rect = args[0] as Rect;
+        final expected = Offset(
+          inset + dateIndex / 3 * (size.width - 2 * inset),
+          y(price),
+        );
+        final sweep = 2 * math.pi / count;
+        return (rect.center - expected).distance < 0.01 &&
+            (rect.width - 8).abs() < 0.0001 &&
+            (rect.height - 8).abs() < 0.0001 &&
+            (args[1] - (-math.pi / 2 + part * sweep)).abs() < 0.0001 &&
+            (args[2] - sweep).abs() < 0.0001 &&
+            args[3] == true &&
+            (args[4] as Paint).color.toARGB32() == color.toARGB32();
+      };
+    }
+
+    expect(plot, paints..circle(x: inset, y: y(104), color: colors.negativeOn));
+    for (final slice in [
+      sector(1, 110, 0, 2, colors.positiveOn),
+      sector(1, 110, 1, 2, VisualSpec.brand.brandYellow),
+      sector(2, 100, 0, 3, colors.negativeOn),
+      sector(2, 100, 1, 3, colors.positiveOn),
+      sector(2, 100, 2, 3, VisualSpec.brand.brandYellow),
+    ]) {
+      expect(plot, paints..something(slice));
+    }
     expect(
       plot,
-      paints
-        ..something(
-          (method, args) =>
-              method == #drawPath && (args[1] as Paint).shader != null,
-        )
-        ..path(color: VisualSpec.brand.seedColor, style: PaintingStyle.stroke)
-        ..path(includes: [Offset(inset, y(104))], color: colors.negativeOn)
-        ..rect(
-          rect: Rect.fromCircle(
-            center: Offset(inset + (1 / 3) * (size.width - 2 * inset), y(110)),
-            radius: 4,
-          ),
-          color: colors.positiveOn,
-        )
-        ..path(color: colors.negativeOn)
-        ..rect(color: colors.positiveOn)
-        ..circle(color: colors.neutralTextMuted)
-        ..circle(color: colors.neutralTextMuted),
+      paints..something(
+        (method, args) =>
+            method == #drawCircle &&
+            (args[2] as Paint).color.toARGB32() ==
+                VisualSpec.brand.brandYellow.toARGB32(),
+      ),
     );
-    expect(plot, paintsExactlyCountTimes(#drawRect, 2));
     expect(plot, paintsExactlyCountTimes(#drawCircle, 2));
-    expect(plot, paintsExactlyCountTimes(#drawArc, 0));
+    expect(plot, paintsExactlyCountTimes(#drawArc, 5));
     expect(find.textContaining('매수'), findsNothing);
     expect(find.textContaining('매도'), findsNothing);
     expect(find.textContaining('배당'), findsNothing);
@@ -459,6 +483,11 @@ void main() {
       expect(find.text('10년 시세 불러오는 중'), findsOneWidget);
       expect(find.text(r'$150.25'), findsOneWidget);
       expect(averageLabel, findsOneWidget);
+      // Dio dispatches the request after the loading frame.
+      for (var frame = 0; frame < 10 && dailyRequests.length == requestsBefore; frame++) {
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(dailyRequests, hasLength(requestsBefore + 1));
       final olderDate = dailyRequests.last.url.queryParameters['BYMD']!;
       older.complete(
         _response([
@@ -496,7 +525,7 @@ MarketDataService _service(
     kisBaseUrl: 'https://kis.test',
     kisAppKey: 'app-key',
     kisAppSecret: 'app-secret',
-    client: MockClient((request) async {
+    adapter: MockMarketAdapter((request) async {
       if (request.url.path == '/oauth2/tokenP') {
         onTokenRequest?.call();
         return http.Response(

@@ -17,6 +17,7 @@ class _BrandSpec {
   // Brand
   final Color seedColor = const Color(0xFF3A6DFF);
   final Color brandRed = const Color(0xFFE93A51);
+  Color get brandYellow => lightWarning;
   Color get primary => seedColor;
   final Color onPrimary = const Color(0xFFFFFFFF);
   Color get link => primary;
@@ -76,22 +77,19 @@ class _BrandSpec {
   final double lightOverlayPressedAlpha = 0.08;
   final double darkOverlayPressedAlpha = 0.16;
 
-  // Categorical colors share the visual intensity of the brand seed.
+  // Asset type colors
   final Color chartNeutral = const Color(0xFF0A0B0D);
-  final Color chartViolet = const Color(0xFF9251EA);
-  final Color chartMagenta = const Color(0xFFC542AF);
-  final Color chartOrange = const Color(0xFFDB6502);
   final Color chartGreen = const Color(0xFF03A14A);
   final Color chartTeal = const Color(0xFF04A19B);
   final Color allocationOther = const Color(0xFF6A7A99);
 
   List<Color> get allocationRankPalette => [
     seedColor,
-    chartOrange,
-    chartViolet,
-    chartGreen,
-    chartMagenta,
-    chartTeal,
+    const Color(0xFF95BAFF),
+    const Color(0xFF344F99),
+    const Color(0xFF77A8C9),
+    const Color(0xFF636CC4),
+    const Color(0xFFB0B9E1),
   ];
 
   List<Color> get chartPalette => allocationRankPalette;

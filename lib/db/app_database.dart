@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:moneyfy/db/transaction_event_name.dart';
+import 'package:moneyfy/features/analysis/services/investment_review/daily_investment_review_models.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 import 'package:moneyfy/utils/display_currency.dart';
 import 'package:moneyfy/utils/number_formatters.dart';
@@ -1076,7 +1077,7 @@ class AppDatabase extends _$AppDatabase {
           COALESCE(SUM(CASE WHEN action IN ('deposit', 'withdrawal', 'opening_cash') THEN cash_delta ELSE 0 END), 0) AS external_cash_flow_amount,
           COALESCE(SUM(CASE WHEN action IN ('deposit', 'opening_cash') THEN ABS(cash_delta) ELSE 0 END), 0) AS external_deposit_amount,
           COALESCE(SUM(CASE WHEN action = 'withdrawal' THEN ABS(cash_delta) ELSE 0 END), 0) AS external_withdrawal_amount,
-          COALESCE(SUM(CASE WHEN action = 'settlement' THEN cash_delta ELSE 0 END), 0) AS trade_settlement_cash_flow_amount,
+          COALESCE(SUM(CASE WHEN action = 'settlement' AND te.kind != 'income' THEN cash_delta ELSE 0 END), 0) AS trade_settlement_cash_flow_amount,
           COALESCE(SUM(CASE WHEN action IN ('transfer_out', 'transfer_in', 'fx_out', 'fx_in') THEN ABS(cash_delta) ELSE 0 END), 0) AS internal_cash_movement_amount,
           COALESCE(SUM(CASE WHEN action = 'buy' THEN gross_amount ELSE 0 END), 0) AS buy_amount,
           COALESCE(SUM(CASE WHEN action = 'sell' THEN gross_amount ELSE 0 END), 0) AS sell_amount,
@@ -1177,7 +1178,7 @@ class AppDatabase extends _$AppDatabase {
           COALESCE(SUM(CASE WHEN action IN ('deposit', 'withdrawal', 'opening_cash') THEN cash_delta ELSE 0 END), 0) AS external_cash_flow_amount,
           COALESCE(SUM(CASE WHEN action IN ('deposit', 'opening_cash') THEN ABS(cash_delta) ELSE 0 END), 0) AS external_deposit_amount,
           COALESCE(SUM(CASE WHEN action = 'withdrawal' THEN ABS(cash_delta) ELSE 0 END), 0) AS external_withdrawal_amount,
-          COALESCE(SUM(CASE WHEN action = 'settlement' THEN cash_delta ELSE 0 END), 0) AS trade_settlement_cash_flow_amount,
+          COALESCE(SUM(CASE WHEN action = 'settlement' AND te.kind != 'income' THEN cash_delta ELSE 0 END), 0) AS trade_settlement_cash_flow_amount,
           COALESCE(SUM(CASE WHEN action IN ('transfer_out', 'transfer_in', 'fx_out', 'fx_in') THEN ABS(cash_delta) ELSE 0 END), 0) AS internal_cash_movement_amount,
           COALESCE(SUM(CASE WHEN action = 'buy' THEN gross_amount ELSE 0 END), 0) AS buy_amount,
           COALESCE(SUM(CASE WHEN action = 'sell' THEN gross_amount ELSE 0 END), 0) AS sell_amount,
@@ -2311,6 +2312,7 @@ class AppDatabase extends _$AppDatabase {
     required int sortOrder,
     double? manualRealizedProfitAmount,
     double? tradeFxRate,
+    int? incomeCashAccountId,
   }) async {
     final holding = await (select(
       holdings,
@@ -2420,33 +2422,41 @@ class AppDatabase extends _$AppDatabase {
       ),
     );
 
-    if (_shouldSyncHoldingTransactionWithCash(normalizedType)) {
-      final cashAccountId = await _ensureSettlementCashAccount(
-        assetId: assetId,
-        currencyCode: holding.currencyCode,
-      );
+    if (incomeCashAccountId != null && eventKind != 'income') {
+      throw StateError('입금 계좌는 배당·이자 거래에만 지정할 수 있습니다.');
+    }
+    if (incomeCashAccountId != null ||
+        _shouldSyncHoldingTransactionWithCash(normalizedType)) {
+      final cashAccountId =
+          incomeCashAccountId ??
+          await _ensureSettlementCashAccount(
+            assetId: assetId,
+            currencyCode: holding.currencyCode,
+          );
       final cashAccount = await (select(
         cashAccounts,
       )..where((table) => table.id.equals(cashAccountId))).getSingleOrNull();
-      final settlementAmount = _tradeSettlementAmount(
-        amount: amount,
-        quantity: quantity,
-      );
+      if (cashAccount == null ||
+          cashAccount.deletedAt != null ||
+          cashAccount.currencyCode != holding.currencyCode) {
+        throw StateError('종목과 같은 통화의 현금 계좌를 선택해 주세요.');
+      }
+      final settlementAmount = eventKind == 'income'
+          ? normalizedValues.grossAmount
+          : _tradeSettlementAmount(amount: amount, quantity: quantity);
       final cashDelta = normalizedType == '매수'
           ? -settlementAmount
           : settlementAmount;
       await into(transactionLines).insert(
         TransactionLinesCompanion.insert(
           eventId: eventId,
-          assetId: Value(assetId),
+          assetId: Value(cashAccount.assetId),
           cashAccountId: Value(cashAccountId),
           clientId: Value(_uuid.v4()),
           dirty: const Value(true),
           lastModifiedAt: Value(timestamp),
           action: 'settlement',
-          currencyCode: Value(
-            cashAccount?.currencyCode ?? holding.currencyCode,
-          ),
+          currencyCode: Value(cashAccount.currencyCode),
           cashDelta: Value(cashDelta),
           grossAmount: Value(settlementAmount.abs()),
           sortOrder: const Value(1),
@@ -2583,6 +2593,10 @@ class AppDatabase extends _$AppDatabase {
           ), COALESCE(tl.cash_delta, 0)) AS cash_flow_amount,
           COALESCE(tl.realized_pnl, 0) AS realized_profit_amount,
           COALESCE(tl.realized_pnl_source, 'auto') AS realized_profit_source,
+          CASE WHEN te.kind = 'income' THEN (
+            SELECT -s.cash_account_id FROM transaction_lines s WHERE s.event_id = te.id
+              AND s.deleted_at IS NULL AND s.action = 'settlement' LIMIT 1
+          ) END AS income_account,
           tl.fx_rate AS fx_rate,
           te.sort_order AS event_sort_order,
           tl.sort_order AS line_sort_order
@@ -2635,6 +2649,7 @@ class AppDatabase extends _$AppDatabase {
         quantityValue: quantityValue,
         grossAmount: grossAmount,
         cashFlowAmount: row.read<double>('cash_flow_amount'),
+        counterpartyHoldingId: row.readNullable<int>('income_account'),
         realizedProfitAmount: row.read<double>('realized_profit_amount'),
         realizedProfitSource: row.read<String>('realized_profit_source'),
         fxRate: row.read<double?>('fx_rate'),
@@ -2730,10 +2745,14 @@ class AppDatabase extends _$AppDatabase {
         assetId: row.read<int?>('asset_id'),
         holdingId: -cashAccountId,
         date: row.read<String>('date'),
-        type: _ledgerCashActionLabel(
-          action: row.read<String>('action'),
-          cashDelta: cashDelta,
-        ),
+        type:
+            row.read<String>('ledger_kind') == 'income' &&
+                row.read<String>('action') == 'settlement'
+            ? '수입 입금'
+            : _ledgerCashActionLabel(
+                action: row.read<String>('action'),
+                cashDelta: cashDelta,
+              ),
         name: row.read<String>('name'),
         memo: row.read<String>('memo'),
         amount: _formatPlainNumber(
@@ -2767,6 +2786,51 @@ class AppDatabase extends _$AppDatabase {
     };
   }
 
+  Future<List<HoldingItem>> fetchHoldingsForMarketRefresh() async {
+    final query =
+        select(holdings).join([
+          innerJoin(assets, assets.id.equalsExp(holdings.assetId)),
+        ])..where(
+          holdings.quantity.isBiggerThanValue(0) &
+              holdings.deletedAt.isNull() &
+              assets.deletedAt.isNull() &
+              assets.assetType.isIn(['주식', '펀드', '코인']),
+        );
+    final rows = await query.get();
+    return [
+      for (final row in rows)
+        _investmentHoldingItem(row.readTable(holdings), row.readTable(assets)),
+    ];
+  }
+
+  HoldingItem _investmentHoldingItem(
+    Holding holdingRow,
+    Asset assetRow, {
+    double usdKrwRate = 1,
+    List<TransactionItem> transactions = const [],
+  }) {
+    return HoldingItem(
+      id: holdingRow.id,
+      clientId: holdingRow.clientId,
+      assetId: holdingRow.assetId,
+      assetTitle: assetRow.alias.isEmpty ? assetRow.title : assetRow.alias,
+      assetType: assetRow.assetType,
+      isHidden: holdingRow.hidden,
+      currencyCode: holdingRow.currencyCode,
+      exchangeRate: holdingRow.currencyCode == 'USD' ? usdKrwRate : 1.0,
+      marketUpdatedAt: holdingRow.marketUpdatedAt,
+      exchangeCode: holdingRow.exchangeCode,
+      name: holdingRow.name,
+      symbol: holdingRow.symbol,
+      quantity: holdingRow.quantity,
+      averagePrice: holdingRow.averagePrice,
+      averagePriceSource: holdingRow.averagePriceSource,
+      currentPrice: holdingRow.currentPrice,
+      note: holdingRow.note,
+      transactions: transactions,
+    );
+  }
+
   Future<List<AssetItem>> fetchAssets() async {
     final usdKrwRate = await fetchLatestExchangeRate() ?? 1.0;
     final assetRows =
@@ -2797,26 +2861,10 @@ class AppDatabase extends _$AppDatabase {
                 ledgerHoldingTransactions[holdingRow.id] ??
                 const <TransactionItem>[];
 
-            return HoldingItem(
-              id: holdingRow.id,
-              clientId: holdingRow.clientId,
-              assetId: holdingRow.assetId,
-              assetTitle: assetRow.alias.isEmpty
-                  ? assetRow.title
-                  : assetRow.alias,
-              assetType: assetRow.assetType,
-              isHidden: holdingRow.hidden,
-              currencyCode: holdingRow.currencyCode,
-              exchangeRate: holdingRow.currencyCode == 'USD' ? usdKrwRate : 1.0,
-              marketUpdatedAt: holdingRow.marketUpdatedAt,
-              exchangeCode: holdingRow.exchangeCode,
-              name: holdingRow.name,
-              symbol: holdingRow.symbol,
-              quantity: holdingRow.quantity,
-              averagePrice: holdingRow.averagePrice,
-              averagePriceSource: holdingRow.averagePriceSource,
-              currentPrice: holdingRow.currentPrice,
-              note: holdingRow.note,
+            return _investmentHoldingItem(
+              holdingRow,
+              assetRow,
+              usdKrwRate: usdKrwRate,
               transactions: holdingTransactions,
             );
           })
@@ -3852,32 +3900,42 @@ class AppDatabase extends _$AppDatabase {
     await refreshTodaySnapshot();
   }
 
-  Future<void> updateHoldingCurrentPrice(
+  Future<bool> updateHoldingCurrentPrice(
     int holdingId,
-    double currentPrice,
-  ) async {
-    if (holdingId < 0) return;
-    final existing = await (select(
-      holdings,
-    )..where((table) => table.id.equals(holdingId))).getSingleOrNull();
-    if (existing == null) return;
-    final nowIso = DateTime.now().toIso8601String();
-    if ((existing.currentPrice - currentPrice).abs() < 0.000001) {
-      await (update(holdings)..where((table) => table.id.equals(holdingId)))
-          .write(HoldingsCompanion(marketUpdatedAt: Value(nowIso)));
-      await refreshTodaySnapshot();
-      return;
-    }
-
-    await (update(
-      holdings,
-    )..where((table) => table.id.equals(holdingId))).write(
-      HoldingsCompanion(
-        currentPrice: Value(currentPrice),
-        marketUpdatedAt: Value(nowIso),
-      ),
-    );
-    await refreshTodaySnapshot();
+    double currentPrice, {
+    required String expectedSymbol,
+    required String expectedCurrency,
+    required String expectedExchange,
+    required String? expectedClientId,
+    String? recoveredExchange,
+  }) async {
+    final updated =
+        await (update(holdings)..where(
+              (t) =>
+                  t.id.equals(holdingId) &
+                  t.symbol.equals(expectedSymbol) &
+                  t.currencyCode.equals(expectedCurrency) &
+                  t.exchangeCode.equals(expectedExchange) &
+                  (expectedClientId == null
+                      ? t.clientId.isNull()
+                      : t.clientId.equals(expectedClientId)) &
+                  t.deletedAt.isNull(),
+            ))
+            .write(
+              HoldingsCompanion(
+                currentPrice: Value(currentPrice),
+                marketUpdatedAt: Value(DateTime.now().toIso8601String()),
+                exchangeCode: Value.absentIfNull(recoveredExchange),
+                dirty: recoveredExchange == null
+                    ? const Value.absent()
+                    : const Value(true),
+                lastModifiedAt: recoveredExchange == null
+                    ? const Value.absent()
+                    : Value(_syncTimestamp()),
+              ),
+            );
+    if (updated > 0) await refreshTodaySnapshot();
+    return updated > 0;
   }
 
   Future<void> updateHoldingHidden(int holdingId, bool isHidden) async {
@@ -4312,6 +4370,7 @@ class AppDatabase extends _$AppDatabase {
     bool includeInCalculations = true,
     double? manualRealizedProfitAmount,
     double? tradeFxRate,
+    int? incomeCashAccountId,
   }) async {
     final normalizedDate = _normalizeStoredDateKey(date);
     if (holdingId < 0) {
@@ -4422,6 +4481,7 @@ class AppDatabase extends _$AppDatabase {
           sortOrder: currentMax + 1,
           manualRealizedProfitAmount: manualRealizedProfitAmount,
           tradeFxRate: tradeFxRate,
+          incomeCashAccountId: incomeCashAccountId,
         );
       } else {
         insertedId = await _createRecordOnlyInvestment(
@@ -4459,13 +4519,13 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> updateTransactionItem(TransactionItem item) async {
     if (item.ledgerEventId != null) {
-      await _replaceLedgerTransactionItem(item);
+      await replaceLedgerTransactionItem(item);
       return;
     }
     if (item.id == null) return;
     final ledgerEventId = await _activeLedgerEventIdForExternalId(item.id!);
     if (ledgerEventId != null) {
-      await _replaceLedgerTransactionItem(
+      await replaceLedgerTransactionItem(
         TransactionItem(
           id: item.id,
           clientId: item.clientId,
@@ -4759,14 +4819,14 @@ class AppDatabase extends _$AppDatabase {
     return null;
   }
 
-  Future<void> _replaceLedgerTransactionItem(TransactionItem item) =>
+  Future<int?> replaceLedgerTransactionItem(TransactionItem item) =>
       transaction(() => _replaceLedgerTransactionItemInTransaction(item));
 
-  Future<void> _replaceLedgerTransactionItemInTransaction(
+  Future<int?> _replaceLedgerTransactionItemInTransaction(
     TransactionItem item,
   ) async {
     final eventId = await _activeLedgerEventIdForItem(item);
-    if (eventId == null) return;
+    if (eventId == null) return null;
 
     final originalEvent = await (select(
       transactionEvents,
@@ -4788,7 +4848,7 @@ class AppDatabase extends _$AppDatabase {
       variables: [Variable.withInt(eventId)],
       readsFrom: {transactionLines},
     ).get();
-    if (lineRows.isEmpty) return;
+    if (lineRows.isEmpty) return null;
 
     int? primaryHoldingId;
     int? primaryCashAccountId;
@@ -4798,7 +4858,7 @@ class AppDatabase extends _$AppDatabase {
       primaryCashAccountId ??= row.read<int?>('cash_account_id');
       primaryAssetId ??= row.read<int?>('asset_id');
     }
-    if (primaryAssetId == null) return;
+    if (primaryAssetId == null) return null;
 
     final affectedHoldingIds = lineRows
         .map((row) => row.read<int?>('holding_id'))
@@ -4877,12 +4937,22 @@ class AppDatabase extends _$AppDatabase {
             ? item.realizedProfitAmount
             : null,
         tradeFxRate: item.fxRate,
+        incomeCashAccountId:
+            item.includeInCalculations &&
+                (normalizedType == '배당' || normalizedType == '이자')
+            ? (item.counterpartyHoldingId == 0
+                  ? null
+                  : item.counterpartyHoldingId?.abs() ??
+                        (originalEvent.kind == 'income'
+                            ? primaryCashAccountId
+                            : null))
+            : null,
       );
       await markReplacement(newId);
-      return;
+      return newId.abs();
     }
 
-    if (primaryCashAccountId == null) return;
+    if (primaryCashAccountId == null) return null;
     final requestedCashAccountId =
         requestedCashAccountRow?.id ?? primaryCashAccountId;
     final requestedCashAssetId =
@@ -4899,7 +4969,7 @@ class AppDatabase extends _$AppDatabase {
         includeInCalculations: false,
       );
       await markReplacement(newId);
-      return;
+      return newId.abs();
     }
     if (normalizedType == '이체') {
       final cashAccountIds = lineRows
@@ -4927,7 +4997,7 @@ class AppDatabase extends _$AppDatabase {
         amount: item.amount,
       );
       await markReplacement(newId);
-      return;
+      return newId.abs();
     }
     if (normalizedType == '환전') {
       final exchangeRate =
@@ -4943,7 +5013,7 @@ class AppDatabase extends _$AppDatabase {
         exchangeRate: exchangeRate,
       );
       await markReplacement(newId);
-      return;
+      return newId.abs();
     }
     final newId = await createTransaction(
       assetId: requestedCashAssetId,
@@ -4956,6 +5026,7 @@ class AppDatabase extends _$AppDatabase {
       includeInCalculations: item.includeInCalculations,
     );
     await markReplacement(newId);
+    return newId.abs();
   }
 
   Future<void> deleteTransactionItem(int transactionId) async {
@@ -5784,10 +5855,19 @@ class AppDatabase extends _$AppDatabase {
     return rows..sort((a, b) => a.snapshotDate.compareTo(b.snapshotDate));
   }
 
-  Future<List<DailyPortfolioSnapshot>> fetchAllPortfolioSnapshots() async {
-    return (select(
-      dailyPortfolioSnapshots,
-    )..orderBy([(table) => OrderingTerm.asc(table.snapshotDate)])).get();
+  Future<List<DailyPortfolioSnapshot>> fetchAllPortfolioSnapshots({
+    String? from,
+    String? to,
+  }) {
+    final query = select(dailyPortfolioSnapshots)
+      ..orderBy([(table) => OrderingTerm.asc(table.snapshotDate)]);
+    if (from != null) {
+      query.where((table) => table.snapshotDate.isBiggerOrEqualValue(from));
+    }
+    if (to != null) {
+      query.where((table) => table.snapshotDate.isSmallerOrEqualValue(to));
+    }
+    return query.get();
   }
 
   Future<List<PortfolioDailyReturn>> fetchPortfolioDailyReturns({
@@ -6018,94 +6098,90 @@ class AppDatabase extends _$AppDatabase {
     String? to,
   }) async {
     await _ensurePortfolioDailyReturnsTable();
-    final snapshots = await fetchAllPortfolioSnapshots();
     final normalizedFrom = from == null
         ? null
         : _normalizeSnapshotDateKey(from);
     final normalizedTo = to == null ? null : _normalizeSnapshotDateKey(to);
-    final filteredSnapshots = snapshots
-        .where((snapshot) {
-          final snapshotDate = _normalizeSnapshotDateKey(snapshot.snapshotDate);
-          if (normalizedFrom != null &&
-              snapshotDate.compareTo(normalizedFrom) < 0) {
-            return false;
-          }
-          if (normalizedTo != null &&
-              snapshotDate.compareTo(normalizedTo) > 0) {
-            return false;
-          }
-          return true;
-        })
-        .toList(growable: false);
-
-    await _deletePortfolioDailyReturnsInRange(
-      localUserId: localUserId,
-      from: normalizedFrom,
-      to: normalizedTo,
-    );
-
-    if (filteredSnapshots.isEmpty) return 0;
-
-    final allSnapshotByDate = {
-      for (final snapshot in snapshots)
-        _normalizeSnapshotDateKey(snapshot.snapshotDate): snapshot,
-    };
-    final cashFlowByDate = await _fetchExternalCashFlowKrwByDate(
-      from: normalizedFrom,
-      to: normalizedTo,
-    );
-    final cashFlowUsesFallbackFxByDate =
-        await _fetchExternalCashFlowFallbackFxDates(
-          from: normalizedFrom,
-          to: normalizedTo,
-        );
     final now = _syncTimestamp();
-    var insertedCount = 0;
 
-    await transaction(() async {
-      for (final snapshot in filteredSnapshots) {
-        final returnDate = _normalizeSnapshotDateKey(snapshot.snapshotDate);
-        final previousDate = _previousDateKey(returnDate);
-        final previousSnapshot = previousDate == null
-            ? null
-            : allSnapshotByDate[previousDate];
-        final beginningValue = previousSnapshot?.totalValuationAmount;
-        final endingValue = snapshot.totalValuationAmount;
-        final externalCashFlow = cashFlowByDate[returnDate] ?? 0;
-        final dailyReturn = beginningValue == null
-            ? null
-            : calculateCashFlowAdjustedDailyReturn(
-                beginningValue: beginningValue,
-                endingValue: endingValue,
-                externalCashFlow: externalCashFlow,
-              );
-        final dataQuality = beginningValue == null
-            ? 'missing_snapshot'
-            : cashFlowUsesFallbackFxByDate.contains(returnDate)
-            ? 'missing_fx'
-            : 'complete';
-
+    return transaction(() async {
+      final returns = await calculatePortfolioDailyReturns(
+        from: normalizedFrom,
+        to: normalizedTo,
+      );
+      await _deletePortfolioDailyReturnsInRange(
+        localUserId: localUserId,
+        from: normalizedFrom,
+        to: normalizedTo,
+      );
+      for (final row in returns) {
         await into(portfolioDailyReturns).insert(
           PortfolioDailyReturnsCompanion.insert(
             localUserId: localUserId,
-            returnDate: returnDate,
-            beginningValueKrw: Value(beginningValue),
-            endingValueKrw: endingValue,
-            portfolioValueKrw: endingValue,
-            externalCashFlowKrw: Value(externalCashFlow),
-            dailyReturn: Value(dailyReturn),
-            dataQuality: Value(dataQuality),
+            returnDate: row.date,
+            beginningValueKrw: Value(row.beginningValue),
+            endingValueKrw: row.endingValue,
+            portfolioValueKrw: row.endingValue,
+            externalCashFlowKrw: Value(row.externalCashFlow),
+            dailyReturn: Value(row.dailyReturn),
+            dataQuality: Value(row.dataQuality),
             calculationVersion: const Value(1),
             createdAt: now,
             updatedAt: now,
           ),
           mode: InsertMode.insertOrReplace,
         );
-        insertedCount += 1;
       }
+      return returns.length;
     });
+  }
 
-    return insertedCount;
+  Future<List<PortfolioReturnObservation>> calculatePortfolioDailyReturns({
+    String? from,
+    String? to,
+  }) async {
+    final baseline = from == null ? null : _previousDateKey(from);
+    final snapshots = await fetchAllPortfolioSnapshots(from: baseline, to: to);
+    final snapshotByDate = {
+      for (final snapshot in snapshots)
+        _normalizeSnapshotDateKey(snapshot.snapshotDate): snapshot,
+    };
+    final cashFlowByDate = await fetchExternalCashFlowKrwByDate(
+      from: from,
+      to: to,
+    );
+    final fallbackFxDates = await _fetchExternalCashFlowFallbackFxDates(
+      from: from,
+      to: to,
+    );
+    final returns = <PortfolioReturnObservation>[];
+    for (final snapshot in snapshots) {
+      final date = _normalizeSnapshotDateKey(snapshot.snapshotDate);
+      if (from != null && date.compareTo(from) < 0) continue;
+      final beginningValue =
+          snapshotByDate[_previousDateKey(date)]?.totalValuationAmount;
+      final endingValue = snapshot.totalValuationAmount;
+      final externalCashFlow = cashFlowByDate[date] ?? 0;
+      returns.add((
+        date: date,
+        beginningValue: beginningValue,
+        endingValue: endingValue,
+        externalCashFlow: externalCashFlow,
+        dailyReturn: beginningValue == null
+            ? null
+            : calculateCashFlowAdjustedDailyReturn(
+                beginningValue: beginningValue,
+                endingValue: endingValue,
+                externalCashFlow: externalCashFlow,
+              ),
+        dataQuality: beginningValue == null
+            ? 'missing_snapshot'
+            : fallbackFxDates.contains(date)
+            ? 'missing_fx'
+            : 'complete',
+      ));
+    }
+    return returns;
   }
 
   Future<void> _deletePortfolioDailyReturnsInRange({
@@ -6124,11 +6200,16 @@ class AppDatabase extends _$AppDatabase {
     await query.go();
   }
 
-  Future<Map<String, double>> _fetchExternalCashFlowKrwByDate({
+  Future<Map<String, double>> fetchExternalCashFlowKrwByDate({
     String? from,
     String? to,
+    bool visibleOnly = false,
   }) async {
-    final rows = await _fetchExternalCashFlowRows(from: from, to: to);
+    final rows = await _fetchExternalCashFlowRows(
+      from: from,
+      to: to,
+      visibleOnly: visibleOnly,
+    );
     final result = <String, double>{};
     for (final row in rows) {
       final returnDate = row.returnDate;
@@ -6159,10 +6240,12 @@ class AppDatabase extends _$AppDatabase {
   Future<List<_ExternalCashFlowRow>> _fetchExternalCashFlowRows({
     String? from,
     String? to,
+    bool visibleOnly = false,
   }) async {
     final whereClauses = <String>[
       'te.deleted_at IS NULL',
       'tl.deleted_at IS NULL',
+      "te.source NOT IN ('snapshot_restore', 'history_display', 'record_only')",
       "te.flow_category IN ('external_deposit', 'external_withdrawal')",
       "tl.action IN ('deposit', 'withdrawal')",
     ];
@@ -6185,7 +6268,10 @@ class AppDatabase extends _$AppDatabase {
           COALESCE(tl.cash_delta, 0) AS cash_delta
         FROM transaction_lines tl
         INNER JOIN transaction_events te ON te.id = tl.event_id
+        LEFT JOIN cash_accounts ca ON ca.id = tl.cash_account_id
+        LEFT JOIN assets a ON a.id = COALESCE(tl.asset_id, ca.asset_id)
         WHERE ${whereClauses.join(' AND ')}
+          ${visibleOnly ? 'AND a.hidden = 0 AND ca.hidden = 0 AND a.deleted_at IS NULL AND ca.deleted_at IS NULL' : ''}
       ''',
       variables: variables,
       readsFrom: {transactionEvents, transactionLines},
@@ -6450,7 +6536,8 @@ class AppDatabase extends _$AppDatabase {
     };
     final placeholders = List.filled(snapshotIdByDate.length, '?').join(', ');
     final rows = await customSelect(
-      'SELECT id, snapshot_id, asset_id, asset_title, cash_account_id, cash_account_name, '
+      'SELECT id, snapshot_id, asset_id, asset_client_id, asset_title, '
+      'cash_account_id, cash_account_client_id, cash_account_name, '
       'currency_code, balance, note '
       'FROM daily_portfolio_snapshot_cash_accounts '
       'WHERE snapshot_id IN ($placeholders) '
@@ -6478,8 +6565,10 @@ class AppDatabase extends _$AppDatabase {
             id: row.read<int>('id'),
             snapshotId: row.read<int>('snapshot_id'),
             assetId: row.read<int?>('asset_id'),
+            assetClientId: row.read<String?>('asset_client_id'),
             assetTitle: row.read<String>('asset_title'),
             cashAccountId: row.read<int?>('cash_account_id'),
+            cashAccountClientId: row.read<String?>('cash_account_client_id'),
             cashAccountName: row.read<String>('cash_account_name'),
             currencyCode: row.read<String>('currency_code'),
             balance: row.read<double>('balance'),
@@ -6576,8 +6665,9 @@ class AppDatabase extends _$AppDatabase {
         SELECT
           tl.id AS id,
           te.id AS event_id,
+          te.kind AS ledger_kind,
           te.legacy_source_id AS legacy_source_id,
-          tl.asset_id AS asset_id,
+          COALESCE(tl.asset_id, ca.asset_id) AS asset_id,
           CASE WHEN a.alias IS NULL OR a.alias = '' THEN a.title ELSE a.alias END AS asset_title,
           tl.cash_account_id AS cash_account_id,
           ca.name AS cash_account_name,
@@ -6635,10 +6725,14 @@ class AppDatabase extends _$AppDatabase {
                 row.read<int?>('legacy_source_id') ?? row.read<int>('event_id'),
             linkedTransactionId: row.read<int>('event_id'),
             date: row.read<String>('date'),
-            type: _ledgerCashActionLabel(
-              action: row.read<String>('action'),
-              cashDelta: cashDelta,
-            ),
+            type:
+                row.read<String>('ledger_kind') == 'income' &&
+                    row.read<String>('action') == 'settlement'
+                ? '수입 입금'
+                : _ledgerCashActionLabel(
+                    action: row.read<String>('action'),
+                    cashDelta: cashDelta,
+                  ),
             name: row.read<String>('name'),
             amount: _formatPlainNumber(cashDelta),
             sortOrder: row.read<int>('event_sort_order'),
@@ -7366,10 +7460,146 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  Future<String> exportReviewBackup(String? owner) => transaction(() async {
+    if (await localDataOwner() != owner) {
+      throw StateError('일지 소유 계정을 확인해 주세요.');
+    }
+    final reviews = await select(dailyInvestmentReviews).get();
+    return jsonEncode({
+      'format': 'moneyfy-journal-v1',
+      'owner': owner,
+      'reviews': [for (final row in reviews) row.toJson()],
+    });
+  });
+
+  Future<int> importReviewBackup(
+    String backup,
+    String owner, {
+    bool allowUnscoped = false,
+  }) => _mergeReviewBackup(
+    backup,
+    owner,
+    allowUnscoped: allowUnscoped,
+    fromDeviceArchive: false,
+  );
+
+  Future<int> _mergeReviewBackup(
+    String backup,
+    String owner, {
+    required bool allowUnscoped,
+    required bool fromDeviceArchive,
+  }) => transaction(() async {
+    if (await localDataOwner() != owner) throw StateError('일지 소유 계정이 다릅니다.');
+    final data = jsonDecode(backup);
+    if (data is! Map ||
+        data['format'] != 'moneyfy-journal-v1' ||
+        !data.containsKey('owner') ||
+        data['reviews'] is! List ||
+        (data['owner'] != owner && !(allowUnscoped && data['owner'] == null))) {
+      throw const FormatException('이 계정의 투자 일지 백업을 선택해 주세요.');
+    }
+    var count = 0;
+    for (final json in data['reviews'] as List) {
+      final row = DailyInvestmentReview.fromJson(
+        Map<String, dynamic>.from(json as Map),
+      );
+      if (!fromDeviceArchive) {
+        final validDates = [
+          row.reviewDate,
+          row.createdAt,
+          row.updatedAt,
+          ?row.completedAt,
+        ].every((value) => DateTime.tryParse(value) != null);
+        final validTags =
+            [
+                  row.selectedDecisionTags,
+                  row.selectedNoTradeReasons,
+                  row.selectedEmotions,
+                ]
+                .map(jsonDecode)
+                .every(
+                  (tags) => tags is List && tags.every((tag) => tag is String),
+                );
+        if (!validDates ||
+            !validTags ||
+            !DailyInvestmentReviewStatus.values.any(
+              (value) => value.name == row.status,
+            ) ||
+            !DailyInvestmentReviewMode.values.any(
+              (value) => value.name == row.mode,
+            ) ||
+            !DailyInvestmentReviewPrincipleCheck.values.any(
+              (value) => value.name == row.principleCheck,
+            )) {
+          throw const FormatException('일지 백업의 날짜 또는 기록 형식이 올바르지 않습니다.');
+        }
+      }
+      final existing = await (select(
+        dailyInvestmentReviews,
+      )..where((t) => t.reviewDate.equals(row.reviewDate))).getSingleOrNull();
+      if (existing != null &&
+          !DateTime.parse(
+            row.updatedAt,
+          ).isAfter(DateTime.parse(existing.updatedAt))) {
+        continue;
+      }
+      final values = row
+          .toCompanion(false)
+          .copyWith(
+            id: existing == null ? const Value.absent() : Value(existing.id),
+          );
+      await into(dailyInvestmentReviews).insertOnConflictUpdate(values);
+      count++;
+    }
+    return count;
+  });
+
+  Future<void> _archiveReviewsBeforeReplacement(String? owner) async {
+    if (owner == null ||
+        (await (select(dailyInvestmentReviews)..limit(1)).get()).isEmpty) {
+      return;
+    }
+    await customStatement(
+      'CREATE TABLE IF NOT EXISTS local_review_archives (owner TEXT PRIMARY KEY, backup TEXT NOT NULL)',
+    );
+    await customStatement(
+      'INSERT OR REPLACE INTO local_review_archives (owner, backup) VALUES (?, ?)',
+      [owner, await exportReviewBackup(owner)],
+    );
+  }
+
+  Future<void> _restoreAccountReviewArchive(String owner) async {
+    if (!await _tableExists('local_review_archives')) return;
+    final row = await customSelect(
+      'SELECT backup FROM local_review_archives WHERE owner = ?',
+      variables: [Variable.withString(owner)],
+    ).getSingleOrNull();
+    if (row == null) return;
+    await _mergeReviewBackup(
+      row.read<String>('backup'),
+      owner,
+      allowUnscoped: false,
+      fromDeviceArchive: true,
+    );
+    await customStatement('DELETE FROM local_review_archives WHERE owner = ?', [
+      owner,
+    ]);
+  }
+
   Future<void> clearAllLocalUserData() async {
     await transaction(() async {
+      if (await _tableExists('local_review_archives')) {
+        await customStatement('DELETE FROM local_review_archives');
+      }
       if (await _tableExists('local_data_scope')) {
         await customStatement('DELETE FROM local_data_scope');
+      }
+      if (await _tableExists('mcp_write_receipts')) {
+        // Preserve request IDs so a retry cannot recreate a previously saved trade.
+        await customStatement(
+          'UPDATE mcp_write_receipts SET command = ?, result = ?',
+          ['', '{"invalidated":true}'],
+        );
       }
       await delete(companyNewsCaches).go();
       await delete(marketNewsCaches).go();
@@ -8201,6 +8431,7 @@ class AppDatabase extends _$AppDatabase {
       }
       if (ownerId != null && expectedOwnerId != ownerId) {
         if (!preserveOwnerlessReviews) {
+          await _archiveReviewsBeforeReplacement(await localDataOwner());
           await delete(dailyInvestmentReviews).go();
         }
         await delete(companyNewsCaches).go();
@@ -8532,7 +8763,10 @@ class AppDatabase extends _$AppDatabase {
       if (canApply != null && !canApply()) {
         throw StateError('계정이 변경되어 서버 데이터를 적용하지 않았습니다.');
       }
-      if (ownerId != null) await assignLocalDataOwner(ownerId);
+      if (ownerId != null) {
+        await assignLocalDataOwner(ownerId);
+        await _restoreAccountReviewArchive(ownerId);
+      }
     });
 
     // Remote payloads already carry calculation-ready state tables and

@@ -86,11 +86,16 @@ class HoldingMarketSnapshot {
     required this.bestBidQty,
     this.fundDetails,
     this.isFallback = false,
+    this.exchangeNotFound = false,
   });
 
-  factory HoldingMarketSnapshot.fallback(HoldingItem holding) {
+  factory HoldingMarketSnapshot.fallback(
+    HoldingItem holding, {
+    bool exchangeNotFound = false,
+  }) {
     return HoldingMarketSnapshot(
       isFallback: true,
+      exchangeNotFound: exchangeNotFound,
       marketName: holding.assetTitle ?? '-',
       sectorName: '-',
       currentPrice: holding.primaryMetricValue,
@@ -166,6 +171,7 @@ class HoldingMarketSnapshot {
   final String bestBidQty;
   final FundMarketDetails? fundDetails;
   final bool isFallback;
+  final bool exchangeNotFound;
 
   String get etfComponentCount => fundDetails?.componentCount ?? '-';
   String get etfComponentMarketCap => fundDetails?.componentMarketCap ?? '-';

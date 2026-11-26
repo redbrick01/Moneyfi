@@ -1,3 +1,4 @@
+import 'package:moneyfy/features/analysis/screens/reddit_chat_page.dart';
 import 'package:flutter/material.dart';
 
 import 'package:moneyfy/components/chips/moneyfy_pill.dart';
@@ -124,6 +125,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
             ),
             SizedBox(height: context.spacing.sm),
             _AnalysisEntryCard(
+              icon: Icons.chat_bubble_outline,
+              title: '뉴스·Reddit 채팅',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const RedditChatPage()),
+              ),
+            ),
+            SizedBox(height: context.spacing.sm),
+            _AnalysisEntryCard(
               icon: Icons.forum_rounded,
               title: 'Reddit 요약',
               subtitle: '핵심 게시글 · 댓글 인사이트',
@@ -236,14 +245,12 @@ class SnapshotCalendarCard extends StatelessWidget {
     super.key,
     required this.focusedMonth,
     required this.snapshots,
-    required this.items,
     required this.transactionDates,
     required this.onMonthChanged,
   });
 
   final DateTime focusedMonth;
   final List<DailyPortfolioSnapshot> snapshots;
-  final List<DailyPortfolioSnapshotItem> items;
   final Set<String> transactionDates;
   final ValueChanged<DateTime> onMonthChanged;
 
@@ -259,10 +266,6 @@ class SnapshotCalendarCard extends StatelessWidget {
     final snapshotByDate = {
       for (final snapshot in snapshots) snapshot.snapshotDate: snapshot,
     };
-    final itemsBySnapshotId = <int, List<DailyPortfolioSnapshotItem>>{};
-    for (final item in items) {
-      itemsBySnapshotId.putIfAbsent(item.snapshotId, () => []).add(item);
-    }
 
     return MoneyfySectionCard(
       title: '스냅샷 참고 캘린더',
@@ -350,10 +353,6 @@ class SnapshotCalendarCard extends StatelessWidget {
                     : hasSnapshot
                     ? context.colors.primary
                     : context.colors.neutralOutline;
-                final snapshotItems = snapshot == null
-                    ? const <DailyPortfolioSnapshotItem>[]
-                    : (itemsBySnapshotId[snapshot.id] ??
-                          const <DailyPortfolioSnapshotItem>[]);
 
                 return InkWell(
                   borderRadius: BorderRadius.circular(context.radius.rMd),
@@ -362,10 +361,8 @@ class SnapshotCalendarCard extends StatelessWidget {
                       : () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) => SnapshotDetailPage(
-                                snapshot: snapshot,
-                                items: snapshotItems,
-                              ),
+                              builder: (context) =>
+                                  SnapshotDetailPage(snapshot: snapshot),
                             ),
                           );
                         },
@@ -497,13 +494,8 @@ Future<_AnalysisSnapshotBundle> _loadAnalysisSnapshotBundle({
   final annualItemsFuture = fetchVisibleSnapshotSummaryItemsByDates(
     allSnapshots.map((snapshot) => snapshot.snapshotDate).toList(),
   );
-  final allItemsFuture = AppDatabase.instance
-      .fetchDisplayPortfolioSnapshotItemsByDates(
-        allSnapshots.map((snapshot) => snapshot.snapshotDate).toList(),
-      );
   final recentItems = await recentItemsFuture;
   final annualItems = await annualItemsFuture;
-  final allItems = await allItemsFuture;
   final transactionDates = await transactionDatesFuture;
   final marketNewsSummary = await marketNewsSummaryFuture;
   final companyNewsSummaries = await companyNewsSummariesFuture;
@@ -513,7 +505,6 @@ Future<_AnalysisSnapshotBundle> _loadAnalysisSnapshotBundle({
     recentItems: recentItems,
     annualItems: annualItems,
     allSnapshots: allSnapshots,
-    allItems: allItems,
     transactionDates: transactionDates,
     marketNewsSummary: marketNewsSummary,
     companyNewsSummaries: companyNewsSummaries,
@@ -611,7 +602,6 @@ List<MonthlyClosingAsset> buildMonthlyClosingAssets(
       change: _formatSignedCurrency(change),
       changeRate: _formatSignedPercent(changeRate),
       snapshot: snapshot,
-      items: filteredItems,
     );
   });
 
@@ -744,8 +734,7 @@ class _MonthlyClosingAssetRow extends StatelessWidget {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) =>
-                SnapshotDetailPage(snapshot: item.snapshot, items: item.items),
+            builder: (context) => SnapshotDetailPage(snapshot: item.snapshot),
           ),
         );
       },
@@ -816,7 +805,6 @@ class MonthlyClosingAsset {
     required this.change,
     required this.changeRate,
     required this.snapshot,
-    required this.items,
   });
 
   final String month;
@@ -825,7 +813,6 @@ class MonthlyClosingAsset {
   final String change;
   final String changeRate;
   final DailyPortfolioSnapshot snapshot;
-  final List<DailyPortfolioSnapshotItem> items;
 
   double get changeRateValue {
     final normalized = changeRate
@@ -874,7 +861,6 @@ class _AnalysisSnapshotBundle {
     required this.recentItems,
     required this.annualItems,
     required this.allSnapshots,
-    required this.allItems,
     required this.transactionDates,
     required this.marketNewsSummary,
     required this.companyNewsSummaries,
@@ -885,7 +871,6 @@ class _AnalysisSnapshotBundle {
       recentItems = const [],
       annualItems = const [],
       allSnapshots = const [],
-      allItems = const [],
       transactionDates = const {},
       marketNewsSummary = null,
       companyNewsSummaries = const [];
@@ -894,7 +879,6 @@ class _AnalysisSnapshotBundle {
   final List<DailyPortfolioSnapshotItem> recentItems;
   final List<DailyPortfolioSnapshotItem> annualItems;
   final List<DailyPortfolioSnapshot> allSnapshots;
-  final List<DailyPortfolioSnapshotItem> allItems;
   final Set<String> transactionDates;
   final MarketNewsSummary? marketNewsSummary;
   final List<CompanyNewsSummaryItem> companyNewsSummaries;

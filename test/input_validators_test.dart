@@ -60,6 +60,7 @@ void main() {
     test('validates symbol input', () {
       expect(MoneyfyInputValidators.symbol('aapl').value, 'AAPL');
       expect(MoneyfyInputValidators.symbol('BRK.B').value, 'BRK.B');
+      expect(MoneyfyInputValidators.symbol('BRK/B').value, 'BRK/B');
       expect(MoneyfyInputValidators.symbol('005930').value, '005930');
       expect(MoneyfyInputValidators.symbol('bad symbol').isValid, isFalse);
       expect(MoneyfyInputValidators.symbol('').isValid, isFalse);
@@ -70,10 +71,7 @@ void main() {
         '0',
         isCashAsset: false,
       );
-      final cashQuantity = validateHoldingQuantityInput(
-        '0',
-        isCashAsset: true,
-      );
+      final cashQuantity = validateHoldingQuantityInput('0', isCashAsset: true);
 
       expect(investmentQuantity.isValid, isTrue);
       expect(investmentQuantity.value, 0);

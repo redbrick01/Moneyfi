@@ -80,6 +80,7 @@ class _AppShellPageState extends State<AppShellPage>
   bool _isPolling = false;
   late final List<ScrollController> _pageScrollControllers;
   int _dataRefreshTick = 0;
+  int _homeMarketRefreshTick = 0;
   int _dataScopeVersion = 0;
   int _analysisReselectionTick = 0;
   bool _isReplacingAccountData = false;
@@ -242,7 +243,9 @@ class _AppShellPageState extends State<AppShellPage>
       await MarketDataService.instance.refreshAllMarketData();
       await _syncDisplayCurrencySettings();
       if (!mounted) return;
-      setState(() {});
+      setState(() {
+        _homeMarketRefreshTick++;
+      });
     } finally {
       _isPolling = false;
     }
@@ -288,7 +291,7 @@ class _AppShellPageState extends State<AppShellPage>
                   child: PortfolioDashboardPage(
                     scrollController: _pageScrollControllers[0],
                     onOpenPortfolioDiagnosis: _openPortfolioDiagnosisFromHome,
-                    dataRefreshTick: _dataRefreshTick,
+                    dataRefreshTick: _dataRefreshTick + _homeMarketRefreshTick,
                   ),
                 ),
                 _DataScopedTabPage(

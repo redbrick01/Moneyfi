@@ -30,8 +30,9 @@ project name: Moneyfi
 | 동기화 | `sync-local-db`, `get-sync-local-db` |
 | 스냅샷 | `create-portfolio-snapshot`, `get-portfolio-snapshots` |
 | 시세 | `update-holding-prices` |
-| 뉴스 수집 | `fetch-market-news`, `fetch-company-news` |
-| 뉴스 요약 | `summarize-market-news`, `summarize-company-news`, `get-market-news-summary`, `get-user-company-news-summaries` |
+| 폐기된 뉴스 경로 (HTTP 410) | `fetch-market-news`, `fetch-company-news`, `summarize-market-news`, `summarize-company-news` |
+| 뉴스 리포트 조회 | `get-market-news-summary`, `get-user-company-news-summaries` |
+| 내부 포트폴리오 분석 | `portfolio-analysis` |
 | AI 진단 | `get-portfolio-diagnosis` |
 
 ## Common Commands

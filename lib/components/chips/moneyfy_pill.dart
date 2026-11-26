@@ -110,6 +110,15 @@ class MoneyfyBadge extends StatelessWidget {
     this.leading,
   });
 
+  factory MoneyfyBadge.transactionType(String label, {int? maxLines = 1}) =>
+      MoneyfyBadge(
+        label: label,
+        maxLines: maxLines,
+        leading: label == '배당' || label == '배당·분배금'
+            ? Icon(Icons.circle, size: 8, color: VisualSpec.brand.brandYellow)
+            : null,
+      );
+
   final String label;
   final MoneyfyPillSize size;
   final MoneyfyPillTone tone;

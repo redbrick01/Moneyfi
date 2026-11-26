@@ -1,3 +1,4 @@
+import '../widgets/portfolio_instrument_search.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -781,7 +782,8 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                                           opacity: animation,
                                           child: SizeTransition(
                                             sizeFactor: animation,
-                                            alignment: AlignmentDirectional.topStart,
+                                            alignment:
+                                                AlignmentDirectional.topStart,
                                             child: child,
                                           ),
                                         );
@@ -835,6 +837,12 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
                       height: context.spacing.md + context.spacing.xs / 2,
                     ),
                     if (!isCashAssetGroup) ...[
+                      PortfolioInstrumentSearch(
+                        assetType: item.assetType,
+                        assets: [item],
+                        onHoldingClosed: _reloadDetail,
+                      ),
+                      SizedBox(height: context.spacing.md),
                       _DetailSection(
                         title: '보유 정보',
                         wrapBodyWithInnerCard: false,

@@ -1,3 +1,4 @@
+import 'package:moneyfy/features/portfolio/services/market_instrument_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
@@ -32,11 +33,19 @@ const double _kComparisonValueEpsilon = 1.0;
 class HoldingDetailPage extends StatefulWidget {
   const HoldingDetailPage({
     super.key,
-    required this.holdingId,
+    required int this.holdingId,
     this.holdingClientId,
-  });
+  }) : instrument = null;
 
-  final int holdingId;
+  const HoldingDetailPage.market({
+    super.key,
+    required MarketSearchResult result,
+  }) : instrument = result,
+       holdingId = null,
+       holdingClientId = null;
+
+  final MarketSearchResult? instrument;
+  final int? holdingId;
   final String? holdingClientId;
 
   @override
@@ -71,7 +80,8 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   @override
   void didUpdateWidget(covariant HoldingDetailPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.holdingId != widget.holdingId ||
+    if (oldWidget.instrument != widget.instrument ||
+        oldWidget.holdingId != widget.holdingId ||
         oldWidget.holdingClientId != widget.holdingClientId) {
       _missingHoldingRetryCount = 0;
       _resetMarketRequests();
@@ -80,11 +90,13 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   }
 
   Future<HoldingItem?> _loadHoldingWithRetry() async {
+    final instrument = widget.instrument;
+    if (instrument != null) return instrument.asMarketQuote();
     final normalizedClientId = widget.holdingClientId?.trim() ?? '';
     for (var attempt = 0; attempt < 8; attempt++) {
       try {
         final holding = await AppDatabase.instance.fetchHoldingById(
-          widget.holdingId,
+          widget.holdingId!,
         );
         if (holding != null) return holding;
         if (normalizedClientId.isNotEmpty) {
@@ -347,6 +359,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final marketOnly = widget.instrument != null;
 
     return Scaffold(
       backgroundColor: context.colors.neutralBackground,
@@ -442,222 +455,251 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                         SizedBox(
                           height: context.spacing.xs + context.spacing.xs / 4,
                         ),
-                        MoneyfySurfaceCard(
-                          padding: EdgeInsets.all(context.cardPadding()),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          context.colors.neutralSurfaceRaised,
-                                      borderRadius: BorderRadius.circular(
-                                        VisualSpec.surface.radiusCard,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      _holdingIconForType(
-                                        displayHolding.assetType,
-                                      ),
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                      size: VisualSpec.icon.sizeSmall,
-                                    ),
-                                  ),
-                                  SizedBox(width: context.spacing.sm),
-                                  Expanded(
-                                    child: Text(
-                                      displayHolding.name,
-                                      style: context.typography.cardTitle
-                                          .copyWith(
-                                            fontWeight: AppFontWeights.semibold,
-                                          ),
-                                    ),
-                                  ),
-                                  _TopActionButton(
-                                    onPressed: () =>
-                                        _editHolding(displayHolding),
-                                    icon: Icons.edit_outlined,
-                                  ),
-                                  SizedBox(
-                                    width:
-                                        context.spacing.xs +
-                                        context.spacing.xs / 4,
-                                  ),
-                                  Container(
-                                    width: 1,
-                                    height: 24,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .outlineVariant
-                                        .withValues(alpha: 0.7),
-                                  ),
-                                  SizedBox(
-                                    width:
-                                        context.spacing.xs +
-                                        context.spacing.xs / 4,
-                                  ),
-                                  _TopActionButton(
-                                    onPressed: () =>
-                                        _deleteHolding(displayHolding),
-                                    icon: Icons.delete_outline_rounded,
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: context.spacing.lg),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  displayHolding.value,
-                                  style: context.typography.heroNumber.copyWith(
-                                    fontWeight: AppFontWeights.semibold,
-                                    height: 1,
-                                  ),
-                                  textAlign: TextAlign.right,
+                        if (marketOnly)
+                          MoneyfySurfaceCard(
+                            padding: EdgeInsets.all(context.cardPadding()),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  displayHolding.name,
+                                  style: context.typography.cardTitle,
                                 ),
-                              ),
-                              SizedBox(height: context.spacing.md),
-                              GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onVerticalDragEnd: (details) {
-                                  final velocity = details.primaryVelocity ?? 0;
-                                  if (velocity > 120 &&
-                                      !_isHeroDetailExpanded) {
-                                    setState(() {
-                                      _isHeroDetailExpanded = true;
-                                    });
-                                  } else if (velocity < -120 &&
-                                      _isHeroDetailExpanded) {
-                                    setState(() {
-                                      _isHeroDetailExpanded = false;
-                                    });
-                                  }
-                                },
-                                child: FutureBuilder<_HoldingComparisonMetrics>(
-                                  future: _comparisonMetricsFor(displayHolding),
-                                  initialData:
-                                      _HoldingComparisonMetrics.fromHolding(
-                                        displayHolding,
+                                Text(widget.instrument!.marketLabel),
+                                SizedBox(height: context.spacing.sm),
+                                Text(
+                                  market.currentPriceValue != null &&
+                                          market.currentPriceValue! > 0
+                                      ? market.currentPrice
+                                      : '시세 미제공',
+                                  style: context.typography.heroNumber,
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          MoneyfySurfaceCard(
+                            padding: EdgeInsets.all(context.cardPadding()),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color:
+                                            context.colors.neutralSurfaceRaised,
+                                        borderRadius: BorderRadius.circular(
+                                          VisualSpec.surface.radiusCard,
+                                        ),
                                       ),
-                                  builder: (context, comparisonSnapshot) {
-                                    final metrics =
-                                        comparisonSnapshot.data ??
+                                      child: Icon(
+                                        _holdingIconForType(
+                                          displayHolding.assetType,
+                                        ),
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                        size: VisualSpec.icon.sizeSmall,
+                                      ),
+                                    ),
+                                    SizedBox(width: context.spacing.sm),
+                                    Expanded(
+                                      child: Text(
+                                        displayHolding.name,
+                                        style: context.typography.cardTitle
+                                            .copyWith(
+                                              fontWeight:
+                                                  AppFontWeights.semibold,
+                                            ),
+                                      ),
+                                    ),
+                                    _TopActionButton(
+                                      onPressed: () =>
+                                          _editHolding(displayHolding),
+                                      icon: Icons.edit_outlined,
+                                    ),
+                                    SizedBox(
+                                      width:
+                                          context.spacing.xs +
+                                          context.spacing.xs / 4,
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 24,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outlineVariant
+                                          .withValues(alpha: 0.7),
+                                    ),
+                                    SizedBox(
+                                      width:
+                                          context.spacing.xs +
+                                          context.spacing.xs / 4,
+                                    ),
+                                    _TopActionButton(
+                                      onPressed: () =>
+                                          _deleteHolding(displayHolding),
+                                      icon: Icons.delete_outline_rounded,
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: context.spacing.lg),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    displayHolding.value,
+                                    style: context.typography.heroNumber
+                                        .copyWith(
+                                          fontWeight: AppFontWeights.semibold,
+                                          height: 1,
+                                        ),
+                                    textAlign: TextAlign.right,
+                                  ),
+                                ),
+                                SizedBox(height: context.spacing.md),
+                                GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onVerticalDragEnd: (details) {
+                                    final velocity =
+                                        details.primaryVelocity ?? 0;
+                                    if (velocity > 120 &&
+                                        !_isHeroDetailExpanded) {
+                                      setState(() {
+                                        _isHeroDetailExpanded = true;
+                                      });
+                                    } else if (velocity < -120 &&
+                                        _isHeroDetailExpanded) {
+                                      setState(() {
+                                        _isHeroDetailExpanded = false;
+                                      });
+                                    }
+                                  },
+                                  child: FutureBuilder<_HoldingComparisonMetrics>(
+                                    future: _comparisonMetricsFor(
+                                      displayHolding,
+                                    ),
+                                    initialData:
                                         _HoldingComparisonMetrics.fromHolding(
                                           displayHolding,
-                                        );
-                                    return AnimatedSize(
-                                      duration: context.motion.fast,
-                                      curve: Curves.easeOutCubic,
-                                      alignment: Alignment.topCenter,
-                                      child: AppInnerPanel(
-                                        padding: EdgeInsets.all(
-                                          context.cardPadding(),
                                         ),
-                                        child: Column(
-                                          children: [
-                                            _HoldingHeroDeltaMetricRow(
-                                              label: '평가 손익',
-                                              value: _formatSignedCurrency(
-                                                metrics.valuationProfit,
+                                    builder: (context, comparisonSnapshot) {
+                                      final metrics =
+                                          comparisonSnapshot.data ??
+                                          _HoldingComparisonMetrics.fromHolding(
+                                            displayHolding,
+                                          );
+                                      return AnimatedSize(
+                                        duration: context.motion.fast,
+                                        curve: Curves.easeOutCubic,
+                                        alignment: Alignment.topCenter,
+                                        child: AppInnerPanel(
+                                          padding: EdgeInsets.all(
+                                            context.cardPadding(),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              _HoldingHeroDeltaMetricRow(
+                                                label: '평가 손익',
+                                                value: _formatSignedCurrency(
+                                                  metrics.valuationProfit,
+                                                ),
+                                                rawValue:
+                                                    metrics.valuationProfit,
+                                                percentValue:
+                                                    metrics.valuationProfitRate,
+                                                showDeltaChip: true,
                                               ),
-                                              rawValue: metrics.valuationProfit,
-                                              percentValue:
-                                                  metrics.valuationProfitRate,
-                                              showDeltaChip: true,
-                                            ),
-                                            AnimatedSwitcher(
-                                              duration: context.motion.fast,
-                                              switchInCurve:
-                                                  Curves.easeOutCubic,
-                                              switchOutCurve:
-                                                  Curves.easeInCubic,
-                                              transitionBuilder:
-                                                  (child, animation) {
-                                                    return FadeTransition(
-                                                      opacity: animation,
-                                                      child: SizeTransition(
-                                                        sizeFactor: animation,
-                                                        alignment:
-                                                            AlignmentDirectional
-                                                                .topStart,
-                                                        child: child,
+                                              AnimatedSwitcher(
+                                                duration: context.motion.fast,
+                                                switchInCurve:
+                                                    Curves.easeOutCubic,
+                                                switchOutCurve:
+                                                    Curves.easeInCubic,
+                                                transitionBuilder:
+                                                    (child, animation) {
+                                                      return FadeTransition(
+                                                        opacity: animation,
+                                                        child: SizeTransition(
+                                                          sizeFactor: animation,
+                                                          alignment:
+                                                              AlignmentDirectional
+                                                                  .topStart,
+                                                          child: child,
+                                                        ),
+                                                      );
+                                                    },
+                                                child: _isHeroDetailExpanded
+                                                    ? Column(
+                                                        key: const ValueKey(
+                                                          'holding-hero-expanded',
+                                                        ),
+                                                        children: [
+                                                          SizedBox(
+                                                            height: context
+                                                                .spacing
+                                                                .md,
+                                                          ),
+                                                          _HoldingHeroDeltaMetricRow(
+                                                            label: '전월 대비 수익',
+                                                            value:
+                                                                metrics
+                                                                    .hasMonthlyComparison
+                                                                ? _formatSignedCurrency(
+                                                                    metrics
+                                                                        .monthlyProfit,
+                                                                  )
+                                                                : '-',
+                                                            rawValue: metrics
+                                                                .monthlyProfit,
+                                                            percentValue: metrics
+                                                                .monthlyProfitRate,
+                                                            showDeltaChip: metrics
+                                                                .hasMonthlyComparison,
+                                                          ),
+                                                          SizedBox(
+                                                            height: context
+                                                                .spacing
+                                                                .md,
+                                                          ),
+                                                          _HoldingHeroDeltaMetricRow(
+                                                            label: '전일 대비 수익',
+                                                            value:
+                                                                metrics
+                                                                    .hasDailyComparison
+                                                                ? _formatSignedCurrency(
+                                                                    metrics
+                                                                        .dailyProfit,
+                                                                  )
+                                                                : '-',
+                                                            rawValue: metrics
+                                                                .dailyProfit,
+                                                            percentValue: metrics
+                                                                .dailyProfitRate,
+                                                            showDeltaChip: metrics
+                                                                .hasDailyComparison,
+                                                          ),
+                                                        ],
+                                                      )
+                                                    : const SizedBox(
+                                                        key: ValueKey(
+                                                          'holding-hero-collapsed',
+                                                        ),
                                                       ),
-                                                    );
-                                                  },
-                                              child: _isHeroDetailExpanded
-                                                  ? Column(
-                                                      key: const ValueKey(
-                                                        'holding-hero-expanded',
-                                                      ),
-                                                      children: [
-                                                        SizedBox(
-                                                          height: context
-                                                              .spacing
-                                                              .md,
-                                                        ),
-                                                        _HoldingHeroDeltaMetricRow(
-                                                          label: '전월 대비 수익',
-                                                          value:
-                                                              metrics
-                                                                  .hasMonthlyComparison
-                                                              ? _formatSignedCurrency(
-                                                                  metrics
-                                                                      .monthlyProfit,
-                                                                )
-                                                              : '-',
-                                                          rawValue: metrics
-                                                              .monthlyProfit,
-                                                          percentValue: metrics
-                                                              .monthlyProfitRate,
-                                                          showDeltaChip: metrics
-                                                              .hasMonthlyComparison,
-                                                        ),
-                                                        SizedBox(
-                                                          height: context
-                                                              .spacing
-                                                              .md,
-                                                        ),
-                                                        _HoldingHeroDeltaMetricRow(
-                                                          label: '전일 대비 수익',
-                                                          value:
-                                                              metrics
-                                                                  .hasDailyComparison
-                                                              ? _formatSignedCurrency(
-                                                                  metrics
-                                                                      .dailyProfit,
-                                                                )
-                                                              : '-',
-                                                          rawValue: metrics
-                                                              .dailyProfit,
-                                                          percentValue: metrics
-                                                              .dailyProfitRate,
-                                                          showDeltaChip: metrics
-                                                              .hasDailyComparison,
-                                                        ),
-                                                      ],
-                                                    )
-                                                  : const SizedBox(
-                                                      key: ValueKey(
-                                                        'holding-hero-collapsed',
-                                                      ),
-                                                    ),
-                                            ),
-                                          ],
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    );
-                                  },
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
                         if (MarketDataService.instance.supportsPriceHistory(
                           displayHolding,
                         )) ...[
@@ -666,10 +708,11 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                             holding: displayHolding,
                             marketData: MarketDataService.instance,
                             refreshVersion: _priceHistoryRefreshVersion,
+                            showAveragePrice: !marketOnly,
                           ),
                         ],
                         if (displayHolding.symbol.trim().isNotEmpty &&
-                            displayHolding.quantity > 0) ...[
+                            (marketOnly || displayHolding.quantity > 0)) ...[
                           SizedBox(
                             height: context.spacing.md + context.spacing.xs / 2,
                           ),
@@ -684,14 +727,14 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                               }
 
                               final item = companyNewsSnapshot.data;
-                              if (item == null) {
+                              if (item == null && !marketOnly) {
                                 return const SizedBox.shrink();
                               }
 
                               return CompanyNewsSummaryCard(
                                 title: '종목 뉴스',
                                 emptyMessage: '표시할 종목 뉴스가 없습니다.',
-                                items: [item],
+                                items: [?item],
                               );
                             },
                           ),
@@ -709,13 +752,13 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                               }
 
                               final report = researchSnapshot.data;
-                              if (report == null) {
+                              if (report == null && !marketOnly) {
                                 return const SizedBox.shrink();
                               }
 
                               return EquityResearchReportCard(
                                 title: '최신 리서치',
-                                reports: [report],
+                                reports: [?report],
                               );
                             },
                           ),
@@ -732,144 +775,157 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                               holding: displayHolding,
                               market: market,
                               fundDetails: fundDetails,
+                              marketOnly: marketOnly,
                             );
                             return Column(
                               children: [
-                                for (final section in detailSections) ...[
-                                  _CardSection(
-                                    title: section.title,
-                                    child: section.title == '구성 종목'
-                                        ? _FundComponentsList(
-                                            items: fundDetails!.topComponents,
-                                          )
-                                        : Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              if (section.title == '시장 정보') ...[
-                                                _MarketRequestStatus(
-                                                  label: '시세',
-                                                  loading: marketLoading,
-                                                  failed: market.isFallback,
-                                                  onRetry: () => setState(
-                                                    () =>
-                                                        _requestMarketSnapshot(
-                                                          holding,
-                                                        ),
-                                                  ),
-                                                ),
-                                                if (assetType == '펀드')
+                                for (final section in detailSections)
+                                  if (!marketOnly ||
+                                      section.title != '보유 정보') ...[
+                                    _CardSection(
+                                      title: section.title,
+                                      child: section.title == '구성 종목'
+                                          ? _FundComponentsList(
+                                              items: fundDetails!.topComponents,
+                                            )
+                                          : Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                if (section.title ==
+                                                    '시장 정보') ...[
                                                   _MarketRequestStatus(
-                                                    label: 'NAV 상세 정보',
-                                                    loading:
-                                                        fundSnapshot
-                                                            .connectionState ==
-                                                        ConnectionState.waiting,
-                                                    failed: fundDetails == null,
+                                                    label: '시세',
+                                                    loading: marketLoading,
+                                                    failed: market.isFallback,
                                                     onRetry: () => setState(
-                                                      () => _requestFundDetails(
-                                                        holding,
-                                                      ),
+                                                      () =>
+                                                          _requestMarketSnapshot(
+                                                            holding,
+                                                          ),
                                                     ),
                                                   ),
-                                              ],
-                                              if (section.header != null) ...[
-                                                section.header!,
+                                                  if (assetType == '펀드')
+                                                    _MarketRequestStatus(
+                                                      label: 'NAV 상세 정보',
+                                                      loading:
+                                                          fundSnapshot
+                                                              .connectionState ==
+                                                          ConnectionState
+                                                              .waiting,
+                                                      failed:
+                                                          fundDetails == null,
+                                                      onRetry: () => setState(
+                                                        () =>
+                                                            _requestFundDetails(
+                                                              holding,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                ],
+                                                if (section.header != null) ...[
+                                                  section.header!,
+                                                  if (section.items.isNotEmpty)
+                                                    SizedBox(
+                                                      height:
+                                                          context.spacing.sm +
+                                                          context.spacing.xs /
+                                                              4,
+                                                    ),
+                                                ],
                                                 if (section.items.isNotEmpty)
-                                                  SizedBox(
-                                                    height:
-                                                        context.spacing.sm +
-                                                        context.spacing.xs / 4,
+                                                  _MetricGrid(
+                                                    items: section.items,
                                                   ),
                                               ],
-                                              if (section.items.isNotEmpty)
-                                                _MetricGrid(
-                                                  items: section.items,
-                                                ),
-                                            ],
-                                          ),
-                                  ),
-                                  SizedBox(height: context.spacing.md),
-                                ],
+                                            ),
+                                    ),
+                                    SizedBox(height: context.spacing.md),
+                                  ],
                               ],
                             );
                           },
                         ),
-                        _CardSection(
-                          title: '거래 내역',
-                          trailing: TextButton.icon(
-                            onPressed: () =>
-                                _openTransactionForm(displayHolding),
-                            icon: Icon(VisualSpec.icon.add),
-                            label: const Text('추가'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: context.colors.neutralTextMuted,
-                              textStyle: context.typography.meta.copyWith(
-                                fontWeight: AppFontWeights.semibold,
+                        if (!marketOnly) ...[
+                          _CardSection(
+                            title: '거래 내역',
+                            trailing: TextButton.icon(
+                              onPressed: () =>
+                                  _openTransactionForm(displayHolding),
+                              icon: Icon(VisualSpec.icon.add),
+                              label: const Text('추가'),
+                              style: TextButton.styleFrom(
+                                foregroundColor:
+                                    context.colors.neutralTextMuted,
+                                textStyle: context.typography.meta.copyWith(
+                                  fontWeight: AppFontWeights.semibold,
+                                ),
                               ),
                             ),
-                          ),
-                          child: TransactionHistoryLayout(
-                            builder: (context, showColumns) {
-                              final divider = TransactionHistoryDivider(
-                                showColumns: showColumns,
-                              );
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  if (showColumns &&
-                                      transactions.isNotEmpty) ...[
-                                    const TransactionHistoryHeader(),
-                                    divider,
-                                  ],
-                                  SlidableAutoCloseBehavior(
-                                    child: TransactionHistoryList(
-                                      itemCount: transactions.length,
-                                      separator: divider,
-                                      itemBuilder: (context, index) {
-                                        final transaction = transactions[index];
-                                        return _TransactionRow(
-                                          key: ValueKey(
-                                            transaction.ledgerLineId != null
-                                                ? 'holding-line-${transaction.ledgerLineId}'
-                                                : 'holding-tx-${transaction.id ?? transaction.hashCode}',
-                                          ),
-                                          holding: displayHolding,
-                                          transaction: transaction,
-                                          showColumns: showColumns,
-                                          onEdit: () => _openTransactionForm(
-                                            displayHolding,
-                                            item: transaction,
-                                          ),
-                                          onDelete: () =>
-                                              _deleteTransaction(transaction),
-                                        );
-                                      },
+                            child: TransactionHistoryLayout(
+                              builder: (context, showColumns) {
+                                final divider = TransactionHistoryDivider(
+                                  showColumns: showColumns,
+                                );
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (showColumns &&
+                                        transactions.isNotEmpty) ...[
+                                      const TransactionHistoryHeader(),
+                                      divider,
+                                    ],
+                                    SlidableAutoCloseBehavior(
+                                      child: TransactionHistoryList(
+                                        itemCount: transactions.length,
+                                        separator: divider,
+                                        itemBuilder: (context, index) {
+                                          final transaction =
+                                              transactions[index];
+                                          return _TransactionRow(
+                                            key: ValueKey(
+                                              transaction.ledgerLineId != null
+                                                  ? 'holding-line-${transaction.ledgerLineId}'
+                                                  : 'holding-tx-${transaction.id ?? transaction.hashCode}',
+                                            ),
+                                            holding: displayHolding,
+                                            transaction: transaction,
+                                            showColumns: showColumns,
+                                            onEdit: () => _openTransactionForm(
+                                              displayHolding,
+                                              item: transaction,
+                                            ),
+                                            onDelete: () =>
+                                                _deleteTransaction(transaction),
+                                          );
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                        SizedBox(height: context.spacing.md),
-                        _CardSection(
-                          title: '메모',
-                          trailing: IconButton(
-                            onPressed: () => _editHolding(displayHolding),
-                            icon: Icon(
-                              Icons.edit_outlined,
-                              size: VisualSpec.icon.sizeSmall,
+                                  ],
+                                );
+                              },
                             ),
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
                           ),
-                          child: Text(
-                            displayHolding.note,
-                            style: theme.textTheme.bodyMedium,
+                          SizedBox(height: context.spacing.md),
+                          _CardSection(
+                            title: '메모',
+                            trailing: IconButton(
+                              onPressed: () => _editHolding(displayHolding),
+                              icon: Icon(
+                                Icons.edit_outlined,
+                                size: VisualSpec.icon.sizeSmall,
+                              ),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                            child: Text(
+                              displayHolding.note,
+                              style: theme.textTheme.bodyMedium,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -1323,7 +1379,11 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
   required HoldingItem holding,
   required HoldingMarketSnapshot market,
   required FundMarketDetails? fundDetails,
+  required bool marketOnly,
 }) {
+  final displayPrice = marketOnly && (market.currentPriceValue ?? 0) <= 0
+      ? '-'
+      : market.currentPrice;
   final portfolioSection = _HoldingDetailSection(
     title: '보유 정보',
     items: [
@@ -1367,7 +1427,7 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
         _HoldingDetailSection(
           title: '시장 정보',
           items: [
-            _MetricTileData(label: '현재가', value: market.currentPrice),
+            _MetricTileData(label: '현재가', value: displayPrice),
             _MetricTileData(label: '전일종가', value: market.previousClose),
             _MetricTileData(label: '등락액', value: market.dayChange),
             _MetricTileData(label: '등락률', value: market.dayChangeRate),
@@ -1408,7 +1468,7 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
         _HoldingDetailSection(
           title: '시장 정보',
           items: [
-            _MetricTileData(label: '현재가', value: market.currentPrice),
+            _MetricTileData(label: '현재가', value: displayPrice),
             _MetricTileData(label: '시가', value: market.openPrice),
             _MetricTileData(label: '고가', value: market.highPrice),
             _MetricTileData(label: '저가', value: market.lowPrice),
@@ -1435,7 +1495,7 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
         _HoldingDetailSection(
           title: '보유 정보',
           items: [
-            _MetricTileData(label: '현재가', value: market.currentPrice),
+            _MetricTileData(label: '현재가', value: displayPrice),
             _MetricTileData(
               label: '기준 단가',
               value: holding.secondaryMetricValue,
@@ -1461,7 +1521,7 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
         _HoldingDetailSection(
           title: '시장 정보',
           items: [
-            _MetricTileData(label: '현재가', value: market.currentPrice),
+            _MetricTileData(label: '현재가', value: displayPrice),
             _MetricTileData(label: '전일종가', value: market.previousClose),
             _MetricTileData(label: '등락액', value: market.dayChange),
             _MetricTileData(label: '등락률', value: market.dayChangeRate),
@@ -1517,7 +1577,7 @@ List<_HoldingDetailSection> _buildHoldingDetailSections({
               ),
             ],
           ),
-        if (fundDetails?.topComponents.isNotEmpty ?? false)
+        if (fundDetails != null && fundDetails.topComponents.isNotEmpty)
           const _HoldingDetailSection(title: '구성 종목', items: []),
       ];
     case '현금':
@@ -1772,6 +1832,9 @@ class _FundComponentsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const Text('이번 시세 응답에 구성 종목 내역이 없어요.');
+    }
     return Column(
       children: [
         for (var index = 0; index < items.length; index++) ...[

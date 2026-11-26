@@ -24,6 +24,35 @@ void main() {
     expect(review, isNull);
   });
 
+  test(
+    'portable journal restores once on another device for its owner',
+    () async {
+      await db.assignLocalDataOwner('owner');
+      await repository.saveDraft(
+        DailyInvestmentReviewDraft.empty(
+          reviewDate: DateTime(2026, 6, 1),
+          mode: DailyInvestmentReviewMode.tradingDay,
+        ).copyWith(tradeReviewNote: '매수 근거'),
+      );
+      await repository.markCompleted(DateTime(2026, 6, 1));
+      final backup = await db.exportReviewBackup('owner');
+      final restored = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(restored.close);
+      await restored.assignLocalDataOwner('other');
+      await expectLater(
+        restored.importReviewBackup(backup, 'other'),
+        throwsFormatException,
+      );
+      await restored.assignLocalDataOwner('owner');
+      expect(await restored.importReviewBackup(backup, 'owner'), 1);
+      expect(await restored.importReviewBackup(backup, 'owner'), 0);
+      final row =
+          (await restored.select(restored.dailyInvestmentReviews).get()).single;
+      expect(row.tradeReviewNote, '매수 근거');
+      expect(row.status, 'completed');
+    },
+  );
+
   test('saveDraft upserts one in-progress row per date', () async {
     final date = DateTime(2026, 6, 1);
 
