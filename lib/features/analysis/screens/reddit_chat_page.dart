@@ -4,6 +4,7 @@ import '../services/chat_delivery.dart';
 import '../services/local_chat_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:moneyfy/design_system/context_extensions.dart';
 import 'package:moneyfy/design_system/spec/visual_spec.dart';
 import 'package:moneyfy/widgets/moneyfy_ui.dart';
 import 'package:uuid/uuid.dart';
@@ -120,7 +121,7 @@ class _ChatRoomsState extends State<_ChatRooms> {
           _title ?? 'RAG채팅',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+          style: context.typography.sectionTitle,
         ),
         actions: [
           IconButton(
@@ -282,10 +283,10 @@ class _ChatRoomsDrawerState extends State<ChatRoomsDrawer> {
                   itemBuilder: (context, i) {
                     if (i == _rooms.length) {
                       if (_loading) {
-                        return const Center(
+                        return Center(
                           child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: CircularProgressIndicator(),
+                            padding: EdgeInsets.all(context.spacing.xs * 2),
+                            child: const CircularProgressIndicator(),
                           ),
                         );
                       }
@@ -436,7 +437,7 @@ class MarketChatView extends StatelessWidget {
               child: rows.isEmpty
                   ? Center(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
+                        padding: EdgeInsets.all(context.spacing.lg),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -444,8 +445,8 @@ class MarketChatView extends StatelessWidget {
                               '무엇이 궁금하세요?',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w600,
+                                fontSize: context.fontSizes.s24,
+                                fontWeight: AppFontWeights.semibold,
                                 color: colors.onSurface,
                               ),
                             ),
@@ -483,7 +484,12 @@ class MarketChatView extends StatelessWidget {
                         reverse: true,
                         keyboardDismissBehavior:
                             ScrollViewKeyboardDismissBehavior.onDrag,
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                        padding: EdgeInsets.fromLTRB(
+                          context.spacing.md,
+                          context.spacing.xs * 2,
+                          context.spacing.md,
+                          context.spacing.sm,
+                        ),
                         itemCount: rows.length,
                         itemBuilder: (context, i) => _Exchange(
                           key: ValueKey(rows[i]['id']),
@@ -493,7 +499,12 @@ class MarketChatView extends StatelessWidget {
                     ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+              padding: EdgeInsets.fromLTRB(
+                context.spacing.sm,
+                6,
+                context.spacing.sm,
+                10,
+              ),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: colors.surfaceContainerLow,
@@ -565,7 +576,7 @@ class _Exchange extends StatelessWidget {
     final sources = (row['sources'] as List).whereType<Map>().toList();
     final status = row['status'];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: EdgeInsets.only(bottom: context.spacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -582,14 +593,14 @@ class _Exchange extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.spacing.xs * 2,
                       vertical: 10,
                     ),
                     child: SelectableText(
                       row['question'] as String,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: context.fontSizes.s16,
                         height: 1.45,
                         color: colors.onSurface,
                       ),
@@ -608,7 +619,7 @@ class _Exchange extends StatelessWidget {
                 imageBuilder: (_, _, alt) => Text(alt ?? ''),
                 styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
                   p: TextStyle(
-                    fontSize: 16,
+                    fontSize: context.fontSizes.s16,
                     height: 1.55,
                     color: colors.onSurface,
                   ),
@@ -665,11 +676,11 @@ class _Exchange extends StatelessWidget {
                             shrinkWrap: true,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
+                                padding: EdgeInsets.fromLTRB(
+                                  context.spacing.xs * 2,
                                   0,
-                                  16,
-                                  8,
+                                  context.spacing.xs * 2,
+                                  context.spacing.xs,
                                 ),
                                 child: Text(
                                   '답변 출처',
