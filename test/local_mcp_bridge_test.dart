@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moneyfy/db/app_database.dart';
+import 'package:moneyfy/design_system/app_theme.dart';
 import 'package:moneyfy/features/mcp/local_mcp_bridge.dart';
 import 'package:moneyfy/features/mcp/mcp_confirmation_dialog.dart';
 
@@ -159,7 +160,11 @@ void main() {
   ) async {
     final navigation = GlobalKey<NavigatorState>();
     await tester.pumpWidget(
-      MaterialApp(navigatorKey: navigation, home: const Scaffold()),
+      MaterialApp(
+        theme: AppTheme.light,
+        navigatorKey: navigation,
+        home: const Scaffold(),
+      ),
     );
     final pending = confirmMcpTransaction(navigation.currentState, {
       'operation': 'delete_transaction',

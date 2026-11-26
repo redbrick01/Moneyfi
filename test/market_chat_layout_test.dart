@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:moneyfy/design_system/app_theme.dart';
 import 'package:moneyfy/features/analysis/screens/reddit_chat_page.dart';
 
 void main() {
@@ -10,6 +11,7 @@ void main() {
     String? deleted;
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light,
         home: StatefulBuilder(
           builder: (context, refresh) => Scaffold(
             appBar: AppBar(),
@@ -67,6 +69,7 @@ void main() {
     for (final status in ['running', 'done']) {
       await tester.pumpWidget(
         MaterialApp(
+          theme: AppTheme.light,
           home: Scaffold(
             body: MarketChatView(
               rows: [
@@ -126,7 +129,7 @@ void main() {
       }) async {
         await tester.pumpWidget(
           MaterialApp(
-            theme: ThemeData.dark(),
+            theme: AppTheme.dark,
             home: Scaffold(
               body: SafeArea(
                 child: MarketChatView(

@@ -175,7 +175,7 @@ class MarketDataService {
   Future<int> _readStoredPrices(String userId, {String? clientId}) async {
     final response = await AuthService.client.functions.invoke(
       'update-holding-prices',
-      body: {'mode': 'read', if (clientId != null) 'client_id': clientId},
+      body: {'mode': 'read', 'client_id': ?clientId},
     );
     final payload = response.data;
     if (response.status != 200 ||
@@ -290,8 +290,9 @@ class MarketDataService {
       });
       if (isCancelled?.call() == true) return const [];
       final rows = response['closes'];
-      if (rows is! List)
+      if (rows is! List) {
         throw const FormatException('Invalid coin daily prices');
+      }
       return [
         for (final row in rows.whereType<Map>())
           if (row['timestamp'] is int && row['close'] is num)

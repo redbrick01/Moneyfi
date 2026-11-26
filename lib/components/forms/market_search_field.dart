@@ -103,13 +103,13 @@ class _MarketSearchFieldState<T> extends State<MarketSearchField<T>> {
                     verifying ||
                     widget.controller.text.trim().isEmpty ||
                     widget.selected != null,
-                errorBuilder: (_, _) => const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text('종목을 검색하지 못했어요. 다시 시도해 주세요.'),
+                errorBuilder: (context, _) => Padding(
+                  padding: EdgeInsets.all(context.spacing.sm),
+                  child: const Text('종목을 검색하지 못했어요. 다시 시도해 주세요.'),
                 ),
-                emptyBuilder: (_) => const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text('연관 종목이 없습니다.'),
+                emptyBuilder: (context) => Padding(
+                  padding: EdgeInsets.all(context.spacing.sm),
+                  child: const Text('연관 종목이 없습니다.'),
                 ),
                 itemBuilder: widget.itemBuilder,
                 onSelected: (item) {
