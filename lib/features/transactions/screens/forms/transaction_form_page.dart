@@ -1,3 +1,4 @@
+import 'package:moneyfy/navigation/moneyfy_navigation.dart';
 import 'package:moneyfy/components/forms/market_search_field.dart';
 
 import 'package:flutter/material.dart';
@@ -25,19 +26,44 @@ class _InvestmentLedgerCopy {
   final String quantityLabel;
 }
 
+enum InstrumentTradeSide {
+  buy('매수'),
+  sell('매도');
+
+  const InstrumentTradeSide(this.label);
+  final String label;
+}
+
 class TransactionFormPage extends StatefulWidget {
   const TransactionFormPage({
     super.key,
-    required this.assetId,
+    required int this.assetId,
     required this.holdingId,
     this.holdingClientId,
     this.item,
     this.defaultName,
     this.assetBuyMode = false,
     this.assetsFutureForTesting,
-  });
+  }) : fixedInstrument = null,
+       tradeSide = null;
 
-  final int assetId;
+  const TransactionFormPage.forInstrument({
+    super.key,
+    required MarketSearchResult instrument,
+    required InstrumentTradeSide side,
+    this.assetId,
+    this.holdingId,
+    this.holdingClientId,
+    this.assetsFutureForTesting,
+  }) : fixedInstrument = instrument,
+       tradeSide = side,
+       item = null,
+       assetBuyMode = false,
+       defaultName = null;
+
+  final MarketSearchResult? fixedInstrument;
+  final InstrumentTradeSide? tradeSide;
+  final int? assetId;
   final int? holdingId;
   final String? holdingClientId;
   final TransactionItem? item;
@@ -50,7 +76,7 @@ class TransactionFormPage extends StatefulWidget {
 }
 
 class _TransactionFormPageState extends State<TransactionFormPage> {
-  late final Future<List<AssetItem>> _assetsFuture;
+  late Future<List<AssetItem>> _assetsFuture;
   late final TextEditingController dateController;
   late final TextEditingController typeController;
   late final TextEditingController nameController;
@@ -72,12 +98,20 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
   void initState() {
     super.initState();
     final item = widget.item;
+    _selectedMarketResult = widget.fixedInstrument;
+    selectedMarketAssetId = widget.assetId;
     dateController = TextEditingController(text: item?.date ?? _todayText());
     typeController = TextEditingController(
-      text: widget.assetBuyMode ? '매수' : item?.type ?? '매수',
+      text:
+          widget.tradeSide?.label ??
+          (widget.assetBuyMode ? '매수' : item?.type ?? '매수'),
     );
     nameController = TextEditingController(
-      text: item?.name ?? widget.defaultName ?? '',
+      text:
+          item?.name ??
+          widget.fixedInstrument?.name ??
+          widget.defaultName ??
+          '',
     );
     amountController = TextEditingController(text: item?.amount ?? '');
     quantityController = TextEditingController(text: item?.quantity ?? '');
@@ -234,7 +268,23 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
 
     try {
       final item = widget.item;
-      final assets = await _assetsFuture;
+      final fixed = widget.fixedInstrument != null;
+      final displayedAssets = await _assetsFuture;
+      final assets = fixed
+          ? await AppDatabase.instance.fetchAssets()
+          : displayedAssets;
+      if (fixed && widget.holdingId == null) {
+        final displayed = _assetForMarketResult(
+          displayedAssets,
+          widget.fixedInstrument!,
+        );
+        final latest = _assetForMarketResult(assets, widget.fixedInstrument!);
+        if (displayed?.id == null ||
+            displayed!.id != latest?.id ||
+            displayed.clientId != latest?.clientId) {
+          throw StateError('거래할 자산군을 다시 확인해 주세요.');
+        }
+      }
       final currentHolding = await _resolveCurrentHolding(assets);
       final selectedMarketResult = _selectedMarketResult;
       final marketAsset = selectedMarketResult == null
@@ -248,6 +298,8 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
       }
       final currentAssetId =
           currentHolding?.assetId ?? marketAsset?.id ?? widget.assetId;
+      if (currentAssetId == null) throw StateError('거래할 자산군을 선택해 주세요.');
+      int? savedHoldingId = currentHolding?.id;
       double? tradeFxRate;
       final requiresBuyFxRate = _requiresBuyFxRate(currentHolding);
       final hasBuyFxRateInput = buyFxRateController.text.trim().isNotEmpty;
@@ -276,23 +328,26 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
       }
       if (item == null) {
         if (currentHolding == null && selectedMarketResult != null) {
-          await AppDatabase.instance.createHoldingWithInitialBuy(
-            assetId: currentAssetId,
-            currencyCode: selectedMarketResult.currencyCode,
-            exchangeCode: selectedMarketResult.currencyCode == 'USD'
-                ? selectedMarketResult.exchangeCode
-                : '',
-            holdingName: selectedMarketResult.name,
-            symbol: selectedMarketResult.symbol,
-            currentPrice: selectedMarketResult.currentPrice,
-            note: '',
-            date: dateValidation.value!,
-            transactionName: nameValidation.value!,
-            amount: amountText,
-            quantity: quantityText,
-            includeInCalculations: includeInCalculations,
-            tradeFxRate: tradeFxRate,
-          );
+          savedHoldingId = await AppDatabase.instance
+              .createHoldingWithInitialBuy(
+                assetId: currentAssetId,
+                currencyCode: selectedMarketResult.currencyCode,
+                exchangeCode: selectedMarketResult.currencyCode == 'USD'
+                    ? selectedMarketResult.exchangeCode
+                    : '',
+                holdingName: selectedMarketResult.name,
+                symbol: selectedMarketResult.symbol,
+                currentPrice: fixed && selectedMarketResult.currentPrice <= 0
+                    ? amountValidation.value!
+                    : selectedMarketResult.currentPrice,
+                note: '',
+                date: dateValidation.value!,
+                transactionName: nameValidation.value!,
+                amount: amountText,
+                quantity: quantityText,
+                includeInCalculations: includeInCalculations,
+                tradeFxRate: tradeFxRate,
+              );
         } else {
           final currentHoldingId = currentHolding?.id;
           if (currentHoldingId == null) {
@@ -356,12 +411,19 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
         );
       }
 
+      final savedHolding = fixed
+          ? await AppDatabase.instance.fetchHoldingById(savedHoldingId!)
+          : null;
       if (SyncService.instance.canSync) {
         await SyncService.instance.syncNow(reason: 'transaction_form_save');
       }
 
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      if (fixed) {
+        Navigator.of(context).pop(savedHolding);
+      } else {
+        Navigator.of(context).pop(true);
+      }
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -556,6 +618,30 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
   }
 
   HoldingItem? _currentHolding(List<AssetItem> assets) {
+    final fixed = widget.fixedInstrument;
+    if (fixed != null) {
+      if (widget.holdingId != null) {
+        for (final asset in assets) {
+          for (final holding in asset.holdings) {
+            final matches = widget.holdingClientId?.isNotEmpty == true
+                ? holding.clientId == widget.holdingClientId
+                : holding.id == widget.holdingId;
+            if (matches &&
+                !holding.isCashLike &&
+                asset.assetType == fixed.assetType &&
+                holding.symbol == fixed.symbol &&
+                holding.currencyCode == fixed.currencyCode) {
+              return holding;
+            }
+          }
+        }
+        return null;
+      }
+      final asset = _assetForMarketResult(assets, fixed);
+      return asset?.id == null
+          ? null
+          : _existingHoldingForMarketResult(assets, fixed, assetId: asset!.id!);
+    }
     if (_selectedMarketResult != null) return null;
     for (final asset in assets) {
       for (final holding in asset.holdings) {
@@ -644,6 +730,15 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     List<AssetItem> assets,
     MarketSearchResult result,
   ) {
+    if (widget.fixedInstrument != null) {
+      final eligible = assets.where(
+        (a) => a.assetType == result.assetType && a.id != null,
+      );
+      if (selectedMarketAssetId != null) {
+        return eligible.where((a) => a.id == selectedMarketAssetId).firstOrNull;
+      }
+      return eligible.length == 1 ? eligible.single : null;
+    }
     if (widget.assetBuyMode) {
       for (final asset in assets) {
         if (asset.id == widget.assetId && asset.assetType != '현금') {
@@ -678,6 +773,13 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
   }
 
   Future<HoldingItem?> _resolveCurrentHolding(List<AssetItem> assets) async {
+    if (widget.fixedInstrument != null) {
+      final holding = _currentHolding(assets);
+      if (widget.holdingId != null && holding == null) {
+        throw StateError('선택한 보유 종목을 찾을 수 없습니다.');
+      }
+      return holding;
+    }
     final selectedMarketResult = _selectedMarketResult;
     if (selectedMarketResult != null && widget.item == null) {
       final asset = _assetForMarketResult(assets, selectedMarketResult);
@@ -737,6 +839,12 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
       for (final holding in asset.holdings) {
         if (holding.isCashLike || holding.id == null) continue;
         if (holding.currencyCode != result.currencyCode) continue;
+        if (holding.currencyCode == 'USD' &&
+            holding.exchangeCode.isNotEmpty &&
+            result.exchangeCode.isNotEmpty &&
+            holding.exchangeCode != result.exchangeCode) {
+          continue;
+        }
         if (holding.symbol.trim().toUpperCase() == targetSymbol) {
           return holding;
         }
@@ -752,7 +860,10 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
     if (result == null) return const [];
     return [
       for (final asset in assets)
-        if (asset.id != null && asset.assetType != '현금')
+        if (asset.id != null &&
+            asset.assetType != '현금' &&
+            (widget.fixedInstrument == null ||
+                asset.assetType == result.assetType))
           MoneyfySelectionOption<int>(
             value: asset.id!,
             title: asset.displayName,
@@ -843,19 +954,31 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
             (!_requiresBuyFxRate(currentHolding) ||
                 (_parseFormNumber(buyFxRateController.text) ?? 0) > 0);
 
+        final fixed = widget.fixedInstrument;
+        final fixedAsset = fixed == null
+            ? null
+            : _assetForMarketResult(assets, fixed);
         return MoneyfyFormScaffold(
-          title: widget.assetBuyMode
+          title: fixed != null
+              ? '종목 ${widget.tradeSide!.label}'
+              : widget.assetBuyMode
               ? '종목 매수'
               : widget.item == null
               ? '거래 추가'
               : '거래 수정',
-          actionLabel: widget.assetBuyMode ? '매수' : '저장',
+          actionLabel:
+              widget.tradeSide?.label ?? (widget.assetBuyMode ? '매수' : '저장'),
           isSaving: isSaving,
           onSave: _save,
-          actionEnabled:
-              holdingOptions.isNotEmpty || _selectedMarketResult != null,
+          actionEnabled: fixed != null
+              ? (widget.holdingId != null
+                        ? currentHolding != null
+                        : fixedAsset != null) &&
+                    (widget.tradeSide != InstrumentTradeSide.sell ||
+                        sellableQuantity > 0)
+              : holdingOptions.isNotEmpty || _selectedMarketResult != null,
           children: [
-            if (!widget.assetBuyMode)
+            if (!widget.assetBuyMode && fixed == null)
               MoneyfyFormSection(
                 title: '원장 이벤트',
                 child: Column(
@@ -895,134 +1018,174 @@ class _TransactionFormPageState extends State<TransactionFormPage> {
                   ],
                 ),
               ),
-            MoneyfyFormSection(
-              title: '대상 보유',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.assetBuyMode
-                        ? '매수할 기존 종목을 선택하거나 새 종목을 검색해 주세요.'
-                        : '매수, 매도, 배당, 이자를 기록할 보유 종목을 선택해 주세요.',
-                    style: context.typography.meta,
-                  ),
-                  SizedBox(height: context.spacing.sm),
-                  if (_selectedMarketResult == null)
-                    MoneyfySelectionField<int>(
-                      label: '보유 종목',
-                      options: holdingOptions,
-                      value: currentHolding?.id ?? selectedHoldingId,
-                      placeholder: '보유 종목 선택',
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedMarketResult = null;
-                          searchMessage = null;
-                          selectedMarketAssetId = null;
-                          selectedHoldingId = value;
-                          selectedIncomeAccount = 0;
-                          final selectedHolding = _currentHolding(assets);
-                          if (selectedHolding != null) {
-                            nameController.text = selectedHolding.name;
-                          }
-                        });
-                      },
-                    ),
-                  if (includeInCalculations &&
-                      (transactionType == '배당' || transactionType == '이자'))
-                    MoneyfySelectionField<int>(
-                      label: '수입 입금 계좌',
-                      options: [
-                        const MoneyfySelectionOption<int>(
-                          value: 0,
-                          title: '수입만 기록',
+            if (fixed != null)
+              MoneyfyFormSection(
+                title: '거래 종목',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(fixed.name, style: context.typography.cardTitle),
+                    Text(fixed.marketLabel, style: context.typography.meta),
+                    if (widget.holdingId == null &&
+                        snapshot.connectionState == ConnectionState.done) ...[
+                      SizedBox(height: context.spacing.sm),
+                      if (marketAssetOptions.isEmpty)
+                        TextButton(
+                          onPressed: () async {
+                            if (await context.openAssetCreate() == true &&
+                                mounted) {
+                              setState(
+                                () => _assetsFuture = AppDatabase.instance
+                                    .fetchAssets(),
+                              );
+                            }
+                          },
+                          child: Text('${fixed.assetType} 자산군 추가'),
+                        )
+                      else
+                        MoneyfySelectionField<int>(
+                          label: '거래할 자산군',
+                          options: marketAssetOptions,
+                          value: fixedAsset?.id,
+                          placeholder: '자산군 선택',
+                          onChanged: (value) =>
+                              setState(() => selectedMarketAssetId = value),
                         ),
-                        for (final asset in assets)
-                          for (final account in asset.holdings)
-                            if ((account.id ?? 0) < 0 &&
-                                account.currencyCode ==
-                                    currentHolding?.currencyCode)
-                              MoneyfySelectionOption<int>(
-                                value: account.id!.abs(),
-                                title: '${asset.displayName} · ${account.name}',
-                                subtitle: account.currencyCode,
-                              ),
-                      ],
-                      value: selectedIncomeAccount ?? 0,
-                      placeholder: '수입만 기록',
-                      onChanged: (value) =>
-                          setState(() => selectedIncomeAccount = value),
+                    ],
+                  ],
+                ),
+              )
+            else
+              MoneyfyFormSection(
+                title: '대상 보유',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.assetBuyMode
+                          ? '매수할 기존 종목을 선택하거나 새 종목을 검색해 주세요.'
+                          : '매수, 매도, 배당, 이자를 기록할 보유 종목을 선택해 주세요.',
+                      style: context.typography.meta,
                     ),
-                  if (widget.item == null) ...[
+                    SizedBox(height: context.spacing.sm),
                     if (_selectedMarketResult == null)
-                      SizedBox(height: context.spacing.sm),
-                    MarketSearchField<MarketSearchResult>(
-                      label: '새 종목 검색',
-                      controller: searchController,
-                      message: searchMessage,
-                      localSearch: (query) => searchMarketLocally(
-                        assets,
-                        _searchableAssetTypes(assets),
-                        query,
-                      ),
-                      verify: (query, local) async {
-                        final types = _searchableAssetTypes(assets);
-                        final primary = _assetForMarketSearch(
-                          assets,
-                        )?.assetType;
-                        if (primary == null || types.isEmpty) return local;
-                        final result = await verifyMarketSymbol(
-                          primaryAssetType: primary,
-                          searchableAssetTypes: types,
-                          query: query,
-                          localResults: local,
-                        );
-                        return result == null
-                            ? local
-                            : mergeMarketResults(result, local);
-                      },
-                      itemBuilder: (_, item) =>
-                          _SearchResultTile(result: item, onTap: null),
-                      selected: _selectedMarketResult == null
-                          ? null
-                          : _SelectedTransactionMarketResultView(
-                              result: _selectedMarketResult!,
-                            ),
-                      onEdited: () {
-                        if (_selectedMarketResult == null) return;
-                        setState(() {
-                          _selectedMarketResult = null;
-                          searchMessage = null;
-                          selectedMarketAssetId = null;
-                        });
-                      },
-                      onSelected: (result) =>
-                          _selectMarketResult(assets, result),
-                    ),
-                    if (_selectedMarketResult != null &&
-                        !widget.assetBuyMode) ...[
-                      SizedBox(height: context.spacing.sm),
                       MoneyfySelectionField<int>(
-                        label: '자산군',
-                        options: marketAssetOptions,
-                        value: selectedMarketAssetId,
-                        placeholder: '자산군 선택',
+                        label: '보유 종목',
+                        options: holdingOptions,
+                        value: currentHolding?.id ?? selectedHoldingId,
+                        placeholder: '보유 종목 선택',
                         onChanged: (value) {
                           setState(() {
-                            selectedMarketAssetId = value;
+                            _selectedMarketResult = null;
+                            searchMessage = null;
+                            selectedMarketAssetId = null;
+                            selectedHoldingId = value;
+                            selectedIncomeAccount = 0;
+                            final selectedHolding = _currentHolding(assets);
+                            if (selectedHolding != null) {
+                              nameController.text = selectedHolding.name;
+                            }
                           });
                         },
                       ),
+                    if (includeInCalculations &&
+                        (transactionType == '배당' || transactionType == '이자'))
+                      MoneyfySelectionField<int>(
+                        label: '수입 입금 계좌',
+                        options: [
+                          const MoneyfySelectionOption<int>(
+                            value: 0,
+                            title: '수입만 기록',
+                          ),
+                          for (final asset in assets)
+                            for (final account in asset.holdings)
+                              if ((account.id ?? 0) < 0 &&
+                                  account.currencyCode ==
+                                      currentHolding?.currencyCode)
+                                MoneyfySelectionOption<int>(
+                                  value: account.id!.abs(),
+                                  title:
+                                      '${asset.displayName} · ${account.name}',
+                                  subtitle: account.currencyCode,
+                                ),
+                        ],
+                        value: selectedIncomeAccount ?? 0,
+                        placeholder: '수입만 기록',
+                        onChanged: (value) =>
+                            setState(() => selectedIncomeAccount = value),
+                      ),
+                    if (widget.item == null) ...[
+                      if (_selectedMarketResult == null)
+                        SizedBox(height: context.spacing.sm),
+                      MarketSearchField<MarketSearchResult>(
+                        label: '새 종목 검색',
+                        controller: searchController,
+                        message: searchMessage,
+                        localSearch: (query) => searchMarketLocally(
+                          assets,
+                          _searchableAssetTypes(assets),
+                          query,
+                        ),
+                        verify: (query, local) async {
+                          final types = _searchableAssetTypes(assets);
+                          final primary = _assetForMarketSearch(
+                            assets,
+                          )?.assetType;
+                          if (primary == null || types.isEmpty) return local;
+                          final result = await verifyMarketSymbol(
+                            primaryAssetType: primary,
+                            searchableAssetTypes: types,
+                            query: query,
+                            localResults: local,
+                          );
+                          return result == null
+                              ? local
+                              : mergeMarketResults(result, local);
+                        },
+                        itemBuilder: (_, item) =>
+                            _SearchResultTile(result: item, onTap: null),
+                        selected: _selectedMarketResult == null
+                            ? null
+                            : _SelectedTransactionMarketResultView(
+                                result: _selectedMarketResult!,
+                              ),
+                        onEdited: () {
+                          if (_selectedMarketResult == null) return;
+                          setState(() {
+                            _selectedMarketResult = null;
+                            searchMessage = null;
+                            selectedMarketAssetId = null;
+                          });
+                        },
+                        onSelected: (result) =>
+                            _selectMarketResult(assets, result),
+                      ),
+                      if (_selectedMarketResult != null &&
+                          !widget.assetBuyMode) ...[
+                        SizedBox(height: context.spacing.sm),
+                        MoneyfySelectionField<int>(
+                          label: '자산군',
+                          options: marketAssetOptions,
+                          value: selectedMarketAssetId,
+                          placeholder: '자산군 선택',
+                          onChanged: (value) {
+                            setState(() {
+                              selectedMarketAssetId = value;
+                            });
+                          },
+                        ),
+                      ],
                     ],
                   ],
-                ],
+                ),
               ),
-            ),
             MoneyfyFormSection(
               title: '거래 내용',
               child: Column(
                 children: [
                   MoneyfyFormField(label: '날짜', controller: dateController),
-                  MoneyfyFormField(label: '이름', controller: nameController),
+                  if (fixed == null)
+                    MoneyfyFormField(label: '이름', controller: nameController),
                   MoneyfyFormField(
                     label: ledgerCopy.amountLabel,
                     controller: amountController,

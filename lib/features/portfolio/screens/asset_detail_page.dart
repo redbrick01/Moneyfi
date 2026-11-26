@@ -1974,16 +1974,16 @@ Color _valueStringColor(BuildContext context, String value) {
     return context.colors.neutralText;
   }
   if (normalized.startsWith('-') || normalized.startsWith('−')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
-  if (normalized.startsWith('+')) return context.colors.positiveOn;
+  if (normalized.startsWith('+')) return context.colors.gainOn;
   if (normalized.startsWith('(') && normalized.endsWith(')')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
   if (normalized.contains('-') || normalized.contains('−')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
-  if (normalized.contains('+')) return context.colors.positiveOn;
+  if (normalized.contains('+')) return context.colors.gainOn;
   return context.colors.neutralText;
 }
 

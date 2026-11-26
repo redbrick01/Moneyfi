@@ -172,8 +172,8 @@ class SnapshotRow extends StatelessWidget {
     Color? defaultColor,
   }) {
     final trimmed = value.trimLeft();
-    if (trimmed.startsWith('+')) return context.colors.positiveOn;
-    if (trimmed.startsWith('-')) return context.colors.negativeOn;
+    if (trimmed.startsWith('+')) return context.colors.gainOn;
+    if (trimmed.startsWith('-')) return context.colors.lossOn;
     return defaultColor ?? context.colors.neutralText;
   }
 

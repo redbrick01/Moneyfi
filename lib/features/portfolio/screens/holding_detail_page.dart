@@ -35,15 +35,18 @@ class HoldingDetailPage extends StatefulWidget {
     super.key,
     required int this.holdingId,
     this.holdingClientId,
-  }) : instrument = null;
+  }) : instrument = null,
+       preferredAssetId = null;
 
   const HoldingDetailPage.market({
     super.key,
     required MarketSearchResult result,
+    this.preferredAssetId,
   }) : instrument = result,
        holdingId = null,
        holdingClientId = null;
 
+  final int? preferredAssetId;
   final MarketSearchResult? instrument;
   final int? holdingId;
   final String? holdingClientId;
@@ -59,6 +62,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   Future<EquityResearchReportSummary?>? _equityResearchFuture;
   String? _equityResearchSymbol;
   bool _isHeroDetailExpanded = false;
+  HoldingItem? _purchasedHolding;
   late Future<HoldingItem?> _holdingFuture;
   Future<HoldingMarketSnapshot>? _marketSnapshotFuture;
   Future<FundMarketDetails?>? _fundDetailsFuture;
@@ -83,6 +87,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
     if (oldWidget.instrument != widget.instrument ||
         oldWidget.holdingId != widget.holdingId ||
         oldWidget.holdingClientId != widget.holdingClientId) {
+      _purchasedHolding = null;
       _missingHoldingRetryCount = 0;
       _resetMarketRequests();
       _holdingFuture = _loadHoldingWithRetry();
@@ -91,14 +96,21 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
 
   Future<HoldingItem?> _loadHoldingWithRetry() async {
     final instrument = widget.instrument;
-    if (instrument != null) return instrument.asMarketQuote();
-    final normalizedClientId = widget.holdingClientId?.trim() ?? '';
+    if (instrument != null && _purchasedHolding == null) {
+      return instrument.asMarketQuote();
+    }
+    final normalizedClientId =
+        (_purchasedHolding?.clientId ?? widget.holdingClientId)?.trim() ?? '';
     for (var attempt = 0; attempt < 8; attempt++) {
       try {
         final holding = await AppDatabase.instance.fetchHoldingById(
-          widget.holdingId!,
+          _purchasedHolding?.id ?? widget.holdingId!,
         );
-        if (holding != null) return holding;
+        if (holding != null &&
+            (normalizedClientId.isEmpty ||
+                holding.clientId == normalizedClientId)) {
+          return holding;
+        }
         if (normalizedClientId.isNotEmpty) {
           final byClientId = await AppDatabase.instance.fetchHoldingByClientId(
             normalizedClientId,
@@ -272,6 +284,27 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
     return null;
   }
 
+  Future<void> _openTrade(HoldingItem holding, InstrumentTradeSide side) async {
+    final result = MarketSearchResult.fromHolding(
+      holding,
+      holding.assetType ?? holding.assetTitle ?? '주식',
+    );
+    final saved = await Navigator.of(context).push<HoldingItem>(
+      MaterialPageRoute(
+        builder: (_) => TransactionFormPage.forInstrument(
+          instrument: result,
+          side: side,
+          assetId: holding.assetId ?? widget.preferredAssetId,
+          holdingId: holding.id,
+          holdingClientId: holding.clientId,
+        ),
+      ),
+    );
+    if (!mounted || saved == null) return;
+    if (widget.instrument != null) _purchasedHolding = saved;
+    _reloadHolding();
+  }
+
   Future<void> _openTransactionForm(
     HoldingItem holding, {
     TransactionItem? item,
@@ -359,7 +392,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final marketOnly = widget.instrument != null;
+    final marketOnly = widget.instrument != null && _purchasedHolding == null;
 
     return Scaffold(
       backgroundColor: context.colors.neutralBackground,
@@ -456,26 +489,10 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                           height: context.spacing.xs + context.spacing.xs / 4,
                         ),
                         if (marketOnly)
-                          MoneyfySurfaceCard(
-                            padding: EdgeInsets.all(context.cardPadding()),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  displayHolding.name,
-                                  style: context.typography.cardTitle,
-                                ),
-                                Text(widget.instrument!.marketLabel),
-                                SizedBox(height: context.spacing.sm),
-                                Text(
-                                  market.currentPriceValue != null &&
-                                          market.currentPriceValue! > 0
-                                      ? market.currentPrice
-                                      : '시세 미제공',
-                                  style: context.typography.heroNumber,
-                                ),
-                              ],
-                            ),
+                          _MarketQuoteHero(
+                            instrument: widget.instrument!,
+                            market: market,
+                            loading: marketLoading,
                           )
                         else
                           MoneyfySurfaceCard(
@@ -700,6 +717,34 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                               ],
                             ),
                           ),
+                        if (!displayHolding.isCashLike) ...[
+                          SizedBox(height: context.spacing.md),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: AppPrimaryButton(
+                                  label: '매수',
+                                  onPressed: () => _openTrade(
+                                    displayHolding,
+                                    InstrumentTradeSide.buy,
+                                  ),
+                                ),
+                              ),
+                              if (displayHolding.quantity > 0) ...[
+                                SizedBox(width: context.spacing.sm),
+                                Expanded(
+                                  child: AppSecondaryButton(
+                                    label: '매도',
+                                    onPressed: () => _openTrade(
+                                      displayHolding,
+                                      InstrumentTradeSide.sell,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
                         if (MarketDataService.instance.supportsPriceHistory(
                           displayHolding,
                         )) ...[
@@ -713,52 +758,49 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                         ],
                         if (displayHolding.symbol.trim().isNotEmpty &&
                             (marketOnly || displayHolding.quantity > 0)) ...[
-                          SizedBox(
-                            height: context.spacing.md + context.spacing.xs / 2,
-                          ),
                           FutureBuilder<CompanyNewsSummaryItem?>(
                             future: _companyNewsForSymbol(
                               displayHolding.symbol,
                             ),
-                            builder: (context, companyNewsSnapshot) {
-                              if (companyNewsSnapshot.connectionState ==
-                                  ConnectionState.waiting) {
+                            builder: (context, snapshot) {
+                              final item = snapshot.data;
+                              if (snapshot.connectionState !=
+                                      ConnectionState.done ||
+                                  item == null ||
+                                  item.newsCount == 0 ||
+                                  item.summary?.isNotEmpty != true) {
                                 return const SizedBox.shrink();
                               }
-
-                              final item = companyNewsSnapshot.data;
-                              if (item == null && !marketOnly) {
-                                return const SizedBox.shrink();
-                              }
-
-                              return CompanyNewsSummaryCard(
-                                title: '종목 뉴스',
-                                emptyMessage: '표시할 종목 뉴스가 없습니다.',
-                                items: [?item],
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  top: context.spacing.md,
+                                ),
+                                child: CompanyNewsSummaryCard(
+                                  title: '종목 뉴스',
+                                  items: [item],
+                                ),
                               );
                             },
-                          ),
-                          SizedBox(
-                            height: context.spacing.md + context.spacing.xs / 2,
                           ),
                           FutureBuilder<EquityResearchReportSummary?>(
                             future: _equityResearchForSymbol(
                               displayHolding.symbol,
                             ),
-                            builder: (context, researchSnapshot) {
-                              if (researchSnapshot.connectionState ==
-                                  ConnectionState.waiting) {
+                            builder: (context, snapshot) {
+                              final report = snapshot.data;
+                              if (snapshot.connectionState !=
+                                      ConnectionState.done ||
+                                  report == null) {
                                 return const SizedBox.shrink();
                               }
-
-                              final report = researchSnapshot.data;
-                              if (report == null && !marketOnly) {
-                                return const SizedBox.shrink();
-                              }
-
-                              return EquityResearchReportCard(
-                                title: '최신 리서치',
-                                reports: [?report],
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  top: context.spacing.md,
+                                ),
+                                child: EquityResearchReportCard(
+                                  title: '최신 리서치',
+                                  reports: [report],
+                                ),
                               );
                             },
                           ),
@@ -939,6 +981,99 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   }
 }
 
+class _MarketQuoteHero extends StatelessWidget {
+  const _MarketQuoteHero({
+    required this.instrument,
+    required this.market,
+    required this.loading,
+  });
+
+  final MarketSearchResult instrument;
+  final HoldingMarketSnapshot market;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = context.typography.meta.copyWith(
+      color: context.colors.neutralTextMuted,
+    );
+    final hasPrice = (market.currentPriceValue ?? 0) > 0;
+    final change = [
+      market.dayChange,
+      market.dayChangeRate,
+    ].where((value) => value.isNotEmpty && value != '-').join(' · ');
+    return SizedBox(
+      width: double.infinity,
+      child: MoneyfySurfaceCard(
+        padding: EdgeInsets.all(context.cardPadding()),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide =
+                constraints.maxWidth >=
+                MediaQuery.textScalerOf(context).scale(440);
+            final identity = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(instrument.name, style: context.typography.sectionTitle),
+                SizedBox(height: context.spacing.xs),
+                Text(instrument.marketLabel, style: meta),
+              ],
+            );
+            final quote = Column(
+              crossAxisAlignment: wide
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                Text('현재가', style: meta),
+                Text(
+                  hasPrice
+                      ? market.currentPrice
+                      : loading
+                      ? '조회 중'
+                      : '시세 미제공',
+                  style: hasPrice
+                      ? context.typography.heroNumber
+                      : context.typography.cardTitle,
+                ),
+                if (!market.isFallback && change.isNotEmpty)
+                  Text(
+                    '전일 대비 $change',
+                    style: meta.copyWith(
+                      color: _holdingValueStringColor(context, change),
+                    ),
+                  ),
+              ],
+            );
+            if (wide) {
+              return Row(
+                children: [
+                  Expanded(flex: 3, child: identity),
+                  SizedBox(width: context.spacing.lg),
+                  Flexible(
+                    flex: 2,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: quote,
+                    ),
+                  ),
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                identity,
+                SizedBox(height: context.spacing.md),
+                quote,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 HoldingItem _holdingWithMarketPrice(
   HoldingItem holding,
   HoldingMarketSnapshot market,
@@ -1082,24 +1217,37 @@ class _HoldingHeroDeltaMetricRow extends StatelessWidget {
             ),
           ),
         ),
-        Text(
-          value,
-          style: context.typography.caption.copyWith(
-            fontSize: context.fontSizes.s16,
-            fontWeight: AppFontWeights.semibold,
-            color: _holdingValueStringColor(context, value),
+        Flexible(
+          flex: 2,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: context.spacing.xs,
+              children: [
+                Text(
+                  value,
+                  style: context.typography.caption.copyWith(
+                    fontSize: context.fontSizes.s16,
+                    fontWeight: AppFontWeights.semibold,
+                    color: _holdingValueStringColor(context, value),
+                  ),
+                ),
+
+                if (showDeltaChip)
+                  DeltaChip(
+                    value: rawValue,
+                    percent: percentValue,
+                    mode: DeltaChipMode.percent,
+                    vivid: true,
+                  )
+                else
+                  const _HoldingHeroDashChip(),
+              ],
+            ),
           ),
         ),
-        SizedBox(width: context.spacing.xs),
-        if (showDeltaChip)
-          DeltaChip(
-            value: rawValue,
-            percent: percentValue,
-            mode: DeltaChipMode.percent,
-            vivid: true,
-          )
-        else
-          const _HoldingHeroDashChip(),
       ],
     );
   }
@@ -2048,16 +2196,16 @@ Color _holdingValueStringColor(BuildContext context, String value) {
     return context.colors.neutralText;
   }
   if (normalized.startsWith('-') || normalized.startsWith('−')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
-  if (normalized.startsWith('+')) return context.colors.positiveOn;
+  if (normalized.startsWith('+')) return context.colors.gainOn;
   if (normalized.startsWith('(') && normalized.endsWith(')')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
   if (normalized.contains('-') || normalized.contains('−')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
-  if (normalized.contains('+')) return context.colors.positiveOn;
+  if (normalized.contains('+')) return context.colors.gainOn;
   return context.colors.neutralText;
 }
 

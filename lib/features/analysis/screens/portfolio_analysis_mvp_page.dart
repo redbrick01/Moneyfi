@@ -322,7 +322,7 @@ class _OverviewCard extends StatelessWidget {
                     : '${drawdown.percent.toStringAsFixed(1)}%',
                 accent: drawdown == null
                     ? colors.neutralTextMuted
-                    : colors.negativeOn,
+                    : colors.lossOn,
               ),
             ],
           ),
@@ -1517,7 +1517,7 @@ class _MddDetailGrid extends StatelessWidget {
         _CompactMetricBlock(
           label: '고점 평가액 기준 환산 손실',
           value: _formatSignedAmount(amount),
-          color: context.colors.negativeOn,
+          color: context.colors.lossOn,
         ),
       ],
     );
@@ -2438,8 +2438,8 @@ double? _maxTargetGap(List<_AssetMetric> metrics) {
 }
 
 Color _valueColor(BuildContext context, double value) {
-  if (value > 0) return context.colors.positiveOn;
-  if (value < 0) return context.colors.negativeOn;
+  if (value > 0) return context.colors.gainOn;
+  if (value < 0) return context.colors.lossOn;
   return context.colors.neutralTextMuted;
 }
 

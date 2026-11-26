@@ -1105,8 +1105,8 @@ class _SnapshotHoldingRow extends StatelessWidget {
 }
 
 Color _changeColor(BuildContext context, double value) {
-  if (value > 0) return context.colors.positiveOn;
-  if (value < 0) return context.colors.negativeOn;
+  if (value > 0) return context.colors.gainOn;
+  if (value < 0) return context.colors.lossOn;
   return context.colors.neutralTextMuted;
 }
 

@@ -1007,8 +1007,8 @@ String _formatSignedPercent(double value) {
 }
 
 Color _valueTextColor(BuildContext context, double value) {
-  if (value > 0) return context.colors.positiveOn;
-  if (value < 0) return context.colors.negativeOn;
+  if (value > 0) return context.colors.gainOn;
+  if (value < 0) return context.colors.lossOn;
   return context.colors.neutralTextMuted;
 }
 
@@ -1016,15 +1016,15 @@ Color _valueStringColor(BuildContext context, String value) {
   final normalized = value.trim();
   if (normalized.isEmpty) return context.colors.neutralText;
   if (normalized.startsWith('-') || normalized.startsWith('−')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
-  if (normalized.startsWith('+')) return context.colors.positiveOn;
+  if (normalized.startsWith('+')) return context.colors.gainOn;
   if (normalized.startsWith('(') && normalized.endsWith(')')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
   if (normalized.contains('-') || normalized.contains('−')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
-  if (normalized.contains('+')) return context.colors.positiveOn;
+  if (normalized.contains('+')) return context.colors.gainOn;
   return context.colors.neutralText;
 }

@@ -1,3 +1,5 @@
+import 'package:moneyfy/components/buttons/app_buttons.dart';
+import 'package:moneyfy/components/forms/form_design.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -10,6 +12,8 @@ import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 import 'package:moneyfy/features/portfolio/services/market_instrument_search.dart';
 import 'package:moneyfy/features/portfolio/widgets/portfolio_instrument_search.dart';
 import 'package:moneyfy/db/app_database.dart';
+import 'package:moneyfy/widgets/moneyfy_ui.dart';
+import 'package:moneyfy/features/portfolio/widgets/holding_price_history_card.dart';
 import 'package:moneyfy/design_system/app_theme.dart';
 import 'package:moneyfy/features/portfolio/screens/portfolio_page.dart';
 
@@ -86,11 +90,98 @@ void main() {
       await tester.pump();
       expect(find.text('068270 · KOSPI · 주식'), findsWidgets);
       expect(find.text('시세 미제공'), findsOneWidget);
+      final hero = find.ancestor(
+        of: find.text('시세 미제공'),
+        matching: find.byType(MoneyfySurfaceCard),
+      );
+      final chart = find.byType(HoldingPriceHistoryCard);
+      expect(tester.getRect(hero).width, tester.getRect(chart).width);
+      await tester.binding.setSurfaceSize(const Size(360, 740));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pump();
+      expect(tester.getRect(hero).width, tester.getRect(chart).width);
+      expect(tester.takeException(), isNull);
       expect(find.text('시장 정보'), findsOneWidget);
+      expect(find.text('종목 뉴스'), findsNothing);
+      expect(find.text('최신 리서치'), findsNothing);
       expect(find.text('보유 정보'), findsNothing);
       expect(find.text('거래 내역'), findsNothing);
       expect(find.byIcon(Icons.edit_outlined), findsNothing);
       expect(await tester.runAsync(counts), before);
+      await tester.runAsync(() async {
+        final buy = find.widgetWithText(AppPrimaryButton, '매수');
+        final sell = find.widgetWithText(AppSecondaryButton, '매도');
+        expect(sell, findsNothing);
+        expect(tester.getRect(buy).width, tester.getRect(hero).width);
+        final assetId = await db.createAsset(
+          assetType: '주식',
+          title: '거래 계좌',
+          alias: '',
+          hidden: false,
+          currencyCode: 'KRW',
+          value: '0',
+          change: '',
+          icon: Icons.wallet,
+          quantityLabel: '',
+          quantityValue: '',
+          averageLabel: '',
+          averageValue: '',
+          note: '',
+        );
+        await db.createCashAccount(
+          assetId: assetId,
+          currencyCode: 'KRW',
+          name: '결제 계좌',
+          note: '',
+          balance: 10000,
+        );
+        for (final side in ['매수', '매도']) {
+          final action = side == '매수' ? buy : sell;
+          await tester.ensureVisible(action);
+          await tester.tap(action);
+          await tester.pumpAndSettle();
+          expect(find.text('종목 $side'), findsOneWidget);
+          expect(find.text('새 종목 검색'), findsNothing);
+          expect(find.text('보유 종목 선택'), findsNothing);
+          expect(find.text('거래 유형'), findsNothing);
+          for (final (label, value) in [('단가', '1000'), ('수량', '2')]) {
+            final field = find.descendant(
+              of: find.widgetWithText(MoneyfyFormField, '$side $label'),
+              matching: find.byType(TextField),
+            );
+            await tester.ensureVisible(field);
+            await tester.enterText(field, value);
+          }
+          final submit = find.widgetWithText(AppPrimaryButton, side);
+          for (
+            var i = 0;
+            i < 60 && tester.widget<AppPrimaryButton>(submit).onPressed == null;
+            i++
+          ) {
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+            await tester.pump();
+          }
+          expect(tester.widget<AppPrimaryButton>(submit).onPressed, isNotNull);
+          await tester.tap(submit);
+          for (var i = 0; i < 120; i++) {
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+            await tester.pump(const Duration(milliseconds: 50));
+            if (find.text('종목 $side').evaluate().isEmpty &&
+                buy.evaluate().isNotEmpty &&
+                (side == '매도' || sell.evaluate().isNotEmpty)) {
+              break;
+            }
+          }
+          final positions = (await db.fetchAssetById(
+            assetId,
+          ))!.holdings.where((h) => h.symbol == '068270');
+          expect(positions, hasLength(1));
+          expect(positions.single.quantity, side == '매수' ? 2 : 0);
+          expect(find.text('종목 $side'), findsNothing);
+          expect(sell, side == '매수' ? findsOneWidget : findsNothing);
+        }
+        expect(tester.getRect(buy).width, tester.getRect(chart).width);
+      });
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     },

@@ -29,9 +29,9 @@ class DeltaChip extends StatelessWidget {
     final isNegative = value < 0;
     final isNeutral = !isPositive && !isNegative;
     final tone = isPositive
-        ? MoneyfyPillTone.success
+        ? MoneyfyPillTone.gain
         : isNegative
-        ? MoneyfyPillTone.danger
+        ? MoneyfyPillTone.loss
         : MoneyfyPillTone.neutral;
     final style = MoneyfyPillStyle.resolve(
       context,

@@ -252,6 +252,8 @@ void main() {
       expect(scheme.primary, VisualSpec.brand.seedColor);
       expect(scheme.onPrimary, VisualSpec.brand.lightSurface);
       final brand = theme.extension<BrandColors>()!;
+      expect(brand.gainOn, VisualSpec.brand.brandRed);
+      expect(brand.lossOn, scheme.primary);
       expect(brand.positiveOn, scheme.primary);
       expect(brand.negativeOn, VisualSpec.brand.brandRed);
       expect(scheme.error, VisualSpec.brand.brandRed);
@@ -308,8 +310,8 @@ void main() {
 
     final colors = AppTheme.light.extension<BrandColors>()!;
     for (final (label, color) in [
-      ('+₩2,000', colors.positiveOn),
-      ('-₩1,000', colors.negativeOn),
+      ('+₩2,000', colors.negativeOn),
+      ('-₩1,000', colors.positiveOn),
     ]) {
       final text = tester.widget<Text>(find.text(label));
       expect(text.style?.color, color);

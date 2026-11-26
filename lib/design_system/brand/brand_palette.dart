@@ -85,6 +85,10 @@ class BrandColors extends ThemeExtension<BrandColors> {
   final Color positiveOn;
   final Color negativeContainer;
   final Color negativeOn;
+
+  // Market convention: gains are red and losses are blue.
+  Color get gainOn => negativeOn;
+  Color get lossOn => positiveOn;
   final Color warningContainer;
   final Color warningOn;
 

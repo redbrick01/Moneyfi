@@ -5,7 +5,7 @@ import 'package:moneyfy/design_system/spec.dart';
 
 enum MoneyfyPillSize { sm, md, lg }
 
-enum MoneyfyPillTone { neutral, primary, success, danger, warning }
+enum MoneyfyPillTone { neutral, primary, success, danger, warning, gain, loss }
 
 enum MoneyfyPillVariant { soft, outline, selected, tonal }
 
@@ -51,6 +51,8 @@ class MoneyfyPillStyle {
       MoneyfyPillTone.success => colors.positiveOn,
       MoneyfyPillTone.danger => colors.negativeOn,
       MoneyfyPillTone.warning => colors.warningOn,
+      MoneyfyPillTone.gain => colors.gainOn,
+      MoneyfyPillTone.loss => colors.lossOn,
     };
     final toneContainer = surfaces.surfaceRaised;
     final foreground = disabled

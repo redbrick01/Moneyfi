@@ -2347,7 +2347,7 @@ Color _signedDisplayColor(
   String valueText, {
   required Color defaultColor,
 }) {
-  if (valueText.startsWith('+')) return context.colors.positiveOn;
-  if (valueText.startsWith('-')) return context.colors.negativeOn;
+  if (valueText.startsWith('+')) return context.colors.gainOn;
+  if (valueText.startsWith('-')) return context.colors.lossOn;
   return defaultColor;
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:moneyfy/components/forms/market_search_field.dart';
+import 'package:moneyfy/components/section_card.dart';
 import 'package:moneyfy/features/portfolio/models/asset_item.dart';
 import 'package:moneyfy/features/portfolio/screens/holding_detail_page.dart';
 import 'package:moneyfy/features/portfolio/services/market_instrument_search.dart';
@@ -51,9 +52,15 @@ class _PortfolioInstrumentSearchState extends State<PortfolioInstrumentSearch> {
     if (matches.isEmpty) {
       await Navigator.of(context).push<void>(
         MaterialPageRoute(
-          builder: (_) => HoldingDetailPage.market(result: result),
+          builder: (_) => HoldingDetailPage.market(
+            result: result,
+            preferredAssetId: widget.assetType == null
+                ? null
+                : widget.assets.singleOrNull?.id,
+          ),
         ),
       );
+      if (mounted) widget.onHoldingClosed();
       return;
     }
     final holding = matches.length == 1
@@ -90,25 +97,28 @@ class _PortfolioInstrumentSearchState extends State<PortfolioInstrumentSearch> {
     final types = widget.assetType == null
         ? const {'주식', '펀드', '코인'}
         : {widget.assetType!};
-    return MarketSearchField<MarketSearchResult>(
-      controller: controller,
-      label: '종목 검색',
-      localSearch: (query) => searchMarketLocally(widget.assets, types, query),
-      verify: (query, local) async {
-        final verified = await verifyMarketSymbol(
-          primaryAssetType: widget.assetType ?? '주식',
-          searchableAssetTypes: types,
-          query: query,
-          localResults: local,
-        );
-        return verified == null ? local : mergeMarketResults(verified, local);
-      },
-      itemBuilder: (_, result) => ListTile(
-        title: Text(result.name),
-        subtitle: Text(result.marketLabel),
+    return SectionCard(
+      child: MarketSearchField<MarketSearchResult>(
+        controller: controller,
+        label: '종목 검색',
+        localSearch: (query) =>
+            searchMarketLocally(widget.assets, types, query),
+        verify: (query, local) async {
+          final verified = await verifyMarketSymbol(
+            primaryAssetType: widget.assetType ?? '주식',
+            searchableAssetTypes: types,
+            query: query,
+            localResults: local,
+          );
+          return verified == null ? local : mergeMarketResults(verified, local);
+        },
+        itemBuilder: (_, result) => ListTile(
+          title: Text(result.name),
+          subtitle: Text(result.marketLabel),
+        ),
+        onSelected: openResult,
+        onEdited: () {},
       ),
-      onSelected: openResult,
-      onEdited: () {},
     );
   }
 }

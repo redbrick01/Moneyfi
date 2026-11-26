@@ -1221,8 +1221,8 @@ class _MetricRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (metric.isPositive) {
-      true => context.colors.positiveOn,
-      false => Theme.of(context).colorScheme.error,
+      true => context.colors.gainOn,
+      false => context.colors.lossOn,
       null => Theme.of(context).colorScheme.onSurface,
     };
     return Row(

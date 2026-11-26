@@ -473,9 +473,9 @@ class _AttributionCompositionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final contribution = _formatContribution(item.amount, total);
     final valueColor = item.amount < 0
-        ? context.colors.negativeOn
+        ? context.colors.lossOn
         : item.amount > 0
-        ? context.colors.positiveOn
+        ? context.colors.gainOn
         : context.colors.neutralText;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -889,9 +889,7 @@ class _MonthlyBarStrip extends StatelessWidget {
                     toY: item.pureRealizedPerformance,
                     width: 12,
                     borderRadius: BorderRadius.circular(3),
-                    color: item.pureRealizedPerformance < 0
-                        ? context.colors.negativeContainer
-                        : context.colors.positiveContainer,
+                    color: _valueColor(context, item.pureRealizedPerformance),
                   ),
                 ],
               ),
@@ -1922,8 +1920,8 @@ String? _formatContribution(double amount, double basis) {
 }
 
 Color _valueColor(BuildContext context, double value) {
-  if (value > 0) return context.colors.positiveOn;
-  if (value < 0) return context.colors.negativeOn;
+  if (value > 0) return context.colors.gainOn;
+  if (value < 0) return context.colors.lossOn;
   return context.colors.neutralTextMuted;
 }
 
@@ -1933,14 +1931,14 @@ Color _valueTextColor(
   Color? defaultColor,
 }) {
   final trimmed = value.trim();
-  if (trimmed.startsWith('+')) return context.colors.positiveOn;
+  if (trimmed.startsWith('+')) return context.colors.gainOn;
   if (trimmed.startsWith('-') || trimmed.startsWith('−')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
   if (trimmed.contains('-') || trimmed.contains('−')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
-  if (trimmed.contains('+')) return context.colors.positiveOn;
+  if (trimmed.contains('+')) return context.colors.gainOn;
   return defaultColor ?? context.colors.neutralText;
 }
 

@@ -1099,8 +1099,8 @@ class _ValuationValueText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final valueColor = switch (value.tone) {
-      _ValueTone.positive => context.colors.positiveOn,
-      _ValueTone.negative => context.colors.negativeOn,
+      _ValueTone.positive => context.colors.gainOn,
+      _ValueTone.negative => context.colors.lossOn,
       _ValueTone.neutral => null,
     };
     return RichText(

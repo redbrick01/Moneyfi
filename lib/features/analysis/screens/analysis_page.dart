@@ -844,14 +844,14 @@ String _formatSignedPercent(double value) {
 
 Color _analysisValueColor(BuildContext context, String value) {
   final trimmed = value.trim();
-  if (trimmed.startsWith('+')) return context.colors.positiveOn;
+  if (trimmed.startsWith('+')) return context.colors.gainOn;
   if (trimmed.startsWith('-') || trimmed.startsWith('−')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
   if (trimmed.contains('-') || trimmed.contains('−')) {
-    return context.colors.negativeOn;
+    return context.colors.lossOn;
   }
-  if (trimmed.contains('+')) return context.colors.positiveOn;
+  if (trimmed.contains('+')) return context.colors.gainOn;
   return context.colors.neutralTextMuted;
 }
 
