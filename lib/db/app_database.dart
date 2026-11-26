@@ -2786,7 +2786,9 @@ class AppDatabase extends _$AppDatabase {
     };
   }
 
-  Future<List<HoldingItem>> fetchHoldingsForMarketRefresh() async {
+  Future<List<HoldingItem>> fetchHoldingsForMarketRefresh({
+    String? clientId,
+  }) async {
     final query =
         select(holdings).join([
           innerJoin(assets, assets.id.equalsExp(holdings.assetId)),
@@ -2796,6 +2798,7 @@ class AppDatabase extends _$AppDatabase {
               assets.deletedAt.isNull() &
               assets.assetType.isIn(['주식', '펀드', '코인']),
         );
+    if (clientId != null) query.where(holdings.clientId.equals(clientId));
     final rows = await query.get();
     return [
       for (final row in rows)
@@ -2807,6 +2810,7 @@ class AppDatabase extends _$AppDatabase {
     List<Map<String, dynamic>> prices, {
     required String ownerId,
     required bool Function() canApply,
+    String? clientId,
   }) async {
     return transaction(() async {
       if (await localDataOwner() != ownerId || !canApply()) return 0;
@@ -2816,7 +2820,9 @@ class AppDatabase extends _$AppDatabase {
       };
       var matched = 0;
       var priceChanged = false;
-      for (final holding in await fetchHoldingsForMarketRefresh()) {
+      for (final holding in await fetchHoldingsForMarketRefresh(
+        clientId: clientId,
+      )) {
         final remote = remoteByClientId[holding.clientId];
         final price = remote?['current_price'];
         final timestamp = remote?['market_updated_at'];

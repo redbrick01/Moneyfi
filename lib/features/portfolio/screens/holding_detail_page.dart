@@ -176,7 +176,11 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
     return _equityResearchFuture!;
   }
 
+  HoldingMarketSnapshot? _cachedQuote;
+  bool _refreshNextQuote = false;
+
   void _resetMarketRequests() {
+    _cachedQuote = null;
     _marketSnapshotCacheKey = null;
     _marketSnapshotFuture = null;
     _fundDetailsFuture = null;
@@ -193,22 +197,36 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
 
     _resetMarketRequests();
     _marketSnapshotCacheKey = cacheKey;
-    _requestMarketSnapshot(holding);
-    if (assetType == '펀드') _requestFundDetails(holding);
+    _requestMarketSnapshot(holding, force: _refreshNextQuote);
+    _refreshNextQuote = false;
   }
 
-  void _requestMarketSnapshot(HoldingItem holding) {
+  void _requestMarketSnapshot(HoldingItem holding, {bool force = false}) {
     if (_marketSnapshotPending) return;
     _marketSnapshotPending = true;
-    final request = MarketDataService.instance.fetchSnapshot(
+    final service = MarketDataService.instance;
+    final request = service.fetchSnapshot(
       holding,
-      includeFundComponents: false,
+      policy: force ? QuoteRead.refresh : QuoteRead.normal,
     );
-    _marketSnapshotFuture = request;
-    request.then((_) {
-      if (identical(_marketSnapshotFuture, request)) {
-        _marketSnapshotPending = false;
+    service.fetchSnapshot(holding, policy: QuoteRead.cachedOnly).then((cached) {
+      if (mounted &&
+          identical(_marketSnapshotFuture, request) &&
+          !cached.isFallback &&
+          _marketSnapshotPending) {
+        setState(() => _cachedQuote = cached);
       }
+    });
+    _marketSnapshotFuture = request;
+    request.then((quote) {
+      if (!mounted || !identical(_marketSnapshotFuture, request)) return;
+      setState(() {
+        _marketSnapshotPending = false;
+        if (!quote.isFallback) _cachedQuote = quote;
+        if ((holding.assetType ?? holding.assetTitle) == '펀드') {
+          _requestFundDetails(holding);
+        }
+      });
     });
   }
 
@@ -224,17 +242,24 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
 
   Future<void> _refreshMarket(HoldingItem holding) async {
     if (holding.id != null && !holding.isCashLike) {
-      await MarketDataService.instance.refreshAllMarketData();
+      try {
+        await MarketDataService.instance.refreshHoldingPrice(holding);
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('보유 종목 시세를 갱신하지 못했습니다.')));
+      }
       if (mounted) {
         _priceHistoryRefreshVersion++;
+        _refreshNextQuote = true;
         _reloadHolding();
       }
       return;
     }
     setState(() {
       _priceHistoryRefreshVersion++;
-      _requestMarketSnapshot(holding);
-      if (_fundDetailsFuture != null) _requestFundDetails(holding);
+      _requestMarketSnapshot(holding, force: true);
     });
     await Future.wait([_marketSnapshotFuture!, ?_fundDetailsFuture]);
   }
@@ -464,9 +489,12 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
             future: _marketSnapshotFuture,
             initialData: HoldingMarketSnapshot.fallback(holding),
             builder: (context, marketSnapshot) {
-              final market =
-                  marketSnapshot.data ??
-                  HoldingMarketSnapshot.fallback(holding);
+              final result = marketSnapshot.data;
+              final market = result != null && !result.isFallback
+                  ? result
+                  : _cachedQuote ??
+                        result ??
+                        HoldingMarketSnapshot.fallback(holding);
               final displayHolding = _holdingWithMarketPrice(holding, market);
               final assetType =
                   displayHolding.assetType ?? displayHolding.assetTitle;
@@ -485,6 +513,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
               final marketLoading =
                   marketSnapshot.connectionState == ConnectionState.waiting;
 
+              final loadSupplemental = !marketLoading || _cachedQuote != null;
               return SafeArea(
                 child: RefreshIndicator(
                   onRefresh: () => _refreshMarket(holding),
@@ -787,9 +816,10 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                             ],
                           ),
                         ],
-                        if (MarketDataService.instance.supportsPriceHistory(
-                          displayHolding,
-                        )) ...[
+                        if (loadSupplemental &&
+                            MarketDataService.instance.supportsPriceHistory(
+                              displayHolding,
+                            )) ...[
                           SizedBox(height: context.spacing.md),
                           HoldingPriceHistoryCard(
                             holding: displayHolding,
@@ -798,7 +828,8 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                             showAveragePrice: !marketOnly,
                           ),
                         ],
-                        if (displayHolding.symbol.trim().isNotEmpty &&
+                        if (loadSupplemental &&
+                            displayHolding.symbol.trim().isNotEmpty &&
                             (marketOnly || displayHolding.quantity > 0)) ...[
                           FutureBuilder<CompanyNewsSummaryItem?>(
                             future: _companyNewsForSymbol(
@@ -881,11 +912,14 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
                                                   _MarketRequestStatus(
                                                     label: '시세',
                                                     loading: marketLoading,
-                                                    failed: market.isFallback,
+                                                    failed:
+                                                        result?.isFallback ??
+                                                        true,
                                                     onRetry: () => setState(
                                                       () =>
                                                           _requestMarketSnapshot(
                                                             holding,
+                                                            force: true,
                                                           ),
                                                     ),
                                                   ),
@@ -1028,6 +1062,11 @@ class _MarketQuoteHero extends StatelessWidget {
                   : CrossAxisAlignment.start,
               children: [
                 Text('현재가', style: meta),
+                if (market.receivedAt case final time?)
+                  Text(
+                    '조회 ${DateFormat('MM/dd HH:mm:ss').format(time.toLocal())}',
+                    style: meta,
+                  ),
                 Text(
                   hasPrice
                       ? market.currentPrice

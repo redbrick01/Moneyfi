@@ -1,0 +1,84 @@
+name: MONEYFY release
+on:
+  push:
+    tags: ['v[0-9]*']
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: windows, os: windows-2022 }
+          - { target: linux, os: ubuntu-24.04 }
+          - { target: macos, os: macos-15 }
+          - { target: android, os: ubuntu-24.04 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "${{ matrix.target == 'android' && '3.44.0' || '3.50.1' }}"
+          channel: stable
+          cache: true
+      - if: matrix.target == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libjsoncpp-dev
+      - if: matrix.target == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure app
+        shell: bash
+        env:
+          APP_CONFIG: ${{ secrets.MONEYFY_APP_CONFIG }}
+        run: |
+          test -n "$APP_CONFIG"
+          printf '%s' "$APP_CONFIG" > assets/config.json
+          flutter pub get
+          mkdir -p out
+      - if: matrix.target == 'android'
+        env:
+          KEYSTORE: ${{ secrets.MONEYFY_ANDROID_KEYSTORE_BASE64 }}
+          MONEYFY_ANDROID_PASSWORD: ${{ secrets.MONEYFY_ANDROID_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE" && test -n "$MONEYFY_ANDROID_PASSWORD"
+          export MONEYFY_ANDROID_KEYSTORE="$RUNNER_TEMP/moneyfy.p12"
+          export MONEYFY_ANDROID_PASSWORD="$(printf '%s' "$MONEYFY_ANDROID_PASSWORD" | tr -d '\r\n')"
+          printf '%s' "$KEYSTORE" | tr -d '\r\n' | base64 --decode > "$MONEYFY_ANDROID_KEYSTORE"
+          flutter build apk --release --build-number="$GITHUB_RUN_NUMBER"
+          cp build/app/outputs/flutter-apk/app-release.apk out/moneyfy-android.apk
+      - if: matrix.target == 'windows'
+        run: |
+          flutter build windows --release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive build/windows/x64/runner/Release/* out/moneyfy-windows-x64.zip
+      - if: matrix.target == 'linux'
+        run: |
+          flutter build linux --release
+          tar -C build/linux/x64/release/bundle -czf out/moneyfy-linux-x64.tar.gz .
+      - if: matrix.target == 'macos'
+        run: |
+          flutter build macos --release
+          lipo build/macos/Build/Products/Release/Moneyfy.app/Contents/MacOS/Moneyfy -verify_arch arm64
+          ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/Moneyfy.app out/moneyfy-macos-arm64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: out/*
+          if-no-files-found: error
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" packages/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "MONEYFY $GITHUB_REF_NAME" --notes "Android APK, Windows x64, Linux x64, macOS Apple Silicon. macOS 앱은 Apple 공증 전 빌드입니다."

@@ -37,6 +37,8 @@ class MarketRefreshResult {
   }
 }
 
+enum QuoteRead { normal, cachedOnly, refresh }
+
 class MarketDataService {
   MarketDataService._({
     HttpClientAdapter? adapter,
@@ -109,6 +111,8 @@ class MarketDataService {
   static const _quoteTimeout = Duration(seconds: 15);
 
   final Dio _client;
+  final _quotes = <Uri, Map<String, dynamic>>{};
+  int _cacheGeneration = 0;
   final _pendingReads =
       <(Uri, String?, bool), AsyncCache<Map<String, dynamic>>>{};
 
@@ -148,24 +152,7 @@ class MarketDataService {
     final userId = AuthService.currentUser?.id;
     if (holdings.isNotEmpty && userId != null) {
       try {
-        final response = await AuthService.client.functions.invoke(
-          'update-holding-prices',
-          body: const {'mode': 'read'},
-        );
-        final payload = response.data;
-        if (response.status == 200 &&
-            payload is Map &&
-            payload['ok'] == true &&
-            payload['prices'] is List) {
-          final prices = (payload['prices'] as List)
-              .whereType<Map<String, dynamic>>()
-              .toList(growable: false);
-          updated = await AppDatabase.instance.applyServerHoldingPrices(
-            prices,
-            ownerId: userId,
-            canApply: () => AuthService.currentUser?.id == userId,
-          );
-        }
+        updated = await _readStoredPrices(userId);
       } catch (error) {
         _log('Server price refresh failed: ${error.runtimeType}');
       }
@@ -178,8 +165,37 @@ class MarketDataService {
     );
   }
 
+  Future<void> refreshHoldingPrice(HoldingItem holding) async {
+    final userId = AuthService.currentUser?.id;
+    final clientId = holding.clientId;
+    if (userId == null || clientId == null || clientId.isEmpty) return;
+    await _readStoredPrices(userId, clientId: clientId);
+  }
+
+  Future<int> _readStoredPrices(String userId, {String? clientId}) async {
+    final response = await AuthService.client.functions.invoke(
+      'update-holding-prices',
+      body: {'mode': 'read', if (clientId != null) 'client_id': clientId},
+    );
+    final payload = response.data;
+    if (response.status != 200 ||
+        payload is! Map ||
+        payload['ok'] != true ||
+        payload['prices'] is! List) {
+      throw StateError('Server holding prices are unavailable');
+    }
+    return AppDatabase.instance.applyServerHoldingPrices(
+      (payload['prices'] as List).whereType<Map<String, dynamic>>().toList(),
+      ownerId: userId,
+      clientId: clientId,
+      canApply: () => AuthService.currentUser?.id == userId,
+    );
+  }
+
   Future<void> clearLocalCache() async {
     _pendingReads.clear();
+    _quotes.clear();
+    _cacheGeneration++;
     _accessToken = null;
     _accessTokenExpiresAt = null;
     _accessTokenFuture = null;
@@ -377,7 +393,12 @@ class MarketDataService {
   Future<HoldingMarketSnapshot> fetchSnapshot(
     HoldingItem holding, {
     bool includeFundComponents = false,
+    QuoteRead policy = QuoteRead.normal,
   }) async {
+    if (policy == QuoteRead.cachedOnly &&
+        (!_useServerPrices || AuthService.currentUser == null)) {
+      return HoldingMarketSnapshot.fallback(holding);
+    }
     try {
       final assetType = holding.assetType ?? holding.assetTitle;
       _log(
@@ -394,14 +415,15 @@ class MarketDataService {
       }
       switch (assetType) {
         case '주식':
-          return await _fetchStockSnapshot(holding);
+          return await _fetchStockSnapshot(holding, policy);
         case '펀드':
           return await _fetchFundSnapshot(
             holding,
             includeComponents: includeFundComponents,
+            policy: policy,
           );
         case '코인':
-          return await _fetchCoinSnapshot(holding);
+          return await _fetchCoinSnapshot(holding, policy);
         default:
           _log('fetchSnapshot fallback unsupported asset=${assetType ?? '-'}');
           return HoldingMarketSnapshot.fallback(holding);
@@ -421,9 +443,12 @@ class MarketDataService {
     return symbol == currencyCode;
   }
 
-  Future<HoldingMarketSnapshot> _fetchStockSnapshot(HoldingItem holding) async {
+  Future<HoldingMarketSnapshot> _fetchStockSnapshot(
+    HoldingItem holding,
+    QuoteRead policy,
+  ) async {
     if (holding.currencyCode.toUpperCase() == 'USD') {
-      return _fetchOverseasStockSnapshot(holding);
+      return _fetchOverseasStockSnapshot(holding, policy);
     }
 
     if (!_useServerPrices && !_config.hasKisStockConfig) {
@@ -439,7 +464,7 @@ class MarketDataService {
     final json = _useServerPrices
         ? await _serverMarketRead('stock_details', {
             'symbol': holding.symbol.trim().toUpperCase(),
-          })
+          }, policy)
         : await _kisGet(
             path: _config.kisStockQuotePath,
             trId: _config.kisStockQuoteTrId,
@@ -466,6 +491,7 @@ class MarketDataService {
                       ? -priceChange.abs()
                       : priceChange.abs()));
     final snapshot = HoldingMarketSnapshot(
+      receivedAt: json['_receivedAt'] as DateTime?,
       marketName:
           (output['rprs_mrkt_kor_name']?.toString().trim() ?? '').isEmpty
           ? holding.assetTitle ?? '-'
@@ -519,6 +545,7 @@ class MarketDataService {
 
   Future<HoldingMarketSnapshot> _fetchOverseasStockSnapshot(
     HoldingItem holding,
+    QuoteRead policy,
   ) async {
     if (!_useServerPrices && !_config.hasKisOverseasStockConfig) {
       _log('fetchSnapshot fallback: KIS overseas config missing');
@@ -534,6 +561,7 @@ class MarketDataService {
     final symbol = holding.symbol.trim().toUpperCase();
     final needsExchange = configuredExchange.isEmpty;
     var exchange = configuredExchange;
+    DateTime? receivedAt;
     Map<String, dynamic> output = const {};
     for (final candidate
         in needsExchange ? const ['NAS', 'NYS', 'AMS'] : [configuredExchange]) {
@@ -541,7 +569,7 @@ class MarketDataService {
           ? await _serverMarketRead('stock_details', {
               'symbol': symbol,
               'exchange': candidate,
-            })
+            }, policy)
           : await _kisGet(
               path: _config.kisOverseasStockQuotePath,
               trId: _config.kisOverseasStockQuoteTrId,
@@ -552,6 +580,7 @@ class MarketDataService {
       if (needsExchange && data['rsym'] != 'D$candidate$symbol') continue;
       final price = _parseNumber(data['last']);
       if (price == null || !price.isFinite || price <= 0) continue;
+      receivedAt = json['_receivedAt'] as DateTime?;
       exchange = candidate;
       output = data;
       break;
@@ -576,6 +605,7 @@ class MarketDataService {
         : null;
 
     final snapshot = HoldingMarketSnapshot(
+      receivedAt: receivedAt,
       marketName: _marketNameForExchange(exchange),
       sectorName: '-',
       currentPrice: _formatMoney(currentPrice, currencyCode: 'USD'),
@@ -628,6 +658,7 @@ class MarketDataService {
   Future<HoldingMarketSnapshot> _fetchFundSnapshot(
     HoldingItem holding, {
     required bool includeComponents,
+    required QuoteRead policy,
   }) async {
     if (!_useServerPrices && !_config.hasKisFundConfig) {
       _log('fetchSnapshot fallback: KIS fund config missing');
@@ -642,7 +673,7 @@ class MarketDataService {
     final summaryJson = _useServerPrices
         ? await _serverMarketRead('fund_nav', {
             'symbol': holding.symbol.trim().toUpperCase(),
-          })
+          }, policy)
         : await _kisGet(
             path: _config.kisFundQuotePath,
             trId: _config.kisFundQuoteTrId,
@@ -663,13 +694,14 @@ class MarketDataService {
         ? await fetchFundMarketDetails(holding)
         : null;
 
-    final currentPrice = _useServerPrices
+    final currentPrice = _useServerPrices && holding.id != null
         ? holding.currentPrice
         : _parseNumber(summary['stck_prpr'])?.toDouble();
     final snapshot = HoldingMarketSnapshot(
       marketName: holding.assetTitle ?? '-',
+      receivedAt: summaryJson['_receivedAt'] as DateTime?,
       sectorName: _stringOrDash(summary['bstp_kor_isnm']),
-      currentPrice: _useServerPrices
+      currentPrice: _useServerPrices && holding.id != null
           ? holding.primaryMetricValue
           : _formatKrw(summary['stck_prpr']),
       currentPriceValue: currentPrice,
@@ -779,7 +811,10 @@ class MarketDataService {
     }
   }
 
-  Future<HoldingMarketSnapshot> _fetchCoinSnapshot(HoldingItem holding) async {
+  Future<HoldingMarketSnapshot> _fetchCoinSnapshot(
+    HoldingItem holding,
+    QuoteRead policy,
+  ) async {
     final symbol = holding.symbol.trim().toUpperCase();
     if (symbol.isEmpty) {
       return HoldingMarketSnapshot.fallback(holding);
@@ -790,7 +825,7 @@ class MarketDataService {
         ? await _serverMarketRead('coin_details', {
             'symbol': symbol,
             'quote': quoteCurrency,
-          })
+          }, policy)
         : await _fetchCoinoneTestQuote(symbol, quoteCurrency);
     final tickers = (json['tickers'] as List?) ?? const [];
     if (tickers.isEmpty) {
@@ -818,6 +853,7 @@ class MarketDataService {
         : last;
     final snapshot = HoldingMarketSnapshot(
       marketName: holding.assetTitle ?? '-',
+      receivedAt: json['_receivedAt'] as DateTime?,
       sectorName: '-',
       currentPrice: _formatKrw(currentPrice),
       currentPriceValue: currentPrice,
@@ -918,8 +954,9 @@ class MarketDataService {
 
   Future<Map<String, dynamic>> _serverMarketRead(
     String mode,
-    Map<String, String> fields,
-  ) {
+    Map<String, String> fields, [
+    QuoteRead? policy,
+  ]) {
     final userId = AuthService.currentUser?.id;
     if (userId == null) {
       return Future.error(StateError('Market data requires sign-in'));
@@ -930,6 +967,18 @@ class MarketDataService {
       pathSegments: [userId, mode],
       queryParameters: fields,
     );
+    final cached = _quotes[identity];
+    if (cached != null && policy != null && policy != QuoteRead.refresh) {
+      final age = DateTime.now().difference(cached['_receivedAt'] as DateTime);
+      if (age <
+          (policy == QuoteRead.cachedOnly
+              ? const Duration(hours: 24)
+              : const Duration(seconds: 45))) {
+        return Future.value(cached);
+      }
+    }
+    if (policy == QuoteRead.cachedOnly) return Future.value({});
+    final generation = _cacheGeneration;
     return _shareMarketRead(identity, () async {
       final response = await AuthService.client.functions.invoke(
         'update-holding-prices',
@@ -941,6 +990,22 @@ class MarketDataService {
           data is! Map<String, dynamic> ||
           data['ok'] != true) {
         throw StateError('Server market data is unavailable');
+      }
+      if (policy != null && generation == _cacheGeneration) {
+        final output = data['output'];
+        final tickers = data['tickers'];
+        final rawPrice = output is Map
+            ? output['stck_prpr'] ?? output['last']
+            : tickers is List && tickers.isNotEmpty && tickers.first is Map
+            ? tickers.first['last']
+            : null;
+        final price = _parseNumber(rawPrice);
+        if (price != null && price.isFinite && price > 0) {
+          final entry = {...data, '_receivedAt': DateTime.now()};
+          _quotes.remove(identity);
+          if (_quotes.length >= 128) _quotes.remove(_quotes.keys.first);
+          return _quotes[identity] = entry;
+        }
       }
       return data;
     });

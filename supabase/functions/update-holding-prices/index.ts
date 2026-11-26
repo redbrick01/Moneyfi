@@ -476,6 +476,9 @@ Deno.serve(async (req) => {
       if (targetUserId) {
         query = query.eq("user_id", targetUserId);
       }
+      if (readOnly && body.client_id != null) {
+        query = query.eq("client_id", body.client_id);
+      }
       return query.order("id");
     });
 

@@ -56,6 +56,15 @@ void main() {
       canApply: () => true,
     );
 
+    expect(
+      await db.applyServerHoldingPrices(
+        [quote],
+        ownerId: 'first-user',
+        clientId: 'different-holding',
+        canApply: () => true,
+      ),
+      0,
+    );
     expect(await apply(quote, owner: 'second-user'), 0);
     expect(await apply({...quote, 'symbol': '000660'}), 0);
     expect(await apply(quote), 1);

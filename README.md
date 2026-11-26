@@ -1,157 +1,68 @@
 # MONEYFY
 
-> 자산 현황, 포트폴리오, 통계, 스냅샷, AI 분석을 한 곳에서 관리하는 Flutter 기반 개인 자산 관리 앱입니다.
+MONEYFY는 투자 자산과 현금 계좌를 함께 관리하는 Flutter 앱입니다. 매수·매도, 배당, 입출금, 환전을 기록하면 거래 원장을 바탕으로 보유 수량, 원가, 실현손익, 현금 잔액을 다시 계산합니다. 일별 스냅샷을 열면 과거 특정 날짜의 자산 구성도 확인할 수 있습니다.
 
-## Overview
+## 앱에서 할 수 있는 일
 
-MONEYFY는 로컬 DB와 Supabase 동기화를 함께 사용하는 자산 관리 앱입니다. 보유 자산과 거래 내역을 기반으로 총자산 변화, 월별 추이, 자산군 비중, 포트폴리오 진단을 빠르게 확인할 수 있도록 구성되어 있습니다.
-
-처음 프로젝트를 보는 경우 아래 순서로 읽으면 전체 구조를 빠르게 잡을 수 있습니다.
-
-1. [Project Overview](docs/project_overview.md)
-2. [Folder Guide](docs/folder_guide.md)
-3. [Data & Sync Flow](docs/data_and_sync.md)
-4. [Supabase Overview](docs/supabase_overview.md)
-
-## Features
-
-- 총자산, 손익, 자산군 현황을 보여주는 대시보드
-- 보유 자산, 현금 계좌, 거래 내역 관리
-- 자산 탭 정렬, 드래그 재정렬, 스와이프 숨김/해제
-- 일별 스냅샷 저장 및 상세 비교
-- 통계 탭의 월별 추이, 캘린더, 월말 자산 확인
-- AI 포트폴리오 분석 카드와 리스크 요약
-- Supabase 기반 로그인, 동기화, 뉴스 요약 데이터 연동
-- KIS API 기반 국내/해외/펀드 시세 조회
-
-## Tech Stack
-
-| Area | Stack |
+| 탭 | 주요 기능 |
 | --- | --- |
-| App | Flutter, Dart |
-| Local DB | Drift, SQLite |
-| Backend | Supabase |
-| Storage | Flutter Secure Storage |
-| UI | Material, MONEYFY design tokens |
-| Tests | `flutter_test` |
+| 홈 | 총자산과 손익을 확인하고 자산군별 비중을 비교합니다. |
+| 포트폴 | 보유 종목과 현금 계좌를 관리하고 각 자산의 평가액과 거래 내역을 살펴봅니다. |
+| 거래 | 매매, 배당·이자, 입출금, 이체·환전 내역을 기록하고 조회합니다. |
+| 분석 | 포트폴리오 성과와 자산 배분을 살펴보고 AI 포트폴리오 진단과 뉴스 요약을 확인합니다. |
+| My | 계정에 로그인하고 동기화 상태와 개인 설정을 확인합니다. |
 
-## Project Structure
+앱은 보유 자산과 거래 내역을 기기의 SQLite 데이터베이스에 저장하고 Drift로 읽고 씁니다. 로그인하면 Supabase를 통해 같은 계정의 데이터를 여러 기기에서 동기화합니다.
 
-```text
-.
-├── android/              # Android platform project
-├── assets/               # App assets and local config example
-├── docs/                 # Design, runbook, and product notes
-├── ios/                  # iOS platform project
-├── lib/
-│   ├── components/       # Reusable UI building blocks
-│   ├── data/             # Static/sample data helpers
-│   ├── db/               # Drift database and generated queries
-│   ├── design_system/    # App theme and design tokens
-│   ├── models/           # App data models
-│   ├── pages/            # Screen-level pages and forms
-│   ├── services/         # Auth, sync, market data, summaries
-│   ├── ui_scaffold/      # Shared app shell scaffolding
-│   ├── utils/            # Utility helpers
-│   └── widgets/          # Legacy/shared widgets
-├── supabase/             # Supabase config, functions, migrations
-├── test/                 # Widget, service, and flow tests
-├── tools/                # Maintenance scripts
-└── web/                  # Web target assets
-```
+## 로컬에서 실행하기
 
-## Getting Started
+CI에서 사용하는 Flutter 버전은 **3.47.9**입니다. Flutter SDK와 대상 플랫폼의 개발 도구를 설치하고, 기기나 에뮬레이터를 연결한 뒤 저장소 루트에서 실행하세요.
 
-### 1. Install dependencies
-
-```bash
+```sh
 flutter pub get
+flutter devices
+flutter run -d <기기-ID>
 ```
 
-### 2. Create local config files
+마지막 명령의 `<기기-ID>`에는 `flutter devices`에 표시된 값을 입력합니다. 앱은 서버 설정 없이도 실행할 수 있습니다. 로그인과 동기화를 사용하려면 아래 설정을 추가하세요.
 
-실제 키가 들어가는 파일은 git에 올리지 않습니다. Supabase 로그인/동기화를 사용하려면 샘플 파일을 복사해서 로컬에서만 사용하세요.
+### 로그인과 동기화 연결하기
 
-`assets/config.json`이 없어도 앱은 시작되며, My 화면에서 설정 안내를 표시합니다.
+1. [앱 설정 예시](assets/config.example.json)를 같은 폴더에 `assets/config.json`으로 복사합니다.
+2. `SUPABASE_URL`과 `SUPABASE_ANON_KEY`에 연결할 프로젝트의 URL과 클라이언트용 anon 키를 입력합니다.
+3. 앱을 다시 실행하고 **My**에서 로그인합니다.
 
-```bash
-cp assets/config.example.json assets/config.json
-```
+새 Supabase 프로젝트를 연결할 때는 저장소의 마이그레이션을 적용하고 필요한 Edge Functions를 배포하세요. KIS 시세 조회용 키와 서비스 역할 키는 서버에서 관리합니다. [백엔드 구성](supabase/README.md) · [Supabase CLI 운영 가이드](docs/supabase_cli_runbook.md)
 
-`assets/config.json`:
+### USB로 연결한 iPhone에 설치하기
 
-```json
-{
-  "SUPABASE_URL": "https://your-project-ref.supabase.co",
-  "SUPABASE_ANON_KEY": "YOUR_SUPABASE_ANON_KEY"
-}
-```
+macOS에서 iOS 15 이상인 iPhone을 연결하고 기기에서 Mac을 신뢰하도록 설정하세요. 개발자 모드가 제공되는 iOS 버전에서는 해당 모드를 켜고, Xcode에서 Runner의 개발 서명을 설정합니다. 다음 스크립트가 릴리스 빌드를 기기에 설치하고 실행합니다.
 
-KIS 키는 Supabase Edge Function secrets에 설정합니다. 앱은 로그인한 사용자의
-서버 저장 시세와 마지막 갱신 시각을 읽습니다.
-
-### 3. Run the app
-
-```bash
-flutter run
-```
-
-### USB로 연결한 아이폰에 설치
-
-iOS 15 이상이 필요합니다. 맥에 아이폰을 USB로 연결하고 잠금을 푼 뒤 ‘이 컴퓨터를 신뢰’를 선택하세요. 아이폰에서 **설정 → 개인정보 보호 및 보안 → 개발자 모드**를 켜고, Xcode에서 Runner의 개발 서명을 설정하세요.
-
-Finder에서 `scripts/install_ios_usb.command`를 더블클릭하거나 프로젝트 루트에서 아래 명령을 실행하면 릴리스 빌드를 설치하고 실행합니다.
-
-```bash
+```sh
 ./scripts/install_ios_usb.command
 ```
 
-USB로 연결된 iOS 기기가 여러 대면 스크립트에 표시된 기기 ID를 인수로 전달하세요. 예를 들어 `./scripts/install_ios_usb.command <기기-ID>` 형태로 실행합니다.
+여러 대가 연결되어 있으면 스크립트 뒤에 기기 ID를 입력하세요. 설치 후 개발자 신뢰 안내가 나타나면 iPhone의 **설정 → 일반 → VPN 및 기기 관리**에서 서명에 사용한 개발자를 신뢰하도록 설정합니다.
 
-설치 후 아이폰에서 ‘신뢰하지 않는 개발자’가 표시되면 **설정 → 일반 → VPN 및 기기 관리**에서 MONEYFY를 서명한 개발자를 선택해 신뢰하고, 홈 화면에서 MONEYFY를 다시 여세요.
+## 개발 및 검증
 
-## Development
-
-자주 쓰는 명령어입니다.
-
-```bash
+```sh
 flutter analyze
 flutter test
+```
+
+Drift 테이블이나 생성 대상 모델을 수정한 뒤에는 다음 명령으로 생성 코드를 갱신합니다.
+
+```sh
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-## Git Guide
+## 코드와 문서
 
-이 저장소는 소스 코드, 문서, 샘플 설정 파일만 관리하고 로컬 산출물은 제외합니다.
-
-- 커밋 대상: `lib/`, `test/`, `docs/`, `assets/config.example.json`, `config.example.json`, `pubspec.yaml`, platform project files
-- 제외 대상: `build/`, `.dart_tool/`, `.idea/`, `ios/Pods/`, `macos/Pods/`, 실제 키가 들어간 `assets/config.json`, `config.json`
-- 새 비밀값이 생기면 `.gitignore`에 먼저 추가한 뒤 파일을 생성하세요.
-
-초기 원격 저장소 연결 예시:
-
-```bash
-git init
-git add .
-git commit -m "Initial MONEYFY project"
-git branch -M main
-git remote add origin YOUR_GIT_REMOTE_URL
-git push -u origin main
-```
-
-## Documentation
-
-- [Docs Index](docs/README.md)
-- [Document Inventory](docs/document_inventory.md)
-- [Project Overview](docs/project_overview.md)
-- [Folder Guide](docs/folder_guide.md)
-- [Data & Sync Flow](docs/data_and_sync.md)
-- [Supabase Overview](docs/supabase_overview.md)
-- [Design System](docs/design_system.md)
-- [Supabase CLI Runbook](docs/supabase_cli_runbook.md)
-
-## Security Notes
-
-- `SUPABASE_SERVICE_ROLE_KEY`는 앱, README, 클라이언트 설정 파일에 넣지 않습니다.
-- `assets/config.json`과 `config.json`은 로컬 전용 파일입니다.
-- 실수로 키를 커밋했다면 키를 폐기하고 재발급한 뒤 git history 정리를 진행하세요.
+| 찾고 싶은 내용 | 위치 |
+| --- | --- |
+| 포트폴리오, 거래, 분석 등 기능별 화면과 서비스 | [lib/features](lib/features) |
+| 거래 원장, 잔액 계산, 동기화 흐름 | [로컬 DB 코드](lib/db) · [데이터 흐름 문서](docs/data_and_sync.md) |
+| 서버 함수와 DB 스키마 변경 이력 | [Edge Functions](supabase/functions) · [마이그레이션](supabase/migrations) |
+| macOS 앱의 자산·거래를 MCP로 조회하고 변경하는 방법 | [개인용 MCP 가이드](tools/moneyfy-mcp/README.md) |
+| 화면 설계 기준과 프로젝트 문서 색인 | [디자인 시스템](docs/design_system.md) · [전체 문서](docs/README.md) |

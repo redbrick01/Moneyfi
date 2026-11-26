@@ -53,6 +53,7 @@ class HoldingMarketSnapshot {
     required this.sectorName,
     required this.currentPrice,
     this.currentPriceValue,
+    this.receivedAt,
     required this.dayChange,
     required this.dayChangeRate,
     required this.previousClose,
@@ -138,6 +139,7 @@ class HoldingMarketSnapshot {
   final String sectorName;
   final String currentPrice;
   final double? currentPriceValue;
+  final DateTime? receivedAt;
   final String dayChange;
   final String dayChangeRate;
   final String previousClose;
