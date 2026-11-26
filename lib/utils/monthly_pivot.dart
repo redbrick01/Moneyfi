@@ -22,8 +22,9 @@ class MonthlyPivot {
 
   DateTime periodStart(DateTime date, {bool includeToday = true}) {
     final pivot = inMonth(date.year, date.month);
-    if (date.day > pivot.day || (includeToday && date.day == pivot.day))
+    if (date.day > pivot.day || (includeToday && date.day == pivot.day)) {
       return pivot;
+    }
     return inMonth(date.year, date.month - 1);
   }
 

@@ -30,8 +30,9 @@ class _MonthlyPivotSettingState extends State<MonthlyPivotSetting> {
     try {
       await widget.onSave(selected);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         AppSnackBar.showError(context, '월 분기점을 저장하지 못했어요. 다시 시도해 주세요.');
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

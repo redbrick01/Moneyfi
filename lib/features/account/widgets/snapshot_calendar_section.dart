@@ -275,14 +275,14 @@ class _CalendarLegendRow extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${pivotDay}',
+              '$pivotDay',
               style: context.typography.caption.copyWith(
                 color: VisualSpec.brand.brandRed,
                 fontWeight: AppFontWeights.semibold,
               ),
             ),
             SizedBox(width: context.spacing.xs / 2),
-            Text('월 분기점(${pivotDay}일)', style: context.typography.caption),
+            Text('월 분기점($pivotDay일)', style: context.typography.caption),
           ],
         ),
       ],
