@@ -1,68 +1,63 @@
-# MONEYFY
+# Moneyfy
 
-MONEYFY는 투자 자산과 현금 계좌를 함께 관리하는 Flutter 앱입니다. 매수·매도, 배당, 입출금, 환전을 기록하면 거래 원장을 바탕으로 보유 수량, 원가, 실현손익, 현금 잔액을 다시 계산합니다. 일별 스냅샷을 열면 과거 특정 날짜의 자산 구성도 확인할 수 있습니다.
+투자 자산과 현금 계좌를 한곳에서 관리하는 포트폴리오 앱입니다. 매수·매도와 입출금을 기록하면 보유 수량, 원가, 실현손익, 현금 잔액에 반영됩니다. 일별 스냅샷으로 과거의 자산 구성도 다시 볼 수 있습니다.
 
-## 앱에서 할 수 있는 일
+**[Moneyfy 앱 다운로드](https://fast-harp-jzo6rrz.tmp.now/)** · [GitHub 릴리스 노트](https://github.com/redbrick01/Moneyfi/releases)
 
-| 탭 | 주요 기능 |
-| --- | --- |
-| 홈 | 총자산과 손익을 확인하고 자산군별 비중을 비교합니다. |
-| 포트폴 | 보유 종목과 현금 계좌를 관리하고 각 자산의 평가액과 거래 내역을 살펴봅니다. |
-| 거래 | 매매, 배당·이자, 입출금, 이체·환전 내역을 기록하고 조회합니다. |
-| 분석 | 포트폴리오 성과와 자산 배분을 살펴보고 AI 포트폴리오 진단과 뉴스 요약을 확인합니다. |
-| My | 계정에 로그인하고 동기화 상태와 개인 설정을 확인합니다. |
+## 내 기기에 설치하기
 
-앱은 보유 자산과 거래 내역을 기기의 SQLite 데이터베이스에 저장하고 Drift로 읽고 씁니다. 로그인하면 Supabase를 통해 같은 계정의 데이터를 여러 기기에서 동기화합니다.
+다운로드 페이지에서 운영체제를 선택하면 최신 릴리스의 설치 파일과 설치 방법이 표시됩니다. 파일을 직접 찾으려면 [최신 릴리스의 Assets](https://github.com/redbrick01/Moneyfi/releases/latest)를 여세요.
 
-## 로컬에서 실행하기
+| 기기 | 설치 파일 | 설치 방법 |
+| --- | --- | --- |
+| Windows x64 | `moneyfy-windows-x64.zip` | 압축을 모두 풀고 같은 폴더의 DLL과 `data` 폴더를 그대로 둔 채 `moneyfy.exe`를 실행합니다. |
+| macOS · Apple Silicon | `moneyfy-macos-arm64.zip` | 압축을 풀고 `Moneyfy.app`을 응용 프로그램 폴더로 옮깁니다. Apple 공증 전 빌드이므로 실행이 제한될 수 있습니다. |
+| Linux x86_64 | `moneyfy-linux-x64.tar.gz` | 압축을 푼 폴더에서 `./moneyfy`를 실행합니다. Ubuntu 24.04에서 빌드하며 GTK 3와 libsecret이 필요합니다. |
+| Android | `moneyfy-android.apk` | 기기에서 APK를 열고 설치 안내를 따릅니다. |
 
-CI에서 사용하는 Flutter 버전은 **3.47.9**입니다. Flutter SDK와 대상 플랫폼의 개발 도구를 설치하고, 기기나 에뮬레이터를 연결한 뒤 저장소 루트에서 실행하세요.
+iPhone용 공개 배포는 보류 중입니다. 개발용 iPhone에는 아래의 USB 설치 절차를 사용할 수 있습니다.
+
+## 포트폴리오 기록하기
+
+1. **포트폴**에서 현금 계좌와 보유 종목을 관리합니다. 종목별 평가액과 거래 내역도 여기서 확인합니다.
+2. **거래**에서 매수·매도, 배당·이자, 입출금, 이체·환전을 기록합니다. **홈**에서 거래가 반영된 총자산과 손익, 자산군별 비중을 확인합니다.
+3. **분석**에서 포트폴리오 성과와 자산 배분을 살펴봅니다. 일별 스냅샷을 열면 해당 날짜의 보유 자산과 평가액을 확인할 수 있습니다.
+
+거래와 보유 내역은 기기의 SQLite 데이터베이스에 저장됩니다. 여러 기기에서 같은 포트폴리오를 사용하려면 **My**에서 같은 계정으로 로그인하고 동기화 상태를 확인하세요.
+
+## 소스에서 실행하기
+
+Flutter SDK와 대상 플랫폼의 개발 도구를 설치한 뒤 저장소 루트에서 실행합니다. 정적 분석과 테스트를 수행하는 CI의 Flutter 버전은 `3.47.9`입니다.
 
 ```sh
 flutter pub get
 flutter devices
-flutter run -d <기기-ID>
+flutter run -d <device-id>
 ```
 
-마지막 명령의 `<기기-ID>`에는 `flutter devices`에 표시된 값을 입력합니다. 앱은 서버 설정 없이도 실행할 수 있습니다. 로그인과 동기화를 사용하려면 아래 설정을 추가하세요.
+`<device-id>`에는 `flutter devices`가 표시한 기기 ID를 입력합니다. 로그인과 동기화를 개발하려면 [설정 예시](assets/config.example.json)를 `assets/config.json`으로 복사하고 `SUPABASE_URL`과 `SUPABASE_ANON_KEY`를 지정한 뒤 다시 실행하세요.
 
-### 로그인과 동기화 연결하기
-
-1. [앱 설정 예시](assets/config.example.json)를 같은 폴더에 `assets/config.json`으로 복사합니다.
-2. `SUPABASE_URL`과 `SUPABASE_ANON_KEY`에 연결할 프로젝트의 URL과 클라이언트용 anon 키를 입력합니다.
-3. 앱을 다시 실행하고 **My**에서 로그인합니다.
-
-새 Supabase 프로젝트를 연결할 때는 저장소의 마이그레이션을 적용하고 필요한 Edge Functions를 배포하세요. KIS 시세 조회용 키와 서비스 역할 키는 서버에서 관리합니다. [백엔드 구성](supabase/README.md) · [Supabase CLI 운영 가이드](docs/supabase_cli_runbook.md)
-
-### USB로 연결한 iPhone에 설치하기
-
-macOS에서 iOS 15 이상인 iPhone을 연결하고 기기에서 Mac을 신뢰하도록 설정하세요. 개발자 모드가 제공되는 iOS 버전에서는 해당 모드를 켜고, Xcode에서 Runner의 개발 서명을 설정합니다. 다음 스크립트가 릴리스 빌드를 기기에 설치하고 실행합니다.
+**iPhone USB 설치**에는 macOS, Xcode 개발 서명, USB로 연결한 iOS 15 이상 기기가 필요합니다. iPhone에서 Mac을 신뢰하고, 개발자 모드가 제공되는 기기에서는 해당 모드를 켠 뒤 실행합니다.
 
 ```sh
 ./scripts/install_ios_usb.command
 ```
 
-여러 대가 연결되어 있으면 스크립트 뒤에 기기 ID를 입력하세요. 설치 후 개발자 신뢰 안내가 나타나면 iPhone의 **설정 → 일반 → VPN 및 기기 관리**에서 서명에 사용한 개발자를 신뢰하도록 설정합니다.
-
-## 개발 및 검증
+**변경 사항 검증**에는 다음 명령을 사용합니다. Drift 테이블을 수정했다면 먼저 `dart run build_runner build --delete-conflicting-outputs`로 생성 코드를 갱신하세요.
 
 ```sh
 flutter analyze
 flutter test
 ```
 
-Drift 테이블이나 생성 대상 모델을 수정한 뒤에는 다음 명령으로 생성 코드를 갱신합니다.
+## 다운로드 페이지와 앱 릴리스
 
-```sh
-dart run build_runner build --delete-conflicting-outputs
-```
+Vercel은 [distribution](distribution)의 정적 다운로드 페이지를 제공합니다. Vercel 프로젝트의 Root Directory는 `distribution`이며, 이 디렉터리를 그대로 게시하도록 [vercel.json](distribution/vercel.json)에 설정되어 있습니다.
 
-## 코드와 문서
+앱 설치 파일은 GitHub Releases에서 제공합니다. `v1.2.3`처럼 `v` 다음에 숫자가 오는 태그를 푸시하면 [릴리스 워크플로](.github/workflows/release.yml)가 네 플랫폼의 패키지를 빌드해 게시합니다. [다운로드 페이지](distribution/downloads.js)는 열릴 때마다 최신 릴리스에서 운영체제에 맞는 파일을 찾으므로 새 버전을 배포할 때 다운로드 링크를 교체할 필요가 없습니다.
 
-| 찾고 싶은 내용 | 위치 |
-| --- | --- |
-| 포트폴리오, 거래, 분석 등 기능별 화면과 서비스 | [lib/features](lib/features) |
-| 거래 원장, 잔액 계산, 동기화 흐름 | [로컬 DB 코드](lib/db) · [데이터 흐름 문서](docs/data_and_sync.md) |
-| 서버 함수와 DB 스키마 변경 이력 | [Edge Functions](supabase/functions) · [마이그레이션](supabase/migrations) |
-| macOS 앱의 자산·거래를 MCP로 조회하고 변경하는 방법 | [개인용 MCP 가이드](tools/moneyfy-mcp/README.md) |
-| 화면 설계 기준과 프로젝트 문서 색인 | [디자인 시스템](docs/design_system.md) · [전체 문서](docs/README.md) |
+## 개발 문서
+
+- [기능별 앱 코드](lib/features) · [프로젝트 문서 색인](docs/README.md)
+- [거래 원장과 동기화 흐름](docs/data_and_sync.md) · [백엔드 구성](supabase/README.md)
+- [macOS 앱을 MCP로 연결하기](tools/moneyfy-mcp/README.md)
