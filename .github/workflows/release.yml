@@ -62,7 +62,7 @@ jobs:
       - if: matrix.target == 'macos'
         run: |
           flutter build macos --release
-          lipo -verify_arch arm64 build/macos/Build/Products/Release/Moneyfy.app/Contents/MacOS/Moneyfy
+          lipo build/macos/Build/Products/Release/Moneyfy.app/Contents/MacOS/Moneyfy -verify_arch arm64
           ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/Moneyfy.app out/moneyfy-macos-arm64.zip
       - uses: actions/upload-artifact@v4
         with:
