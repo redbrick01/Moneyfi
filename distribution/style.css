@@ -1,0 +1,17 @@
+* { box-sizing: border-box }
+body { margin: 0; background: #f8faf9; color: #142b25; font: 1rem/1.6 SUIT, "Malgun Gothic", sans-serif }
+header, main { width: min(58rem, 90vw); margin: auto }
+header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 0; border-bottom: 1px solid #c5d3ce }
+header b { letter-spacing: -.05em; font-size: 1.35rem }
+a { color: #0f5d45; text-underline-offset: .25em }
+.hero { background: #163f36; color: white; padding: clamp(1.6rem,5vw,3.8rem); border-radius: 1.2rem; margin: 2.5rem 0 }
+.hero p { margin: 0; color: #d7eee4 }
+h1 { font-size: clamp(2rem,6vw,3.8rem); letter-spacing: -.06em; line-height: 1.15; margin: .55rem 0 1.1rem }
+h2 { font-size: 1.45rem; margin-bottom: 0 }
+#status { color: #435d53; margin: .4rem 0 1.1rem }
+ul { padding: 0; margin: 0; list-style: none }
+li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-top: 1px solid #cfdbd5; padding: 1rem 0 }
+li strong, li small { display: block }
+li small, li span { font-size: .9rem; color: #486056 }
+li a { background: #15563f; color: white; border-radius: .5rem; padding: .55rem .9rem; white-space: nowrap; text-decoration: none }
+.all { display: inline-block; margin: 1.25rem 0 3rem }
